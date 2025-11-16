@@ -21,6 +21,7 @@ const envSchema = z.object({
   SMTP_USERNAME: z.string().nonempty("SMTP_USERNAME is required"),
   SMTP_PASSWORD: z.string().nonempty("SMTP_PASSWORD is required"),
   SMTP_FROM_EMAIL: z.string().nonempty("SMTP_FROM_EMAIL is required"),
+  SMTP_FROM_NAME: z.string(),
 
   // AWS S3
   AWS_ACCESS_KEY_ID: z.string().nonempty("AWS_ACCESS_KEY_ID is required"),

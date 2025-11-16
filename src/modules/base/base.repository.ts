@@ -1,9 +1,5 @@
-import type {
-  Document,
-  Model,
-  PaginateOptions,
-  PaginateResult,
-} from "mongoose";
+import { PaginateResult } from "@/ts/pagination.types";
+import type { Document, Model, PaginateOptions } from "mongoose";
 
 export class BaseRepository<
   T extends Document<unknown, any, any, Record<string, any>, object>,
