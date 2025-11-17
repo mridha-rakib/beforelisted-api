@@ -1,3 +1,4 @@
+// file: src\config\paginate.config.ts
 import type { PaginateOptions } from "mongoose";
 
 import mongoosePaginate from "mongoose-paginate-v2";

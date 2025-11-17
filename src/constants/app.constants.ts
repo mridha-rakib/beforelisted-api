@@ -107,6 +107,7 @@ export const MESSAGES = {
     REGISTER_SUCCESS:
       "Registration successful. Please check your email to verify your account.",
     LOGIN_SUCCESS: "Login successful.",
+    UNAUTHORIZED_ACCESS: "You do not have permission to perform this action.",
     EMAIL_VERIFICATION_SENT:
       "Verification email sent. Please check your inbox.",
     EMAIL_VERIFIED_SUCCESS: "Email verified successfully. You can now login.",

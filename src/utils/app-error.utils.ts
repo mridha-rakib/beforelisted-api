@@ -83,3 +83,12 @@ export class ConflictException extends AppError {
   }
 }
 
+export class ForbiddenException extends AppError {
+  constructor(message = "Forbidden Access", errorCode?: ErrorCodeEnumType) {
+    super(
+      message,
+      HTTPSTATUS.FORBIDDEN,
+      errorCode || ErrorCodeEnum.ACCESS_UNAUTHORIZED
+    );
+  }
+}
