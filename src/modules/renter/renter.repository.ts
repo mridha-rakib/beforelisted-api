@@ -1,11 +1,13 @@
 // file: src/modules/renter/renter.repository.ts
 
 import { BaseRepository } from "@/modules/base/base.repository";
-import type { IRenterProfile, IRenterSavedRequest } from "./renter.interface";
-import { RenterProfile, RenterSavedRequest } from "./renter.model";
+import type { Types } from "mongoose";
+import type { IRenterProfile } from "./renter.interface";
+import { RenterProfile } from "./renter.model";
 
 /**
  * Renter Profile Repository
+ * All methods properly typed
  */
 export class RenterProfileRepository extends BaseRepository<IRenterProfile> {
   constructor() {
@@ -13,120 +15,152 @@ export class RenterProfileRepository extends BaseRepository<IRenterProfile> {
   }
 
   /**
-   * Find renter profile by user ID
+   * Find renter by user ID
    */
-  async findByUserId(userId: string): Promise<IRenterProfile | null> {
+  async findByUserId(
+    userId: string | Types.ObjectId
+  ): Promise<IRenterProfile | null> {
     return this.model.findOne({ userId }).exec();
   }
 
   /**
-   * Update request counts
+   * Update renter profile by userId
    */
-  async updateRequestCounts(
-    userId: string,
-    activeCount: number,
-    totalCount: number
+  async updateByUserId(
+    userId: string | Types.ObjectId,
+    data: Partial<IRenterProfile>
+  ): Promise<IRenterProfile | null> {
+    return this.model.findOneAndUpdate({ userId }, data, { new: true }).exec();
+  }
+
+  /**
+   * Get renters subscribed to email notifications
+   */
+  async findEmailSubscribed(): Promise<IRenterProfile[]> {
+    return this.model.find({ emailNotificationsSubscribed: true }).exec();
+  }
+
+  /**
+   * Get renters subscribed to weekly digest
+   */
+  async findWeeklyDigestSubscribed(): Promise<IRenterProfile[]> {
+    return this.model.find({ weeklyReportDigest: true }).exec();
+  }
+
+  /**
+   * Update notification preferences
+   */
+  async updateNotificationPreferences(
+    userId: string | Types.ObjectId,
+    preferences: {
+      savedRequestsAlerts?: boolean;
+      emailNotificationsSubscribed?: boolean;
+      matchNotifications?: boolean;
+      weeklyReportDigest?: boolean;
+    }
+  ): Promise<IRenterProfile | null> {
+    return this.model
+      .findOneAndUpdate({ userId }, preferences, { new: true })
+      .exec();
+  }
+
+  /**
+   * Unsubscribe from email
+   */
+  async unsubscribeEmail(
+    userId: string | Types.ObjectId
   ): Promise<IRenterProfile | null> {
     return this.model
       .findOneAndUpdate(
         { userId },
         {
-          activeRequestsCount: activeCount,
-          totalSavedRequests: totalCount,
+          emailNotificationsSubscribed: false,
+          matchNotifications: false,
+          weeklyReportDigest: false,
         },
         { new: true }
       )
       .exec();
   }
-}
-
-/**
- * Renter Saved Request Repository
- */
-export class RenterSavedRequestRepository extends BaseRepository<IRenterSavedRequest> {
-  constructor() {
-    super(RenterSavedRequest);
-  }
 
   /**
-   * Find requests by user ID
+   * Increment pre-market request counts
    */
-  async findByUserId(userId: string): Promise<IRenterSavedRequest[]> {
-    return this.model.find({ userId }).sort({ createdAt: -1 }).exec();
-  }
-
-  /**
-   * Find active requests by user ID
-   */
-  async findActiveByUserId(userId: string): Promise<IRenterSavedRequest[]> {
+  async incrementPreMarketRequests(
+    userId: string | Types.ObjectId
+  ): Promise<IRenterProfile | null> {
     return this.model
-      .find({ userId, isActive: true })
-      .sort({ createdAt: -1 })
+      .findOneAndUpdate(
+        { userId },
+        {
+          $inc: {
+            totalPreMarketRequests: 1,
+            activePreMarketRequests: 1,
+          },
+        },
+        { new: true }
+      )
       .exec();
   }
 
   /**
-   * Find request by ID and user ID (ownership check)
+   * Decrement active pre-market requests
    */
-  async findByIdAndUserId(
-    requestId: string,
-    userId: string
-  ): Promise<IRenterSavedRequest | null> {
-    return this.model.findOne({ _id: requestId, userId }).exec();
-  }
-
-  /**
-   * Count active requests for user
-   */
-  async countActiveByUserId(userId: string): Promise<number> {
-    return this.model.countDocuments({ userId, isActive: true }).exec();
-  }
-
-  /**
-   * Count total requests for user
-   */
-  async countByUserId(userId: string): Promise<number> {
-    return this.model.countDocuments({ userId }).exec();
-  }
-
-  /**
-   * Deactivate request
-   */
-  async deactivateRequest(
-    requestId: string
-  ): Promise<IRenterSavedRequest | null> {
+  async decrementActivePreMarketRequests(
+    userId: string | Types.ObjectId
+  ): Promise<IRenterProfile | null> {
     return this.model
-      .findByIdAndUpdate(requestId, { isActive: false }, { new: true })
+      .findOneAndUpdate(
+        { userId },
+        { $inc: { activePreMarketRequests: -1 } },
+        { new: true }
+      )
       .exec();
   }
 
   /**
-   * Activate request
+   * Increment total matches
    */
-  async activateRequest(
-    requestId: string
-  ): Promise<IRenterSavedRequest | null> {
+  async incrementTotalMatches(
+    userId: string | Types.ObjectId
+  ): Promise<IRenterProfile | null> {
     return this.model
-      .findByIdAndUpdate(requestId, { isActive: true }, { new: true })
+      .findOneAndUpdate(
+        { userId },
+        { $inc: { totalMatches: 1 } },
+        { new: true }
+      )
       .exec();
   }
 
   /**
-   * Delete all requests for user (when deleting profile)
+   * Increment approved matches
    */
-  async deleteUserRequests(userId: string): Promise<any> {
-    return this.model.deleteMany({ userId }).exec();
+  async incrementApprovedMatches(
+    userId: string | Types.ObjectId
+  ): Promise<IRenterProfile | null> {
+    return this.model
+      .findOneAndUpdate(
+        { userId },
+        { $inc: { approvedMatches: 1 } },
+        { new: true }
+      )
+      .exec();
   }
 
   /**
-   * Update match count
+   * Update profile completeness
    */
-  async updateMatchCount(
-    requestId: string,
-    count: number
-  ): Promise<IRenterSavedRequest | null> {
+  async updateProfileCompleteness(
+    userId: string | Types.ObjectId,
+    completeness: number
+  ): Promise<IRenterProfile | null> {
     return this.model
-      .findByIdAndUpdate(requestId, { matchCount: count }, { new: true })
+      .findOneAndUpdate(
+        { userId },
+        { profileCompleteness: Math.min(completeness, 100) },
+        { new: true }
+      )
       .exec();
   }
 }

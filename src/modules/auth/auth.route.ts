@@ -6,15 +6,16 @@ import { AuthController } from "./auth.controller";
 const router = Router();
 const authController = new AuthController();
 
-/**
- * POST /auth/register
- * Register new agent or renter
- */
-router.post("/register", authController.register);
+// ============================================
+// REMOVED: POST /auth/register
+// ============================================
+// Use instead:
+// - POST /agent/register (for agents)
+// - POST /renter/register (for renters)
 
 /**
  * POST /auth/login
- * Login user
+ * Login user (all roles)
  */
 router.post("/login", authController.login);
 

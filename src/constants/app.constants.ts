@@ -6,18 +6,31 @@ export const APP = {
   VERSION: "1.0.0",
 } as const;
 
-export const ROLES = {
-  ADMIN: "admin",
-  AGENT: "agent",
-  RENTER: "renter",
-} as const;
+// export const ROLES = {
+//   ADMIN: "admin",
+//   AGENT: "agent",
+//   RENTER: "renter",
+// } as const;
 
-export const ACCOUNT_STATUS = {
-  PENDING: "pending",
-  ACTIVE: "active",
-  SUSPENDED: "suspended",
-  INACTIVE: "inactive",
-} as const;
+export enum ROLES {
+  ADMIN = "admin",
+  AGENT = "agent",
+  RENTER = "renter",
+}
+
+// export const ACCOUNT_STATUS = {
+//   PENDING: "pending",
+//   ACTIVE: "active",
+//   SUSPENDED: "suspended",
+//   INACTIVE: "inactive",
+// } as const;
+
+export enum ACCOUNT_STATUS {
+  PENDING = "pending",
+  ACTIVE = "active",
+  SUSPENDED = "suspended",
+  INACTIVE = "inactive",
+}
 
 export const VERIFICATION_STATUS = {
   PENDING: "pending",
@@ -70,10 +83,12 @@ export const PRICING_OPTION = {
 } as const;
 
 export const REFERRAL_CODE = {
-  PREFIX_AGENT: "AGT",
-  PREFIX_ADMIN: "ADMIN",
-  LENGTH: 8,
-  EXPIRY_DAYS: 30,
+  LENGTH: 10,
+  EXPIRY_DAYS: null, // null = permanent
+  PREFIX: {
+    ADMIN: "ADM",
+    AGENT: "AGT",
+  },
 } as const;
 
 export const JWT = {
@@ -114,6 +129,7 @@ export const MESSAGES = {
     PASSWORD_RESET_OTP_SENT:
       "OTP sent to your email. It will expire in 10 minutes.",
     PASSWORD_RESET_SUCCESS: "Password reset successfully.",
+    PASSWORD_CHANGED: "Password changed successfully.",
     INVALID_CREDENTIALS: "Invalid email or password.",
     EMAIL_ALREADY_EXISTS: "Email already registered.",
     EMAIL_NOT_VERIFIED: "Please verify your email before login.",
@@ -148,4 +164,9 @@ export const ERRORS = {
   FORBIDDEN: "Forbidden access.",
   BAD_REQUEST: "Bad request.",
   CONFLICT: "Resource already exists.",
+} as const;
+
+export const PASSWORD = {
+  MIN_LENGTH: 8,
+  AUTO_GENERATED_LENGTH: 12,
 } as const;

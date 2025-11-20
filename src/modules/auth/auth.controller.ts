@@ -8,7 +8,6 @@ import type { NextFunction, Request, Response } from "express";
 import {
   loginSchema,
   refreshTokenSchema,
-  registerSchema,
   requestPasswordResetSchema,
   resetPasswordSchema,
   verifyEmailSchema,
@@ -23,18 +22,12 @@ export class AuthController {
     this.authService = new AuthService();
   }
 
-  /**
-   * Register endpoint
-   * POST /auth/register
-   */
-  register = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(registerSchema, req);
-      const result = await this.authService.register(validated.body);
-
-      ApiResponse.created(res, result, MESSAGES.AUTH.REGISTER_SUCCESS);
-    }
-  );
+  // ============================================
+  // REMOVED: register endpoint
+  // ============================================
+  // Use instead:
+  // - POST /agent/register
+  // - POST /renter/register
 
   /**
    * Login endpoint

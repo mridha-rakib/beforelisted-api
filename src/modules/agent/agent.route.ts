@@ -1,47 +1,28 @@
-// file: src/modules/agent/agent.route.ts (EXAMPLE WITH AUTH)
+// file: src/modules/agent/agent.route.ts
 
-import { ROLES } from "@/constants/app.constants";
-import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
 import { AgentController } from "./agent.controller";
 
 const router = Router();
-const agentController = new AgentController();
+const controller = new AgentController();
 
 /**
- * GET /agent/profile
- * Get agent profile
- * Protected: Agent role only
+ * ===========================
+ * PUBLIC ROUTES
+ * ===========================
  */
-router.get(
-  "/profile",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.AGENT),
-  agentController.getProfile
-);
 
 /**
- * PUT /agent/profile
- * Update agent profile
- * Protected: Agent role only
+ * POST /agent/register
+ * Complete agent registration (user + profile)
+ * Public - No authentication required
  */
-router.put(
-  "/profile",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.AGENT),
-  agentController.updateProfile
-);
+router.post("/register", controller.registerAgent);
 
 /**
- * GET /agent/requests
- * Get matched requests for agent
- * Protected: Agent role only
+ * ===========================
+ * AGENT ROUTES (Protected)
+ * ===========================
  */
-router.get(
-  "/requests",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.AGENT),
-  agentController.getRequests
-);
 
-export default router;
+// ... rest of your existing routes

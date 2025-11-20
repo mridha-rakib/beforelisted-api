@@ -1,4 +1,3 @@
-import { SOUTHERN_CHANGE_LOGO_PNG_BASE64 } from "@/constants/logo-base64";
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import nodemailer from "nodemailer";
@@ -170,99 +169,79 @@ export class EmailService {
     }
   }
 
-  private getLogoBase64(): string {
-    return SOUTHERN_CHANGE_LOGO_PNG_BASE64;
-  }
-
   // Welcome email for new users
-  async sendWelcomeEmail(
+  async sendWelcomeWithPassword(
     email: string,
     fullName: string,
-    temporaryPassword: string
+    password: string,
+    verificationLink: string
   ): Promise<void> {
-    const mailOptions = {
-      from: `"Southern Change Behavioral Health Services" <${env.SMTP_FROM_EMAIL}>`,
-      to: email,
-      subject: "Welcome to Southern Change - Account Created",
-      html: `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Welcome to Southern Change</title>
-        </head>
-        <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa;">
-          <div style="max-width: 600px; margin: 0 auto; background-color: white; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            
-            <!-- Header -->
-            <div style="background: linear-gradient(135deg, ${this.brandColor} 0%, #ff8ec7 100%); padding: 40px 20px; text-align: center;">
-              <div style="background: white; display: inline-block; padding: 15px; border-radius: 50%; margin-bottom: 20px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
-                <div style="width: 80px; height: 80px; no-repeat center; background-size: contain;">
-                 <img src="cid:sc_logo" style="width:100px; height:auto; margin:0 auto 20px; display:block;" /></div>
-              </div>
-              <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 300;">
-                Welcome to Southern Change
-              </h1>
-              <p style="color: rgba(255, 255, 255, 0.9); margin: 10px 0 0;">
-                Your account has been created successfully
-              </p>
-            </div>
-            
-            <!-- Content -->
-            <div style="padding: 40px 30px; text-align: center;">
-              <h2 style="color: #2c3e50; margin: 0 0 20px;">Hello, ${fullName}!</h2>
-              
-              <p style="color: #5a6c7d; line-height: 1.6; margin: 0 0 30px;">
-                Your account has been created by an administrator. Please use the temporary password below to log in and set up your new password.
-              </p>
-              
-              <div style="background: #f7f8fc; border: 2px solid ${this.brandColor}; border-radius: 8px; padding: 20px; margin: 20px 0;">
-                <p style="color: #7c8ba1; font-size: 12px; text-transform: uppercase; margin: 0 0 10px;">Temporary Password</p>
-                <div style="font-family: 'Courier New', monospace; font-size: 18px; font-weight: bold; color: ${this.brandColor};">
-                  ${temporaryPassword}
-                </div>
-              </div>
-              
-              <p style="color: #e74c3c; font-size: 14px; margin: 20px 0;">
-                ⚠️ Please change this password immediately after your first login
-              </p>
-              
-              <div style="margin: 30px 0;">
-                <a href="${env.CLIENT_URL}/login" style="background: ${this.brandColor}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">
-                  Login Now
-                </a>
-              </div>
-            </div>
-            
-            <!-- Footer -->
-            <div style="background: #f7f8fc; padding: 20px; text-align: center; color: #a0aec0; font-size: 12px;">
-              <p style="margin: 0;">
-                © ${new Date().getFullYear()} Southern Change Behavioral Health Services
-              </p>
-            </div>
-            
-          </div>
-        </body>
-        </html>
-      `,
-      attachments: [
-        {
-          filename: "logo.png",
-          cid: "sc_logo",
-          content: SOUTHERN_CHANGE_LOGO_PNG_BASE64.split(",")[1],
-          encoding: "base64",
-          contentType: "image/png",
-        },
-      ],
-    };
+    const subject = "Welcome to Rental Penny More - Your Account Details";
 
-    try {
-      await this.transporter.sendMail(mailOptions);
-      logger.info(`Welcome email sent to: ${email}`);
-    } catch (error) {
-      logger.error(error, `Failed to send welcome email to ${email}:`);
-      throw new Error("Failed to send email");
-    }
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #4CAF50; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; background: #f9f9f9; }
+        .password-box { background: #fff; border: 2px solid #4CAF50; padding: 15px; margin: 20px 0; border-radius: 5px; }
+        .password { font-size: 18px; font-weight: bold; color: #4CAF50; font-family: monospace; }
+        .button { display: inline-block; padding: 12px 24px; background: #4CAF50; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Welcome to Rental Penny More!</h1>
+        </div>
+        
+        <div class="content">
+          <p>Hello ${fullName},</p>
+          
+          <p>You've been invited to join Rental Penny More. Your account has been created with the following credentials:</p>
+          
+          <div class="password-box">
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Temporary Password:</strong></p>
+            <p class="password">${password}</p>
+          </div>
+          
+          <div class="warning">
+            <strong>⚠️ Important Security Notice:</strong>
+            <ul>
+              <li>This password was automatically generated for your security</li>
+              <li>Please change it immediately after your first login</li>
+              <li>Do not share this password with anyone</li>
+              <li>Keep this email secure or delete it after changing your password</li>
+            </ul>
+          </div>
+          
+          <p>To activate your account, please verify your email address:</p>
+          
+          <a href="${verificationLink}" class="button">Verify Email Address</a>
+          
+          <p>Or copy and paste this link in your browser:</p>
+          <p style="word-break: break-all; color: #666;">${verificationLink}</p>
+          
+          <p>After verifying your email, you can log in and change your password in your account settings.</p>
+          
+          <p>If you didn't request this account, please ignore this email or contact our support team.</p>
+        </div>
+        
+        <div class="footer">
+          <p>© ${new Date().getFullYear()} Rental Penny More. All rights reserved.</p>
+          <p>This email was sent to ${email}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+    await this.sendEmail(email, subject, htmlContent);
   }
 }

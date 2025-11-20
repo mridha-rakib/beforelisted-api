@@ -2,10 +2,12 @@ import app from "@/app";
 import { connectDB } from "@/config/database.config";
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
+import { bootstrapApplication } from "./config/bootstrap";
 
 const port = env.PORT;
 const server = app.listen(port, async () => {
   await connectDB();
+  await bootstrapApplication();
   logger.info(`Listening: http://localhost:${port}`);
   logger.info(`API Documentation: http://localhost:${port}/api/v1/docs`);
 });
