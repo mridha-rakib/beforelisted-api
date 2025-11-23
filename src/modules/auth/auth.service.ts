@@ -1,12 +1,14 @@
 // file: src/modules/auth/auth.service.ts (ULTRA SIMPLIFIED)
 
 import { MESSAGES } from "@/constants/app.constants";
+import { logger } from "@/middlewares/pino-logger";
 import { emailService } from "@/services/email.service";
 import {
   BadRequestException,
   UnauthorizedException,
 } from "@/utils/app-error.utils";
 import { comparePassword, hashPassword } from "@/utils/password.utils";
+import { EmailVerificationService } from "../email-verification/email-verification.service";
 import { PasswordResetService } from "../password-reset/password-reset.service";
 import type { IUser } from "../user/user.interface";
 import { UserService } from "../user/user.service";
@@ -24,10 +26,12 @@ import { AuthUtil } from "./auth.utils";
 export class AuthService {
   private userService: UserService;
   private passwordResetService: PasswordResetService;
+  private emailVerificationService: EmailVerificationService;
 
   constructor() {
     this.userService = new UserService();
     this.passwordResetService = new PasswordResetService();
+    this.emailVerificationService = new EmailVerificationService();
   }
 
   // ============================================
@@ -93,20 +97,23 @@ export class AuthService {
    * Verify email
    */
   async verifyEmail(token: string): Promise<{ message: string }> {
-    const user = await this.userService.getUserByVerificationToken(token);
+    const result = await this.emailVerificationService.verifyOTP(email, otp);
+    // Mark user email as verified
+    await this.userService.markEmailAsVerified(result.userId);
 
-    if (!user) {
-      throw new BadRequestException("Invalid verification token");
+    const user = await this.userService.getById(result.userId);
+
+    if (user) {
+      // Send confirmation email
+      await emailService.sendEmailVerificationConfirmation(
+        user.fullName,
+        user.email
+      );
     }
-
-    if (
-      !user.emailVerificationExpiresAt ||
-      user.emailVerificationExpiresAt < new Date()
-    ) {
-      throw new BadRequestException("Verification token expired");
-    }
-
-    await this.userService.markEmailAsVerified(user._id.toString());
+    logger.info(
+      { userId: result.userId, email },
+      "Email verified and confirmation sent"
+    );
 
     return { message: MESSAGES.AUTH.EMAIL_VERIFIED_SUCCESS };
   }
@@ -192,10 +199,18 @@ export class AuthService {
   ): Promise<{ accessToken: string }> {
     try {
       const payload = AuthUtil.verifyRefreshToken(refreshToken);
+
       const user = await this.userService.getById(payload.userId);
 
       if (!user) {
         throw new UnauthorizedException(MESSAGES.AUTH.REFRESH_TOKEN_INVALID);
+      }
+
+      if (
+        user.accountStatus === "suspended" ||
+        user.accountStatus === "inactive"
+      ) {
+        throw new UnauthorizedException(MESSAGES.AUTH.ACCOUNT_SUSPENDED);
       }
 
       const accessToken = AuthUtil.generateAccessToken({
@@ -231,5 +246,44 @@ export class AuthService {
       refreshToken,
       expiresIn: "7d",
     };
+  }
+
+  /**
+   * Resend verification code
+   * ✅ UPDATED: Resend OTP instead of token link
+   */
+  async resendVerificationCode(email: string): Promise<{ message: string }> {
+    const user = await this.userService.getUserByEmail(email);
+
+    if (!user) {
+      // Don't reveal if email exists
+      return { message: MESSAGES.AUTH.VERIFICATION_CODE_SENT };
+    }
+
+    if (user.emailVerified) {
+      throw new BadRequestException(MESSAGES.AUTH.EMAIL_ALREADY_VERIFIED);
+    }
+
+    // Generate and send new OTP
+    const { otp, expiresAt } = await this.emailVerificationService.resendOTP(
+      user._id.toString(),
+      user.email
+    );
+
+    // Send verification code email
+    const expiresInMinutes = Math.ceil(
+      (expiresAt.getTime() - new Date().getTime()) / 60000
+    );
+
+    await emailService.sendEmailVerificationCode(
+      user.fullName,
+      user.email,
+      otp,
+      expiresInMinutes
+    );
+
+    logger.info({ userId: user._id, email }, "Verification code resent");
+
+    return { message: MESSAGES.AUTH.VERIFICATION_CODE_SENT };
   }
 }

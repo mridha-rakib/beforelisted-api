@@ -115,8 +115,9 @@ export const loginSchema = z.object({
 });
 
 export const verifyEmailSchema = z.object({
-  query: z.object({
-    token: z.string().min(1, "Token is required"),
+  body: z.object({
+    email: z.email(MESSAGES.VALIDATION.INVALID_EMAIL),
+    code: z.string().length(4, "Verification code must be 4 digits"),
   }),
 });
 
@@ -142,7 +143,11 @@ export const resetPasswordSchema = z.object({
 });
 
 export const refreshTokenSchema = z.object({
+  body: z.object({}).optional(),
+});
+
+export const resendVerificationCodeSchema = z.object({
   body: z.object({
-    refreshToken: z.string().min(1, "Refresh token is required"),
+    email: z.string().email(MESSAGES.VALIDATION.INVALID_EMAIL),
   }),
 });

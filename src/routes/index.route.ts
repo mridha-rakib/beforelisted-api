@@ -1,3 +1,4 @@
+import agentRouter from "@/modules/agent/agent.route";
 import authRouter from "@/modules/auth/auth.route";
 import userRouter from "@/modules/user/user.route";
 import { Router } from "express";
@@ -12,6 +13,10 @@ const moduleRoutes = [
   {
     path: "/user",
     route: userRouter,
+  },
+  {
+    path: "/agent",
+    route: agentRouter,
   },
 ];
 

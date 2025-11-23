@@ -26,3 +26,5 @@ router.post("/register", controller.registerAgent);
  */
 
 // ... rest of your existing routes
+
+export default router;

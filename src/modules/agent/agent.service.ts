@@ -1,13 +1,13 @@
 // file: src/modules/agent/agent.service.ts
 
 import { ROLES } from "@/constants/app.constants";
-import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import { emailService } from "@/services/email.service";
 import { ConflictException, NotFoundException } from "@/utils/app-error.utils";
 import { hashPassword } from "@/utils/password.utils";
 import type { Types } from "mongoose";
 import { AuthUtil } from "../auth/auth.utils";
+import { EmailVerificationService } from "../email-verification/email-verification.service";
 import { ReferralService } from "../referral/referral.service";
 import { UserService } from "../user/user.service";
 import type { IAgentProfile } from "./agent.interface";
@@ -32,11 +32,13 @@ export class AgentService {
   private repository: AgentProfileRepository;
   private userService: UserService;
   private referralService: ReferralService;
+  private emailVerificationService: EmailVerificationService;
 
   constructor() {
     this.repository = new AgentProfileRepository();
     this.userService = new UserService();
     this.referralService = new ReferralService();
+    this.emailVerificationService = new EmailVerificationService();
   }
 
   // ============================================
@@ -89,6 +91,23 @@ export class AgentService {
       ROLES.AGENT
     );
 
+    const { otp, expiresAt: otExpire } =
+      await this.emailVerificationService.createOTP(
+        user._id.toString(),
+        user.email
+      );
+
+    const expiresInMinutes = Math.ceil(
+      (otExpire.getTime() - new Date().getTime()) / 60000
+    );
+
+    await emailService.sendEmailVerificationCode(
+      payload.fullName,
+      payload.email,
+      otp,
+      expiresInMinutes
+    );
+
     // 7. Create agent profile
     const profile = await this.repository.create({
       userId: user._id,
@@ -122,18 +141,6 @@ export class AgentService {
       emailVerificationToken: verificationToken,
       emailVerificationExpiresAt: expiresAt,
     });
-
-    // 9. Send verification email
-    const verificationLink = AuthUtil.generateVerificationLink(
-      env.CLIENT_URL,
-      verificationToken
-    );
-
-    await emailService.sendEmailVerification(
-      payload.email,
-      payload.fullName,
-      verificationLink
-    );
 
     // 10. Generate JWT tokens
     const tokens = this.generateTokens(

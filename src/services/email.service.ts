@@ -1,343 +1,256 @@
-import { EMAIL } from "@/constants/app.constants";
-import { env } from "@/env";
-import { logger } from "@/middlewares/pino-logger";
-import type { Transporter } from "nodemailer";
-import nodemailer from "nodemailer";
+// file: src/services/email.service.ts
+/**
+ * BeforeListed Email Service
+ * ✅ Unified email service for Agents & Renters
+ * ✅ No duplicate methods
+ * ✅ Handles both user types automatically
+ * ✅ SendGrid integration ready
+ */
 
-export interface EmailPayload {
-  to: string;
-  subject: string;
-  html: string;
-}
+import { logger } from "@/middlewares/pino-logger";
+import sgMail from "@sendgrid/mail";
+import { EmailTemplateHelper } from "./email.integration.beforelisted";
+import { EmailTemplates } from "./email.templates.beforelisted";
+
+type UserType = "Agent" | "Renter";
 
 export class EmailService {
-  private transporter: Transporter;
+  private sgMail: any;
 
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: env.SMTP_HOST,
-      port: env.SMTP_PORT,
-      secure: env.SMTP_PORT === 465,
-      auth: {
-        user: env.SMTP_USERNAME,
-        pass: env.SMTP_PASSWORD,
-      },
-    });
+    this.sgMail = sgMail;
+    this.sgMail.setApiKey(process.env.SENDGRID_API_KEY);
   }
 
+  // ============================================
+  // UNIFIED EMAIL VERIFICATION METHOD
+  // ============================================
   /**
-   * Send email
+   * Send email verification code to Agent or Renter
+   * Single method handles both user types
+   *
+   * Called from:
+   * - agent.service.ts::registerAgent()
+   * - renter.service.ts::registerRenter()
    */
-  async send(payload: EmailPayload): Promise<void> {
+  async sendEmailVerificationCode(
+    fullName: string,
+    email: string,
+    verificationCode: string,
+    expiresInMinutes: number,
+    userType: UserType = "Renter" // Default to Renter if not specified
+  ): Promise<void> {
     try {
-      const mailOptions = {
-        from: `${EMAIL.FROM_NAME} <${EMAIL.FROM}>`,
-        to: payload.to,
-        subject: payload.subject,
-        html: payload.html,
-      };
-
-      const info = await this.transporter.sendMail(mailOptions);
-
-      logger.info(
-        { messageId: info.messageId, to: payload.to },
-        "Email sent successfully"
+      const html = EmailTemplateHelper.replaceVariables(
+        EmailTemplates.emailVerificationCodeEmail(),
+        {
+          userName: fullName,
+          verificationCode,
+          expiresIn: `${expiresInMinutes} minutes`,
+          userType,
+          currentYear: EmailTemplateHelper.getCurrentYear(),
+        }
       );
+
+      const subject =
+        userType === "Agent"
+          ? "Verify Your Email - BeforeListed Agent Portal"
+          : "Verify Your Email - BeforeListed";
+
+      await this.sgMail.send({
+        to: email,
+        from: process.env.FROM_EMAIL || "noreply@beforelisted.com",
+        subject,
+        html,
+      });
+
+      logger.info({ email, userType }, `${userType} verification email sent`);
     } catch (error) {
-      logger.error(
-        { error, to: payload.to, subject: payload.subject },
-        "Failed to send email"
+      logger.error(error, `Failed to send ${userType} verification email`);
+      throw error;
+    }
+  }
+
+  // ============================================
+  // WELCOME EMAIL (After Verification)
+  // ============================================
+  /**
+   * Send welcome email to Agent or Renter
+   * Called after email verification is complete
+   *
+   * Called from:
+   * - agent.service.ts::verifyEmail() [assumed]
+   * - renter.service.ts::verifyEmail() [assumed]
+   */
+  async sendWelcomeEmail(
+    fullName: string,
+    email: string,
+    userType: UserType = "Renter"
+  ): Promise<void> {
+    try {
+      const loginLink =
+        userType === "Agent"
+          ? `${process.env.APP_URL}/agent/login`
+          : `${process.env.APP_URL}/renter/login`;
+
+      const html = EmailTemplateHelper.replaceVariables(
+        EmailTemplates.welcomeEmail(),
+        {
+          userName: fullName,
+          email,
+          userType,
+          loginLink,
+          currentYear: EmailTemplateHelper.getCurrentYear(),
+        }
       );
+
+      const subject =
+        userType === "Agent"
+          ? "Welcome to BeforeListed - Agent Portal"
+          : "Welcome to BeforeListed";
+
+      await this.sgMail.send({
+        to: email,
+        from: process.env.FROM_EMAIL || "noreply@beforelisted.com",
+        subject,
+        html,
+      });
+
+      logger.info({ email, userType }, `${userType} welcome email sent`);
+    } catch (error) {
+      logger.error(error, `Failed to send ${userType} welcome email`);
+      throw error;
+    }
+  }
+
+  // ============================================
+  // RENTER-SPECIFIC EMAILS
+  // ============================================
+
+  /**
+   * Send welcome email with auto-generated password
+   * Called from: renter.service.ts::registerRenter() - Admin referral flow
+   *
+   * Used when admin creates a renter account with auto-generated password
+   */
+  async sendWelcomeWithPassword(
+    email: string,
+    fullName: string,
+    tempPassword: string,
+    verificationCode: string,
+    expiresInMinutes: number
+  ): Promise<void> {
+    try {
+      const changePasswordLink = `${process.env.APP_URL}/settings/change-password`;
+
+      const html = EmailTemplateHelper.replaceVariables(
+        EmailTemplates.welcomeWithAutoPasswordEmail(),
+        {
+          userName: fullName,
+          email,
+          tempPassword,
+          verificationCode,
+          expiresIn: `${expiresInMinutes} minutes`,
+          changePasswordLink,
+          currentYear: EmailTemplateHelper.getCurrentYear(),
+        }
+      );
+
+      await this.sgMail.send({
+        to: email,
+        from: process.env.FROM_EMAIL || "noreply@beforelisted.com",
+        subject: "Your BeforeListed Renter Account is Ready",
+        html,
+      });
+
+      logger.info({ email }, "Welcome email with password sent");
+    } catch (error) {
+      logger.error(error, "Failed to send welcome email with password");
       throw error;
     }
   }
 
   /**
-   * Send email verification
+   * Send renter match notification
+   * Called from: Match/Notification service when new matches available
    */
-  async sendEmailVerification(
+  async sendRenterMatchNotification(
+    renterName: string,
     email: string,
-    fullName: string,
-    verificationLink: string
+    matchCount: number
   ): Promise<void> {
-    const html = this.emailVerificationTemplate(fullName, verificationLink);
-    await this.send({
-      to: email,
-      subject: "Verify Your Email Address",
-      html,
-    });
+    try {
+      const viewMatchesLink = `${process.env.APP_URL}/renter/matches`;
+
+      const html = EmailTemplateHelper.replaceVariables(
+        EmailTemplates.matchNotificationEmail(),
+        {
+          renterName,
+          matchCount: matchCount.toString(),
+          viewMatchesLink,
+          currentYear: EmailTemplateHelper.getCurrentYear(),
+        }
+      );
+
+      await this.sgMail.send({
+        to: email,
+        from: process.env.FROM_EMAIL || "noreply@beforelisted.com",
+        subject: `New Property Matches on BeforeListed - ${matchCount} properties found`,
+        html,
+      });
+
+      logger.info({ email, matchCount }, "Match notification email sent");
+    } catch (error) {
+      logger.error(error, "Failed to send match notification");
+      throw error;
+    }
   }
 
+  // ============================================
+  // AGENT-SPECIFIC EMAILS
+  // ============================================
+
   /**
-   * Send password reset OTP
+   * Send agent approval email
+   * Called from: agent.service.ts::adminApproveAgent()
    */
-  async sendPasswordResetOTP(
+  async sendAgentApprovalEmail(
+    agentName: string,
     email: string,
-    fullName: string,
-    otp: string
+    licenseNumber: string,
+    brokerageName: string,
+    adminNotes: string
   ): Promise<void> {
-    const html = this.passwordResetOTPTemplate(fullName, otp);
-    await this.send({
-      to: email,
-      subject: "Password Reset - OTP Code",
-      html,
-    });
-  }
+    try {
+      const dashboardLink = `${process.env.APP_URL}/agent/dashboard`;
 
-  /**
-   * Send welcome email
-   */
-  async sendWelcomeEmail(
-    email: string,
-    fullName: string,
-    role: string
-  ): Promise<void> {
-    const html = this.welcomeTemplate(fullName, role);
-    await this.send({
-      to: email,
-      subject: `Welcome to ${EMAIL.FROM_NAME}, ${fullName}!`,
-      html,
-    });
-  }
+      const html = EmailTemplateHelper.replaceVariables(
+        EmailTemplates.agentApprovalEmail(),
+        {
+          agentName,
+          agentEmail: email,
+          licenseNumber,
+          brokerageName,
+          adminNotes: adminNotes || "Welcome to BeforeListed!",
+          dashboardLink,
+          currentYear: EmailTemplateHelper.getCurrentYear(),
+        }
+      );
 
-  /**
-   * Send admin referral email (passwordless registration)
-   */
-  async sendAdminReferralEmail(
-    email: string,
-    fullName: string,
-    registrationLink: string
-  ): Promise<void> {
-    const html = this.adminReferralTemplate(fullName, registrationLink);
-    await this.send({
-      to: email,
-      subject: "You are invited to join the platform",
-      html,
-    });
-  }
+      await this.sgMail.send({
+        to: email,
+        from: process.env.FROM_EMAIL || "noreply@beforelisted.com",
+        subject: "Your BeforeListed Agent Account Has Been Approved ✓",
+        html,
+      });
 
-  /**
-   * Send agent referral email
-   */
-  async sendAgentReferralEmail(
-    email: string,
-    fullName: string,
-    referralLink: string,
-    referrerName: string
-  ): Promise<void> {
-    const html = this.agentReferralTemplate(
-      fullName,
-      referralLink,
-      referrerName
-    );
-    await this.send({
-      to: email,
-      subject: `${referrerName} invited you to join`,
-      html,
-    });
-  }
-
-  /**
-   * Email verification template
-   */
-  private emailVerificationTemplate(
-    fullName: string,
-    verificationLink: string
-  ): string {
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background-color: #007bff; color: white; padding: 20px; text-align: center; }
-    .content { background-color: #f9f9f9; padding: 20px; margin: 20px 0; border-radius: 5px; }
-    .button { background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0; }
-    .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>${EMAIL.FROM_NAME}</h1>
-    </div>
-    <div class="content">
-      <p>Hi ${fullName},</p>
-      <p>Thank you for registering! Please verify your email address by clicking the button below.</p>
-      <a href="${verificationLink}" class="button">Verify Email</a>
-      <p style="color: #999; font-size: 12px;">
-        This link will expire in 24 hours. If you didn't create this account, please ignore this email.
-      </p>
-    </div>
-    <div class="footer">
-      <p>&copy; ${new Date().getFullYear()} ${EMAIL.FROM_NAME}. All rights reserved.</p>
-    </div>
-  </div>
-</body>
-</html>`;
-  }
-
-  /**
-   * Password reset OTP template
-   */
-  private passwordResetOTPTemplate(fullName: string, otp: string): string {
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background-color: #ff6b6b; color: white; padding: 20px; text-align: center; }
-    .content { background-color: #f9f9f9; padding: 20px; margin: 20px 0; border-radius: 5px; }
-    .otp-box { background-color: #fff; border: 2px solid #ff6b6b; padding: 20px; text-align: center; border-radius: 5px; margin: 20px 0; }
-    .otp-code { font-size: 32px; font-weight: bold; color: #ff6b6b; letter-spacing: 5px; }
-    .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Password Reset Request</h1>
-    </div>
-    <div class="content">
-      <p>Hi ${fullName},</p>
-      <p>We received a request to reset your password. Use the OTP code below:</p>
-      <div class="otp-box">
-        <p>Your OTP Code:</p>
-        <p class="otp-code">${otp}</p>
-      </div>
-      <p style="color: #999; font-size: 12px;">
-        This code will expire in 10 minutes. If you didn't request this, please ignore this email.
-      </p>
-    </div>
-    <div class="footer">
-      <p>&copy; ${new Date().getFullYear()} ${EMAIL.FROM_NAME}. All rights reserved.</p>
-    </div>
-  </div>
-</body>
-</html>`;
-  }
-
-  /**
-   * Welcome template
-   */
-  private welcomeTemplate(fullName: string, role: string): string {
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background-color: #28a745; color: white; padding: 20px; text-align: center; }
-    .content { background-color: #f9f9f9; padding: 20px; margin: 20px 0; border-radius: 5px; }
-    .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Welcome to ${EMAIL.FROM_NAME}!</h1>
-    </div>
-    <div class="content">
-      <p>Hi ${fullName},</p>
-      <p>Welcome aboard! Your account has been created successfully as a ${role}.</p>
-      <p>You can now log in to your account and start using all our features.</p>
-      <p>If you have any questions, feel free to contact our support team.</p>
-    </div>
-    <div class="footer">
-      <p>&copy; ${new Date().getFullYear()} ${EMAIL.FROM_NAME}. All rights reserved.</p>
-    </div>
-  </div>
-</body>
-</html>`;
-  }
-
-  /**
-   * Admin referral template
-   */
-  private adminReferralTemplate(
-    fullName: string,
-    registrationLink: string
-  ): string {
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background-color: #007bff; color: white; padding: 20px; text-align: center; }
-    .content { background-color: #f9f9f9; padding: 20px; margin: 20px 0; border-radius: 5px; }
-    .button { background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0; }
-    .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Welcome to ${EMAIL.FROM_NAME}</h1>
-    </div>
-    <div class="content">
-      <p>Hi ${fullName},</p>
-      <p>You have been invited to join ${EMAIL.FROM_NAME}. Click the button below to complete your registration.</p>
-      <a href="${registrationLink}" class="button">Complete Registration</a>
-      <p style="color: #999; font-size: 12px;">
-        This link will expire in 30 days. If you didn't expect this invitation, please ignore this email.
-      </p>
-    </div>
-    <div class="footer">
-      <p>&copy; ${new Date().getFullYear()} ${EMAIL.FROM_NAME}. All rights reserved.</p>
-    </div>
-  </div>
-</body>
-</html>`;
-  }
-
-  /**
-   * Agent referral template
-   */
-  private agentReferralTemplate(
-    fullName: string,
-    referralLink: string,
-    referrerName: string
-  ): string {
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background-color: #007bff; color: white; padding: 20px; text-align: center; }
-    .content { background-color: #f9f9f9; padding: 20px; margin: 20px 0; border-radius: 5px; }
-    .button { background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0; }
-    .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Join ${EMAIL.FROM_NAME}</h1>
-    </div>
-    <div class="content">
-      <p>Hi ${fullName},</p>
-      <p><strong>${referrerName}</strong> has invited you to join ${EMAIL.FROM_NAME}.</p>
-      <p>Join now using the link below:</p>
-      <a href="${referralLink}" class="button">Accept Invitation</a>
-      <p style="color: #999; font-size: 12px;">
-        This link will expire in 30 days.
-      </p>
-    </div>
-    <div class="footer">
-      <p>&copy; ${new Date().getFullYear()} ${EMAIL.FROM_NAME}. All rights reserved.</p>
-    </div>
-  </div>
-</body>
-</html>`;
+      logger.info({ email }, "Agent approval email sent");
+    } catch (error) {
+      logger.error(error, "Failed to send agent approval email");
+      throw error;
+    }
   }
 }
 
+// Export singleton instance
 export const emailService = new EmailService();

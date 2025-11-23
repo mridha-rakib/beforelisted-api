@@ -1,5 +1,6 @@
 // file: src/modules/auth/auth.controller.ts
 
+import { COOKIE_CONFIG } from "@/config/cookie.config";
 import { MESSAGES } from "@/constants/app.constants";
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { ApiResponse } from "@/utils/response.utils";
@@ -7,13 +8,14 @@ import { zParse } from "@/utils/validators.utils";
 import type { NextFunction, Request, Response } from "express";
 import {
   loginSchema,
-  refreshTokenSchema,
   requestPasswordResetSchema,
+  resendVerificationCodeSchema,
   resetPasswordSchema,
   verifyEmailSchema,
   verifyOTPSchema,
 } from "./auth.schema";
 import { AuthService } from "./auth.service";
+import { AuthControllerResponse } from "./auth.type";
 
 export class AuthController {
   private authService: AuthService;
@@ -38,20 +40,53 @@ export class AuthController {
       const validated = await zParse(loginSchema, req);
       const result = await this.authService.login(validated.body);
 
-      ApiResponse.success(res, result, MESSAGES.AUTH.LOGIN_SUCCESS);
+      res.cookie(
+        COOKIE_CONFIG.REFRESH_TOKEN.name,
+        result.tokens.refreshToken,
+        COOKIE_CONFIG.REFRESH_TOKEN.options
+      );
+
+      const response: AuthControllerResponse = {
+        user: result.user,
+        accessToken: result.tokens.accessToken,
+        expiresIn: result.tokens.expiresIn,
+        mustChangePassword: result.mustChangePassword,
+      };
+
+      ApiResponse.success(res, response, MESSAGES.AUTH.LOGIN_SUCCESS);
     }
   );
 
   /**
-   * Verify email endpoint
-   * GET /auth/verify-email?token=xxx
+   * Verify email with code
+   * POST /auth/verify-email
+   * ✅ UPDATED: Use code in body instead of token in query
    */
   verifyEmail = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
       const validated = await zParse(verifyEmailSchema, req);
-      const result = await this.authService.verifyEmail(validated.query.token);
+      const result = await this.authService.verifyEmail(
+        validated.body.email,
+        validated.body.code
+      );
 
       ApiResponse.success(res, result, MESSAGES.AUTH.EMAIL_VERIFIED_SUCCESS);
+    }
+  );
+
+  /**
+   * Resend verification code
+   * POST /auth/resend-verification
+   * ✅ UPDATED: Name change for clarity
+   */
+  resendVerificationCode = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const validated = await zParse(resendVerificationCodeSchema, req);
+      const result = await this.authService.resendVerificationCode(
+        validated.body.email
+      );
+
+      ApiResponse.success(res, result, MESSAGES.AUTH.VERIFICATION_CODE_SENT);
     }
   );
 
@@ -109,12 +144,43 @@ export class AuthController {
    */
   refreshToken = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(refreshTokenSchema, req);
-      const result = await this.authService.refreshAccessToken(
-        validated.body.refreshToken
-      );
+      const refreshToken = req.cookies[COOKIE_CONFIG.REFRESH_TOKEN.name];
+      if (!refreshToken) {
+        throw new Error("Refresh token not found");
+      }
+
+      const result = await this.authService.refreshAccessToken(refreshToken);
 
       ApiResponse.success(res, result);
+    }
+  );
+
+  // ============================================
+  // LOGOUT (UPDATED - Clear Cookie)
+  // ============================================
+
+  /**
+   * Logout endpoint
+   * POST /auth/logout
+   * ✅ Clear refresh token cookie
+   */
+
+  logout = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const userId = req.user!.userId;
+      const token = req.headers.authorization?.replace("Bearer ", "") || "";
+
+      const result = await this.authService.logout(token, userId);
+
+      // ✅ NEW: Clear refresh token cookie
+      res.clearCookie(COOKIE_CONFIG.REFRESH_TOKEN.name, {
+        httpOnly: true,
+        secure: COOKIE_CONFIG.REFRESH_TOKEN.options.secure,
+        sameSite: COOKIE_CONFIG.REFRESH_TOKEN.options.sameSite,
+        path: "/",
+      });
+
+      ApiResponse.success(res, result, MESSAGES.AUTH.LOGOUT_SUCCESS);
     }
   );
 }

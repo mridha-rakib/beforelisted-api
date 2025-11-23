@@ -165,7 +165,7 @@ Calculate referral code expiration time (30 days)
 */
   static getReferralCodeExpirationTime(): Date {
     const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + REFERRAL_CODE.EXPIRY_DAYS);
+    expiryDate.setDate(expiryDate.getDate() + REFERRAL_CODE.EXPIRY_DAYS!);
     return expiryDate;
   }
 

@@ -1,5 +1,6 @@
 // file: src/modules/agent/agent.controller.ts
 
+import { COOKIE_CONFIG } from "@/config/cookie.config";
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
@@ -230,14 +231,28 @@ export class AgentController {
   );
 
   /**
-   * PUBLIC: Register as agent (complete registration)
+   * PUBLIC: Register as agent
    * POST /agent/register
+   * ✅ Set refresh token in cookie
    */
   registerAgent = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
       const validated = await zParse(agentRegisterSchema, req);
 
       const result = await this.service.registerAgent(validated.body);
+
+      res.cookie(
+        COOKIE_CONFIG.REFRESH_TOKEN.name,
+        result.tokens.refreshToken,
+        COOKIE_CONFIG.REFRESH_TOKEN.options
+      );
+
+      const response = {
+        user: result.user,
+        profile: result.profile,
+        accessToken: result.tokens.accessToken,
+        expiresIn: result.tokens.expiresIn,
+      };
 
       ApiResponse.created(res, result, "Agent registered successfully");
     }

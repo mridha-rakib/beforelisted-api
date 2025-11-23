@@ -26,6 +26,12 @@ router.post("/login", authController.login);
 router.get("/verify-email", authController.verifyEmail);
 
 /**
+ * POST /auth/resend-verification
+ * Resend verification code (UPDATED)
+ */
+router.post("/resend-verification", authController.resendVerificationCode);
+
+/**
  * POST /auth/request-password-reset
  * Request OTP for password reset
  */
