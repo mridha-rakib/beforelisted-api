@@ -6,7 +6,7 @@ const envSchema = z.object({
     .default("development"),
   APP_NAME: z
     .string()
-    .default("Southern Change Behavioral Health Services - SCBHS"),
+    .default("BeforeListed - Renter-Agent Connection Platform"),
   BASE_URL: z.string().default("/api/v1"),
   PORT: z.coerce.number().default(3000),
   MONGO_URI: z.url().nonempty("MONGO_URI is required"),
@@ -15,13 +15,43 @@ const envSchema = z.object({
   JWT_EXPIRY: z.string(),
   JWT_REFRESH_EXPIRY: z.string(),
   SALT_ROUNDS: z.coerce.number().default(12),
-  // Node Mailer
+
+  // ============================================
+  // SMTP CONFIGURATION
+  // ============================================
+  // ============================================
+  // EMAIL SETTINGS
+  // ============================================
   SMTP_HOST: z.string().nonempty("SMTP_HOST is required"),
   SMTP_PORT: z.coerce.number().default(587),
-  SMTP_USERNAME: z.string().nonempty("SMTP_USERNAME is required"),
-  SMTP_PASSWORD: z.string().nonempty("SMTP_PASSWORD is required"),
+  SMTP_SECURE: z.coerce.boolean().default(false),
+  SMTP_USER: z.string().nonempty("SMTP_USERNAME is required"),
+  SMTP_PASS: z.string().nonempty("SMTP_PASSWORD is required"),
   SMTP_FROM_EMAIL: z.string().nonempty("SMTP_FROM_EMAIL is required"),
-  SMTP_FROM_NAME: z.string(),
+  SMTP_FROM_NAME: z.string().default("BeforeListed"),
+
+  // ============================================
+  //  EMAIL DEFAULTS
+  // ============================================
+  EMAIL_FROM_NAME: z.string().default("BeforeListed"),
+  EMAIL_FROM_ADDRESS: z
+    .email("Must be a valid email")
+    .default("noreply@beforelisted.com"),
+  EMAIL_REPLY_TO: z.email("Must be a valid email").optional(),
+
+  // ============================================
+  //  BRANDING
+  // ============================================
+  EMAIL_LOGO_URL: z
+    .url("Must be valid URL")
+    .default("https://i.postimg.cc/wB4Zgqmy/Logo-8.jpg"),
+  EMAIL_BRAND_COLOR: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color")
+    .default("#1890FF"),
+
+  EMAIL_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(3),
+  EMAIL_RETRY_DELAY_MS: z.coerce.number().int().min(1000).default(1000),
 
   // AWS S3
   AWS_ACCESS_KEY_ID: z.string().nonempty("AWS_ACCESS_KEY_ID is required"),

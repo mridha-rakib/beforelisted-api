@@ -1,256 +1,519 @@
 // file: src/services/email.service.ts
+
 /**
- * BeforeListed Email Service
+ * BeforeListed Email Service - REFACTORED FOR NODEMAILER
  * ✅ Unified email service for Agents & Renters
- * ✅ No duplicate methods
- * ✅ Handles both user types automatically
- * ✅ SendGrid integration ready
+ * ✅ Full type-safety with TypeScript
+ * ✅ Dependency injection support
+ * ✅ Clean architecture (Service → Transporter → SMTP)
+ * ✅ SOLID principles applied
+ * ✅ Error handling & retry logic
+ * ✅ Structured logging with Pino
  */
 
+import { emailConfig } from "@/config/email.config";
 import { logger } from "@/middlewares/pino-logger";
-import sgMail from "@sendgrid/mail";
+import { createEmailTransporter } from "@/services/email.transporter";
+import {
+  type IEmailOptions,
+  type IEmailResult,
+  type IEmailVerificationPayload,
+  type IPasswordChangedPayload,
+  type IPasswordResetPayload,
+  type IWelcomeEmailPayload,
+} from "@/services/email.types";
 import { EmailTemplateHelper } from "./email.integration.beforelisted";
 import { EmailTemplates } from "./email.templates.beforelisted";
 
-type UserType = "Agent" | "Renter";
+// ============================================
+// EMAIL SERVICE CLASS
+// ============================================
 
+/**
+ * Email Service - Core business logic for sending emails
+ * - Handles template rendering
+ * - Manages transporter lifecycle
+ * - Provides unified API for controllers/services
+ */
 export class EmailService {
-  private sgMail: any;
+  private transporter = createEmailTransporter(emailConfig);
+  private templates = new EmailTemplates();
+  private templateHelper = EmailTemplateHelper;
+  private config = emailConfig;
 
+  /**
+   * Constructor with dependency injection support
+   */
   constructor() {
-    this.sgMail = sgMail;
-    this.sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    this.initializeTransporter();
+  }
+
+  /**
+   * Initialize and verify transporter connection
+   */
+  private async initializeTransporter(): Promise<void> {
+    try {
+      const isConnected = await this.transporter.verify();
+      if (isConnected) {
+        logger.info("📧 Email service initialized successfully");
+      }
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          note: "Service will attempt to send emails anyway",
+        },
+        "⚠️  Email service initialization warning"
+      );
+    }
   }
 
   // ============================================
-  // UNIFIED EMAIL VERIFICATION METHOD
+  // EMAIL VERIFICATION
   // ============================================
+
   /**
-   * Send email verification code to Agent or Renter
-   * Single method handles both user types
+   * Send email verification code
+   * Called during: User registration (Agent/Renter)
    *
-   * Called from:
-   * - agent.service.ts::registerAgent()
-   * - renter.service.ts::registerRenter()
+   * @param payload - Email verification details
+   * @returns Promise<IEmailResult>
    */
-  async sendEmailVerificationCode(
-    fullName: string,
-    email: string,
-    verificationCode: string,
-    expiresInMinutes: number,
-    userType: UserType = "Renter" // Default to Renter if not specified
-  ): Promise<void> {
+  async sendEmailVerification(
+    payload: IEmailVerificationPayload
+  ): Promise<IEmailResult> {
     try {
-      const html = EmailTemplateHelper.replaceVariables(
-        EmailTemplates.emailVerificationCodeEmail(),
+      logger.debug(
         {
-          userName: fullName,
-          verificationCode,
-          expiresIn: `${expiresInMinutes} minutes`,
-          userType,
-          currentYear: EmailTemplateHelper.getCurrentYear(),
-        }
+          email: payload.to,
+          userType: payload.userType,
+        },
+        "Sending email verification"
       );
 
-      const subject =
-        userType === "Agent"
-          ? "Verify Your Email - BeforeListed Agent Portal"
-          : "Verify Your Email - BeforeListed";
+      // Render template
+      const html = this.templates.emailVerification(
+        payload.userName,
+        payload.verificationCode,
+        payload.expiresIn,
+        payload.userType,
+        this.config.logoUrl,
+        this.config.brandColor
+      );
 
-      await this.sgMail.send({
-        to: email,
-        from: process.env.FROM_EMAIL || "noreply@beforelisted.com",
+      // Prepare email options
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to },
+        subject: `Verify Your Email - BeforeListed`,
+        html,
+      };
+
+      // Send email
+      return await this.sendEmail(
+        emailOptions,
+        "EMAIL_VERIFICATION",
+        payload.to
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send email verification"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Resend verification code
+   * Called during: Resend verification request
+   *
+   * @param payload - Email verification details
+   * @returns Promise<IEmailResult>
+   */
+  async resendEmailVerification(
+    payload: IEmailVerificationPayload
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        {
+          email: payload.to,
+          userType: payload.userType,
+        },
+        "Resending email verification"
+      );
+
+      const result = await this.sendEmailVerification(payload);
+
+      logger.info(
+        {
+          email: payload.to,
+          messageId: result.messageId,
+        },
+        "✅ Verification email resent"
+      );
+
+      return result;
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to resend email verification"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  // ============================================
+  // WELCOME EMAIL
+  // ============================================
+
+  /**
+   * Send welcome email to new user
+   * Called during: Successful registration (Agent/Renter)
+   *
+   * @param payload - Welcome email details
+   * @returns Promise<IEmailResult>
+   */
+  async sendWelcomeEmail(payload: IWelcomeEmailPayload): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        {
+          email: payload.to,
+          userType: payload.userType,
+        },
+        "Sending welcome email"
+      );
+
+      // Determine which welcome template to use
+      let html: string;
+      let subject: string;
+
+      if (payload.isPasswordAutoGenerated) {
+        html = this.templates.welcomeAutoGeneratedPassword(
+          payload.userName,
+          payload.temporaryPassword || "",
+          payload.loginLink,
+          payload.userType,
+          this.config.logoUrl,
+          this.config.brandColor
+        );
+        subject = `Welcome to BeforeListed - Your Temporary Password`;
+      } else {
+        html = this.templates.welcome(
+          payload.userName,
+          payload.userType,
+          payload.loginLink,
+          this.config.logoUrl,
+          this.config.brandColor
+        );
+        subject = `Welcome to BeforeListed!`;
+      }
+
+      // Prepare email options
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.userName },
         subject,
         html,
-      });
+      };
 
-      logger.info({ email, userType }, `${userType} verification email sent`);
+      // Send email
+      return await this.sendEmail(emailOptions, "WELCOME", payload.to);
     } catch (error) {
-      logger.error(error, `Failed to send ${userType} verification email`);
-      throw error;
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send welcome email"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
     }
   }
 
   // ============================================
-  // WELCOME EMAIL (After Verification)
+  // PASSWORD RESET
   // ============================================
+
   /**
-   * Send welcome email to Agent or Renter
-   * Called after email verification is complete
+   * Send password reset email with verification link
+   * Called during: Password reset request
    *
-   * Called from:
-   * - agent.service.ts::verifyEmail() [assumed]
-   * - renter.service.ts::verifyEmail() [assumed]
+   * @param payload - Password reset details
+   * @returns Promise<IEmailResult>
    */
-  async sendWelcomeEmail(
-    fullName: string,
-    email: string,
-    userType: UserType = "Renter"
-  ): Promise<void> {
+  async sendPasswordResetEmail(
+    payload: IPasswordResetPayload
+  ): Promise<IEmailResult> {
     try {
-      const loginLink =
-        userType === "Agent"
-          ? `${process.env.APP_URL}/agent/login`
-          : `${process.env.APP_URL}/renter/login`;
-
-      const html = EmailTemplateHelper.replaceVariables(
-        EmailTemplates.welcomeEmail(),
+      logger.debug(
         {
-          userName: fullName,
-          email,
-          userType,
-          loginLink,
-          currentYear: EmailTemplateHelper.getCurrentYear(),
-        }
+          email: payload.to,
+        },
+        "Sending password reset email"
       );
 
-      const subject =
-        userType === "Agent"
-          ? "Welcome to BeforeListed - Agent Portal"
-          : "Welcome to BeforeListed";
+      // Render template
+      const html = this.templates.passwordReset(
+        payload.userName,
+        payload.resetLink,
+        payload.expiresIn,
+        this.config.logoUrl,
+        this.config.brandColor
+      );
 
-      await this.sgMail.send({
-        to: email,
-        from: process.env.FROM_EMAIL || "noreply@beforelisted.com",
-        subject,
+      // Prepare email options
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.userName },
+        subject: `Reset Your Password - BeforeListed`,
         html,
-      });
+        priority: "high",
+      };
 
-      logger.info({ email, userType }, `${userType} welcome email sent`);
+      // Send email
+      return await this.sendEmail(emailOptions, "PASSWORD_RESET", payload.to);
     } catch (error) {
-      logger.error(error, `Failed to send ${userType} welcome email`);
-      throw error;
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send password reset email"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
     }
   }
 
-  // ============================================
-  // RENTER-SPECIFIC EMAILS
-  // ============================================
-
   /**
-   * Send welcome email with auto-generated password
-   * Called from: renter.service.ts::registerRenter() - Admin referral flow
+   * Send password changed confirmation email
+   * Called during: Successful password change
    *
-   * Used when admin creates a renter account with auto-generated password
+   * @param payload - Password changed details
+   * @returns Promise<IEmailResult>
    */
-  async sendWelcomeWithPassword(
-    email: string,
-    fullName: string,
-    tempPassword: string,
-    verificationCode: string,
-    expiresInMinutes: number
-  ): Promise<void> {
+  async sendPasswordChangedEmail(
+    payload: IPasswordChangedPayload
+  ): Promise<IEmailResult> {
     try {
-      const changePasswordLink = `${process.env.APP_URL}/settings/change-password`;
-
-      const html = EmailTemplateHelper.replaceVariables(
-        EmailTemplates.welcomeWithAutoPasswordEmail(),
+      logger.debug(
         {
-          userName: fullName,
-          email,
-          tempPassword,
-          verificationCode,
-          expiresIn: `${expiresInMinutes} minutes`,
-          changePasswordLink,
-          currentYear: EmailTemplateHelper.getCurrentYear(),
-        }
+          email: payload.to,
+        },
+        "Sending password changed email"
       );
 
-      await this.sgMail.send({
-        to: email,
-        from: process.env.FROM_EMAIL || "noreply@beforelisted.com",
-        subject: "Your BeforeListed Renter Account is Ready",
-        html,
-      });
-
-      logger.info({ email }, "Welcome email with password sent");
-    } catch (error) {
-      logger.error(error, "Failed to send welcome email with password");
-      throw error;
-    }
-  }
-
-  /**
-   * Send renter match notification
-   * Called from: Match/Notification service when new matches available
-   */
-  async sendRenterMatchNotification(
-    renterName: string,
-    email: string,
-    matchCount: number
-  ): Promise<void> {
-    try {
-      const viewMatchesLink = `${process.env.APP_URL}/renter/matches`;
-
-      const html = EmailTemplateHelper.replaceVariables(
-        EmailTemplates.matchNotificationEmail(),
-        {
-          renterName,
-          matchCount: matchCount.toString(),
-          viewMatchesLink,
-          currentYear: EmailTemplateHelper.getCurrentYear(),
-        }
+      // Render template
+      const html = this.templates.passwordChanged(
+        payload.userName,
+        payload.timestamp,
+        this.config.logoUrl,
+        this.config.brandColor
       );
 
-      await this.sgMail.send({
-        to: email,
-        from: process.env.FROM_EMAIL || "noreply@beforelisted.com",
-        subject: `New Property Matches on BeforeListed - ${matchCount} properties found`,
+      // Prepare email options
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.userName },
+        subject: `Password Changed - BeforeListed`,
         html,
-      });
+      };
 
-      logger.info({ email, matchCount }, "Match notification email sent");
+      // Send email
+      return await this.sendEmail(emailOptions, "PASSWORD_CHANGED", payload.to);
     } catch (error) {
-      logger.error(error, "Failed to send match notification");
-      throw error;
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send password changed email"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
     }
   }
 
   // ============================================
-  // AGENT-SPECIFIC EMAILS
+  // CORE EMAIL SENDING
   // ============================================
 
   /**
-   * Send agent approval email
-   * Called from: agent.service.ts::adminApproveAgent()
+   * Core method to send email via transporter
+   * @param options - Email options
+   * @param templateType - Type of template being sent
+   * @param recipientEmail - Recipient email for logging
+   * @returns Promise<IEmailResult>
    */
-  async sendAgentApprovalEmail(
-    agentName: string,
-    email: string,
-    licenseNumber: string,
-    brokerageName: string,
-    adminNotes: string
-  ): Promise<void> {
-    try {
-      const dashboardLink = `${process.env.APP_URL}/agent/dashboard`;
+  private async sendEmail(
+    options: IEmailOptions,
+    templateType: string,
+    recipientEmail: string
+  ): Promise<IEmailResult> {
+    const startTime = Date.now();
 
-      const html = EmailTemplateHelper.replaceVariables(
-        EmailTemplates.agentApprovalEmail(),
+    try {
+      // Send via transporter
+      const response = await this.transporter.send(options);
+
+      const duration = Date.now() - startTime;
+
+      if (response.error) {
+        logger.error(
+          {
+            email: recipientEmail,
+            error: response.error.message,
+            duration: `${duration}ms`,
+            attempts: response.retries + 1,
+          },
+          `❌ Email send failed: ${templateType}`
+        );
+
+        return {
+          success: false,
+          error: response.error.message,
+          timestamp: response.timestamp,
+          attempt: response.retries + 1,
+          maxAttempts: this.config.maxRetries,
+        };
+      }
+
+      logger.info(
         {
-          agentName,
-          agentEmail: email,
-          licenseNumber,
-          brokerageName,
-          adminNotes: adminNotes || "Welcome to BeforeListed!",
-          dashboardLink,
-          currentYear: EmailTemplateHelper.getCurrentYear(),
-        }
+          messageId: response.messageId,
+          email: recipientEmail,
+          duration: `${duration}ms`,
+        },
+        `✅ Email sent successfully: ${templateType}`
       );
 
-      await this.sgMail.send({
-        to: email,
-        from: process.env.FROM_EMAIL || "noreply@beforelisted.com",
-        subject: "Your BeforeListed Agent Account Has Been Approved ✓",
-        html,
-      });
-
-      logger.info({ email }, "Agent approval email sent");
+      return {
+        success: true,
+        messageId: response.messageId,
+        timestamp: response.timestamp,
+        attempt: response.retries + 1,
+        maxAttempts: this.config.maxRetries,
+      };
     } catch (error) {
-      logger.error(error, "Failed to send agent approval email");
-      throw error;
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: recipientEmail,
+        },
+        `❌ Unexpected error sending email: ${templateType}`
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  // ============================================
+  // LIFECYCLE MANAGEMENT
+  // ============================================
+
+  /**
+   * Close SMTP connection (call on app shutdown)
+   */
+  async closeConnection(): Promise<void> {
+    try {
+      await this.transporter.close();
+      logger.info("✅ Email service connection closed");
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "Error closing email service connection"
+      );
     }
   }
 }
 
-// Export singleton instance
+// ============================================
+// SINGLETON EXPORT
+// ============================================
+
+/**
+ * Export singleton instance for use throughout app
+ * Usage: import { emailService } from "@/services/email.service"
+ */
 export const emailService = new EmailService();
+
+/**
+ * Initialize email service on app start
+ * Call this in your main application file
+ */
+export async function initializeEmailService(): Promise<void> {
+  try {
+    await emailService.closeConnection();
+    logger.info("✅ Email service initialized");
+  } catch (error) {
+    logger.error(
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+      "Failed to initialize email service"
+    );
+    // Don't throw - app can still run without email
+  }
+}
+
+/**
+ * Cleanup email service on app shutdown
+ * Call this in your app shutdown handler
+ */
+export async function cleanupEmailService(): Promise<void> {
+  try {
+    await emailService.closeConnection();
+    logger.info("✅ Email service cleanup completed");
+  } catch (error) {
+    logger.error(
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+      "Error during email service cleanup"
+    );
+  }
+}

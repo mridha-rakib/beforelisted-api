@@ -1,40 +1,72 @@
-// file: src/services/email.integration.beforelisted.ts
+// file: src/services/email.integration.beforelisted.ts (UPDATED FOR NODEMAILER)
+
 /**
- * BeforeListed Email Integration
- * Integrates EmailTemplates with SendGrid API
- * Ready to use with your Agent and Renter services
+ * BeforeListed Email Integration Helper
+ * Integrates EmailTemplates with NodeMailer
+ * ✅ Safe variable replacement
+ * ✅ Debugging support
+ * ✅ Type-safe template rendering
  */
 
+import { logger } from "@/middlewares/pino-logger";
 import { EmailTemplates } from "./email.templates.beforelisted";
 
 /**
- * Template Replacement Utility
- * Safely replaces template variables with actual values
+ * Email Template Helper
+ * Provides utilities for working with email templates
  */
 export class EmailTemplateHelper {
+  private static templates = new EmailTemplates();
+
   /**
    * Replace all template variables in HTML
+   * Safely replaces {{variableName}} with values
+   *
    * @param html - HTML template string
    * @param variables - Object with variable names and values
    * @returns - HTML with variables replaced
+   *
+   * Example:
+   * ```
+   * const html = "Hello {{name}}, your code is {{code}}"
+   * const result = EmailTemplateHelper.replaceVariables(html, {
+   *   name: "John",
+   *   code: "123456"
+   * })
+   * // Result: "Hello John, your code is 123456"
+   * ```
    */
   static replaceVariables(
     html: string,
-    variables: Record<string, string | number>
+    variables: Record<string, any>
   ): string {
     let result = html;
 
+    // Replace each variable
     for (const [key, value] of Object.entries(variables)) {
       const placeholder = `{{${key}}}`;
-      result = result.replaceAll(placeholder, String(value));
+      const escapedValue = String(value).replace(/[&<>"']/g, (match) => {
+        const escapeMap: Record<string, string> = {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#x27;",
+        };
+        return escapeMap[match];
+      });
+      result = result.replaceAll(placeholder, escapedValue);
     }
 
     // Log any remaining unreplaced variables (for debugging)
     const remainingVariables = result.match(/\{\{(\w+)\}\}/g);
     if (remainingVariables && remainingVariables.length > 0) {
-      console.warn(
-        "⚠️ Warning: Unreplaced template variables:",
-        remainingVariables
+      logger.warn(
+        {
+          variables: remainingVariables,
+          note: "Check if all required variables are provided",
+        },
+        "Unreplaced template variables found"
       );
     }
 
@@ -42,260 +74,306 @@ export class EmailTemplateHelper {
   }
 
   /**
-   * Get current year for footer
+   * Validate template variables
+   * @param html - HTML template string
+   * @param providedVariables - Variables provided
+   * @returns boolean - True if all required variables are provided
    */
-  static getCurrentYear(): string {
-    return new Date().getFullYear().toString();
+  static validateVariables(
+    html: string,
+    providedVariables: Record<string, any>
+  ): {
+    isValid: boolean;
+    missingVariables: string[];
+  } {
+    const requiredVariables = html.match(/\{\{(\w+)\}\}/g) || [];
+    const uniqueRequired = [
+      ...new Set(requiredVariables.map((v) => v.slice(2, -2))),
+    ];
+
+    const missingVariables = uniqueRequired.filter(
+      (variable) => !(variable in providedVariables)
+    );
+
+    return {
+      isValid: missingVariables.length === 0,
+      missingVariables,
+    };
   }
 
   /**
-   * Format date for display (e.g., "Nov 23, 2025 at 5:29 AM")
+   * Get all template variables from HTML
+   * @param html - HTML template string
+   * @returns string[] - Array of variable names
    */
-  static formatDate(date: Date): string {
-    return date.toLocaleString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
+  static getTemplateVariables(html: string): string[] {
+    const variables = html.match(/\{\{(\w+)\}\}/g) || [];
+    return [...new Set(variables.map((v) => v.slice(2, -2)))];
+  }
+
+  /**
+   * Create a template context with defaults
+   * @param userType - "Agent" or "Renter"
+   * @param email - User email
+   * @returns Template context object
+   */
+  static createTemplateContext(
+    userType: "Agent" | "Renter",
+    email: string
+  ): Record<string, any> {
+    return {
+      userType,
+      email,
+      currentYear: new Date().getFullYear(),
+      supportEmail: "support@beforelisted.com",
+      dashboardLink: `${process.env.APP_URL || "https://app.beforelisted.com"}/dashboard`,
+      helpCenterLink: `${process.env.APP_URL || "https://app.beforelisted.com"}/help`,
+    };
+  }
+
+  /**
+   * Sanitize HTML for email clients
+   * Removes potentially dangerous HTML/JS
+   * @param html - HTML string
+   * @returns Sanitized HTML
+   */
+  static sanitizeHtml(html: string): string {
+    // Remove script tags
+    let sanitized = html.replace(
+      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+      ""
+    );
+
+    // Remove event handlers
+    sanitized = sanitized.replace(/on\w+\s*=\s*["'][^"']*["']/gi, "");
+    sanitized = sanitized.replace(/on\w+\s*=\s*[^\s>]*/gi, "");
+
+    // Remove iframe tags
+    sanitized = sanitized.replace(
+      /<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi,
+      ""
+    );
+
+    // Remove form tags (emails shouldn't have forms)
+    sanitized = sanitized.replace(
+      /<form\b[^<]*(?:(?!<\/form>)<[^<]*)*<\/form>/gi,
+      ""
+    );
+
+    return sanitized;
+  }
+
+  /**
+   * Strip HTML tags to create plain text version
+   * @param html - HTML string
+   * @returns Plain text
+   */
+  static stripHtmlTags(html: string): string {
+    return html
+      .replace(/<[^>]*>/g, "") // Remove all HTML tags
+      .replace(/&nbsp;/g, " ") // Replace &nbsp; with space
+      .replace(/&#?\w+;/g, "") // Remove HTML entities
+      .replace(/\s+/g, " ") // Collapse multiple spaces
+      .trim();
+  }
+
+  /**
+   * Convert HTML to accessible plain text version
+   * Preserves structure (paragraphs, lists, etc.)
+   * @param html - HTML string
+   * @returns Plain text with preserved structure
+   */
+  static htmlToPlainText(html: string): string {
+    let text = html;
+
+    // Add line breaks for block elements
+    text = text.replace(
+      /<\/(p|div|blockquote|h[1-6]|ul|ol|li|section|article)>/g,
+      "\n"
+    );
+    text = text.replace(/<li>/g, "• ");
+
+    // Remove remaining HTML tags
+    text = text.replace(/<[^>]*>/g, "");
+
+    // Decode HTML entities
+    const entities: Record<string, string> = {
+      "&nbsp;": " ",
+      "&lt;": "<",
+      "&gt;": ">",
+      "&quot;": '"',
+      "&apos;": "'",
+      "&amp;": "&",
+    };
+
+    for (const [entity, char] of Object.entries(entities)) {
+      text = text.replaceAll(entity, char);
+    }
+
+    // Clean up extra whitespace
+    text = text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .join("\n");
+
+    return text;
+  }
+
+  /**
+   * Get email preview text (first 150 chars of HTML)
+   * Useful for email client preview pane
+   * @param html - HTML string
+   * @returns Preview text
+   */
+  static getEmailPreview(html: string): string {
+    const plainText = this.stripHtmlTags(html);
+    return plainText.substring(0, 150) + (plainText.length > 150 ? "..." : "");
+  }
+
+  /**
+   * Inline CSS in HTML for email compatibility
+   * Many email clients don't support external CSS
+   * @param html - HTML with CSS
+   * @param css - CSS rules
+   * @returns HTML with inlined styles
+   */
+  static inlineCss(html: string, css: string): string {
+    // Note: For production, use a library like juice or premailer
+    // This is a simplified version
+    logger.warn(
+      "CSS inlining not fully implemented. Consider using a library like juice."
+    );
+    return html;
+  }
+
+  /**
+   * Add tracking pixels to HTML
+   * @param html - HTML string
+   * @param trackingUrl - URL to tracking pixel
+   * @returns HTML with tracking pixel
+   */
+  static addTrackingPixel(html: string, trackingUrl: string): string {
+    const pixel = `<img src="${trackingUrl}" alt="" width="1" height="1" style="display:none;" />`;
+    return html.replace(/<\/body>/i, `${pixel}</body>`);
+  }
+
+  /**
+   * Validate email address format
+   * @param email - Email address
+   * @returns boolean
+   */
+  static isValidEmail(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+
+  /**
+   * Extract all links from HTML
+   * @param html - HTML string
+   * @returns string[] - Array of URLs
+   */
+  static extractLinks(html: string): string[] {
+    const linkRegex = /href=["']([^"']*)["']/g;
+    const links: string[] = [];
+    let match;
+
+    while ((match = linkRegex.exec(html)) !== null) {
+      if (match[1]) {
+        links.push(match[1]);
+      }
+    }
+
+    return links;
+  }
+
+  /**
+   * Replace all links in HTML
+   * Useful for adding UTM parameters or click tracking
+   * @param html - HTML string
+   * @param callback - Function to transform each URL
+   * @returns HTML with transformed links
+   */
+  static replaceLinks(html: string, callback: (url: string) => string): string {
+    return html.replace(/href=["']([^"']*)["']/g, (match, url) => {
+      const newUrl = callback(url);
+      return `href="${newUrl}"`;
     });
+  }
+
+  /**
+   * Add UTM parameters to links
+   * @param html - HTML string
+   * @param utmParams - UTM parameters
+   * @returns HTML with UTM parameters added
+   */
+  static addUtmParameters(
+    html: string,
+    utmParams: Record<string, string>
+  ): string {
+    return this.replaceLinks(html, (url) => {
+      if (!url.startsWith("http")) return url;
+
+      try {
+        const urlObj = new URL(url);
+        for (const [key, value] of Object.entries(utmParams)) {
+          urlObj.searchParams.set(key, value);
+        }
+        return urlObj.toString();
+      } catch {
+        return url;
+      }
+    });
+  }
+
+  /**
+   * Log email sending details for debugging
+   * @param emailData - Email data
+   */
+  static logEmailDetails(emailData: {
+    to: string;
+    subject: string;
+    template?: string;
+    variables?: Record<string, any>;
+  }): void {
+    logger.debug(
+      {
+        to: emailData.to,
+        subject: emailData.subject,
+        template: emailData.template,
+        variableKeys: emailData.variables
+          ? Object.keys(emailData.variables)
+          : [],
+      },
+      "Sending email"
+    );
   }
 }
 
-// ============================================
-// AGENT SERVICE EMAIL METHODS
-// ============================================
-
 /**
- * Integration functions specifically for AgentService
- * Copy these methods to your email.service.ts
+ * Email Rendering Service
+ * Combines templates with variables
  */
+export class EmailRendering {
+  /**
+   * Render email from template
+   * @param template - Template method to call
+   * @param variables - Variables to pass
+   * @returns Rendered HTML and plain text
+   */
+  static render(
+    template: () => string,
+    variables?: Record<string, any>
+  ): {
+    html: string;
+    text: string;
+  } {
+    const html = template();
+    const text = EmailTemplateHelper.htmlToPlainText(html);
 
-/**
- * Send Email Verification Code to Agent
- * Called from: AgentService.registerAgent()
- */
-export async function sendAgentEmailVerificationCode(
-  agentName: string,
-  email: string,
-  verificationCode: string,
-  expiresInMinutes: number
-): Promise<void> {
-  const html = EmailTemplateHelper.replaceVariables(
-    EmailTemplates.emailVerificationCodeEmail(),
-    {
-      userName: agentName,
-      verificationCode,
-      expiresIn: `${expiresInMinutes} minutes`,
-      userType: "Agent",
-      currentYear: EmailTemplateHelper.getCurrentYear(),
-    }
-  );
-
-  // await sgMail.send({
-  //   to: email,
-  //   from: process.env.FROM_EMAIL,
-  //   subject: 'Verify Your Email - BeforeListed Agent Portal',
-  //   html,
-  // });
-
-  console.log(`✅ Agent email verification code sent to: ${email}`);
-}
-
-/**
- * Send Welcome Email to Agent
- * Called from: AgentService after email verification
- */
-export async function sendAgentWelcomeEmail(
-  agentName: string,
-  email: string,
-  loginLink: string
-): Promise<void> {
-  const html = EmailTemplateHelper.replaceVariables(
-    EmailTemplates.welcomeEmail(),
-    {
-      userName: agentName,
-      email,
-      userType: "Agent",
-      loginLink,
-      currentYear: EmailTemplateHelper.getCurrentYear(),
-    }
-  );
-
-  // await sgMail.send({
-  //   to: email,
-  //   from: process.env.FROM_EMAIL,
-  //   subject: 'Welcome to BeforeListed - Agent Portal',
-  //   html,
-  // });
-
-  console.log(`✅ Agent welcome email sent to: ${email}`);
-}
-
-/**
- * Send Agent Approval Email
- * Called from: AgentService.adminApproveAgent()
- */
-export async function sendAgentApprovalEmail(
-  agentName: string,
-  email: string,
-  licenseNumber: string,
-  brokerageName: string,
-  adminNotes: string,
-  dashboardLink: string
-): Promise<void> {
-  const html = EmailTemplateHelper.replaceVariables(
-    EmailTemplates.agentApprovalEmail(),
-    {
-      agentName,
-      agentEmail: email,
-      licenseNumber,
-      brokerageName,
-      adminNotes,
-      dashboardLink,
-      currentYear: EmailTemplateHelper.getCurrentYear(),
-    }
-  );
-
-  // await sgMail.send({
-  //   to: email,
-  //   from: process.env.FROM_EMAIL,
-  //   subject: 'Your BeforeListed Agent Account Has Been Approved',
-  //   html,
-  // });
-
-  console.log(`✅ Agent approval email sent to: ${email}`);
-}
-
-// ============================================
-// RENTER SERVICE EMAIL METHODS
-// ============================================
-
-/**
- * Send Email Verification Code to Renter
- * Called from: RenterService.registerRenter() - Normal flow
- */
-export async function sendRenterEmailVerificationCode(
-  renterName: string,
-  email: string,
-  verificationCode: string,
-  expiresInMinutes: number
-): Promise<void> {
-  const html = EmailTemplateHelper.replaceVariables(
-    EmailTemplates.emailVerificationCodeEmail(),
-    {
-      userName: renterName,
-      verificationCode,
-      expiresIn: `${expiresInMinutes} minutes`,
-      userType: "Renter",
-      currentYear: EmailTemplateHelper.getCurrentYear(),
-    }
-  );
-
-  // await sgMail.send({
-  //   to: email,
-  //   from: process.env.FROM_EMAIL,
-  //   subject: 'Verify Your Email - BeforeListed',
-  //   html,
-  // });
-
-  console.log(`✅ Renter email verification code sent to: ${email}`);
-}
-
-/**
- * Send Welcome with Auto-Generated Password to Renter
- * Called from: RenterService.registerRenter() - Admin referral flow
- */
-export async function sendRenterWelcomeWithPassword(
-  email: string,
-  renterName: string,
-  tempPassword: string,
-  verificationCode: string,
-  expiresInMinutes: number,
-  changePasswordLink: string
-): Promise<void> {
-  const html = EmailTemplateHelper.replaceVariables(
-    EmailTemplates.welcomeWithAutoPasswordEmail(),
-    {
-      userName: renterName,
-      email,
-      tempPassword,
-      verificationCode,
-      expiresIn: `${expiresInMinutes} minutes`,
-      changePasswordLink,
-      currentYear: EmailTemplateHelper.getCurrentYear(),
-    }
-  );
-
-  // await sgMail.send({
-  //   to: email,
-  //   from: process.env.FROM_EMAIL,
-  //   subject: 'Your BeforeListed Account is Ready',
-  //   html,
-  // });
-
-  console.log(`✅ Renter welcome email with password sent to: ${email}`);
-}
-
-/**
- * Send Welcome Email to Renter
- * Called from: RenterService after email verification
- */
-export async function sendRenterWelcomeEmail(
-  renterName: string,
-  email: string,
-  loginLink: string
-): Promise<void> {
-  const html = EmailTemplateHelper.replaceVariables(
-    EmailTemplates.welcomeEmail(),
-    {
-      userName: renterName,
-      email,
-      userType: "Renter",
-      loginLink,
-      currentYear: EmailTemplateHelper.getCurrentYear(),
-    }
-  );
-
-  // await sgMail.send({
-  //   to: email,
-  //   from: process.env.FROM_EMAIL,
-  //   subject: 'Welcome to BeforeListed',
-  //   html,
-  // });
-
-  console.log(`✅ Renter welcome email sent to: ${email}`);
-}
-
-/**
- * Send Match Notification Email to Renter
- * Called from: Match/Notification service
- */
-export async function sendRenterMatchNotification(
-  renterName: string,
-  email: string,
-  matchCount: number,
-  viewMatchesLink: string
-): Promise<void> {
-  const html = EmailTemplateHelper.replaceVariables(
-    EmailTemplates.matchNotificationEmail(),
-    {
-      renterName,
-      matchCount: matchCount.toString(),
-      viewMatchesLink,
-      currentYear: EmailTemplateHelper.getCurrentYear(),
-    }
-  );
-
-  // await sgMail.send({
-  //   to: email,
-  //   from: process.env.FROM_EMAIL,
-  //   subject: `New Property Matches on BeforeListed - ${matchCount} properties`,
-  //   html,
-  // });
-
-  console.log(
-    `✅ Match notification sent to: ${email} (${matchCount} matches)`
-  );
+    return {
+      html: EmailTemplateHelper.sanitizeHtml(html),
+      text,
+    };
+  }
 }
