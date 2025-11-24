@@ -2,12 +2,13 @@
 
 import { ROLES } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
-import { emailService } from "@/services/email.service";
+
+import { EmailService } from "@/services/email.service";
+import { OTPService } from "@/services/otp.service";
 import { ConflictException, NotFoundException } from "@/utils/app-error.utils";
 import { hashPassword } from "@/utils/password.utils";
 import type { Types } from "mongoose";
 import { AuthUtil } from "../auth/auth.utils";
-import { EmailVerificationService } from "../email-verification/email-verification.service";
 import { ReferralService } from "../referral/referral.service";
 import { UserService } from "../user/user.service";
 import type { IAgentProfile } from "./agent.interface";
@@ -32,13 +33,15 @@ export class AgentService {
   private repository: AgentProfileRepository;
   private userService: UserService;
   private referralService: ReferralService;
-  private emailVerificationService: EmailVerificationService;
+  private emailService: EmailService;
+  private otpService: OTPService;
 
   constructor() {
     this.repository = new AgentProfileRepository();
     this.userService = new UserService();
     this.referralService = new ReferralService();
-    this.emailVerificationService = new EmailVerificationService();
+    this.otpService = new OTPService();
+    this.emailService = new EmailService();
   }
 
   // ============================================
@@ -91,22 +94,15 @@ export class AgentService {
       ROLES.AGENT
     );
 
-    const { otp, expiresAt: otExpire } =
-      await this.emailVerificationService.createOTP(
-        user._id.toString(),
-        user.email
-      );
+    const otp = this.otpService.generate("EMAIL_VERIFICATION", 10);
 
-    const expiresInMinutes = Math.ceil(
-      (otExpire.getTime() - new Date().getTime()) / 60000
-    );
-
-    await emailService.sendEmailVerificationCode(
-      payload.fullName,
-      payload.email,
-      otp,
-      expiresInMinutes
-    );
+    await this.emailService.sendEmailVerification({
+      to: user.email,
+      userName: user.fullName,
+      userType: ROLES.AGENT,
+      verificationCode: String(otp.code),
+      expiresIn: String(otp.expiresAt),
+    });
 
     // 7. Create agent profile
     const profile = await this.repository.create({

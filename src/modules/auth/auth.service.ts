@@ -2,7 +2,7 @@
 
 import { MESSAGES } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
-import { emailService } from "@/services/email.service";
+import { EmailService } from "@/services/email.service";
 import {
   BadRequestException,
   UnauthorizedException,
@@ -14,6 +14,7 @@ import type { IUser } from "../user/user.interface";
 import { UserService } from "../user/user.service";
 import type { AuthServiceResponse, LoginPayload } from "./auth.type";
 import { AuthUtil } from "./auth.utils";
+import { OTPService } from "@/services/otp.service";
 
 /**
  * Auth Service (SIMPLIFIED & SECURE)
@@ -27,11 +28,15 @@ export class AuthService {
   private userService: UserService;
   private passwordResetService: PasswordResetService;
   private emailVerificationService: EmailVerificationService;
+  private emailService: EmailService;
+    private otpService: OTPService;
 
   constructor() {
     this.userService = new UserService();
     this.passwordResetService = new PasswordResetService();
     this.emailVerificationService = new EmailVerificationService();
+    this.emailService = new EmailService();
+    this.otpService = new OTPService();
   }
 
   // ============================================
@@ -256,7 +261,6 @@ export class AuthService {
     const user = await this.userService.getUserByEmail(email);
 
     if (!user) {
-      // Don't reveal if email exists
       return { message: MESSAGES.AUTH.VERIFICATION_CODE_SENT };
     }
 
@@ -264,11 +268,11 @@ export class AuthService {
       throw new BadRequestException(MESSAGES.AUTH.EMAIL_ALREADY_VERIFIED);
     }
 
+ const otp = this.otpService.generate("RESENT_EMAIL_VERIFICATION", 10);
+
     // Generate and send new OTP
-    const { otp, expiresAt } = await this.emailVerificationService.resendOTP(
-      user._id.toString(),
-      user.email
-    );
+    const  =
+      await this.emailService.resendEmailVerification();
 
     // Send verification code email
     const expiresInMinutes = Math.ceil(

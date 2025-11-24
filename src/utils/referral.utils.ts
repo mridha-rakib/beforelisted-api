@@ -17,22 +17,25 @@ export class ReferralUtil {
    * Generate unique referral code for admin or agent
    * Format: ADM-XXXXXXXXXXXX or AGT-XXXXXXXXXXXX
    */
-  static generateReferralCode(role: ROLES.ADMIN | ROLES.AGENT): string {
-    const prefix = this.PREFIX[role];
+  static generateReferralCode(
+    role: typeof ROLES.ADMIN | typeof ROLES.AGENT
+  ): string {
+    const prefix = this.PREFIX[role as keyof typeof this.PREFIX];
     const randomPart = crypto
       .randomBytes(this.CODE_LENGTH)
       .toString("base64")
       .replace(/[^a-zA-Z0-9]/g, "")
       .substring(0, this.CODE_LENGTH)
       .toUpperCase();
-
     return `${prefix}-${randomPart}`;
   }
 
   /**
    * Extract role from referral code
    */
-  static extractRoleFromCode(code: string): ROLES.ADMIN | ROLES.AGENT | null {
+  static extractRoleFromCode(
+    code: string
+  ): typeof ROLES.ADMIN | typeof ROLES.AGENT | null {
     if (code.startsWith("ADM-")) return ROLES.ADMIN;
     if (code.startsWith("AGT-")) return ROLES.AGENT;
     return null;

@@ -25,10 +25,6 @@ import {
 import { EmailTemplateHelper } from "./email.integration.beforelisted";
 import { EmailTemplates } from "./email.templates.beforelisted";
 
-// ============================================
-// EMAIL SERVICE CLASS
-// ============================================
-
 /**
  * Email Service - Core business logic for sending emails
  * - Handles template rendering

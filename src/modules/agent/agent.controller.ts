@@ -254,7 +254,7 @@ export class AgentController {
         expiresIn: result.tokens.expiresIn,
       };
 
-      ApiResponse.created(res, result, "Agent registered successfully");
+      ApiResponse.created(res, response, "Agent registered successfully");
     }
   );
 }

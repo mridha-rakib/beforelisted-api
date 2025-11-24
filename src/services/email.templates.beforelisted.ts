@@ -472,7 +472,7 @@ export class EmailTemplates {
     userName: string,
     verificationCode: string,
     expiresIn: string,
-    userType: "Agent" | "Renter",
+    userType: "agent" | "renter",
     logoUrl?: string,
     brandColor?: string
   ): string {

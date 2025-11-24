@@ -192,7 +192,7 @@ export interface ITemplateRenderResult {
 /**
  * User type discriminator
  */
-export type UserType = "Agent" | "Renter";
+export type UserType = "agent" | "renter";
 
 /**
  * Email verification payload
