@@ -8,11 +8,14 @@ import type { Document } from "mongoose";
 export interface IEmailVerificationOTP extends Document {
   userId: string;
   email: string;
-  otp: string; // 4-digit code
-  attempts: number; // Track failed attempts
-  maxAttempts: number; // Maximum allowed attempts
-  isUsed: boolean; // Mark as used after verification
-  expiresAt: Date; // Expiration timestamp
+  code: string;
+  expiresAt: Date;
+  verified: boolean;
+  verifiedAt?: Date;
+  attempts: number;
+  lastAttemptAt?: Date;
+  maxAttempts: number;
+  isUsed: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

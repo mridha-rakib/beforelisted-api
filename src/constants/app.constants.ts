@@ -121,6 +121,8 @@ export const AUTH = {
   // Password requirements
   MIN_PASSWORD_LENGTH: 8,
   AUTO_GENERATED_PASSWORD_LENGTH: 12,
+  // Email verification OTP expiry in minutes
+  EMAIL_VERIFICATION_OTP_EXPIRY_MINUTES: 10,
 } as const;
 
 export const MESSAGES = {

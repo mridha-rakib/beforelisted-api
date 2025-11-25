@@ -128,16 +128,6 @@ export class AgentService {
       }),
     } as Partial<IAgentProfile>);
 
-    // 8. Generate email verification token
-    const verificationToken = AuthUtil.generateEmailVerificationToken();
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
-
-    await this.userService.updateVerificationToken(user._id.toString(), {
-      emailVerificationToken: verificationToken,
-      emailVerificationExpiresAt: expiresAt,
-    });
-
     // 10. Generate JWT tokens
     const tokens = this.generateTokens(
       user._id.toString(),
