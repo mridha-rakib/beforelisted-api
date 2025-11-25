@@ -17,38 +17,60 @@ const emailVerificationOTPSchema =
       lowercase: true,
       index: true,
     },
-    otp: {
+
+    // ✅ NEW: Track which user type this OTP is for
+    userType: {
+      type: String,
+      enum: ["agent", "renter", "admin"],
+      required: true,
+      index: true,
+    },
+
+    code: {
       type: String,
       required: true,
       length: 4,
     },
-    attempts: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    maxAttempts: {
-      type: Number,
-      default: 3,
-      required: true,
-    },
-    isUsed: {
-      type: Boolean,
-      default: false,
-      index: true,
-    },
+
     expiresAt: {
       type: Date,
       required: true,
       index: true,
     },
+
+    verified: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    verifiedAt: {
+      type: Date,
+    },
+
+    attempts: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    lastAttemptAt: {
+      type: Date,
+    },
+
+    maxAttempts: {
+      type: Number,
+      default: 5,
+      required: true,
+    },
   });
 
-// Compound index for efficient queries
-emailVerificationOTPSchema.index({ userId: 1, isUsed: 1, expiresAt: 1 });
-emailVerificationOTPSchema.index({ email: 1, isUsed: 1, expiresAt: 1 });
+// ✅ Compound indexes for efficient queries
+emailVerificationOTPSchema.index({ userId: 1, userType: 1, verified: 1 });
+emailVerificationOTPSchema.index({ email: 1, userType: 1, verified: 1 });
+emailVerificationOTPSchema.index({ userId: 1, email: 1, expiresAt: 1 });
 
-// TTL index - MongoDB will auto-delete expired documents after 24 hours
+// TTL index - auto-delete after 24 hours
 emailVerificationOTPSchema.index(
   { expiresAt: 1 },
   { expireAfterSeconds: 86400 }

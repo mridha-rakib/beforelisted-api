@@ -15,21 +15,21 @@ import { pinoLogger } from "./middlewares/pino-logger.js";
 
 const app: Application = express();
 
-// app.use(
-//   cors({
-//     origin: true,
-//     credentials: true,
-//   })
-// );
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: true,
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    maxAge: 86400, // 24 hours
   })
 );
+// app.use(
+//   cors({
+//     origin: process.env.CLIENT_URL || "http://localhost:3000",
+//     credentials: true,
+//     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+//     allowedHeaders: ["Content-Type", "Authorization"],
+//     maxAge: 86400, // 24 hours
+//   })
+// );
 
 app.use(express.json());
 app.use(pinoLogger());

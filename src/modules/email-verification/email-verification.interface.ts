@@ -19,3 +19,31 @@ export interface IEmailVerificationOTP extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
+/**
+ * Email Verification Service Response Types
+ */
+export interface ICreateOTPResponse {
+  otp: string;
+  expiresAt: Date;
+  expiresInMinutes: number;
+}
+
+export interface IVerifyOTPResponse {
+  userId: string;
+  email: string;
+  verified: true;
+}
+
+export interface IResendOTPResponse {
+  message: string;
+  expiresAt: Date;
+  expiresInMinutes: number;
+}
+
+export interface IOTPResendStatus {
+  canResend: boolean;
+  reason?: string;
+  nextResendTime?: Date;
+  attemptsRemaining?: number;
+}
