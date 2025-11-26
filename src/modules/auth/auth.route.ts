@@ -20,10 +20,10 @@ const authController = new AuthController();
 router.post("/login", authController.login);
 
 /**
- * GET /auth/verify-email
+ * POST /auth/verify-email
  * Verify email with token
  */
-router.get("/verify-email", authController.verifyEmail);
+router.post("/verify-email", authController.verifyEmail);
 
 /**
  * POST /auth/resend-verification

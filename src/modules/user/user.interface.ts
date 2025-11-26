@@ -1,4 +1,3 @@
-import { ACCOUNT_STATUS, ROLES } from "@/constants/app.constants";
 import type { Document, Types } from "mongoose";
 
 /**
@@ -9,7 +8,6 @@ export interface IUser extends Document {
   _id: Types.ObjectId;
   email: string;
   password?: string;
-  phone: string;
   phoneNumber?: string; // Alias
   fullName: string;
   role: ROLES;

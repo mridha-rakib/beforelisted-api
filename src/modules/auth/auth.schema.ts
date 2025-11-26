@@ -148,6 +148,7 @@ export const refreshTokenSchema = z.object({
 
 export const resendVerificationCodeSchema = z.object({
   body: z.object({
-    email: z.string().email(MESSAGES.VALIDATION.INVALID_EMAIL),
+    email: z.email(MESSAGES.VALIDATION.INVALID_EMAIL),
+    userType: z.enum(["Agent", "Renter", "Admin"]).optional(),
   }),
 });

@@ -13,6 +13,8 @@
  * - Future user types (extensible)
  */
 
+import type { Document, Types } from "mongoose";
+
 /**
  * User type enum - extensible for any user role
  */
@@ -26,11 +28,11 @@ export enum UserType {
  * Email verification OTP record in database
  * Generic: works for all user types
  */
-export interface IEmailVerificationOTP {
-  _id?: string;
+export interface IEmailVerificationOTP extends Document {
+  _id: Types.ObjectId;
   userId: string;
   email: string;
-  userType: UserType; // ✅ KEY: Track which user type this is for
+  userType: UserType | string; // ✅ KEY: Track which user type this is for
   code: string; // 4-digit OTP
   expiresAt: Date;
   verified: boolean;
@@ -48,7 +50,7 @@ export interface IEmailVerificationOTP {
 export interface ICreateOTPRequest {
   userId: string;
   email: string;
-  userType: UserType;
+  userType: UserType | string;
   userName: string; // For email template
 }
 
@@ -76,7 +78,7 @@ export interface IVerifyOTPRequest {
 export interface IVerifyOTPResponse {
   userId: string;
   email: string;
-  userType: UserType;
+  userType: UserType | string;
   verified: true;
 }
 
@@ -85,7 +87,8 @@ export interface IVerifyOTPResponse {
  */
 export interface IResendOTPRequest {
   email: string;
-  userType: UserType;
+  userType?: UserType | string;
+  userName?: string;
 }
 
 /**
@@ -113,7 +116,7 @@ export interface IResendEligibility {
 export interface IVerificationStatus {
   isVerified: boolean;
   pendingVerification: boolean;
-  userType?: UserType;
+  userType?: UserType | string;
   expiresAt?: Date;
   expiresInMinutes?: number;
   attempts?: number;

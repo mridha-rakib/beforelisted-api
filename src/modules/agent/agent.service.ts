@@ -3,12 +3,11 @@
 import { ROLES } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 
-import { EmailService } from "@/services/email.service";
-import { OTPService } from "@/services/otp.service";
 import { ConflictException, NotFoundException } from "@/utils/app-error.utils";
 import { hashPassword } from "@/utils/password.utils";
 import type { Types } from "mongoose";
 import { AuthUtil } from "../auth/auth.utils";
+import { EmailVerificationService } from "../email-verification/email-verification.service";
 import { ReferralService } from "../referral/referral.service";
 import { UserService } from "../user/user.service";
 import type { IAgentProfile } from "./agent.interface";
@@ -33,15 +32,15 @@ export class AgentService {
   private repository: AgentProfileRepository;
   private userService: UserService;
   private referralService: ReferralService;
-  private emailService: EmailService;
-  private otpService: OTPService;
+  private emailVerificationService: EmailVerificationService;
+  // private emailService: EmailService;
+  // private otpService: OTPService;
 
   constructor() {
     this.repository = new AgentProfileRepository();
     this.userService = new UserService();
     this.referralService = new ReferralService();
-    this.otpService = new OTPService();
-    this.emailService = new EmailService();
+    this.emailVerificationService = new EmailVerificationService();
   }
 
   // ============================================
@@ -82,10 +81,17 @@ export class AgentService {
       password: hashedPassword,
       fullName: payload.fullName,
       phoneNumber: payload.phoneNumber,
-      phone: payload.phoneNumber,
       role: ROLES.AGENT,
       emailVerified: false,
       accountStatus: "pending",
+    });
+
+    // ✅ Create initial OTP for email verification
+    const otpResult = await this.emailVerificationService.createOTP({
+      userId: user._id.toString(),
+      email: user.email,
+      userType: "agent", // ✅ Generic: specify user type
+      userName: user.fullName,
     });
 
     // 6. Generate referral code for agent
@@ -93,16 +99,6 @@ export class AgentService {
       user._id.toString(),
       ROLES.AGENT
     );
-
-    const otp = this.otpService.generate("EMAIL_VERIFICATION", 10);
-
-    await this.emailService.sendEmailVerification({
-      to: user.email,
-      userName: user.fullName,
-      userType: ROLES.AGENT,
-      verificationCode: String(otp.code),
-      expiresIn: String(otp.expiresAt),
-    });
 
     // 7. Create agent profile
     const profile = await this.repository.create({

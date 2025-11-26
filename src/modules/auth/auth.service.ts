@@ -1,15 +1,17 @@
-// file: src/modules/auth/auth.service.ts (ULTRA SIMPLIFIED)
+// file: src/modules/auth/auth.service.ts
 
 import { MESSAGES } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
-import { EmailService } from "@/services/email.service";
-import { OTPService } from "@/services/otp.service";
 import {
   BadRequestException,
   UnauthorizedException,
 } from "@/utils/app-error.utils";
 import { comparePassword, hashPassword } from "@/utils/password.utils";
 import { EmailVerificationService } from "../email-verification/email-verification.service";
+import {
+  IResendOTPRequest,
+  UserType,
+} from "../email-verification/email-verification.types";
 import { PasswordResetService } from "../password-reset/password-reset.service";
 import type { IUser } from "../user/user.interface";
 import { UserService } from "../user/user.service";
@@ -28,15 +30,11 @@ export class AuthService {
   private userService: UserService;
   private passwordResetService: PasswordResetService;
   private emailVerificationService: EmailVerificationService;
-  private emailService: EmailService;
-  private otpService: OTPService;
 
   constructor() {
     this.userService = new UserService();
     this.passwordResetService = new PasswordResetService();
     this.emailVerificationService = new EmailVerificationService();
-    this.emailService = new EmailService();
-    this.otpService = new OTPService();
   }
 
   // ============================================
@@ -101,23 +99,17 @@ export class AuthService {
   /**
    * Verify email
    */
-  async verifyEmail(email: string, otp: string): Promise<{ message: string }> {
-    const result = await this.emailVerificationService.verifyOTP(email, otp);
-    // Mark user email as verified
+  async verifyEmail(email: string, code: string): Promise<{ message: string }> {
+    const result = await this.emailVerificationService.verifyOTP({
+      email,
+      code,
+    });
+
     await this.userService.markEmailAsVerified(result.userId);
 
-    const user = await this.userService.getById(result.userId);
-
-    if (user) {
-      // Send confirmation email
-      await emailService.sendEmailVerificationConfirmation(
-        user.fullName,
-        user.email
-      );
-    }
     logger.info(
-      { userId: result.userId, email },
-      "Email verified and confirmation sent"
+      { userId: result.userId, userType: result.userType },
+      "Email verified and user marked"
     );
 
     return { message: MESSAGES.AUTH.EMAIL_VERIFIED_SUCCESS };
@@ -257,37 +249,42 @@ export class AuthService {
    * Resend verification code
    * ✅ UPDATED: Resend OTP instead of token link
    */
-  async resendVerificationCode(email: string): Promise<{ message: string }> {
-    const user = await this.userService.getUserByEmail(email);
+  async resendVerificationCode(
+    request: Partial<IResendOTPRequest>
+  ): Promise<{ message: string }> {
+    // Find user first
+    const user = await this.userService.getUserByEmail(request.email!);
 
     if (!user) {
-      return { message: MESSAGES.AUTH.VERIFICATION_CODE_SENT };
+      return {
+        message: "If an account exists, a verification code will be sent",
+      };
     }
 
     if (user.emailVerified) {
-      throw new BadRequestException(MESSAGES.AUTH.EMAIL_ALREADY_VERIFIED);
+      throw new BadRequestException("Email already verified");
     }
 
-    const otp = this.otpService.generate("RESENT_EMAIL_VERIFICATION", 10);
+    // Step 3: Get userType (from request or user.role)
+    const userType = (request.userType || user.role) as UserType;
+    const userName = request.userName || user.fullName;
 
-    // Generate and send new OTP
-    // const  =
-    //   await this.emailService.resendEmailVerification();
+    // Step 4: Call email verification service to resend OTP
+    const result = await this.emailVerificationService.resendOTP({
+      email: request.email!,
+      userType,
+      userName,
+    });
 
-    // Send verification code email
-    const expiresInMinutes = Math.ceil(
-      (expiresAt.getTime() - new Date().getTime()) / 60000
+    logger.info(
+      {
+        email: request.email,
+        userType,
+        userId: user._id,
+      },
+      "Verification code resend initiated"
     );
 
-    await emailService.sendEmailVerificationCode(
-      user.fullName,
-      user.email,
-      otp,
-      expiresInMinutes
-    );
-
-    logger.info({ userId: user._id, email }, "Verification code resent");
-
-    return { message: MESSAGES.AUTH.VERIFICATION_CODE_SENT };
+    return { message: result.message };
   }
 }

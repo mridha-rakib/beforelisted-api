@@ -62,33 +62,30 @@ export class AuthController {
    * POST /auth/verify-email
    * ✅ UPDATED: Use code in body instead of token in query
    */
-  verifyEmail = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(verifyEmailSchema, req);
-      const result = await this.authService.verifyEmail(
-        validated.body.email,
-        validated.body.code
-      );
+  verifyEmail = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(verifyEmailSchema, req);
+    const result = await this.authService.verifyEmail(
+      validated.body.email,
+      validated.body.code
+    );
 
-      ApiResponse.success(res, result, MESSAGES.AUTH.EMAIL_VERIFIED_SUCCESS);
-    }
-  );
+    ApiResponse.success(res, result, MESSAGES.AUTH.EMAIL_VERIFIED_SUCCESS);
+  });
 
   /**
    * Resend verification code
    * POST /auth/resend-verification
    * ✅ UPDATED: Name change for clarity
    */
-  resendVerificationCode = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(resendVerificationCodeSchema, req);
-      const result = await this.authService.resendVerificationCode(
-        validated.body.email
-      );
+  resendVerificationCode = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(resendVerificationCodeSchema, req);
 
-      ApiResponse.success(res, result, MESSAGES.AUTH.VERIFICATION_CODE_SENT);
-    }
-  );
+    const result = await this.authService.resendVerificationCode({
+      email: validated.body.email,
+    });
+
+    ApiResponse.success(res, result, MESSAGES.AUTH.VERIFICATION_CODE_SENT);
+  });
 
   /**
    * Request password reset

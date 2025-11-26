@@ -18,6 +18,9 @@ import {
 import type {
   ICreateOTPRequest,
   ICreateOTPResponse,
+  IEmailVerificationOTP,
+  IResendEligibility,
+  IResendOTPRequest,
   IResendOTPResponse,
   IVerificationStatus,
   IVerifyOTPRequest,
@@ -43,7 +46,7 @@ export class EmailVerificationService {
     MAX_OTP_ATTEMPTS: 5,
     MIN_RESEND_INTERVAL_SECONDS: 60,
     MAX_RESENDS_PER_HOUR: 5,
-    OTP_EXPIRY_MINUTES: 10,
+    OTP_EXPIRY_MINUTES: 3,
     OTP_LENGTH: 4,
   };
   constructor(
@@ -76,9 +79,7 @@ export class EmailVerificationService {
    *
    * @throws BadRequestException if user already verified
    * @throws Error if OTP creation fails
-   *
-   * @example
-   * const { otp, expiresAt } = await service.createOTP(userId, email);
+  
    */
   async createOTP(request: ICreateOTPRequest): Promise<ICreateOTPResponse> {
     const activeOTP = await this.repository.findActiveByUserId(request.userId);
@@ -95,8 +96,8 @@ export class EmailVerificationService {
       userId: request.userId,
       email: request.email,
       userType: request.userType,
-      code: otpGenerated.code, // ✅ FIX: Pass code directly, not spread
-      expiresAt: otpGenerated.expiresAt, // ✅ FIX: Pass date directly, not spread
+      code: otpGenerated.code,
+      expiresAt: otpGenerated.expiresAt,
       verified: false,
       attempts: 0,
       maxAttempts: this.config.MAX_OTP_ATTEMPTS,
@@ -105,12 +106,13 @@ export class EmailVerificationService {
     // Step 4: Send verification email
     const expiresInMinutes = Math.ceil(otpGenerated.expiresInSeconds / 60);
 
-    await this.emailService.sendEmailVerificationCode(
-      request.userName,
-      request.email,
-      otpGenerated.code,
-      expiresInMinutes
-    );
+    await this.emailService.sendEmailVerification({
+      to: request.email,
+      userName: request.userName,
+      userType: request.userType,
+      verificationCode: String(otpGenerated.code),
+      expiresIn: String(expiresInMinutes),
+    });
 
     // Step 5: Log event
     logger.info(
@@ -140,6 +142,7 @@ export class EmailVerificationService {
    * @returns User info and userType
    */
   async verifyOTP(request: IVerifyOTPRequest): Promise<IVerifyOTPResponse> {
+    // Step 1: Find OTP by email
     const record = await this.repository.findByEmail(request.email);
     if (!record) {
       throw new NotFoundException("Verification code not found or expired");
@@ -153,7 +156,6 @@ export class EmailVerificationService {
     }
 
     // Step 3: Validate OTP code
-    // ✅ FIX: Use OTPService.validate() properly
     const isValidCode = await this.validateOTPCode(
       request.code,
       record.code,
@@ -207,7 +209,15 @@ export class EmailVerificationService {
    */
   async resendOTP(request: IResendOTPRequest): Promise<IResendOTPResponse> {
     // Step 1: Find existing OTP
-    const existingOTP = await this.repository.findByEmail(request.email);
+    const existingOTP = await this.repository.findByEmail(
+      request.email,
+      request.userType
+    );
+
+    console.log("===========================================");
+    console.log("Existing OTP record for resendOTP:", existingOTP);
+    console.log("===========================================");
+
     if (!existingOTP) {
       throw new NotFoundException(
         "No pending verification found. Please register again."
@@ -252,12 +262,13 @@ export class EmailVerificationService {
     // Step 7: Send email with new OTP
     const expiresInMinutes = Math.ceil(newOTPGenerated.expiresInSeconds / 60);
 
-    await emailService.sendEmailVerificationCode(
-      "User", // TODO: Get actual user name from UserService
-      request.email,
-      newOTPGenerated.code,
-      expiresInMinutes
-    );
+    await this.emailService.resendEmailVerification({
+      to: request.email,
+      userName: request.userName,
+      userType: request.userType,
+      verificationCode: String(newOTPGenerated.code),
+      expiresIn: String(expiresInMinutes),
+    });
 
     logger.info(
       {
@@ -413,9 +424,9 @@ export class EmailVerificationService {
    * @param userId - User ID
    * @returns Statistics object
    */
-  async getOTPStatistics(userId: string): Promise<IOTPStatistics> {
-    return this.repository.getStatistics(userId);
-  }
+  // async getOTPStatistics(userId: string): Promise<IOTPStatistics> {
+  //   return this.repository.getStatistics(userId);
+  // }
 
   /**
    * DELETE USER VERIFICATION DATA

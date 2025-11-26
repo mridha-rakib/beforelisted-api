@@ -5,9 +5,9 @@ export const REFERRAL_CODE_PREFIX = {
 } as const;
 
 export const USER_ROLES = {
-  ADMIN: "admin",
-  AGENT: "agent",
-  RENTER: "renter",
+  ADMIN: "Admin",
+  AGENT: "Agent",
+  RENTER: "Renter",
 } as const;
 
 export const ACCOUNT_STATUS = {

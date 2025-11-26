@@ -192,15 +192,15 @@ export interface ITemplateRenderResult {
 /**
  * User type discriminator
  */
-export type UserType = "agent" | "renter";
+export type UserType = "agent" | "renter" | "admin";
 
 /**
  * Email verification payload
  */
 export interface IEmailVerificationPayload {
   to: string;
-  userName: string;
-  userType: UserType;
+  userName: string | undefined;
+  userType: UserType | string | undefined;
   verificationCode: string;
   expiresIn: string;
 }

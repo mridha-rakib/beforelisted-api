@@ -7,9 +7,9 @@ export const APP = {
 } as const;
 
 export const ROLES = {
-  ADMIN: "admin",
-  AGENT: "agent",
-  RENTER: "renter",
+  ADMIN: "Admin",
+  AGENT: "Agent",
+  RENTER: "Renter",
 } as const;
 
 export const ACCOUNT_STATUS = {
@@ -86,8 +86,8 @@ export const EMAIL = {
   FROM_NAME: env.SMTP_FROM_NAME || "Renter-Agent Platform",
   WELCOME: "welcome",
   PASSWORD_RESET_OTP: "password-reset-otp",
-  AGENT_REFERRAL: "agent-referral",
-  ADMIN_REFERRAL: "admin-referral",
+  AGENT_REFERRAL: "Agent-referral",
+  ADMIN_REFERRAL: "Admin-referral",
 } as const;
 
 export const OTP = {
