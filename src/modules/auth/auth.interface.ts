@@ -5,7 +5,7 @@ export interface IRegisterRequest {
   password: string;
   fullName: string;
   phoneNumber?: string;
-  role: "agent" | "renter";
+  role: "Agent" | "Renter";
   licenseNumber?: string;
   brokerageName?: string;
 }

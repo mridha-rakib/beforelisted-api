@@ -21,7 +21,7 @@ const emailVerificationOTPSchema =
     // ✅ NEW: Track which user type this OTP is for
     userType: {
       type: String,
-      enum: ["agent", "renter", "admin"],
+      enum: ["Agent", "Renter", "Admin"],
       required: true,
       index: true,
     },

@@ -90,7 +90,7 @@ export class AgentService {
     const otpResult = await this.emailVerificationService.createOTP({
       userId: user._id.toString(),
       email: user.email,
-      userType: "agent", // ✅ Generic: specify user type
+      userType: ROLES.AGENT, // ✅ Generic: specify user type
       userName: user.fullName,
     });
 
