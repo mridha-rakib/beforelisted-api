@@ -24,13 +24,6 @@ export class AuthController {
     this.authService = new AuthService();
   }
 
-  // ============================================
-  // REMOVED: register endpoint
-  // ============================================
-  // Use instead:
-  // - POST /agent/register
-  // - POST /renter/register
-
   /**
    * Login endpoint
    * POST /auth/login
@@ -60,7 +53,6 @@ export class AuthController {
   /**
    * Verify email with code
    * POST /auth/verify-email
-   * ✅ UPDATED: Use code in body instead of token in query
    */
   verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(verifyEmailSchema, req);
@@ -75,7 +67,6 @@ export class AuthController {
   /**
    * Resend verification code
    * POST /auth/resend-verification
-   * ✅ UPDATED: Name change for clarity
    */
   resendVerificationCode = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(resendVerificationCodeSchema, req);
@@ -159,7 +150,6 @@ export class AuthController {
   /**
    * Logout endpoint
    * POST /auth/logout
-   * ✅ Clear refresh token cookie
    */
 
   logout = asyncHandler(

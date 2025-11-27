@@ -114,6 +114,27 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
     return record || null;
   }
 
+  async findByEmailIgnoreExpiry(
+    email: string,
+    userType?: string
+  ): Promise<IEmailVerificationOTP | null> {
+    const query: any = {
+      email,
+      verified: false,
+      // ✅ REMOVED: expiresAt filter - allows expired OTPs
+    };
+
+    if (userType) {
+      query.userType = userType;
+    }
+
+    const record = await EmailVerificationOTP.findOne(query).sort({
+      createdAt: -1,
+    });
+
+    return record || null;
+  }
+
   /**
    * Find OTP by code and email
    * ✅ FIXED: Return null if not found

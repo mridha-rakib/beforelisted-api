@@ -69,6 +69,119 @@ export class EmailService {
   // ============================================
 
   /**
+   * Send password reset OTP email
+   * Called during: Password reset request
+   *
+   * @param userName - User's full name
+   * @param email - User's email address
+   * @param otpCode - 4-digit OTP code
+   * @param expiresInMinutes - Minutes until OTP expires
+   */
+  async sendPasswordResetOTP(
+    userName: string | undefined,
+    email: string,
+    otpCode: string,
+    expiresInMinutes: number
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email, expiresInMinutes },
+        "Sending password reset OTP email"
+      );
+
+      // Render template
+      const html = this.templates.passwordResetOTP(
+        userName,
+        otpCode,
+        expiresInMinutes,
+        undefined, // userType
+        this.config.logoUrl,
+        this.config.brandColor
+      );
+
+      // Prepare email options
+      const emailOptions: IEmailOptions = {
+        to: { email, name: userName },
+        subject: `Password Reset Code - BeforeListed`,
+        html,
+        priority: "high", // High priority for security
+      };
+
+      // Send email
+      return await this.sendEmail(emailOptions, "PASSWORD_RESET_OTP", email);
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email,
+        },
+        "Failed to send password reset OTP email"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send password reset confirmation email
+   * Called during: Successful password reset
+   *
+   * @param userName - User's full name
+   * @param email - User's email address
+   */
+  async sendPasswordResetConfirmation(
+    userName: string | undefined,
+    email: string
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug({ email }, "Sending password reset confirmation email");
+
+      // Render template
+      const html = this.templates.passwordResetConfirmation(
+        userName,
+        this.config.logoUrl,
+        this.config.brandColor
+      );
+
+      // Prepare email options
+      const emailOptions: IEmailOptions = {
+        to: { email, name: userName },
+        subject: `Password Reset Successful - BeforeListed`,
+        html,
+      };
+
+      // Send email
+      return await this.sendEmail(
+        emailOptions,
+        "PASSWORD_RESET_CONFIRMATION",
+        email
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email,
+        },
+        "Failed to send password reset confirmation email"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
    * Send email verification code
    * Called during: User registration (Agent/Renter)
    *
@@ -89,7 +202,7 @@ export class EmailService {
 
       // Render template
       const html = this.templates.emailVerification(
-        payload.userName,
+        payload.userName!,
         payload.verificationCode,
         payload.expiresIn,
         payload.userType,

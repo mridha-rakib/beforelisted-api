@@ -209,14 +209,17 @@ export class EmailVerificationService {
    */
   async resendOTP(request: IResendOTPRequest): Promise<IResendOTPResponse> {
     // Step 1: Find existing OTP
-    const existingOTP = await this.repository.findByEmail(
+    let existingOTP = await this.repository.findByEmail(
       request.email,
       request.userType
     );
 
-    console.log("===========================================");
-    console.log("Existing OTP record for resendOTP:", existingOTP);
-    console.log("===========================================");
+    if (!existingOTP) {
+      existingOTP = await this.repository.findByEmailIgnoreExpiry(
+        request.email,
+        request.userType
+      );
+    }
 
     if (!existingOTP) {
       throw new NotFoundException(

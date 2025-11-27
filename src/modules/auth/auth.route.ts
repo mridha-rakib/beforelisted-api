@@ -1,10 +1,12 @@
 // file: src/modules/auth/auth.route.ts
 
 import { Router } from "express";
+import { PasswordResetController } from "../password-reset/password-reset.controller";
 import { AuthController } from "./auth.controller";
 
 const router = Router();
 const authController = new AuthController();
+const passwordResetController = new PasswordResetController();
 
 // ============================================
 // REMOVED: POST /auth/register
@@ -54,5 +56,10 @@ router.post("/reset-password", authController.resetPassword);
  * Refresh access token
  */
 router.post("/refresh-token", authController.refreshToken);
+
+router.post("/forgot-password", passwordResetController.requestPasswordReset);
+router.post("/verify-password-otp", passwordResetController.verifyPasswordOTP);
+router.post("/reset-password", passwordResetController.resetPassword);
+router.post("/resend-password-otp", passwordResetController.resendPasswordOTP);
 
 export default router;

@@ -977,4 +977,475 @@ export class EmailTemplates {
 </html>
     `;
   }
+
+  /**
+   * Password Reset OTP Template
+   * Sent when user requests password reset
+   *
+   * @param userName - User's full name
+   * @param otpCode - 4-digit OTP code
+   * @param expiresIn - Minutes until expiration
+   * @param logoUrl - Brand logo URL
+   * @param brandColor - Brand color (hex)
+   * @returns HTML string
+   */
+  passwordResetOTP = (
+    userName: string | undefined,
+    otpCode: string,
+    expiresIn: number,
+    logoUrl?: string,
+    brandColor: string = "#208080"
+  ): string => {
+    const displayName =
+      userName && userName.trim() ? userName.split(" ")[0] : "there";
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Password Reset Code - BeforeListed</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      background-color: #f5f5f5;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}dd 100%);
+      padding: 40px 20px;
+      text-align: center;
+      color: white;
+    }
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .header-title {
+      font-size: 28px;
+      margin: 10px 0;
+      font-weight: 600;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .greeting {
+      font-size: 16px;
+      color: #333333;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+    .description {
+      font-size: 14px;
+      color: #666666;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+    .otp-section {
+      background-color: #f8f9fa;
+      border-left: 4px solid ${brandColor};
+      padding: 20px;
+      margin: 30px 0;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .otp-label {
+      font-size: 12px;
+      color: #999999;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    .otp-code {
+      font-size: 40px;
+      font-weight: bold;
+      color: ${brandColor};
+      letter-spacing: 6px;
+      font-family: 'Courier New', monospace;
+      margin: 15px 0;
+      text-align: center;
+    }
+    .otp-expires {
+      font-size: 13px;
+      color: #666666;
+      margin-top: 10px;
+    }
+    .important-note {
+      background-color: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 25px 0;
+      border-radius: 4px;
+    }
+    .important-note-title {
+      font-weight: 600;
+      color: #856404;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+    .important-note-text {
+      font-size: 13px;
+      color: #856404;
+      line-height: 1.5;
+    }
+    .security-note {
+      background-color: #e8f4f8;
+      border-left: 4px solid ${brandColor};
+      padding: 15px;
+      margin: 25px 0;
+      border-radius: 4px;
+    }
+    .security-note-title {
+      font-weight: 600;
+      color: ${brandColor};
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+    .security-note-text {
+      font-size: 13px;
+      color: #555555;
+      line-height: 1.5;
+    }
+    .footer {
+      background-color: #f8f9fa;
+      padding: 20px 30px;
+      border-top: 1px solid #e0e0e0;
+      font-size: 12px;
+      color: #999999;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .footer-link {
+      color: ${brandColor};
+      text-decoration: none;
+    }
+    .divider {
+      border: 0;
+      border-top: 1px solid #e0e0e0;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">🏠 BeforeListed</div>
+      <div class="header-title">Password Reset Code</div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <div class="greeting">
+        Hi ${displayName},
+      </div>
+
+      <div class="description">
+        We received a request to reset your password. Use the code below to proceed with resetting your password.
+      </div>
+
+      <!-- OTP Code Section -->
+      <div class="otp-section">
+        <div class="otp-label">Your Reset Code</div>
+        <div class="otp-code">${otpCode}</div>
+        <div class="otp-expires">
+          ⏱️ This code expires in <strong>${expiresIn} minutes</strong>
+        </div>
+      </div>
+
+      <!-- Important Note -->
+      <div class="important-note">
+        <div class="important-note-title">⚠️ Important:</div>
+        <div class="important-note-text">
+          Never share this code with anyone. We will never ask for this code via email or support.
+        </div>
+      </div>
+
+      <!-- Security Note -->
+      <div class="security-note">
+        <div class="security-note-title">🔒 Didn't Request This?</div>
+        <div class="security-note-text">
+          If you didn't request a password reset, please ignore this email. Your account remains secure.
+        </div>
+      </div>
+
+      <!-- Steps -->
+      <div style="margin: 30px 0; font-size: 14px; color: #333333;">
+        <strong>Next Steps:</strong>
+        <ol style="color: #666666; line-height: 1.8;">
+          <li>Enter the code above in the password reset window</li>
+          <li>Create a strong, unique password</li>
+          <li>Log in with your new password</li>
+        </ol>
+      </div>
+
+      <hr class="divider">
+
+      <div style="font-size: 13px; color: #666666; line-height: 1.6;">
+        <strong>Password Reset Code:</strong> <code style="background-color: #f5f5f5; padding: 2px 6px; border-radius: 3px;">${otpCode}</code>
+        <br><br>
+        This code is valid for <strong>${expiresIn} minutes</strong> only.
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div style="margin-bottom: 10px;">
+        Have questions? Visit our <a href="https://beforelisted.com/help" class="footer-link">Help Center</a> or reply to this email
+      </div>
+      <div>
+        © ${new Date().getFullYear()} BeforeListed. All rights reserved.
+      </div>
+      <div style="margin-top: 10px; font-size: 11px;">
+        <a href="https://beforelisted.com/privacy" class="footer-link">Privacy Policy</a> | 
+        <a href="https://beforelisted.com/terms" class="footer-link">Terms of Service</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+  };
+
+  // ============================================
+  // TEMPLATE 2: PASSWORD RESET CONFIRMATION
+  // ============================================
+
+  /**
+   * Password Reset Confirmation Template
+   * Sent after successful password reset
+   *
+   * @param userName - User's full name
+   * @param logoUrl - Brand logo URL
+   * @param brandColor - Brand color (hex)
+   * @returns HTML string
+   */
+  passwordResetConfirmation = (
+    userName: string | undefined,
+    logoUrl?: string,
+    brandColor: string = "#208080"
+  ): string => {
+    const displayName =
+      userName && userName.trim() ? userName.split(" ")[0] : "there";
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Password Reset Successful - BeforeListed</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      background-color: #f5f5f5;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+      padding: 40px 20px;
+      text-align: center;
+      color: white;
+    }
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .header-title {
+      font-size: 28px;
+      margin: 10px 0;
+      font-weight: 600;
+    }
+    .success-icon {
+      font-size: 48px;
+      margin: 10px 0;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .greeting {
+      font-size: 16px;
+      color: #333333;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+    .confirmation-message {
+      background-color: #d4edda;
+      border-left: 4px solid #28a745;
+      padding: 20px;
+      margin: 30px 0;
+      border-radius: 4px;
+    }
+    .confirmation-text {
+      font-size: 15px;
+      color: #155724;
+      font-weight: 500;
+    }
+    .description {
+      font-size: 14px;
+      color: #666666;
+      margin: 25px 0;
+      line-height: 1.6;
+    }
+    .next-steps {
+      background-color: #e7f3ff;
+      border-left: 4px solid #2196F3;
+      padding: 20px;
+      margin: 25px 0;
+      border-radius: 4px;
+    }
+    .next-steps-title {
+      font-weight: 600;
+      color: #1565c0;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+    .next-steps-list {
+      font-size: 14px;
+      color: #333333;
+      line-height: 1.8;
+      margin: 0;
+    }
+    .next-steps-list li {
+      margin-bottom: 8px;
+    }
+    .security-actions {
+      background-color: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 20px;
+      margin: 25px 0;
+      border-radius: 4px;
+    }
+    .security-actions-title {
+      font-weight: 600;
+      color: #856404;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+    .security-actions-list {
+      font-size: 13px;
+      color: #666666;
+      line-height: 1.7;
+      margin: 0;
+    }
+    .security-actions-list li {
+      margin-bottom: 8px;
+    }
+    .footer {
+      background-color: #f8f9fa;
+      padding: 20px 30px;
+      border-top: 1px solid #e0e0e0;
+      font-size: 12px;
+      color: #999999;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .footer-link {
+      color: ${brandColor};
+      text-decoration: none;
+    }
+    .divider {
+      border: 0;
+      border-top: 1px solid #e0e0e0;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <!-- Header -->
+    <div class="header">
+      <div class="success-icon">✅</div>
+      <div class="logo">🏠 BeforeListed</div>
+      <div class="header-title">Password Reset Successful</div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <div class="greeting">
+        Hi ${displayName},
+      </div>
+
+      <!-- Confirmation Message -->
+      <div class="confirmation-message">
+        <div class="confirmation-text">
+          Your password has been reset successfully! You can now log in with your new password.
+        </div>
+      </div>
+
+      <div class="description">
+        This is a security confirmation email. Your password was changed on <strong>${new Date().toLocaleString()}</strong>.
+      </div>
+
+      <hr class="divider">
+
+      <!-- Next Steps -->
+      <div class="next-steps">
+        <div class="next-steps-title">📋 What's Next?</div>
+        <ul class="next-steps-list">
+          <li>✓ Log in with your new password</li>
+          <li>✓ Verify your account is working correctly</li>
+          <li>✓ Update your profile if needed</li>
+        </ul>
+      </div>
+
+      <!-- Security Actions -->
+      <div class="security-actions">
+        <div class="security-actions-title">🔒 For Your Security:</div>
+        <ul class="security-actions-list">
+          <li>✓ Use a strong, unique password</li>
+          <li>✓ Don't share your password with anyone</li>
+          <li>✓ Log out from other devices if you enabled that option</li>
+          <li>✓ Enable two-factor authentication for added security</li>
+        </ul>
+      </div>
+
+      <hr class="divider">
+
+      <div style="font-size: 13px; color: #666666; line-height: 1.6;">
+        <strong>⚠️ Didn't Make This Change?</strong>
+        <br>
+        If you didn't reset your password, please <a href="https://beforelisted.com/help/security" style="color: #208080; text-decoration: none;">contact our support team immediately</a>. Your account security is our priority.
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div style="margin-bottom: 10px;">
+        Have questions? Visit our <a href="https://beforelisted.com/help" class="footer-link">Help Center</a> or reply to this email
+      </div>
+      <div>
+        © ${new Date().getFullYear()} BeforeListed. All rights reserved.
+      </div>
+      <div style="margin-top: 10px; font-size: 11px;">
+        <a href="https://beforelisted.com/privacy" class="footer-link">Privacy Policy</a> | 
+        <a href="https://beforelisted.com/terms" class="footer-link">Terms of Service</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+  };
 }

@@ -150,5 +150,6 @@ export const resendVerificationCodeSchema = z.object({
   body: z.object({
     email: z.email(MESSAGES.VALIDATION.INVALID_EMAIL),
     userType: z.enum(["Agent", "Renter", "Admin"]).optional(),
+    userName: z.string().optional(),
   }),
 });
