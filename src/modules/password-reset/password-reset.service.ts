@@ -25,7 +25,7 @@ export class PasswordResetService {
   private emailService: EmailService;
 
   private readonly config = {
-    MAX_OTP_ATTEMPTS: 5,
+    MAX_OTP_ATTEMPTS: 10,
     MIN_RESEND_INTERVAL_SECONDS: 60,
     MAX_REQUESTS_PER_HOUR: 10,
     OTP_EXPIRY_MINUTES: 10,
@@ -49,7 +49,6 @@ export class PasswordResetService {
 
   /**
    * Request password reset OTP
-   * ✅ COMPLETE: Full implementation with rate limiting
    *
    * @param userId - User ID
    * @returns Success message and OTP expiration

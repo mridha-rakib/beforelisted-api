@@ -65,6 +65,57 @@ export class EmailService {
   }
 
   // ============================================
+  // UTILITY METHODS
+  // ============================================
+
+  /**
+   * Validate and normalize userType to correct format
+   * @param userType - Input user type (can be string)
+   * @returns Normalized user type or undefined
+   */
+  private normalizeUserType(
+    userType: string | undefined
+  ): "Agent" | "Renter" | "Admin" | undefined {
+    if (!userType) return undefined;
+
+    const normalized = userType.trim();
+    if (
+      normalized === "Agent" ||
+      normalized === "Renter" ||
+      normalized === "Admin"
+    ) {
+      return normalized as "Agent" | "Renter" | "Admin";
+    }
+
+    logger.warn(
+      { userType, normalized },
+      "Unknown userType - defaulting to undefined"
+    );
+    return undefined;
+  }
+
+  /**
+   * Validate and normalize welcome email userType
+   * @param userType - Input user type
+   * @returns Normalized user type (Agent or Renter)
+   */
+  private normalizeWelcomeUserType(
+    userType: string | undefined
+  ): "Agent" | "Renter" {
+    if (!userType) return "Renter";
+
+    const normalized = userType.toUpperCase().trim();
+    if (normalized === "AGENT") return "Agent";
+    if (normalized === "RENTER") return "Renter";
+
+    logger.warn(
+      { userType, normalized },
+      "Unknown welcome userType - defaulting to Renter"
+    );
+    return "Renter";
+  }
+
+  // ============================================
   // EMAIL VERIFICATION
   // ============================================
 
@@ -104,7 +155,7 @@ export class EmailService {
         to: { email, name: userName },
         subject: `Password Reset Code - BeforeListed`,
         html,
-        priority: "high", // High priority for security
+        priority: "high",
       };
 
       // Send email

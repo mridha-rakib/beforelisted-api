@@ -192,7 +192,7 @@ export interface ITemplateRenderResult {
 /**
  * User type discriminator
  */
-export type UserType = "agent" | "renter" | "admin";
+export type UserType = "Agent" | "Renter" | "Admin";
 
 /**
  * Email verification payload
@@ -200,7 +200,7 @@ export type UserType = "agent" | "renter" | "admin";
 export interface IEmailVerificationPayload {
   to: string;
   userName: string | undefined;
-  userType: UserType | string | undefined;
+  userType: UserType | string;
   verificationCode: string;
   expiresIn: string;
 }

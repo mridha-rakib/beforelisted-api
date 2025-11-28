@@ -79,6 +79,6 @@ export const resetPasswordSchema = z.object({
  */
 export const resendPasswordOTPSchema = z.object({
   body: z.object({
-    email: z.string().email("Invalid email format").toLowerCase(), // ✅ Normalize to lowercase
+    email: z.string().email("Invalid email format").toLowerCase(),
   }),
 });

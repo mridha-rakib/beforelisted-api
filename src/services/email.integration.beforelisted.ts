@@ -1,4 +1,4 @@
-// file: src/services/email.integration.beforelisted.ts (UPDATED FOR NODEMAILER)
+// file: src/services/email.integration.beforelisted.ts
 
 /**
  * BeforeListed Email Integration Helper

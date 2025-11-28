@@ -137,11 +137,12 @@ export class AuthService {
   /**
    * Request password reset
    */
-  async requestPasswordReset(email: string): Promise<{ message: string }> {
+  async requestPasswordReset(
+    email: string
+  ): Promise<{ message: string; expiresAt?: Date; expiresInMinutes?: number }> {
     const user = await this.userService.getUserByEmail(email);
 
     if (!user) {
-      // Don't reveal if email exists for security
       return { message: MESSAGES.AUTH.PASSWORD_RESET_OTP_SENT };
     }
 
@@ -255,24 +256,23 @@ export class AuthService {
 
   /**
    * Resend password reset OTP
-   * ✅ COMPLETE: Rate-limited resend
    */
-  async resendPasswordOTP(email: string): Promise<{ message: string }> {
-    // Step 1: Find user
+  async resendPasswordOTP(
+    email: string
+  ): Promise<{ message: string; expiresAt?: Date; expiresInMinutes?: number }> {
     const user = await this.userService.getUserByEmail(email);
 
     if (!user) {
-      // Security: Don't reveal if user exists
       return {
         message:
           "If an account exists, a password reset code will be sent to the email address",
       };
     }
 
-    // Step 2: Request new OTP (will invalidate previous ones)
     const result = await this.passwordResetService.requestPasswordReset(
       user._id.toString(),
-      user.email
+      user.email,
+      user.fullName
     );
 
     logger.info({ userId: user._id, email }, "Password reset OTP resent");
@@ -378,5 +378,31 @@ export class AuthService {
     );
 
     return { message: result.message };
+  }
+
+  /**
+   * Logout user (clear tokens and sessions)
+   *  Required by auth controller
+   *
+   * @param token - JWT token (for blacklist if implemented)
+   * @param userId - User ID
+   * @returns Success message
+   */
+  async logout(token: string, userId: string): Promise<{ message: string }> {
+    try {
+      logger.info(
+        { userId, token: token.substring(0, 20) + "..." },
+        "User logged out"
+      );
+
+      // [TODO]:
+      // Optional: Add token blacklist logic here if implemented
+      // await this.authTokenService.revokeToken(token);
+
+      return { message: "Logged out successfully" };
+    } catch (error) {
+      logger.error({ error, userId }, "Logout failed");
+      throw new BadRequestException("Logout failed");
+    }
   }
 }

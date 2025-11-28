@@ -2,6 +2,7 @@
 
 import { Router } from "express";
 import { PasswordResetController } from "../password-reset/password-reset.controller";
+import passwordResetRoutes from "../password-reset/password-reset.route";
 import { AuthController } from "./auth.controller";
 
 const router = Router();
@@ -57,9 +58,6 @@ router.post("/reset-password", authController.resetPassword);
  */
 router.post("/refresh-token", authController.refreshToken);
 
-router.post("/forgot-password", passwordResetController.requestPasswordReset);
-router.post("/verify-password-otp", passwordResetController.verifyPasswordOTP);
-router.post("/reset-password", passwordResetController.resetPassword);
-router.post("/resend-password-otp", passwordResetController.resendPasswordOTP);
+router.use("/", passwordResetRoutes);
 
 export default router;

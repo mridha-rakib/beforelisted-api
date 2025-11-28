@@ -15,6 +15,24 @@ export class EmailTemplates {
   private brandColor: string = "#2180E1";
   private supportEmail: string = "support@beforelisted.com";
 
+  private getLogoStyles(): string {
+    return `
+      .logo {
+        display: block;
+        max-width: 150px;
+        width: 100%;
+        height: auto;
+        margin: 0 auto 20px auto;
+      }
+      
+      @media (max-width: 480px) {
+        .logo {
+          max-width: 120px;
+        }
+      }
+    `;
+  }
+
   // ============================================
   // WELCOME EMAIL
   // ============================================
@@ -60,11 +78,7 @@ export class EmailTemplates {
             padding: 40px 20px;
             text-align: center;
         }
-        .logo {
-            max-width: 150px;
-            height: auto;
-            margin-bottom: 20px;
-        }
+        ${this.getLogoStyles()}
         .header h1 {
             color: #ffffff;
             margin: 0;
@@ -134,6 +148,7 @@ export class EmailTemplates {
             font-weight: bold;
         }
         .feature-text {
+            flex: 1;
             color: #666666;
             font-size: 15px;
         }
@@ -265,11 +280,7 @@ export class EmailTemplates {
             padding: 40px 20px;
             text-align: center;
         }
-        .logo {
-            max-width: 150px;
-            height: auto;
-            margin-bottom: 20px;
-        }
+         ${this.getLogoStyles()}
         .header h1 {
             color: #ffffff;
             margin: 0;
@@ -472,7 +483,7 @@ export class EmailTemplates {
     userName: string,
     verificationCode: string,
     expiresIn: string,
-    userType: "agent" | "renter",
+    userType: "Agent" | "Renter" | "Admin" | undefined,
     logoUrl?: string,
     brandColor?: string
   ): string {
@@ -506,11 +517,7 @@ export class EmailTemplates {
             padding: 40px 20px;
             text-align: center;
         }
-        .logo {
-            max-width: 150px;
-            height: auto;
-            margin-bottom: 20px;
-        }
+        ${this.getLogoStyles()}
         .header h1 {
             color: #ffffff;
             margin: 0;
@@ -551,7 +558,7 @@ export class EmailTemplates {
             font-size: 48px;
             color: ${color};
             font-weight: bold;
-            letter-spacing: 8px;
+            letter-spacing: 6px;
             font-family: 'Courier New', monospace;
         }
         .code-expiry {
@@ -672,11 +679,7 @@ export class EmailTemplates {
             padding: 40px 20px;
             text-align: center;
         }
-        .logo {
-            max-width: 150px;
-            height: auto;
-            margin-bottom: 20px;
-        }
+        ${this.getLogoStyles()}
         .header h1 {
             color: #ffffff;
             margin: 0;
@@ -838,11 +841,7 @@ export class EmailTemplates {
             padding: 40px 20px;
             text-align: center;
         }
-        .logo {
-            max-width: 150px;
-            height: auto;
-            margin-bottom: 20px;
-        }
+        ${this.getLogoStyles()}
         .header h1 {
             color: #ffffff;
             margin: 0;
@@ -978,6 +977,10 @@ export class EmailTemplates {
     `;
   }
 
+  // ============================================
+  // PASSWORD RESET OTP EMAIL (FIXED)
+  // ============================================
+
   /**
    * Password Reset OTP Template
    * Sent when user requests password reset
@@ -985,6 +988,7 @@ export class EmailTemplates {
    * @param userName - User's full name
    * @param otpCode - 4-digit OTP code
    * @param expiresIn - Minutes until expiration
+   * @param userType - User type (Agent or Renter) ✅ NEW
    * @param logoUrl - Brand logo URL
    * @param brandColor - Brand color (hex)
    * @returns HTML string
@@ -993,11 +997,17 @@ export class EmailTemplates {
     userName: string | undefined,
     otpCode: string,
     expiresIn: number,
+    userType?: string,
     logoUrl?: string,
     brandColor: string = "#208080"
   ): string => {
     const displayName =
       userName && userName.trim() ? userName.split(" ")[0] : "there";
+    const userTypeLabel = userType
+      ? userType.charAt(0).toUpperCase() + userType.slice(1)
+      : "User"; //
+
+    const logo = logoUrl || this.logoUrl;
 
     return `
 <!DOCTYPE html>
@@ -1007,141 +1017,42 @@ export class EmailTemplates {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Password Reset Code - BeforeListed</title>
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-      background-color: #f5f5f5;
-    }
-    .email-container {
-      max-width: 600px;
-      margin: 0 auto;
-      background-color: #ffffff;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
-    }
-    .header {
-      background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}dd 100%);
-      padding: 40px 20px;
-      text-align: center;
-      color: white;
-    }
-    .logo {
-      font-size: 24px;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
-    .header-title {
-      font-size: 28px;
-      margin: 10px 0;
-      font-weight: 600;
-    }
-    .content {
-      padding: 40px 30px;
-    }
-    .greeting {
-      font-size: 16px;
-      color: #333333;
-      margin-bottom: 20px;
-      line-height: 1.6;
-    }
-    .description {
-      font-size: 14px;
-      color: #666666;
-      margin-bottom: 30px;
-      line-height: 1.6;
-    }
-    .otp-section {
-      background-color: #f8f9fa;
-      border-left: 4px solid ${brandColor};
-      padding: 20px;
-      margin: 30px 0;
-      border-radius: 4px;
-      text-align: center;
-    }
-    .otp-label {
-      font-size: 12px;
-      color: #999999;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 10px;
-    }
-    .otp-code {
-      font-size: 40px;
-      font-weight: bold;
-      color: ${brandColor};
-      letter-spacing: 6px;
-      font-family: 'Courier New', monospace;
-      margin: 15px 0;
-      text-align: center;
-    }
-    .otp-expires {
-      font-size: 13px;
-      color: #666666;
-      margin-top: 10px;
-    }
-    .important-note {
-      background-color: #fff3cd;
-      border-left: 4px solid #ffc107;
-      padding: 15px;
-      margin: 25px 0;
-      border-radius: 4px;
-    }
-    .important-note-title {
-      font-weight: 600;
-      color: #856404;
-      margin-bottom: 5px;
-      font-size: 14px;
-    }
-    .important-note-text {
-      font-size: 13px;
-      color: #856404;
-      line-height: 1.5;
-    }
-    .security-note {
-      background-color: #e8f4f8;
-      border-left: 4px solid ${brandColor};
-      padding: 15px;
-      margin: 25px 0;
-      border-radius: 4px;
-    }
-    .security-note-title {
-      font-weight: 600;
-      color: ${brandColor};
-      margin-bottom: 5px;
-      font-size: 14px;
-    }
-    .security-note-text {
-      font-size: 13px;
-      color: #555555;
-      line-height: 1.5;
-    }
-    .footer {
-      background-color: #f8f9fa;
-      padding: 20px 30px;
-      border-top: 1px solid #e0e0e0;
-      font-size: 12px;
-      color: #999999;
-      text-align: center;
-      line-height: 1.6;
-    }
-    .footer-link {
-      color: ${brandColor};
-      text-decoration: none;
-    }
-    .divider {
-      border: 0;
-      border-top: 1px solid #e0e0e0;
-      margin: 20px 0;
-    }
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif; background-color: #f5f5f5; }
+    .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); overflow: hidden; }
+    .header { background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}dd 100%); padding: 40px 20px; text-align: center; color: white; }
+    .user-type-badge { display: inline-block; background-color: rgba(255, 255, 255, 0.3); color: white; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; } /* ✅ NEW */
+    .logo { max-width: 150px;
+            width: 100%;
+            height: auto;
+            margin: 0 auto 20px auto;
+            display: block; }
+    .header-title { font-size: 28px; margin: 10px 0; font-weight: 600; }
+    .content { padding: 40px 30px; }
+    .greeting { font-size: 16px; color: #333333; margin-bottom: 20px; line-height: 1.6; }
+    .description { font-size: 14px; color: #666666; margin-bottom: 30px; line-height: 1.6; }
+    .otp-section { background-color: #f8f9fa; border-left: 4px solid ${brandColor}; padding: 20px; margin: 30px 0; border-radius: 4px; text-align: center; }
+    .otp-label { font-size: 12px; color: #999999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    .otp-code { font-size: 40px; font-weight: bold; color: ${brandColor}; letter-spacing: 6px; font-family: 'Courier New', monospace; margin: 15px 0; text-align: center; }
+    .otp-expires { font-size: 13px; color: #666666; margin-top: 10px; }
+    .important-note { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 25px 0; border-radius: 4px; }
+    .important-note-title { font-weight: 600; color: #856404; margin-bottom: 5px; font-size: 14px; }
+    .important-note-text { font-size: 13px; color: #856404; line-height: 1.5; }
+    .security-note { background-color: #e8f4f8; border-left: 4px solid ${brandColor}; padding: 15px; margin: 25px 0; border-radius: 4px; }
+    .security-note-title { font-weight: 600; color: ${brandColor}; margin-bottom: 5px; font-size: 14px; }
+    .security-note-text { font-size: 13px; color: #555555; line-height: 1.5; }
+    .footer { background-color: #f8f9fa; padding: 20px 30px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #999999; text-align: center; line-height: 1.6; }
+    .footer-link { color: ${brandColor}; text-decoration: none; }
+    .divider { border: 0; border-top: 1px solid #e0e0e0; margin: 20px 0; }
+    ol { color: #666666; line-height: 1.8; }
+    ol li { margin-bottom: 8px; }
   </style>
 </head>
 <body>
   <div class="email-container">
     <!-- Header -->
     <div class="header">
-      <div class="logo">🏠 BeforeListed</div>
+      <div class="user-type-badge">${userTypeLabel}</div> <!-- ✅ NEW: User type badge -->
+      <div class="logo"> <img src="${logo}" alt="BeforeListed Logo" class="logo"> BeforeListed</div>
       <div class="header-title">Password Reset Code</div>
     </div>
 
@@ -1183,7 +1094,7 @@ export class EmailTemplates {
       <!-- Steps -->
       <div style="margin: 30px 0; font-size: 14px; color: #333333;">
         <strong>Next Steps:</strong>
-        <ol style="color: #666666; line-height: 1.8;">
+        <ol>
           <li>Enter the code above in the password reset window</li>
           <li>Create a strong, unique password</li>
           <li>Log in with your new password</li>
@@ -1219,7 +1130,7 @@ export class EmailTemplates {
   };
 
   // ============================================
-  // TEMPLATE 2: PASSWORD RESET CONFIRMATION
+  // PASSWORD RESET CONFIRMATION (FIXED)
   // ============================================
 
   /**
@@ -1227,17 +1138,25 @@ export class EmailTemplates {
    * Sent after successful password reset
    *
    * @param userName - User's full name
+   * @param userType - User type (Agent or Renter) ✅ NEW
    * @param logoUrl - Brand logo URL
    * @param brandColor - Brand color (hex)
    * @returns HTML string
    */
   passwordResetConfirmation = (
     userName: string | undefined,
+    userType?: string,
     logoUrl?: string,
     brandColor: string = "#208080"
   ): string => {
     const displayName =
       userName && userName.trim() ? userName.split(" ")[0] : "there";
+    const userTypeLabel = userType
+      ? userType.charAt(0).toUpperCase() + userType.slice(1)
+      : "User"; //
+
+    const logo = logoUrl || this.logoUrl;
+    const color = brandColor || this.brandColor;
 
     return `
 <!DOCTYPE html>
@@ -1247,137 +1166,42 @@ export class EmailTemplates {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Password Reset Successful - BeforeListed</title>
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-      background-color: #f5f5f5;
-    }
-    .email-container {
-      max-width: 600px;
-      margin: 0 auto;
-      background-color: #ffffff;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
-    }
-    .header {
-      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-      padding: 40px 20px;
-      text-align: center;
-      color: white;
-    }
-    .logo {
-      font-size: 24px;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
-    .header-title {
-      font-size: 28px;
-      margin: 10px 0;
-      font-weight: 600;
-    }
-    .success-icon {
-      font-size: 48px;
-      margin: 10px 0;
-    }
-    .content {
-      padding: 40px 30px;
-    }
-    .greeting {
-      font-size: 16px;
-      color: #333333;
-      margin-bottom: 20px;
-      line-height: 1.6;
-    }
-    .confirmation-message {
-      background-color: #d4edda;
-      border-left: 4px solid #28a745;
-      padding: 20px;
-      margin: 30px 0;
-      border-radius: 4px;
-    }
-    .confirmation-text {
-      font-size: 15px;
-      color: #155724;
-      font-weight: 500;
-    }
-    .description {
-      font-size: 14px;
-      color: #666666;
-      margin: 25px 0;
-      line-height: 1.6;
-    }
-    .next-steps {
-      background-color: #e7f3ff;
-      border-left: 4px solid #2196F3;
-      padding: 20px;
-      margin: 25px 0;
-      border-radius: 4px;
-    }
-    .next-steps-title {
-      font-weight: 600;
-      color: #1565c0;
-      margin-bottom: 10px;
-      font-size: 14px;
-    }
-    .next-steps-list {
-      font-size: 14px;
-      color: #333333;
-      line-height: 1.8;
-      margin: 0;
-    }
-    .next-steps-list li {
-      margin-bottom: 8px;
-    }
-    .security-actions {
-      background-color: #fff3cd;
-      border-left: 4px solid #ffc107;
-      padding: 20px;
-      margin: 25px 0;
-      border-radius: 4px;
-    }
-    .security-actions-title {
-      font-weight: 600;
-      color: #856404;
-      margin-bottom: 10px;
-      font-size: 14px;
-    }
-    .security-actions-list {
-      font-size: 13px;
-      color: #666666;
-      line-height: 1.7;
-      margin: 0;
-    }
-    .security-actions-list li {
-      margin-bottom: 8px;
-    }
-    .footer {
-      background-color: #f8f9fa;
-      padding: 20px 30px;
-      border-top: 1px solid #e0e0e0;
-      font-size: 12px;
-      color: #999999;
-      text-align: center;
-      line-height: 1.6;
-    }
-    .footer-link {
-      color: ${brandColor};
-      text-decoration: none;
-    }
-    .divider {
-      border: 0;
-      border-top: 1px solid #e0e0e0;
-      margin: 20px 0;
-    }
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif; background-color: #f5f5f5; }
+    .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); overflow: hidden; }
+    .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 40px 20px; text-align: center; color: white; }
+    .user-type-badge { display: inline-block; background-color: rgba(255, 255, 255, 0.3); color: white; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; } /* ✅ NEW */
+    .logo { max-width: 150px;
+            width: 100%;
+            height: auto;
+            margin: 0 auto 20px auto;
+            display: block; }
+    .header-title { font-size: 28px; margin: 10px 0; font-weight: 600; }
+    .success-icon { font-size: 48px; margin: 10px 0; }
+    .content { padding: 40px 30px; }
+    .greeting { font-size: 16px; color: #333333; margin-bottom: 20px; line-height: 1.6; }
+    .confirmation-message { background-color: #d4edda; border-left: 4px solid #28a745; padding: 20px; margin: 30px 0; border-radius: 4px; }
+    .confirmation-text { font-size: 15px; color: #155724; font-weight: 500; }
+    .description { font-size: 14px; color: #666666; margin: 25px 0; line-height: 1.6; }
+    .next-steps { background-color: #e7f3ff; border-left: 4px solid #2196F3; padding: 20px; margin: 25px 0; border-radius: 4px; }
+    .next-steps-title { font-weight: 600; color: #1565c0; margin-bottom: 10px; font-size: 14px; }
+    .next-steps-list { font-size: 14px; color: #333333; line-height: 1.8; margin: 0; }
+    .next-steps-list li { margin-bottom: 8px; }
+    .security-actions { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 25px 0; border-radius: 4px; }
+    .security-actions-title { font-weight: 600; color: #856404; margin-bottom: 10px; font-size: 14px; }
+    .security-actions-list { font-size: 13px; color: #666666; line-height: 1.7; margin: 0; }
+    .security-actions-list li { margin-bottom: 8px; }
+    .footer { background-color: #f8f9fa; padding: 20px 30px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #999999; text-align: center; line-height: 1.6; }
+    .footer-link { color: ${brandColor}; text-decoration: none; }
+    .divider { border: 0; border-top: 1px solid #e0e0e0; margin: 20px 0; }
   </style>
 </head>
 <body>
   <div class="email-container">
     <!-- Header -->
     <div class="header">
+      <div class="user-type-badge">${userTypeLabel}</div> <!-- ✅ NEW: User type badge -->
       <div class="success-icon">✅</div>
-      <div class="logo">🏠 BeforeListed</div>
+      <div class="logo"><img src="${logo}" alt="BeforeListed Logo" class="logo"> BeforeListed</div>
       <div class="header-title">Password Reset Successful</div>
     </div>
 
