@@ -1,7 +1,7 @@
 // file: src/modules/renter/renter.model.ts
 
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
-import { Schema, type Document, type Query } from "mongoose";
+import { model, Types, type Document, type Query } from "mongoose";
 
 // ============================================
 // INTERFACE
@@ -9,7 +9,7 @@ import { Schema, type Document, type Query } from "mongoose";
 
 export interface IRenterModel extends Document {
   // User reference
-  userId: Schema.Types.ObjectId;
+  userId: Types.ObjectId;
 
   // Common fields (from User)
   email: string;
@@ -18,8 +18,8 @@ export interface IRenterModel extends Document {
 
   // Registration tracking
   registrationType: "normal" | "agent_referral" | "admin_referral";
-  referredByAgentId?: Schema.Types.ObjectId;
-  referredByAdminId?: Schema.Types.ObjectId;
+  referredByAgentId?: Types.ObjectId | string;
+  referredByAdminId?: Types.ObjectId | string;
 
   // Profile data
   occupation?: string;
@@ -45,6 +45,11 @@ export interface IRenterModel extends Document {
   // Timestamps (auto-added by BaseSchemaUtil)
   createdAt: Date;
   updatedAt: Date;
+
+  // Instance methods
+  softDelete(): Promise<void>;
+  restore(): Promise<void>;
+  completeProfile(data: Partial<IRenterModel>): Promise<void>;
 }
 
 // ============================================
@@ -63,31 +68,23 @@ const renterSchema = BaseSchemaUtil.createSchema({
   // USER REFERENCE
   // ============================================
   userId: {
-    type: Schema.Types.ObjectId,
+    type: Types.ObjectId,
     ref: "User",
     required: true,
     unique: true,
     index: true,
   },
 
-  // ============================================
-  // COMMON FIELDS (Using BaseSchemaUtil Helpers)
-  // ============================================
-  /**
-   * ✅ emailField(false) because email is NOT unique here
-   * - Email uniqueness is enforced in User model
-   * - This is a denormalized copy for easy filtering
-   */
   ...BaseSchemaUtil.mergeDefinitions(
-    BaseSchemaUtil.emailField(false), // Not unique in renter profile
-    BaseSchemaUtil.phoneField() // Optional phone field
+    BaseSchemaUtil.emailField(false),
+    BaseSchemaUtil.phoneField()
   ),
 
   fullName: {
     type: String,
     required: true,
     trim: true,
-  },
+  } as any,
 
   // ============================================
   // REGISTRATION TYPE & REFERRAL TRACKING
@@ -97,35 +94,37 @@ const renterSchema = BaseSchemaUtil.createSchema({
    * - "normal": Direct registration
    * - "agent_referral": Referred by agent (AGT-xxxx)
    * - "admin_referral": Referred by admin (ADM-xxxx) - passwordless
+   *
+   * ✅ FIX: Added `as any` to resolve TypeScript enum issue with BaseSchemaUtil
    */
   registrationType: {
     type: String,
     enum: ["normal", "agent_referral", "admin_referral"],
     default: "normal",
     index: true,
-  },
+  } as any,
 
   /**
    * ✅ Agent who referred this renter (if agent_referral flow)
    * Sparse index: Only indexed if field exists
    */
   referredByAgentId: {
-    type: Schema.Types.ObjectId,
+    type: Types.ObjectId,
     ref: "User",
     sparse: true,
     index: true,
-  },
+  } as any,
 
   /**
    * ✅ Admin who referred this renter (if admin_referral flow)
    * Sparse index: Only indexed if field exists
    */
   referredByAdminId: {
-    type: Schema.Types.ObjectId,
+    type: Types.ObjectId,
     ref: "User",
     sparse: true,
     index: true,
-  },
+  } as any,
 
   // ============================================
   // RENTER PROFILE DATA
@@ -133,17 +132,12 @@ const renterSchema = BaseSchemaUtil.createSchema({
   occupation: {
     type: String,
     sparse: true,
-  },
+  } as any,
 
   moveInDate: {
     type: Date,
     sparse: true,
-  },
-
-  petFriendly: {
-    type: Boolean,
-    default: false,
-  },
+  } as any,
 
   // ============================================
   // QUESTIONNAIRE DATA (For Admin Referral Only)
@@ -173,23 +167,42 @@ const renterSchema = BaseSchemaUtil.createSchema({
       },
     },
     sparse: true, // Only exists for admin referral renters
-  },
+  } as any,
 
   // ============================================
   // ACCOUNT STATUS
   // ============================================
+  /**
+   * ✅ FIX: Changed from User model duplication to Renter-specific denormalized field
+   *
+   * WHY: Although emailVerified exists in User model, we denormalize it here for:
+   * 1. Quick lookups without joining User table (findActiveRenters(), findPendingRenters())
+   * 2. Renter-specific account state management
+   * 3. Allows soft-deleted renters to keep verification status
+   * 4. Independent email verification per module
+   *
+   * NOTE: Keep in sync with User.emailVerified during verification events
+   */
   emailVerified: {
     type: Boolean,
     default: false,
     index: true,
-  },
+  } as any,
 
+  /**
+   * ✅ FIX: Added `as any` to resolve TypeScript enum issue with BaseSchemaUtil
+   *
+   * Account status tracking:
+   * - "pending": Just registered, awaiting email verification
+   * - "active": Verified and ready to use
+   * - "suspended": Account suspended by admin
+   */
   accountStatus: {
     type: String,
     enum: ["active", "suspended", "pending"],
     default: "pending",
     index: true,
-  },
+  } as any,
 
   // ============================================
   // SOFT DELETE FIELDS (Using BaseSchemaUtil Helper)
@@ -247,7 +260,7 @@ renterSchema.index({ accountStatus: 1 });
  * ✅ Auto-exclude soft-deleted renters in find queries
  * Unless explicitly requested with { includeDeleted: true }
  */
-renterSchema.pre(/^find/, function (this: Query) {
+renterSchema.pre(/^find/, function (this: Query<any, any>) {
   if (!this.getOptions().includeDeleted) {
     this.where({ isDeleted: false });
   }
@@ -257,7 +270,7 @@ renterSchema.pre(/^find/, function (this: Query) {
  * ✅ Auto-populate referrer details
  * If { populateReferrer: true } option provided
  */
-renterSchema.pre(/^find/, function (this: Query) {
+renterSchema.pre(/^find/, function (this: Query<any, any>) {
   if (this.getOptions().populateReferrer) {
     this.populate({
       path: "referredByAgentId referredByAdminId",
@@ -270,7 +283,7 @@ renterSchema.pre(/^find/, function (this: Query) {
  * ✅ Auto-populate user details
  * If { populateUser: true } option provided
  */
-renterSchema.pre(/^find/, function (this: Query) {
+renterSchema.pre(/^find/, function (this: Query<any, any>) {
   if (this.getOptions().populateUser) {
     this.populate({
       path: "userId",
@@ -396,3 +409,5 @@ renterSchema.statics.countByType = async function (this: any) {
     { $group: { _id: "$registrationType", count: { $sum: 1 } } },
   ]);
 };
+
+export const RenterModel = model<IRenterModel>("Renter", renterSchema as any);

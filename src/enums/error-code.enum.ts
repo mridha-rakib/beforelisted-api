@@ -43,6 +43,9 @@ export const ErrorCodeEnum = {
   PAGINATION_INDEX_MISSING: "PAGINATION_INDEX_MISSING",
   // System Errors
   INTERNAL_SERVER_ERROR: "INTERNAL_SERVER_ERROR",
+
+  //  new
+  DUPLICATE_ENTRY: " DUPLICATE_ENTRY",
 } as const;
 
 export type ErrorCodeEnumType = keyof typeof ErrorCodeEnum;

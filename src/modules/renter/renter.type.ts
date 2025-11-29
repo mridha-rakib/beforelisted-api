@@ -1,35 +1,36 @@
-// File: src/modules/renter/renter.type.ts
-/**
- * Renter Registration & Profile Types
- * ✅ Type-safe payloads for all 3 registration flows
- * ✅ Reusable response types
- */
+// file: src/modules/renter/renter.type.ts
+
+import { Types } from "mongoose";
 
 // ============================================
 // REGISTRATION PAYLOADS
 // ============================================
 
 /**
- * Normal Registration Payload
- * Standard renter registration with password
+ * Normal Renter Registration Payload
  */
-export type RenterRegisterPayload = {
+export type NormalRenterRegisterPayload = {
   email: string;
   password: string;
   fullName: string;
   phoneNumber?: string;
-  referralCode?: string; // AGT-xxx or ADM-xxx (optional)
 };
 
 /**
- * Passwordless Registration Payload (Admin Referral)
- * For ADM-xxxx referral links
+ * Agent Referral Renter Registration Payload
  */
-export type PasswordlessRenterRegisterPayload = {
+export type AgentReferralRenterRegisterPayload = NormalRenterRegisterPayload & {
+  referralCode: string; // AGT-xxxxx
+};
+
+/**
+ * Admin Referral Renter Registration Payload (Passwordless)
+ */
+export type AdminReferralRenterRegisterPayload = {
   email: string;
   fullName: string;
   phoneNumber?: string;
-  adminReferralCode: string; // ADM-xxxx (required)
+  referralCode: string; // ADM-xxxxx
   questionnaire?: {
     lookingToPurchase?: boolean;
     purchaseTimeline?: string;
@@ -39,42 +40,42 @@ export type PasswordlessRenterRegisterPayload = {
 };
 
 /**
- * Renter Email Verification Payload
+ * Union type for all registration payloads
  */
-export type RenterVerifyEmailPayload = {
-  email: string;
-  otp: string;
-};
-
-// ============================================
-// RESPONSE TYPES
-// ============================================
+export type RenterRegisterPayload =
+  | NormalRenterRegisterPayload
+  | AgentReferralRenterRegisterPayload
+  | AdminReferralRenterRegisterPayload;
 
 /**
- * Renter Profile Response
- * Public safe fields only
+ * Renter Response (for API)
  */
-export type RenterProfileResponse = {
+export type RenterResponse = {
   _id: string;
-  userId: string;
+  userId: Types.ObjectId | string;
   email: string;
   fullName: string;
   phoneNumber?: string;
   registrationType: "normal" | "agent_referral" | "admin_referral";
   referredByAgentId?: string;
   referredByAdminId?: string;
-  occupation?: string;
-  moveInDate?: Date;
-  petFriendly?: boolean;
   emailVerified: boolean;
   accountStatus: "active" | "suspended" | "pending";
+  occupation?: string;
+  moveInDate?: Date;
+  petFriendly: boolean;
+  questionnaire?: {
+    lookingToPurchase?: boolean;
+    purchaseTimeline?: string;
+    buyerSpecialistNeeded?: boolean;
+    renterSpecialistNeeded?: boolean;
+  };
   createdAt: Date;
   updatedAt: Date;
 };
 
 /**
- * Renter Registration Response
- * User + Profile + Tokens
+ * Registration Response
  */
 export type RenterRegistrationResponse = {
   user: {
@@ -83,62 +84,100 @@ export type RenterRegistrationResponse = {
     fullName: string;
     role: string;
   };
-  profile: RenterProfileResponse;
+  renter: RenterResponse;
   tokens: {
     accessToken: string;
     refreshToken: string;
     expiresIn: string;
   };
-  otpExpiration?: Date; // For verification flow
-};
-
-/**
- * Passwordless Registration Response
- * User + Tokens (auto-authenticated)
- */
-export type PasswordlessRegistrationResponse = {
-  user: {
-    _id: string;
-    email: string;
-    fullName: string;
-    role: string;
-  };
-  tokens: {
-    accessToken: string;
-    refreshToken: string;
-    expiresIn: string;
-  };
-  message: string;
-};
-
-// ============================================
-// INTERNAL TYPES
-// ============================================
-
-/**
- * Create Renter Profile Payload (Internal - after user created)
- */
-export type CreateRenterProfilePayload = {
-  userId: string;
   registrationType: "normal" | "agent_referral" | "admin_referral";
-  referredByAgentId?: string;
-  referredByAdminId?: string;
-  occupation?: string;
-  moveInDate?: Date;
-  petFriendly?: boolean;
-  questionnaire?: {
-    lookingToPurchase?: boolean;
-    purchaseTimeline?: string;
-    buyerSpecialistNeeded?: boolean;
-    renterSpecialistNeeded?: boolean;
-  };
+  temporaryPassword?: string; // For admin referral only
+  mustChangePassword?: boolean; // For admin referral only
+};
+
+/**
+ * Admin Referral Response with temporary password
+ */
+export type AdminReferralRegistrationResponse = RenterRegistrationResponse & {
+  temporaryPassword: string;
+  mustChangePassword: true;
+  loginInstructions: string;
+};
+
+/**
+ * Email Verification Request
+ */
+export type VerifyEmailPayload = {
+  email: string;
+  code: string; // 4-digit OTP
+};
+
+/**
+ * Password Reset Request
+ */
+export type RequestPasswordResetPayload = {
+  email: string;
+};
+
+/**
+ * OTP Verification Request
+ */
+export type VerifyOTPPayload = {
+  email: string;
+  otp: string; // 4-digit OTP
+};
+
+/**
+ * Password Reset Payload
+ */
+export type ResetPasswordPayload = {
+  email: string;
+  otp: string; // 4-digit OTP
+  newPassword: string;
 };
 
 /**
  * Update Renter Profile Payload
  */
 export type UpdateRenterProfilePayload = {
+  phoneNumber?: string;
   occupation?: string;
   moveInDate?: Date;
   petFriendly?: boolean;
+};
+
+/**
+ * Referral Service Result
+ */
+export type ReferralParseResult = {
+  type: "normal" | "agent_referral" | "admin_referral";
+  code: string;
+  prefix?: "AGT" | "ADM";
+  isValid: boolean;
+};
+
+/**
+ * Service Response Types
+ */
+export type RenterServiceResponse = {
+  user: any;
+  renter: RenterResponse;
+  tokens: {
+    accessToken: string;
+    refreshToken: string;
+    expiresIn: string;
+  };
+};
+
+/**
+ * Controller Response Types
+ */
+export type RenterControllerResponse = {
+  user: any;
+  renter: RenterResponse;
+  accessToken: string; // Only in JSON response
+  expiresIn: string;
+  registrationType: "normal" | "agent_referral" | "admin_referral";
+  temporaryPassword?: string; // For admin referral
+  mustChangePassword?: boolean; // For admin referral
 };
