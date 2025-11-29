@@ -41,6 +41,3 @@ router.post("/reset-password", controller.resetPassword);
 router.post("/resend-password-otp", controller.resendPasswordOTP);
 
 export default router;
-
-
-

@@ -164,24 +164,6 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
   }
 
   /**
-   * Mark email as verified
-   */
-  async markEmailAsVerified(
-    userId: string | Types.ObjectId
-  ): Promise<IRenterModel | null> {
-    return this.model.findOneAndUpdate(
-      { userId, isDeleted: false },
-      {
-        $set: {
-          emailVerified: true,
-          accountStatus: "active",
-        },
-      },
-      { new: true }
-    );
-  }
-
-  /**
    * Update renter profile
    */
   async updateProfile(

@@ -35,7 +35,7 @@ export interface IRenterModel extends Document {
   };
 
   // Account status
-  emailVerified: boolean;
+  // emailVerified: boolean;
   accountStatus: "active" | "suspended" | "pending";
 
   // Soft delete
@@ -89,14 +89,7 @@ const renterSchema = BaseSchemaUtil.createSchema({
   // ============================================
   // REGISTRATION TYPE & REFERRAL TRACKING
   // ============================================
-  /**
-   * ✅ Tracks which registration flow was used
-   * - "normal": Direct registration
-   * - "agent_referral": Referred by agent (AGT-xxxx)
-   * - "admin_referral": Referred by admin (ADM-xxxx) - passwordless
-   *
-   * ✅ FIX: Added `as any` to resolve TypeScript enum issue with BaseSchemaUtil
-   */
+
   registrationType: {
     type: String,
     enum: ["normal", "agent_referral", "admin_referral"],
@@ -169,52 +162,19 @@ const renterSchema = BaseSchemaUtil.createSchema({
     sparse: true, // Only exists for admin referral renters
   } as any,
 
-  // ============================================
-  // ACCOUNT STATUS
-  // ============================================
-  /**
-   * ✅ FIX: Changed from User model duplication to Renter-specific denormalized field
-   *
-   * WHY: Although emailVerified exists in User model, we denormalize it here for:
-   * 1. Quick lookups without joining User table (findActiveRenters(), findPendingRenters())
-   * 2. Renter-specific account state management
-   * 3. Allows soft-deleted renters to keep verification status
-   * 4. Independent email verification per module
-   *
-   * NOTE: Keep in sync with User.emailVerified during verification events
-   */
-  emailVerified: {
-    type: Boolean,
-    default: false,
-    index: true,
-  } as any,
+  // emailVerified: {
+  //   type: Boolean,
+  //   default: false,
+  //   index: true,
+  // } as any,
 
-  /**
-   * ✅ FIX: Added `as any` to resolve TypeScript enum issue with BaseSchemaUtil
-   *
-   * Account status tracking:
-   * - "pending": Just registered, awaiting email verification
-   * - "active": Verified and ready to use
-   * - "suspended": Account suspended by admin
-   */
-  accountStatus: {
-    type: String,
-    enum: ["active", "suspended", "pending"],
-    default: "pending",
-    index: true,
-  } as any,
+  // accountStatus: {
+  //   type: String,
+  //   enum: ["active", "suspended", "pending"],
+  //   default: "pending",
+  //   index: true,
+  // } as any,
 
-  // ============================================
-  // SOFT DELETE FIELDS (Using BaseSchemaUtil Helper)
-  // ============================================
-  /**
-   * ✅ Using BaseSchemaUtil.softDeleteFields()
-   * Provides:
-   * - isDeleted: boolean (indexed)
-   * - deletedAt: date (indexed)
-   *
-   * Allows querying soft-deleted vs active renters
-   */
   ...BaseSchemaUtil.mergeDefinitions(BaseSchemaUtil.softDeleteFields()),
 });
 
@@ -222,34 +182,9 @@ const renterSchema = BaseSchemaUtil.createSchema({
 // INDEXES (Performance Optimization)
 // ============================================
 
-/**
- * ✅ Composite index for common queries
- * - Get verified renters for a user: { userId: 1, emailVerified: 1 }
- */
-renterSchema.index({ userId: 1, emailVerified: 1 });
-
-/**
- * ✅ Composite index for registration analytics
- * - Get renters by type created recently: { registrationType: 1, createdAt: -1 }
- */
 renterSchema.index({ registrationType: 1, createdAt: -1 });
-
-/**
- * ✅ Index for agent referral tracking
- * - Find all renters referred by specific agent: { referredByAgentId: 1 }
- */
 renterSchema.index({ referredByAgentId: 1 });
-
-/**
- * ✅ Index for admin referral tracking
- * - Find all renters referred by specific admin: { referredByAdminId: 1 }
- */
 renterSchema.index({ referredByAdminId: 1 });
-
-/**
- * ✅ Index for account status queries
- * - Find pending renters: { accountStatus: 1 }
- */
 renterSchema.index({ accountStatus: 1 });
 
 // ============================================
@@ -323,13 +258,6 @@ renterSchema.virtual("isAdminReferred").get(function (this: IRenterModel) {
  */
 renterSchema.virtual("isAgentReferred").get(function (this: IRenterModel) {
   return this.registrationType === "agent_referral";
-});
-
-/**
- * ✅ Check if renter account is ready for use
- */
-renterSchema.virtual("isAccountReady").get(function (this: IRenterModel) {
-  return this.emailVerified && this.accountStatus === "active";
 });
 
 // Ensure virtual fields are included in JSON

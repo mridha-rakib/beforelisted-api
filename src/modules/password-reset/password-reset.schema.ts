@@ -51,7 +51,7 @@ export const verifyPasswordOTPSchema = z.object({
  */
 export const resetPasswordSchema = z.object({
   body: z.object({
-    email: z.string().email("Invalid email format").toLowerCase(), // ✅ Normalize to lowercase
+    email: z.email("Invalid email format").toLowerCase(), // ✅ Normalize to lowercase
     otp: z
       .string()
       .length(4, "OTP must be exactly 4 digits")

@@ -1,5 +1,6 @@
 import agentRouter from "@/modules/agent/agent.route";
 import authRouter from "@/modules/auth/auth.route";
+import renterRouter from "@/modules/renter/renter.route";
 import userRouter from "@/modules/user/user.route";
 import { Router } from "express";
 
@@ -17,6 +18,10 @@ const moduleRoutes = [
   {
     path: "/agent",
     route: agentRouter,
+  },
+  {
+    path: "/renter",
+    route: renterRouter,
   },
 ];
 

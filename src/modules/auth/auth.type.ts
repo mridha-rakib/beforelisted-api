@@ -70,3 +70,11 @@ export type ChangePasswordPayload = {
   newPassword: string;
   confirmPassword: string;
 };
+
+/**
+ * Email Verification Request
+ */
+export type VerifyEmailPayload = {
+  email: string;
+  code: string; // 4-digit OTP
+};

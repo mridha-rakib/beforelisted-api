@@ -24,7 +24,6 @@ import type {
   RenterResponse,
   ResetPasswordPayload,
   UpdateRenterProfilePayload,
-  VerifyEmailPayload,
 } from "./renter.type";
 
 /**
@@ -329,45 +328,6 @@ export class RenterService {
   // EMAIL VERIFICATION
   // ============================================
 
-  /**
-   * Verify email with OTP code
-   */
-  async verifyEmail(payload: VerifyEmailPayload): Promise<{ message: string }> {
-    const result = await this.emailVerificationService.verifyOTP({
-      email: payload.email,
-      code: payload.code,
-    });
-
-    // Mark renter email as verified
-    await this.repository.markEmailAsVerified(result.userId);
-
-    logger.info(
-      { userId: result.userId, email: payload.email },
-      "Renter email verified"
-    );
-
-    return { message: "Email verified successfully" };
-  }
-
-  /**
-   * Resend verification code
-   */
-  async resendVerificationCode(email: string): Promise<{ message: string }> {
-    const user = await this.userService.getUserByEmail(email);
-    if (!user) {
-      return { message: "If account exists, verification code will be sent" };
-    }
-
-    const result = await this.emailVerificationService.resendOTP({
-      email,
-      userType: ROLES.RENTER,
-      userName: user.fullName,
-    });
-
-    logger.info({ email }, "Renter verification code resent");
-
-    return result;
-  }
 
   // ============================================
   // PASSWORD MANAGEMENT

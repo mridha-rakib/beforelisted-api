@@ -55,17 +55,6 @@ router.post(
 );
 
 /**
- * POST /user/change-password
- * Change password
- * Protected: Any authenticated user
- */
-router.post(
-  "/change-password",
-  authMiddleware.verifyToken,
-  userController.changePassword
-);
-
-/**
  * DELETE /user
  * Delete own account (soft delete)
  * Protected: Any authenticated user

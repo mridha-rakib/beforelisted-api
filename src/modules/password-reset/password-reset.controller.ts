@@ -90,6 +90,13 @@ export class PasswordResetController {
    */
   resetPassword = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(resetPasswordSchema, req);
+    const result = await this.authService.resetPassword(
+      validated.body.email,
+      validated.body.otp,
+      validated.body.newPassword
+    );
+
+    ApiResponse.success(res, result);
 
     // This will be called from auth.service
     // which has the complete business logic

@@ -56,10 +56,7 @@ export class AuthController {
    */
   verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(verifyEmailSchema, req);
-    const result = await this.authService.verifyEmail(
-      validated.body.email,
-      validated.body.code
-    );
+    const result = await this.authService.verifyEmail(validated.body);
 
     ApiResponse.success(res, result, MESSAGES.AUTH.EMAIL_VERIFIED_SUCCESS);
   });
@@ -82,49 +79,43 @@ export class AuthController {
    * Request password reset
    * POST /auth/request-password-reset
    */
-  requestPasswordReset = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(requestPasswordResetSchema, req);
-      const result = await this.authService.requestPasswordReset(
-        validated.body.email
-      );
+  requestPasswordReset = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(requestPasswordResetSchema, req);
+    const result = await this.authService.requestPasswordReset(
+      validated.body.email
+    );
 
-      ApiResponse.success(res, result, MESSAGES.AUTH.PASSWORD_RESET_OTP_SENT);
-    }
-  );
+    ApiResponse.success(res, result, MESSAGES.AUTH.PASSWORD_RESET_OTP_SENT);
+  });
 
   /**
    * Verify OTP
    * POST /auth/verify-otp
    */
-  verifyOTP = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(verifyOTPSchema, req);
-      const result = await this.authService.verifyOTP(
-        validated.body.email,
-        validated.body.otp
-      );
+  verifyOTP = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(verifyOTPSchema, req);
+    const result = await this.authService.verifyOTP(
+      validated.body.email,
+      validated.body.otp
+    );
 
-      ApiResponse.success(res, result);
-    }
-  );
+    ApiResponse.success(res, result);
+  });
 
   /**
    * Reset password
    * POST /auth/reset-password
    */
-  resetPassword = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(resetPasswordSchema, req);
-      const result = await this.authService.resetPassword(
-        validated.body.email,
-        validated.body.otp,
-        validated.body.newPassword
-      );
+  resetPassword = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(resetPasswordSchema, req);
+    const result = await this.authService.resetPassword(
+      validated.body.email,
+      validated.body.otp,
+      validated.body.newPassword
+    );
 
-      ApiResponse.success(res, result);
-    }
-  );
+    ApiResponse.success(res, result);
+  });
 
   /**
    * Refresh token

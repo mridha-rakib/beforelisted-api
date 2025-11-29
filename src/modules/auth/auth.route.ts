@@ -46,11 +46,11 @@ router.post("/request-password-reset", authController.requestPasswordReset);
  */
 router.post("/verify-otp", authController.verifyOTP);
 
-/**
- * POST /auth/reset-password
- * Reset password with OTP
- */
-router.post("/reset-password", authController.resetPassword);
+// /**
+//  * POST /auth/reset-password
+//  * Reset password with OTP
+//  */
+// router.post("/reset-password", authController.resetPassword);
 
 /**
  * POST /auth/refresh-token

@@ -18,7 +18,11 @@ import {
 import { PasswordResetService } from "../password-reset/password-reset.service";
 import type { IUser } from "../user/user.interface";
 import { UserService } from "../user/user.service";
-import type { AuthServiceResponse, LoginPayload } from "./auth.type";
+import type {
+  AuthServiceResponse,
+  LoginPayload,
+  VerifyEmailPayload,
+} from "./auth.type";
 import { AuthUtil } from "./auth.utils";
 
 /**
@@ -104,13 +108,13 @@ export class AuthService {
   /**
    * Verify email
    */
-  async verifyEmail(email: string, code: string): Promise<{ message: string }> {
+  async verifyEmail(payload: VerifyEmailPayload): Promise<{ message: string }> {
     const result = await this.emailVerificationService.verifyOTP({
-      email,
-      code,
+      email: payload.email,
+      code: payload.code,
     });
 
-    const user = await this.userService.getUserByEmail(email);
+    const user = await this.userService.getUserByEmail(payload.email);
     if (!user) {
       throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
     }

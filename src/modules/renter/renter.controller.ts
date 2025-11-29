@@ -12,10 +12,8 @@ import {
   normalRenterRegisterSchema,
   renterRegisterSchema,
   requestPasswordResetSchema,
-  resendVerificationCodeSchema,
   resetPasswordSchema,
   updateRenterProfileSchema,
-  verifyEmailSchema,
   verifyOTPSchema,
 } from "./renter.schema";
 import { RenterService } from "./renter.service";
@@ -53,17 +51,7 @@ export class RenterController {
         COOKIE_CONFIG.REFRESH_TOKEN.options
       );
 
-      const response = {
-        user: result.user,
-        renter: result.renter,
-        accessToken: result.tokens.accessToken, // Only in JSON
-        expiresIn: result.tokens.expiresIn,
-        registrationType: result.registrationType,
-        temporaryPassword: result.temporaryPassword, // For admin referral only
-        mustChangePassword: result.mustChangePassword, // For admin referral only
-      };
-
-      ApiResponse.created(res, response, "Renter registered successfully");
+      ApiResponse.created(res, result, "Renter registered successfully");
     }
   );
 
@@ -71,27 +59,25 @@ export class RenterController {
    * PUBLIC: Register as Normal Renter (Explicit)
    * POST /renter/register/normal
    */
-  registerNormalRenter = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(normalRenterRegisterSchema, req);
-      const result = await this.service.registerRenter(validated.body);
+  registerNormalRenter = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(normalRenterRegisterSchema, req);
+    const result = await this.service.registerRenter(validated.body);
 
-      res.cookie(
-        COOKIE_CONFIG.REFRESH_TOKEN.name,
-        result.tokens.refreshToken,
-        COOKIE_CONFIG.REFRESH_TOKEN.options
-      );
+    res.cookie(
+      COOKIE_CONFIG.REFRESH_TOKEN.name,
+      result.tokens.refreshToken,
+      COOKIE_CONFIG.REFRESH_TOKEN.options
+    );
 
-      ApiResponse.created(res, result, "Normal renter registered successfully");
-    }
-  );
+    ApiResponse.created(res, result, "Normal renter registered successfully");
+  });
 
   /**
    * PUBLIC: Register with Agent Referral (Explicit)
    * POST /renter/register/agent-referral
    */
   registerAgentReferralRenter = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response) => {
       const validated = await zParse(agentReferralRenterRegisterSchema, req);
       const result = await this.service.registerRenter(validated.body);
 
@@ -110,7 +96,7 @@ export class RenterController {
    * POST /renter/register/admin-referral
    */
   registerAdminReferralRenter = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response) => {
       const validated = await zParse(adminReferralRenterRegisterSchema, req);
       const result = await this.service.registerRenter(validated.body);
 
@@ -120,55 +106,15 @@ export class RenterController {
         COOKIE_CONFIG.REFRESH_TOKEN.options
       );
 
-      const response = {
-        user: result.user,
-        renter: result.renter,
-        accessToken: result.tokens.accessToken,
-        expiresIn: result.tokens.expiresIn,
-        registrationType: result.registrationType,
-        temporaryPassword: result.temporaryPassword,
-        mustChangePassword: result.mustChangePassword,
-        message:
-          "Password has been sent to your email. Please change it on first login.",
-      };
-
       ApiResponse.created(
         res,
-        response,
+        {
+          ...result,
+          message:
+            "Password has been sent to your email. Please change it on first login.",
+        },
         "Renter registered via admin referral (passwordless)"
       );
-    }
-  );
-
-  // ============================================
-  // EMAIL VERIFICATION ENDPOINTS
-  // ============================================
-
-  /**
-   * PUBLIC: Verify email with OTP
-   * POST /renter/verify-email
-   */
-  verifyEmail = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(verifyEmailSchema, req);
-      const result = await this.service.verifyEmail(validated.body);
-
-      ApiResponse.success(res, result, "Email verified successfully");
-    }
-  );
-
-  /**
-   * PUBLIC: Resend verification code
-   * POST /renter/resend-verification-code
-   */
-  resendVerificationCode = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(resendVerificationCodeSchema, req);
-      const result = await this.service.resendVerificationCode(
-        validated.body.email
-      );
-
-      ApiResponse.success(res, result, "Verification code sent");
     }
   );
 
@@ -180,49 +126,43 @@ export class RenterController {
    * PUBLIC: Request password reset (forgot password)
    * POST /renter/forgot-password
    */
-  requestPasswordReset = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(requestPasswordResetSchema, req);
-      const result = await this.service.requestPasswordReset(
-        validated.body.email
-      );
+  requestPasswordReset = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(requestPasswordResetSchema, req);
+    const result = await this.service.requestPasswordReset(
+      validated.body.email
+    );
 
-      ApiResponse.success(
-        res,
-        result,
-        "If account exists, password reset code will be sent"
-      );
-    }
-  );
+    ApiResponse.success(
+      res,
+      result,
+      "If account exists, password reset code will be sent"
+    );
+  });
 
   /**
    * PUBLIC: Verify password reset OTP
    * POST /renter/verify-reset-otp
    */
-  verifyOTP = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(verifyOTPSchema, req);
-      const result = await this.service.verifyOTP(
-        validated.body.email,
-        validated.body.otp
-      );
+  verifyOTP = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(verifyOTPSchema, req);
+    const result = await this.service.verifyOTP(
+      validated.body.email,
+      validated.body.otp
+    );
 
-      ApiResponse.success(res, result, "OTP verified successfully");
-    }
-  );
+    ApiResponse.success(res, result, "OTP verified successfully");
+  });
 
   /**
    * PUBLIC: Reset password with OTP
    * POST /renter/reset-password
    */
-  resetPassword = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(resetPasswordSchema, req);
-      const result = await this.service.resetPassword(validated.body);
+  resetPassword = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(resetPasswordSchema, req);
+    const result = await this.service.resetPassword(validated.body);
 
-      ApiResponse.success(res, result, "Password reset successfully");
-    }
-  );
+    ApiResponse.success(res, result, "Password reset successfully");
+  });
 
   // ============================================
   // PROFILE ENDPOINTS
@@ -232,44 +172,36 @@ export class RenterController {
    * AUTHENTICATED: Get renter profile
    * GET /renter/profile
    */
-  getRenterProfile = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const userId = req.user!.userId;
-      const result = await this.service.getRenterProfile(userId);
+  getRenterProfile = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId;
+    const result = await this.service.getRenterProfile(userId);
 
-      ApiResponse.success(res, result, "Renter profile retrieved successfully");
-    }
-  );
+    ApiResponse.success(res, result, "Renter profile retrieved successfully");
+  });
 
   /**
    * AUTHENTICATED: Update renter profile
    * PUT /renter/profile
    */
-  updateRenterProfile = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(updateRenterProfileSchema, req);
-      const userId = req.user!.userId;
-      const result = await this.service.updateRenterProfile(
-        userId,
-        validated.body
-      );
+  updateRenterProfile = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(updateRenterProfileSchema, req);
+    const userId = req.user!.userId;
+    const result = await this.service.updateRenterProfile(
+      userId,
+      validated.body
+    );
 
-      ApiResponse.success(res, result, "Renter profile updated successfully");
-    }
-  );
+    ApiResponse.success(res, result, "Renter profile updated successfully");
+  });
 
   /**
    * ADMIN: Get renter profile by ID
    * GET /renter/admin/:userId
    */
-  adminGetRenterProfile = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(getRenterProfileSchema, req);
-      const result = await this.service.getRenterProfile(
-        validated.params.userId
-      );
+  adminGetRenterProfile = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(getRenterProfileSchema, req);
+    const result = await this.service.getRenterProfile(validated.params.userId);
 
-      ApiResponse.success(res, result, "Renter profile retrieved successfully");
-    }
-  );
+    ApiResponse.success(res, result, "Renter profile retrieved successfully");
+  });
 }
