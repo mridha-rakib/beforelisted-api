@@ -1,8 +1,9 @@
 // file: src/modules/user/user.repository.ts
 
+import { logger } from "@/middlewares/pino-logger";
 import { BaseRepository } from "@/modules/base/base.repository";
 import type { IUser } from "./user.interface";
-import { User } from "./user.model";
+import { RefreshTokenBlacklist, User } from "./user.model";
 
 /**
  * User Repository - Extended with referral operations
@@ -271,5 +272,25 @@ export class UserRepository extends BaseRepository<IUser> {
    */
   async findByIdWithPassword(userId: string): Promise<IUser | null> {
     return this.model.findById(userId).select("+password").exec();
+  }
+
+  /**
+   * Delete all refresh tokens for a user
+   * Used when user logs out or changes password
+   *
+   * @param userId - User ID
+   * @returns Number of tokens deleted
+   */
+  async deleteAllRefreshTokens(userId: string): Promise<number> {
+    try {
+      const result = await RefreshTokenBlacklist.deleteMany({
+        userId: userId,
+      });
+
+      return result.deletedCount || 0;
+    } catch (error) {
+      logger.error({ userId, error }, "Error deleting refresh tokens");
+      throw error;
+    }
   }
 }

@@ -9,10 +9,10 @@ import { z } from "zod";
 export const registerSchema = z.object({
   body: z
     .object({
-      email: z.string().email(MESSAGES.VALIDATION.INVALID_EMAIL),
+      email: z.email(MESSAGES.VALIDATION.INVALID_EMAIL),
       password: z
         .string()
-        .min(8, MESSAGES.VALIDATION.PASSWORD_TOO_SHORT)
+        .min(6, MESSAGES.VALIDATION.PASSWORD_TOO_SHORT)
         .optional(),
       fullName: z.string().min(2).max(100),
       phoneNumber: z.string().optional(),
@@ -152,4 +152,26 @@ export const resendVerificationCodeSchema = z.object({
     userType: z.enum(["Agent", "Renter", "Admin"]).optional(),
     userName: z.string().optional(),
   }),
+});
+
+export const changePasswordSchema = z.object({
+  body: z
+    .object({
+      currentPassword: z.string().min(1, "Current password is required"),
+
+      newPassword: z.string().min(6, "Password must be at least 8 characters"),
+      // .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+      // .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+      // .regex(/[0-9]/, "Password must contain at least one number"),
+
+      confirmPassword: z.string().min(1, "Password confirmation is required"),
+    })
+    .refine((data) => data.newPassword === data.confirmPassword, {
+      message: "Passwords do not match",
+      path: ["confirmPassword"],
+    })
+    .refine((data) => data.currentPassword !== data.newPassword, {
+      message: "New password must be different from current password",
+      path: ["newPassword"],
+    }),
 });

@@ -2,8 +2,8 @@
 
 import { logger } from "@/middlewares/pino-logger";
 import { BaseRepository } from "@/modules/base/base.repository";
-import type { IPasswordResetOTP } from "./password-reset.interface";
-import { PasswordResetOTP } from "./password-reset.model";
+import { PasswordResetOTP } from "./password.model";
+import type { IPasswordResetOTP } from "./password.interface";
 
 /**
  * Password Reset OTP Repository

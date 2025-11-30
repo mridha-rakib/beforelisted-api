@@ -68,18 +68,6 @@ router.delete("/", authMiddleware.verifyToken, userController.deleteAccount);
  */
 
 /**
- * GET /user
- * List all users with pagination and filters
- * Protected: Admin only
- */
-router.get(
-  "/",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  userController.adminListUsers
-);
-
-/**
  * GET /user/:userId
  * Get specific user by ID
  * Protected: Admin only
@@ -89,18 +77,6 @@ router.get(
   authMiddleware.verifyToken,
   authMiddleware.authorize(ROLES.ADMIN),
   userController.adminGetUser
-);
-
-/**
- * PUT /user/:userId
- * Update specific user
- * Protected: Admin only
- */
-router.put(
-  "/:userId",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  userController.adminUpdateUser
 );
 
 /**

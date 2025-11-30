@@ -12,8 +12,8 @@ import { logger } from "@/middlewares/pino-logger";
 import { EmailService } from "@/services/email.service";
 import { OTPService } from "@/services/otp.service";
 import { BadRequestException } from "@/utils/app-error.utils";
-import type { IPasswordResetOTP } from "./password-reset.interface";
-import { PasswordResetOTPRepository } from "./password-reset.repository";
+import { PasswordResetOTPRepository } from "./password.repository";
+import type { IPasswordResetOTP } from "./password.interface";
 
 /**
  * Password Reset Service

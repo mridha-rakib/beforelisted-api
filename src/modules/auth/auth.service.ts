@@ -15,7 +15,7 @@ import {
   IResendOTPRequest,
   UserType,
 } from "../email-verification/email-verification.types";
-import { PasswordResetService } from "../password-reset/password-reset.service";
+import { PasswordResetService } from "../password/password.service";
 import type { IUser } from "../user/user.interface";
 import { UserService } from "../user/user.service";
 import type {
@@ -136,33 +136,6 @@ export class AuthService {
     });
 
     return { message: MESSAGES.AUTH.EMAIL_VERIFIED_SUCCESS };
-  }
-
-  /**
-   * Request password reset
-   */
-  async requestPasswordReset(
-    email: string
-  ): Promise<{ message: string; expiresAt?: Date; expiresInMinutes?: number }> {
-    const user = await this.userService.getUserByEmail(email);
-
-    if (!user) {
-      return { message: MESSAGES.AUTH.PASSWORD_RESET_OTP_SENT };
-    }
-
-    // Step 2: Generate OTP using password reset service
-    const result = await this.passwordResetService.requestPasswordReset(
-      user._id.toString(),
-      user.email,
-      user.fullName
-    );
-
-    logger.info(
-      { userId: user._id, email: user.email },
-      "Password reset requested"
-    );
-
-    return result;
   }
 
   /**
@@ -408,5 +381,68 @@ export class AuthService {
       logger.error({ error, userId }, "Logout failed");
       throw new BadRequestException("Logout failed");
     }
+  }
+
+  /**
+   * Change password for authenticated user
+   * ✅ Works for ALL user types (Agent, Renter, Admin, User)
+   * ✅ Verifies current password
+   * ✅ Invalidates all refresh tokens (force re-login)
+   * ✅ Sends confirmation email
+   *
+   * @param userId - User ID from JWT token
+   * @param currentPassword - Current password (for verification)
+   * @param newPassword - New password to set
+   * @returns Success message
+   */
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string
+  ): Promise<{ message: string }> {
+    // Step 1: Get user by ID (including password field)
+    const user = await this.userService.getUserByIdWithPassword(userId);
+
+    if (!user) {
+      throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
+    }
+
+    // Step 2: Verify current password matches
+    const isPasswordValid = await comparePassword(
+      currentPassword,
+      user.password!
+    );
+
+    if (!isPasswordValid) {
+      logger.warn(
+        { userId },
+        "Invalid current password attempt for password change"
+      );
+      throw new UnauthorizedException("Current password is incorrect");
+    }
+
+    // Step 3: Hash new password
+    const hashedPassword = await hashPassword(newPassword);
+
+    // Step 4: Update user password in database
+    await this.userService.updatePassword(userId, hashedPassword);
+
+    // Step 5: Invalidate all refresh tokens (force re-login everywhere)
+    await this.userService.invalidateAllRefreshTokens(userId);
+
+    // Step 6: Send password change confirmation email
+    await this.userService.notifyPasswordChange(
+      user.email,
+      user.fullName,
+      new Date()
+    );
+
+    logger.info({ userId, email: user.email }, "Password changed successfully");
+
+    return {
+      message:
+        "Password changed successfully. Please login again with your new password.",
+    };
   }
 }

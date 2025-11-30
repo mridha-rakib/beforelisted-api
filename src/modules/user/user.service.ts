@@ -2,49 +2,35 @@
 
 import { MESSAGES } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
-import { emailService } from "@/services/email.service";
+import { EmailService, emailService } from "@/services/email.service";
 import {
   BadRequestException,
   ConflictException,
   NotFoundException,
-  UnauthorizedException,
 } from "@/utils/app-error.utils";
-import { comparePassword, hashPassword } from "@/utils/password.utils";
 import type { IUser } from "./user.interface";
 import { UserRepository } from "./user.repository";
 import type {
-  AdminUpdateUserPayload,
-  ChangePasswordPayload,
   UpdateUserPayload,
   UserCreatePayload,
   UserResponse,
 } from "./user.type";
 
-/**
- * User Service
- * Handles all user business logic
- */
 export class UserService {
   private userRepository: UserRepository;
+  private emailService: EmailService;
 
   constructor() {
     this.userRepository = new UserRepository();
+    this.emailService = new EmailService();
   }
 
-  // ============================================
-  // RESPONSE TRANSFORMATION
-  // ============================================
-
-  /**
-   * Convert IUser document to safe UserResponse (removes sensitive fields)
-   * This is the method expected by AuthService
-   */
   toUserResponse(user: IUser): UserResponse {
     return {
       _id: user._id.toString(),
       email: user.email,
       fullName: user.fullName,
-      phone: user.phone || "", // Handle both field names
+      phone: user.phoneNumber || "",
       role: user.role,
       accountStatus: user.accountStatus,
       emailVerified: user.emailVerified,
@@ -70,10 +56,6 @@ export class UserService {
   getUserResponse(user: IUser): UserResponse {
     return this.toUserResponse(user);
   }
-
-  // ============================================
-  // USER CRUD OPERATIONS
-  // ============================================
 
   /**
    * Create new user
@@ -148,10 +130,6 @@ export class UserService {
     return this.toUserResponse(user);
   }
 
-  // ============================================
-  // USER UPDATES
-  // ============================================
-
   /**
    * Update user profile
    */
@@ -196,19 +174,19 @@ export class UserService {
       100000 + Math.random() * 900000
     ).toString();
 
-    // Store code temporarily (you might want to create a separate collection for this)
-    // For now, we'll use emailVerificationToken field
     await this.userRepository.updateVerificationToken(userId, {
       emailVerificationToken: verificationCode,
-      emailVerificationExpiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
+      emailVerificationExpiresAt: new Date(Date.now() + 30 * 60 * 1000),
     });
 
     // Send verification email to new address
-    await emailService.sendEmailVerification(
-      newEmail,
-      user.fullName,
-      verificationCode
-    );
+    await emailService.sendEmailVerification({
+      to: newEmail,
+      userName: user.fullName,
+      userType: user.role as "Admin" | "Agent" | "Renter",
+      verificationCode,
+      expiresIn: "30 minutes",
+    });
 
     return { message: "Verification code sent to new email" };
   }
@@ -244,42 +222,6 @@ export class UserService {
 
     logger.info({ userId, newEmail }, "Email changed successfully");
     return { message: "Email updated successfully" };
-  }
-
-  /**
-   * Change password
-   */
-  async changePassword(
-    userId: string,
-    payload: ChangePasswordPayload
-  ): Promise<{ message: string }> {
-    const user = await this.userRepository.findByIdWithPassword(userId);
-    if (!user) {
-      throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
-    }
-
-    // Verify current password
-    if (!user.password) {
-      throw new BadRequestException("No password set for this account");
-    }
-
-    const isPasswordValid = await comparePassword(
-      payload.currentPassword,
-      user.password
-    );
-
-    if (!isPasswordValid) {
-      throw new UnauthorizedException("Current password is incorrect");
-    }
-
-    // Hash new password
-    const hashedPassword = await hashPassword(payload.newPassword);
-
-    // Update password
-    await this.userRepository.updatePassword(userId, hashedPassword);
-
-    logger.info({ userId }, "Password changed successfully");
-    return { message: MESSAGES.USER.PASSWORD_CHANGED };
   }
 
   /**
@@ -348,81 +290,6 @@ export class UserService {
   }
 
   /**
-   * ADMIN: List all users with pagination
-   */
-  async adminListUsers(
-    page: number = 1,
-    limit: number = 10,
-    search?: string,
-    role?: string,
-    accountStatus?: string,
-    sort: string = "-createdAt"
-  ): Promise<{
-    data: UserResponse[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
-  }> {
-    const skip = (page - 1) * limit;
-
-    // Build query
-    const query: any = { isDeleted: false };
-
-    if (search) {
-      query.$or = [
-        { email: { $regex: search, $options: "i" } },
-        { fullName: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    if (role) {
-      query.role = role;
-    }
-
-    if (accountStatus) {
-      query.accountStatus = accountStatus;
-    }
-
-    // Get users
-    const users = await this.userRepository.find(query, {
-      skip,
-      limit,
-      sort,
-    });
-
-    const total = await this.userRepository.count(query);
-
-    return {
-      data: users.map((user) => this.toUserResponse(user)),
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
-  }
-
-  /**
-   * ADMIN: Update user
-   */
-  async adminUpdateUser(
-    userId: string,
-    payload: AdminUpdateUserPayload
-  ): Promise<UserResponse> {
-    const updatedUser = await this.userRepository.updateById(userId, payload);
-    if (!updatedUser) {
-      throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
-    }
-
-    logger.info({ userId, adminUpdate: true }, "User updated by admin");
-    return this.toUserResponse(updatedUser);
-  }
-
-  /**
    * ADMIN: Delete user (soft delete)
    */
   async adminDeleteUser(
@@ -461,5 +328,82 @@ export class UserService {
 
     logger.warn({ userId }, "User permanently deleted by admin");
     return { message: "User permanently deleted" };
+  }
+
+  /**
+   * Forces user to re-login on all devices after password change.
+   * Improves security by requiring fresh authentication after password change.
+   *
+   * @param userId - User ID
+   * @returns Number of tokens invalidated
+   */
+  async invalidateAllRefreshTokens(userId: string): Promise<number> {
+    try {
+      // Option 1: If you have RefreshTokenBlacklist collection
+      // Delete all refresh tokens for this user
+      const result = await this.userRepository.deleteAllRefreshTokens(userId);
+
+      logger.info(
+        { userId, tokensDeleted: result },
+        "All refresh tokens invalidated for user"
+      );
+
+      return result || 0;
+
+      // Option 2: If you use a token management service
+      // return await this.tokenService.invalidateAllUserTokens(userId);
+    } catch (error) {
+      logger.error({ userId, error }, "Error invalidating refresh tokens");
+      throw error;
+    }
+  }
+
+  /**
+   * Notify user about password change
+   * Sends security alert email with timestamp
+   *
+   * @param email - User's email
+   * @param fullName - User's full name
+   * @param changedAt - When password was changed
+   */
+  async notifyPasswordChange(
+    email: string,
+    fullName: string,
+    changedAt: Date
+  ): Promise<void> {
+    try {
+      await this.emailService.sendPasswordChangedEmail({
+        to: email,
+        userName: fullName,
+        timestamp: changedAt,
+      });
+
+      logger.info({ email, changedAt }, "Password change notification sent");
+    } catch (error) {
+      logger.error(
+        { email, error },
+        "Failed to send password change notification"
+      );
+      // Don't throw - email failure shouldn't block password change
+    }
+  }
+
+  /**
+   * Get user by ID WITH password field (for authentication only)
+   * ✅ Used for: Password verification during change-password
+   * @param userId - User ID
+   * @returns Full IUser document with password
+   * @throws NotFoundException if user not found
+   */
+  async getUserByIdWithPassword(userId: string): Promise<IUser> {
+    const user = await this.userRepository.findByIdWithPassword(userId);
+
+    if (!user) {
+      throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
+    }
+
+    logger.debug({ userId }, "User retrieved with password field");
+
+    return user;
   }
 }

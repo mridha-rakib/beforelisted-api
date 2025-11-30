@@ -3,12 +3,13 @@
 import { COOKIE_CONFIG } from "@/config/cookie.config";
 import { MESSAGES } from "@/constants/app.constants";
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
+import { UnauthorizedException } from "@/utils/app-error.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 import type { NextFunction, Request, Response } from "express";
 import {
+  changePasswordSchema,
   loginSchema,
-  requestPasswordResetSchema,
   resendVerificationCodeSchema,
   resetPasswordSchema,
   verifyEmailSchema,
@@ -76,19 +77,6 @@ export class AuthController {
   });
 
   /**
-   * Request password reset
-   * POST /auth/request-password-reset
-   */
-  requestPasswordReset = asyncHandler(async (req: Request, res: Response) => {
-    const validated = await zParse(requestPasswordResetSchema, req);
-    const result = await this.authService.requestPasswordReset(
-      validated.body.email
-    );
-
-    ApiResponse.success(res, result, MESSAGES.AUTH.PASSWORD_RESET_OTP_SENT);
-  });
-
-  /**
    * Verify OTP
    * POST /auth/verify-otp
    */
@@ -143,22 +131,57 @@ export class AuthController {
    * POST /auth/logout
    */
 
-  logout = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const userId = req.user!.userId;
-      const token = req.headers.authorization?.replace("Bearer ", "") || "";
+  logout = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId;
+    // const token = req.headers.authorization?.replace("Bearer ", "") || "";
 
-      const result = await this.authService.logout(token, userId);
+    const authHeader = req.headers.authorization;
 
-      // ✅ NEW: Clear refresh token cookie
-      res.clearCookie(COOKIE_CONFIG.REFRESH_TOKEN.name, {
-        httpOnly: true,
-        secure: COOKIE_CONFIG.REFRESH_TOKEN.options.secure,
-        sameSite: COOKIE_CONFIG.REFRESH_TOKEN.options.sameSite,
-        path: "/",
-      });
-
-      ApiResponse.success(res, result, MESSAGES.AUTH.LOGOUT_SUCCESS);
+    if (!authHeader) {
+      throw new UnauthorizedException("No authorization header provided");
     }
-  );
+
+    const parts = authHeader.split(" ");
+
+    if (parts.length !== 2 || parts[0] !== "Bearer") {
+      throw new UnauthorizedException("Invalid authorization header format");
+    }
+
+    const token = parts[1];
+
+    if (!token) {
+      throw new UnauthorizedException("No token provided");
+    }
+
+    const result = await this.authService.logout(token, userId);
+
+    res.clearCookie(COOKIE_CONFIG.REFRESH_TOKEN.name, {
+      httpOnly: true,
+      secure: COOKIE_CONFIG.REFRESH_TOKEN.options.secure,
+      sameSite: COOKIE_CONFIG.REFRESH_TOKEN.options.sameSite,
+      path: "/",
+    });
+
+    ApiResponse.success(res, result, MESSAGES.AUTH.LOGOUT_SUCCESS);
+  });
+
+  /**
+   * Change password for authenticated user
+   * PUT /api/v1/auth/change-password
+   * ✅ Protected: All authenticated users (Agent, Renter, Admin, User)
+   * ✅ Unified: Single endpoint for all user types
+   * ✅ Works for all roles without role-specific logic
+   */
+  changePassword = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(changePasswordSchema, req);
+    const userId = req.user!.userId;
+
+    const result = await this.authService.changePassword(
+      userId,
+      validated.body.currentPassword,
+      validated.body.newPassword
+    );
+
+    ApiResponse.success(res, result, "Password changed successfully");
+  });
 }

@@ -44,7 +44,7 @@ router.post("/register/admin-referral", controller.registerAdminReferralRenter);
  * GET /renter/profile
  * Get authenticated renter's profile
  */
-router.get("/profile", authMiddleware.verifyToken, controller.getRenterProfile);
+router.get("/profile", controller.getRenterProfile);
 
 /**
  * PUT /renter/profile
@@ -52,7 +52,7 @@ router.get("/profile", authMiddleware.verifyToken, controller.getRenterProfile);
  */
 router.put(
   "/profile",
-  authMiddleware.verifyToken,
+
   controller.updateRenterProfile
 );
 
@@ -66,8 +66,7 @@ router.put(
  */
 router.get(
   "/admin/:userId",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(["admin"]),
+
   controller.adminGetRenterProfile
 );
 

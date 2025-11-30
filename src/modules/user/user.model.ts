@@ -5,10 +5,6 @@ import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 import { model, Query, Schema } from "mongoose";
 import type { IUser } from "./user.interface";
 
-/**
- * User Schema - Base user for all roles with referral system support
- * Using BaseSchemaUtil for DRY schema creation
- */
 const userSchema = BaseSchemaUtil.createSchema<IUser>({
   ...BaseSchemaUtil.mergeDefinitions(
     BaseSchemaUtil.emailField(true),
@@ -33,9 +29,8 @@ const userSchema = BaseSchemaUtil.createSchema<IUser>({
         default: ACCOUNT_STATUS.PENDING,
         index: true,
       },
-      // ============================================
+
       // 🔗 REFERRAL SYSTEM FIELDS
-      // ============================================
       /**
        * Permanent referral code for Admin and Agent roles
        * - Generated once during registration/seeding
@@ -253,5 +248,42 @@ userSchema.methods.needsPasswordChange = function (this: IUser): boolean {
 // Ensure virtuals are included in JSON
 userSchema.set("toJSON", { virtuals: true });
 userSchema.set("toObject", { virtuals: true });
+
+import mongoose from "mongoose";
+
+const refreshTokenBlacklistSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    token: {
+      type: String,
+      required: true,
+    },
+    expiresAt: {
+      type: Date,
+      required: true,
+      index: { expireAfterSeconds: 0 }, // ← Auto-delete expired tokens
+    },
+    reason: {
+      type: String,
+      enum: ["logout", "password_change", "security_incident", "admin_action"],
+      default: "logout",
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { timestamps: true }
+);
+
+export const RefreshTokenBlacklist = mongoose.model(
+  "RefreshTokenBlacklist",
+  refreshTokenBlacklistSchema
+);
 
 export const User = model<IUser>("User", userSchema);

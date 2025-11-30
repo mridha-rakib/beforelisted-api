@@ -483,7 +483,7 @@ export class EmailTemplates {
     userName: string,
     verificationCode: string,
     expiresIn: string,
-    userType: "Agent" | "Renter" | "Admin" | undefined,
+    // userType: "Agent" | "Renter" | "Admin" | undefined,
     logoUrl?: string,
     brandColor?: string
   ): string {

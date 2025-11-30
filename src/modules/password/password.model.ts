@@ -3,7 +3,7 @@
 import { OTP } from "@/constants/app.constants";
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 import { model } from "mongoose";
-import type { IPasswordResetOTP } from "./password-reset.interface";
+import type { IPasswordResetOTP } from "./password.interface";
 
 /**
  * Password Reset OTP Schema

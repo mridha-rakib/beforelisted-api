@@ -15,8 +15,8 @@ import {
   resendPasswordOTPSchema,
   resetPasswordSchema,
   verifyPasswordOTPSchema,
-} from "./password-reset.schema";
-import { PasswordResetService } from "./password-reset.service";
+} from "./password.schema";
+import { PasswordResetService } from "./password.service";
 /**
  * Password Reset Controller
  * Manages password reset workflow

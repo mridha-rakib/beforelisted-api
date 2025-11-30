@@ -33,15 +33,6 @@ export const REQUEST_STATUS = {
   ARCHIVED: "archived",
 } as const;
 
-export const PAYMENT_STATUS = {
-  PENDING: "pending",
-  AWAITING_PAYMENT: "awaiting_payment",
-  COMPLETED: "completed",
-  FAILED: "failed",
-  REFUNDED: "refunded",
-  FREE: "free",
-} as const;
-
 export const MATCH_REQUEST_STATUS = {
   PENDING: "pending",
   APPROVED: "approved",
@@ -173,4 +164,24 @@ export const ERRORS = {
   FORBIDDEN: "Forbidden access.",
   BAD_REQUEST: "Bad request.",
   CONFLICT: "Resource already exists.",
+} as const;
+
+export const REFERRAL_CODE_PREFIX = {
+  AGENT: "AGT",
+  ADMIN: "ADMIN",
+} as const;
+
+export const USER_ROLES = {
+  ADMIN: "Admin",
+  AGENT: "Agent",
+  RENTER: "Renter",
+} as const;
+
+export const PAYMENT_STATUS = {
+  PENDING: "pending",
+  AWAITING_PAYMENT: "awaiting_payment",
+  COMPLETED: "completed",
+  FAILED: "failed",
+  REFUNDED: "refunded",
+  FREE: "free",
 } as const;

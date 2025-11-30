@@ -6,11 +6,8 @@ import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 import type { NextFunction, Request, Response } from "express";
 import {
-  adminUpdateUserSchema,
   changeEmailSchema,
-  changePasswordSchema,
   deleteUserSchema,
-  listUsersSchema,
   updateUserSchema,
   verifyNewEmailSchema,
 } from "./user.schema";
@@ -62,56 +59,34 @@ export class UserController {
    * Request email change (send verification)
    * POST /user/change-email
    */
-  requestEmailChange = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(changeEmailSchema, req);
-      const userId = req.user!.userId;
+  requestEmailChange = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(changeEmailSchema, req);
+    const userId = req.user!.userId;
 
-      const result = await this.userService.requestEmailChange(
-        userId,
-        validated.body.newEmail
-      );
+    const result = await this.userService.requestEmailChange(
+      userId,
+      validated.body.newEmail
+    );
 
-      ApiResponse.success(res, result);
-    }
-  );
+    ApiResponse.success(res, result);
+  });
 
   /**
    * Verify new email
    * POST /user/verify-new-email
    */
-  verifyNewEmail = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(verifyNewEmailSchema, req);
-      const userId = req.user!.userId;
+  verifyNewEmail = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(verifyNewEmailSchema, req);
+    const userId = req.user!.userId;
 
-      const result = await this.userService.verifyNewEmail(
-        userId,
-        validated.body.newEmail,
-        validated.body.verificationCode
-      );
+    const result = await this.userService.verifyNewEmail(
+      userId,
+      validated.body.newEmail,
+      validated.body.verificationCode
+    );
 
-      ApiResponse.success(res, result);
-    }
-  );
-
-  /**
-   * Change password
-   * POST /user/change-password
-   */
-  changePassword = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(changePasswordSchema, req);
-      const userId = req.user!.userId;
-
-      const result = await this.userService.changePassword(
-        userId,
-        validated.body
-      );
-
-      ApiResponse.success(res, result);
-    }
-  );
+    ApiResponse.success(res, result);
+  });
 
   /**
    * Delete user account (soft delete)
@@ -138,52 +113,6 @@ export class UserController {
       const result = await this.userService.adminGetUser(userId);
 
       ApiResponse.success(res, result, "User retrieved successfully");
-    }
-  );
-
-  /**
-   * ADMIN: List all users (with pagination and filters)
-   * GET /user
-   */
-  adminListUsers = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(listUsersSchema, req);
-      const { page, limit, search, role, accountStatus, sort } =
-        validated.query;
-
-      const result = await this.userService.adminListUsers(
-        page,
-        limit,
-        search,
-        role,
-        accountStatus,
-        sort
-      );
-
-      ApiResponse.paginated(
-        res,
-        result.data,
-        result.pagination,
-        "Users retrieved successfully"
-      );
-    }
-  );
-
-  /**
-   * ADMIN: Update user
-   * PUT /user/:userId
-   */
-  adminUpdateUser = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(adminUpdateUserSchema, req);
-      const { userId } = req.params;
-
-      const result = await this.userService.adminUpdateUser(
-        userId,
-        validated.body
-      );
-
-      ApiResponse.success(res, result, MESSAGES.USER.USER_UPDATED);
     }
   );
 
