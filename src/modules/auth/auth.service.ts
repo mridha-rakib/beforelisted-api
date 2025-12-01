@@ -139,6 +139,33 @@ export class AuthService {
   }
 
   /**
+   * Request password reset
+   */
+  async requestPasswordReset(
+    email: string
+  ): Promise<{ message: string; expiresAt?: Date; expiresInMinutes?: number }> {
+    const user = await this.userService.getUserByEmail(email);
+
+    if (!user) {
+      return { message: MESSAGES.AUTH.PASSWORD_RESET_OTP_SENT };
+    }
+
+    // Step 2: Generate OTP using password reset service
+    const result = await this.passwordResetService.requestPasswordReset(
+      user._id.toString(),
+      user.email,
+      user.fullName
+    );
+
+    logger.info(
+      { userId: user._id, email: user.email },
+      "Password reset requested"
+    );
+
+    return result;
+  }
+
+  /**
    * Verify password reset OTP
    * ✅ COMPLETE: Validate OTP before password reset
    */

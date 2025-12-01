@@ -11,10 +11,7 @@ import {
   getRenterProfileSchema,
   normalRenterRegisterSchema,
   renterRegisterSchema,
-  requestPasswordResetSchema,
-  resetPasswordSchema,
   updateRenterProfileSchema,
-  verifyOTPSchema,
 } from "./renter.schema";
 import { RenterService } from "./renter.service";
 
@@ -117,56 +114,6 @@ export class RenterController {
       );
     }
   );
-
-  // ============================================
-  // PASSWORD MANAGEMENT ENDPOINTS
-  // ============================================
-
-  /**
-   * PUBLIC: Request password reset (forgot password)
-   * POST /renter/forgot-password
-   */
-  requestPasswordReset = asyncHandler(async (req: Request, res: Response) => {
-    const validated = await zParse(requestPasswordResetSchema, req);
-    const result = await this.service.requestPasswordReset(
-      validated.body.email
-    );
-
-    ApiResponse.success(
-      res,
-      result,
-      "If account exists, password reset code will be sent"
-    );
-  });
-
-  /**
-   * PUBLIC: Verify password reset OTP
-   * POST /renter/verify-reset-otp
-   */
-  verifyOTP = asyncHandler(async (req: Request, res: Response) => {
-    const validated = await zParse(verifyOTPSchema, req);
-    const result = await this.service.verifyOTP(
-      validated.body.email,
-      validated.body.otp
-    );
-
-    ApiResponse.success(res, result, "OTP verified successfully");
-  });
-
-  /**
-   * PUBLIC: Reset password with OTP
-   * POST /renter/reset-password
-   */
-  resetPassword = asyncHandler(async (req: Request, res: Response) => {
-    const validated = await zParse(resetPasswordSchema, req);
-    const result = await this.service.resetPassword(validated.body);
-
-    ApiResponse.success(res, result, "Password reset successfully");
-  });
-
-  // ============================================
-  // PROFILE ENDPOINTS
-  // ============================================
 
   /**
    * AUTHENTICATED: Get renter profile
