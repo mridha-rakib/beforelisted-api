@@ -79,6 +79,43 @@ export class AgentController {
   );
 
   /**
+   * AUTHENTICATED: Get agent referral link and statistics
+   * GET /agent/referral-link
+   * Returns: { referralCode, referralLink, totalReferrals, referredUsersCount }
+   */
+  getReferralLink = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const userId = req.user!.userId;
+
+      // Get referral stats from service
+      const stats = await this.service.getReferralStats(userId);
+
+      // Return formatted response
+      ApiResponse.success(
+        res,
+        {
+          referralCode: stats.referralCode,
+          referralLink: stats.referralLink,
+          totalReferrals: stats.totalReferrals,
+          referredUsersCount: stats.referredUsers?.length || 0,
+          referredUsers: stats.referredUsers,
+        },
+        "Referral information retrieved successfully"
+      );
+    }
+  );
+
+  /**
+   * ADMIN: Get specific agent profile
+   * GET /agent/admin/:userId
+   */
+  adminGetAgent = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(getAgentProfileSchema, req);
+    const result = await this.service.adminGetAgent(validated.params.userId);
+    ApiResponse.success(res, result, "Agent profile retrieved successfully");
+  });
+
+  /**
    * AGENT: Get own statistics
    * GET /agent/stats
    */
@@ -105,20 +142,6 @@ export class AgentController {
       const result = await this.service.adminGetAllAgents();
 
       ApiResponse.success(res, result, "Agents retrieved successfully");
-    }
-  );
-
-  /**
-   * ADMIN: Get single agent
-   * GET /agent/admin/:userId
-   */
-  adminGetAgent = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(getAgentProfileSchema, req);
-
-      const result = await this.service.adminGetAgent(validated.params.userId);
-
-      ApiResponse.success(res, result, "Agent retrieved successfully");
     }
   );
 

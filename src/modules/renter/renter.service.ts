@@ -27,6 +27,8 @@ import type {
 } from "./renter.type";
 import { RenterUtil } from "./renter.utils";
 
+import { ReferralService } from "../referral/referral.service";
+
 /**
  * Renter Service
  * Handles all renter-related business logic
@@ -38,6 +40,7 @@ export class RenterService {
   private emailVerificationService: EmailVerificationService;
   private emailService: EmailService;
   private passwordResetService: PasswordResetService;
+  private referralService: ReferralService;
 
   constructor() {
     this.repository = new RenterRepository();
@@ -45,14 +48,15 @@ export class RenterService {
     this.emailVerificationService = new EmailVerificationService();
     this.emailService = new EmailService();
     this.passwordResetService = new PasswordResetService();
+    this.referralService = new ReferralService();
   }
 
   // REGISTRATION FLOWS (3 Types)
 
   /**
    * Register Renter (All Types)
-   * ✅ Detects registration type and routes to appropriate flow
-   * ✅ Supports: Normal, Agent Referral, Admin Referral
+   * Detects registration type and routes to appropriate flow
+   * Supports: Normal, Agent Referral, Admin Referral
    */
   async registerRenter(payload: any): Promise<RenterRegistrationResponse> {
     // Detect registration type
@@ -127,15 +131,6 @@ export class RenterService {
       user.role
     );
 
-    logger.info(
-      {
-        userId: user._id,
-        email: user.email,
-        registrationType: "normal",
-      },
-      "Normal renter registration completed"
-    );
-
     return {
       user: this.userService.toUserResponse(user),
       renter: this.toRenterResponse(renterProfile),
@@ -163,8 +158,7 @@ export class RenterService {
       throw new ConflictException("Email already registered");
     }
 
-    // Step 3: [FUTURE] Validate referral code in system and get agent ID
-    // For now, we'll just parse the code
+    // Step 3: VALIDATE & GET AGENT FROM REFERRAL CODE
     const agentId = await this.validateAndGetAgentFromReferralCode(
       payload.referralCode
     );
@@ -202,23 +196,15 @@ export class RenterService {
       accountStatus: "pending",
     });
 
-    // Step 8: Generate JWT tokens
+    // STEP 8: RECORD REFERRAL - INCREMENT AGENT'S TOTAL REFERRALS (FIXED)
+    await this.referralService.recordReferral(agentId);
+
+    // Step 9: Generate JWT tokens
     const tokens = this.generateTokens(
       user._id.toString(),
       user.email,
       user.role
     );
-
-    logger.info(
-      {
-        userId: user._id,
-        email: user.email,
-        registrationType: "agent_referral",
-        agentId,
-      },
-      "Agent referral renter registration completed"
-    );
-
     return {
       user: this.userService.toUserResponse(user),
       renter: this.toRenterResponse(renterProfile),
@@ -247,7 +233,7 @@ export class RenterService {
       throw new ConflictException("Email already registered");
     }
 
-    // Step 3: [FUTURE] Validate referral code in system and get admin ID
+    // Step 3: Validate referral code in system and get admin ID
     const adminId = await this.validateAndGetAdminFromReferralCode(
       payload.referralCode
     );
@@ -285,7 +271,10 @@ export class RenterService {
       questionnaire: payload.questionnaire,
     });
 
-    // Step 8: Send email with temporary password
+    // STEP 8: RECORD REFERRAL - INCREMENT ADMIN'S TOTAL REFERRALS
+    await this.referralService.recordReferral(adminId);
+
+    // Step 9: Send email with temporary password
     await this.emailService.sendAdminReferralEmail({
       to: user.email,
       userName: user.fullName,
@@ -293,7 +282,7 @@ export class RenterService {
       loginLink: `${process.env.CLIENT_URL}/login`,
     });
 
-    // Step 9: Generate JWT tokens
+    // Step 10: Generate JWT tokens
     const tokens = this.generateTokens(
       user._id.toString(),
       user.email,
@@ -481,24 +470,25 @@ export class RenterService {
   }
 
   /**
-   * [FUTURE] Validate agent referral code and get agent ID
+   * Validate agent referral code and get agent ID
+   * Uses ReferralService instead of placeholder
    */
+
   private async validateAndGetAgentFromReferralCode(
     code: string
   ): Promise<string> {
-    // [TODO] Implement referral code validation against ReferralCode model
-    // For now, return placeholder
-    return "agent_id_placeholder";
+    const referrer = await this.referralService.validateReferralCode(code);
+    return referrer._id.toString();
   }
 
   /**
-   * [FUTURE] Validate admin referral code and get admin ID
+   * Validate admin referral code and get admin ID
+   * Uses ReferralService instead of placeholder
    */
   private async validateAndGetAdminFromReferralCode(
     code: string
   ): Promise<string> {
-    // [TODO] Implement referral code validation against ReferralCode model
-    // For now, return placeholder
-    return "admin_id_placeholder";
+    const referrer = await this.referralService.validateReferralCode(code);
+    return referrer._id.toString();
   }
 }

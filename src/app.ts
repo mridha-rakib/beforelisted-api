@@ -6,6 +6,7 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 
+import { swaggerSpec, swaggerUi } from "@/config/swagger.config";
 import { errorHandler } from "@/middlewares/error-handler.middleware";
 import { notFound } from "@/middlewares/not-found.middleware";
 import rootRouter from "@/routes/index.route.js";
@@ -43,6 +44,19 @@ app.get<object>("/", (req, res) => {
     message: "🦄R🌈A✨K👋I🌎B✨M🌈M🦄",
   });
 });
+
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    explorer: true,
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayOperationId: true,
+      tryItOutEnabled: true,
+    },
+  })
+);
 
 app.use(env.BASE_URL, rootRouter);
 

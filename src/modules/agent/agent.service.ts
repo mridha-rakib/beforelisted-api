@@ -33,8 +33,6 @@ export class AgentService {
   private userService: UserService;
   private referralService: ReferralService;
   private emailVerificationService: EmailVerificationService;
-  // private emailService: EmailService;
-  // private otpService: OTPService;
 
   constructor() {
     this.repository = new AgentProfileRepository();
@@ -43,10 +41,7 @@ export class AgentService {
     this.emailVerificationService = new EmailVerificationService();
   }
 
-  // ============================================
   // AGENT REGISTRATION (Complete Flow)
-  // ============================================
-
   /**
    * Complete agent registration
    */
@@ -84,14 +79,6 @@ export class AgentService {
       role: ROLES.AGENT,
       emailVerified: false,
       accountStatus: "pending",
-    });
-
-    // ✅ Create initial OTP for email verification
-    const otpResult = await this.emailVerificationService.createOTP({
-      userId: user._id.toString(),
-      email: user.email,
-      userType: ROLES.AGENT, // ✅ Generic: specify user type
-      userName: user.fullName,
     });
 
     // 6. Generate referral code for agent
@@ -146,10 +133,7 @@ export class AgentService {
     };
   }
 
-  // ============================================
   // AGENT PROFILE OPERATIONS
-  // ============================================
-
   /**
    * Create agent profile (INTERNAL)
    */
@@ -236,7 +220,6 @@ export class AgentService {
 
     await this.repository.updateProfileCompleteness(userId, completeness);
 
-    logger.info({ userId }, "Agent profile updated");
     return this.toResponse(updated);
   }
 
@@ -257,12 +240,23 @@ export class AgentService {
     return stats;
   }
 
-  // ============================================
+  /**
+   *  Get agent referral statistics and link
+   * Retrieves referral code, link, total count, and referred users
+   */
+  async getReferralStats(userId: string): Promise<{
+    referralCode: string | null;
+    referralLink: string | null;
+    totalReferrals: number;
+    referredUsers: any[];
+  }> {
+    return this.referralService.getReferralStats(userId);
+  }
+
   // ADMIN OPERATIONS
-  // ============================================
 
   /**
-   * ADMIN: Get all agents (✅ FIXED - Properly typed)
+   * ADMIN: Get all agents (Properly typed)
    */
   async adminGetAllAgents(): Promise<AgentProfileResponse[]> {
     const agents: IAgentProfile[] = await this.repository.find({});
@@ -425,6 +419,10 @@ export class AgentService {
     };
   }
 
+  // async adminGetAllAgentMetrics(): Promise<AdminAgentMetricsResponse> {
+  //   const metrics = await this.repository.getAdminMetrics();
+  //   return metrics;
+  // }
   // ============================================
   // INTERNAL HELPER METHODS
   // ============================================

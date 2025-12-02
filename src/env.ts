@@ -53,15 +53,12 @@ const envSchema = z.object({
   EMAIL_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(3),
   EMAIL_RETRY_DELAY_MS: z.coerce.number().int().min(1000).default(1000),
 
-  // AWS S3
-  AWS_ACCESS_KEY_ID: z.string().nonempty("AWS_ACCESS_KEY_ID is required"),
-  AWS_SECRET_ACCESS_KEY: z
-    .string()
-    .nonempty("AWS_SECRET_ACCESS_KEY is required"),
-  AWS_REGION: z.string().nonempty("AWS_REGION is required"),
-  AWS_PROFILE_IMAGES_BUCKET: z
-    .string()
-    .nonempty("AWS_PROFILE_IMAGES_BUCKET is required"),
+  //  S3
+  HETZNER_BUCKET_NAME: z.string().nonempty("Hetzner bucket name is required."),
+  HETZNER_S3_ENDPOINT: z.string().nonempty("Hetzner s3 endpoint is required."),
+  HETZNER_ACCESS_KEY: z.string().nonempty("Hetzner access key is required."),
+  HETZNER_SECRET_KEY: z.string().nonempty("Hetzner secret key is required."),
+  HETZNER_REGION: z.string().nonempty("Hetzner region is required."),
 
   //  firebase fcm config
   FIREBASE_PROJECT_ID: z.string().nonempty("Firebase project ID required."),

@@ -207,9 +207,6 @@ export class AuthMiddleware {
         throw new ForbiddenException("Only agents can access this resource");
       }
 
-      // Note: Full grant access check happens at service level
-      // This just ensures user is an agent
-
       next();
     } catch (error) {
       next(error);
