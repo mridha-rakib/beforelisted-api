@@ -16,6 +16,12 @@ export interface IUser extends Document {
   role: (typeof ROLES)[keyof typeof ROLES];
   accountStatus: (typeof ACCOUNT_STATUS)[keyof typeof ACCOUNT_STATUS];
 
+  // PROFILE FIELDS
+  /**
+   * User's profile image URL from S3
+   */
+  profileImageUrl?: string | null;
+
   // REFERRAL SYSTEM
   referralCode?: string;
   referredBy?: Types.ObjectId | IUser;

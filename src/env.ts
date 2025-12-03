@@ -60,6 +60,38 @@ const envSchema = z.object({
   HETZNER_SECRET_KEY: z.string().nonempty("Hetzner secret key is required."),
   HETZNER_REGION: z.string().nonempty("Hetzner region is required."),
 
+  // # ============================================
+  // # File Upload Configuration
+  // # ============================================
+
+  // Image upload limits
+  MAX_IMAGE_SIZE: z
+    .string()
+    .transform(Number)
+    .refine((val) => !isNaN(val) && val > 0, {
+      message: "MAX_IMAGE_SIZE must be a valid number",
+    }),
+  ALLOWED_IMAGE_TYPES: z
+    .string()
+    .transform((val) => val.split(","))
+    .refine((arr) => arr.length > 0, {
+      message: "ALLOWED_IMAGE_TYPES must contain at least one type",
+    }),
+  // Excel upload limits
+  MAX_EXCEL_SIZE: z
+    .string()
+    .transform(Number)
+    .refine((val) => !isNaN(val) && val > 0, {
+      message: "MAX_EXCEL_SIZE must be a valid number",
+    }),
+  // PDF upload limits
+  MAX_PDF_SIZE: z
+    .string()
+    .transform(Number)
+    .refine((val) => !isNaN(val) && val > 0, {
+      message: "MAX_PDF_SIZE must be a valid number",
+    }),
+
   //  firebase fcm config
   FIREBASE_PROJECT_ID: z.string().nonempty("Firebase project ID required."),
   FIREBASE_PRIVATE_KEY: z.string().nonempty("Firebase private key required."),

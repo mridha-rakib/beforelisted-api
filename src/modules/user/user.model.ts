@@ -30,6 +30,21 @@ const userSchema = BaseSchemaUtil.createSchema<IUser>({
         index: true,
       },
 
+      // PROFILE FIELDS
+
+      /**
+       * User's profile image URL
+       * - Public URL from Hetzner S3
+       * - Stored for all user types (Admin, Agent, Renter)
+       * - Can be updated/deleted by user
+       */
+      profileImageUrl: {
+        type: String,
+        default: null,
+        sparse: true,
+        index: true,
+      },
+
       // 🔗 REFERRAL SYSTEM FIELDS
       /**
        * Permanent referral code for Admin and Agent roles
@@ -159,10 +174,6 @@ const userSchema = BaseSchemaUtil.createSchema<IUser>({
     }
   ),
 });
-
-// ============================================
-// INDEXES
-// ============================================
 
 // Existing indexes
 userSchema.index({ email: 1, isDeleted: 1 });
