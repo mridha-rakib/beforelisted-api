@@ -19,18 +19,6 @@ export interface CustomLabels {
   meta?: string;
 }
 
-// export interface MongoosePaginateResult<T> {
-//   data: T[];
-//   totalItems: number;
-//   itemsPerPage: number;
-//   currentPage: number;
-//   pageCount: number;
-//   nextPage: number | null;
-//   prevPage: number | null;
-//   slNo: number;
-//   hasPrev: boolean;
-//   hasNext: boolean;
-// }
 
 export interface PaginateResult<T> {
   data: T[];

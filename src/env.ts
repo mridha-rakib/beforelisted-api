@@ -1,3 +1,4 @@
+// file: src/env.ts
 import { z } from "zod/v4";
 
 const envSchema = z.object({

@@ -1,5 +1,4 @@
 // file: src/services/s3.service.ts
-// ✅ Hetzner S3 Service for file uploads
 
 import { logger } from "@/middlewares/pino-logger";
 import { BadRequestException } from "@/utils/app-error.utils";

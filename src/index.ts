@@ -1,3 +1,4 @@
+// file: src/index.ts
 import app from "@/app";
 import { connectDB } from "@/config/database.config";
 import { env } from "@/env";

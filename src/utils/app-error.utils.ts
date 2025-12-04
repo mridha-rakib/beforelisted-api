@@ -1,3 +1,5 @@
+// file: src/utils/app-error.utils.ts
+
 import type { HttpStatusCodeType } from "@/config/http.config";
 import type { ErrorCodeEnumType } from "@/enums/error-code.enum";
 

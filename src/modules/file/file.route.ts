@@ -1,5 +1,4 @@
 // file: src/modules/file/file.route.ts
-// ✅ File Routes for upload endpoints
 
 import upload from "@/config/multer.config";
 import { authMiddleware } from "@/middlewares/auth.middleware";

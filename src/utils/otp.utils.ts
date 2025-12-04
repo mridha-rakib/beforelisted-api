@@ -1,14 +1,5 @@
 // file: src/utils/otp.utils.ts
 
-/**
- * OTP (One-Time Password) Utility Module
- * ✅ 4-digit numeric OTP generation (1000-9999)
- * ✅ Reusable across multiple modules
- * ✅ Type-safe with TypeScript
- * ✅ SOLID principles applied
- * ✅ Zero dependencies (uses only built-in crypto)
- * ✅ Production-ready
- */
 
 /**
  * OTP Configuration Interface

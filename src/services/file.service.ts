@@ -1,5 +1,4 @@
 // file: src/services/file.service.ts
-// ✅ File Service for profile images and document uploads
 
 import { logger } from "@/middlewares/pino-logger";
 import { UserRepository } from "@/modules/user/user.repository";

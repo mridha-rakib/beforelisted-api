@@ -1,3 +1,4 @@
+// file: src/middlewares/error-handler.middleware.ts
 import type {
   ErrorRequestHandler,
   NextFunction,

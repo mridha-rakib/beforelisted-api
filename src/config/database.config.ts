@@ -1,3 +1,4 @@
+// file: src/config/database.config.ts
 import mongoose from "mongoose";
 
 import { env } from "@/env";
@@ -46,5 +47,3 @@ async function connectDB(retries = 3, retryDelay = 5000) {
 }
 
 export { connectDB };
-
-

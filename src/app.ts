@@ -1,3 +1,4 @@
+// file: src/app.ts
 import type { Application } from "express";
 
 import cookieParser from "cookie-parser";

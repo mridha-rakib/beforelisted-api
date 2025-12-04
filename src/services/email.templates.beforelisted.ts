@@ -1,13 +1,4 @@
-// file: src/services/email.templates.beforelisted.ts (UPDATED WITH LOGO)
-
-/**
- * BeforeListed Branded Email Templates
- * ✅ Fully responsive HTML + inline CSS
- * ✅ Compatible with all major email clients
- * ✅ BeforeListed logo integration
- * ✅ Dynamic brand colors
- * ✅ Professional & modern design
- */
+// file: src/services/email.templates.beforelisted.ts
 
 export class EmailTemplates {
   private logoUrl: string =

@@ -1,0 +1,190 @@
+// file: src/modules/pre-market/pre-market.model.ts
+
+import { BaseSchemaUtil } from "@/utils/base-schema.utils";
+import { model, Schema, Types, type Document, type Query } from "mongoose";
+
+// ============================================
+// INTERFACE
+// ============================================
+
+export interface IPreMarketRequest
+  extends Document<unknown, any, any, Record<string, any>, object> {
+  requestId: string;
+  renterId: Types.ObjectId;
+  requestName: string;
+  description?: string;
+
+  movingDateRange: {
+    earliest: Date;
+    latest: Date;
+  };
+
+  priceRange: {
+    min: number;
+    max: number;
+  };
+
+  locations: string[];
+  bedrooms: string[];
+  bathrooms: string[];
+
+  unitFeatures: {
+    laundryInUnit: boolean;
+    privateOutdoorSpace: boolean;
+    dishwasher: boolean;
+  };
+
+  buildingFeatures: {
+    doorman: boolean;
+    elevator: boolean;
+    laundryInBuilding: boolean;
+  };
+
+  petPolicy: {
+    catsAllowed: boolean;
+    dogsAllowed: boolean;
+  };
+
+  guarantorRequired: {
+    personalGuarantor: boolean;
+    thirdPartyGuarantor: boolean;
+  };
+
+  status: "active" | "archived" | "deleted";
+
+  viewedBy: {
+    grantAccessAgents: Types.ObjectId[];
+    normalAgents: Types.ObjectId[];
+  };
+
+  isDeleted: boolean;
+  deletedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ============================================
+// SCHEMA DEFINITION
+// ============================================
+
+const preMarketSchema = BaseSchemaUtil.createSchema({
+  requestId: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true,
+  },
+
+  renterId: {
+    type: Types.ObjectId,
+    ref: "Renter",
+    required: true,
+    index: true,
+  },
+
+  requestName: {
+    type: String,
+    required: true,
+    index: true,
+  },
+
+  description: {
+    type: String,
+    maxlength: 500,
+  },
+
+  movingDateRange: {
+    earliest: { type: Date, required: true },
+    latest: { type: Date, required: true },
+  },
+
+  priceRange: {
+    min: { type: Number, required: true, min: 0 },
+    max: { type: Number, required: true, min: 0 },
+  },
+
+  locations: [],
+  bedrooms: [],
+  bathrooms: [
+    {
+      type: String,
+      enum: ["1", "2", "3", "4+"],
+    },
+  ],
+
+  unitFeatures: {
+    laundryInUnit: { type: Boolean, default: false },
+    privateOutdoorSpace: { type: Boolean, default: false },
+    dishwasher: { type: Boolean, default: false },
+  },
+
+  buildingFeatures: {
+    doorman: { type: Boolean, default: false },
+    elevator: { type: Boolean, default: false },
+    laundryInBuilding: { type: Boolean, default: false },
+  },
+
+  petPolicy: {
+    catsAllowed: { type: Boolean, default: false },
+    dogsAllowed: { type: Boolean, default: false },
+  },
+
+  guarantorRequired: {
+    personalGuarantor: { type: Boolean, default: false },
+    thirdPartyGuarantor: { type: Boolean, default: false },
+  },
+
+  status: {
+    type: String,
+    enum: ["active", "archived", "deleted"],
+    default: "active",
+    index: true,
+  } as any,
+
+  viewedBy: {
+    grantAccessAgents: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    normalAgents: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+  },
+
+  ...BaseSchemaUtil.mergeDefinitions(BaseSchemaUtil.softDeleteFields()),
+});
+
+// ============================================
+// INDEXES
+// ============================================
+
+preMarketSchema.index({ renterId: 1, status: 1 });
+preMarketSchema.index({ status: 1, createdAt: -1 });
+preMarketSchema.index({ locations: 1 });
+preMarketSchema.index({ "priceRange.min": 1, "priceRange.max": 1 });
+preMarketSchema.index({ "viewedBy.grantAccessAgents": 1 });
+preMarketSchema.index({ "viewedBy.normalAgents": 1 });
+
+// ============================================
+// MIDDLEWARE
+// ============================================
+
+preMarketSchema.pre(/^find/, function (this: Query<any, any>) {
+  if (!this.getOptions().includeDeleted) {
+    this.where({ isDeleted: false });
+  }
+});
+
+// ============================================
+// MODEL
+// ============================================
+
+export const PreMarketRequestModel = model<IPreMarketRequest>(
+  "PreMarketRequest",
+  preMarketSchema as any
+);

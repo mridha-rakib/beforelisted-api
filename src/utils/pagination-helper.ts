@@ -1,3 +1,5 @@
+// file: src/utils/pagination-helper.ts
+
 import type { PaginateOptions, PopulateOptions } from "mongoose";
 
 import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
@@ -120,6 +122,37 @@ export class PaginationHelper {
         nextPage: nextPage || null,
         prevPage: prevPage || null,
         slNo: slNo || 0,
+      },
+    };
+  }
+
+  static buildResponse<T>(
+    data: T[],
+    total: number,
+    page: number,
+    limit: number
+  ): PaginatedResponse<T> {
+    const totalPages = Math.ceil(total / limit);
+    const currentPage = Math.max(1, page);
+    const hasNext = currentPage < totalPages;
+    const hasPrev = currentPage > 1;
+    const nextPage = hasNext ? currentPage + 1 : null;
+    const prevPage = hasPrev ? currentPage - 1 : null;
+    const slNo = (currentPage - 1) * limit;
+
+    return {
+      success: true,
+      data,
+      pagination: {
+        currentPage,
+        totalPages,
+        totalItems: total,
+        itemsPerPage: limit,
+        hasNext,
+        hasPrev,
+        nextPage,
+        prevPage,
+        slNo,
       },
     };
   }

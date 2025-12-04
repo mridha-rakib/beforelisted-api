@@ -1,5 +1,4 @@
 // file: src/config/multer.config.ts
-// ✅ Multer Configuration for file uploads
 
 import multer from "multer";
 

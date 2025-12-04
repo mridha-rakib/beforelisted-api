@@ -1,3 +1,5 @@
+// file: src/modules/base/base.repository.ts
+
 import { PaginateResult } from "@/ts/pagination.types";
 import type { Document, FilterQuery, Model, PaginateOptions } from "mongoose";
 

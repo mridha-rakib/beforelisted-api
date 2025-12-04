@@ -2,10 +2,6 @@
 
 /**
  * Complete TypeScript interfaces and types for Email Service
- * Using NodeMailer SMTP transport
- * ✅ Full type-safety
- * ✅ Extensible design
- * ✅ SOLID principles
  */
 
 // ============================================

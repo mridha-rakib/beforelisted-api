@@ -1,11 +1,6 @@
 // file: src/modules/email-verification/email-verification.types.ts
-// ✅ COMPLETELY REUSABLE TYPE SYSTEM - Works for ANY user type
 
 /**
- * ============================================
- * GENERIC EMAIL VERIFICATION TYPE SYSTEM
- * ============================================
- *
  * Designed to work with ANY user type:
  * - Agent
  * - Renter

@@ -1,3 +1,5 @@
+// file: src/enums/error-code.enum.ts
+
 export const ErrorCodeEnum = {
   // Authentication Errors
   AUTH_EMAIL_ALREADY_EXISTS: "AUTH_EMAIL_ALREADY_EXISTS",

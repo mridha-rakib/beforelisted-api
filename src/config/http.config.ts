@@ -1,3 +1,5 @@
+// file: src/config/http.config.ts
+
 function httpConfig() {
   return {
     // Success responses

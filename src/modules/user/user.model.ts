@@ -8,7 +8,7 @@ import type { IUser } from "./user.interface";
 const userSchema = BaseSchemaUtil.createSchema<IUser>({
   ...BaseSchemaUtil.mergeDefinitions(
     BaseSchemaUtil.emailField(true),
-    BaseSchemaUtil.passwordField(), // Make this conditional in validation
+    BaseSchemaUtil.passwordField(),
     BaseSchemaUtil.phoneField(),
     {
       fullName: {

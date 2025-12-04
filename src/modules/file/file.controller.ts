@@ -1,5 +1,4 @@
 // file: src/modules/file/file.controller.ts
-// ✅ File Controller for profile image and document uploads
 
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { FileService } from "@/services/file.service";

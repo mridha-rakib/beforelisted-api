@@ -1,4 +1,4 @@
-// File: src/modules/renter/renter.utils.ts
+// file: src/modules/renter/renter.utils.ts
 
 import { logger } from "@/middlewares/pino-logger";
 import { IGeneratedPasswordResponse } from "./renter.interface";

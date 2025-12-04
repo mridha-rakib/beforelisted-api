@@ -1,9 +1,6 @@
 // File: src/utils/referral-parser.utils.ts
 /**
  * Referral Code Parser
- * ✅ REUSABLE utility for parsing and validating referral codes
- * ✅ Supports: Normal, Agent Referral (AGT-), Admin Referral (ADM-)
- * ✅ Type-safe with full TypeScript support
  */
 
 import { ROLES } from "@/constants/app.constants";

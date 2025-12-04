@@ -2,19 +2,6 @@
 
 /**
  * OTP Service (Injectable)
- * ✅ Dependency injection ready
- * ✅ Reusable across modules
- * ✅ Singleton pattern (can be injected)
- * ✅ Type-safe TypeScript
- * ✅ SOLID principles applied
- * ✅ Production-ready
- * ✅ Full test coverage ready
- *
- * Usage Pattern:
- * - Class-based injectable service
- * - Can be used with dependency injection containers
- * - Suitable for larger applications
- * - Easier to mock in tests
  */
 
 import { logger } from "@/middlewares/pino-logger";

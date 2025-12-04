@@ -1,14 +1,5 @@
 // file: src/services/email.transporter.ts
 
-/**
- * NodeMailer SMTP Transporter Factory
- * ✅ Full type-safety
- * ✅ Dependency injection ready
- * ✅ Connection pooling
- * ✅ Error handling & retry logic
- * ✅ Structured logging
- */
-
 import { logger } from "@/middlewares/pino-logger";
 import nodemailer, { type Transporter } from "nodemailer";
 import type {

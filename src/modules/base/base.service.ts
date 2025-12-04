@@ -1,3 +1,5 @@
+// file: src/modules/base/base.service.ts
+
 import type { BaseRepository } from "@/modules/base/base.repository";
 import type { PaginateResult } from "@/ts/pagination.types";
 import { NotFoundException } from "@/utils/app-error.utils";
