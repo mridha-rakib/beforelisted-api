@@ -47,7 +47,7 @@ export const ErrorCodeEnum = {
   INTERNAL_SERVER_ERROR: "INTERNAL_SERVER_ERROR",
 
   //  new
-  DUPLICATE_ENTRY: " DUPLICATE_ENTRY",
+  DUPLICATE_ENTRY: "DUPLICATE_ENTRY",
 } as const;
 
 export type ErrorCodeEnumType = keyof typeof ErrorCodeEnum;

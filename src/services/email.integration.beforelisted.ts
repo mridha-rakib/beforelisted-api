@@ -25,16 +25,6 @@ export class EmailTemplateHelper {
    * @param html - HTML template string
    * @param variables - Object with variable names and values
    * @returns - HTML with variables replaced
-   *
-   * Example:
-   * ```
-   * const html = "Hello {{name}}, your code is {{code}}"
-   * const result = EmailTemplateHelper.replaceVariables(html, {
-   *   name: "John",
-   *   code: "123456"
-   * })
-   * // Result: "Hello John, your code is 123456"
-   * ```
    */
   static replaceVariables(
     html: string,

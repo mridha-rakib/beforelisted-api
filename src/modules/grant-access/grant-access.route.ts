@@ -1,9 +1,10 @@
 // file: src/modules/grant-access/grant-access.route.ts
 
-import { ROLES } from "@/constants/app.constants";
-import { authenticateToken } from "@/middlewares/auth.middleware";
-import { authorizeRole } from "@/middlewares/authorize.middleware";
+import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
+import { PreMarketNotifier } from "../notification/pre-market.notifier";
+import { PaymentService } from "../payment/payment.service";
+import { PreMarketRepository } from "../pre-market/pre-market.repository";
 import { GrantAccessController } from "./grant-access.controller";
 import { GrantAccessRepository } from "./grant-access.repository";
 import { GrantAccessService } from "./grant-access.service";
@@ -15,11 +16,19 @@ import { GrantAccessService } from "./grant-access.service";
 const router = Router();
 
 // Initialize dependencies (can be improved with DI container)
+const grantAccessRepository = new GrantAccessRepository();
+const preMarketRepository = new PreMarketRepository();
+const paymentService = new PaymentService(
+  grantAccessRepository,
+  preMarketRepository
+);
+const notifier = new PreMarketNotifier();
+
 const grantAccessService = new GrantAccessService(
-  new GrantAccessRepository(),
-  new PreMarketRepository(),
-  new PaymentService(new GrantAccessRepository(), new PreMarketRepository()),
-  new PreMarketNotifier()
+  grantAccessRepository,
+  preMarketRepository,
+  paymentService,
+  notifier
 );
 
 const controller = new GrantAccessController(grantAccessService);
@@ -35,9 +44,9 @@ const controller = new GrantAccessController(grantAccessService);
  */
 router.post(
   "/payment/create-intent",
-  authenticateToken,
-  authorizeRole(ROLES.AGENT),
-  controller.createPaymentIntent
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.createPaymentIntent.bind(controller)
 );
 
 // ============================================
@@ -51,9 +60,9 @@ router.post(
  */
 router.get(
   "/statistics",
-  authenticateToken,
-  authorizeRole(ROLES.ADMIN),
-  controller.getStatistics
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.getStatistics.bind(controller)
 );
 
 export default router;

@@ -8,7 +8,7 @@ export const PREMARKET_CONFIG = {
   REQUEST_ID_PREFIX: "BeforeListed-PM",
 
   // Locations
-  LOCATIONS: [] as const,
+  // LOCATIONS: [] as const,
 
   // Bedroom options
   BEDROOMS: ["Studio", "1BR", "2BR", "3BR", "4BR+"] as const,
@@ -67,10 +67,10 @@ export const priceRangeSchema = z.object({
 });
 
 export const movingDateRangeSchema = z.object({
-  earliest: z.date(),
-  latest: z.date(),
+  earliest: z.coerce.date(),
+  latest: z.coerce.date(),
 });
 
-export const locationSchema = z.enum(PREMARKET_CONFIG.LOCATIONS);
+// export const locationSchema = z.enum(PREMARKET_CONFIG.LOCATIONS);
 export const bedroomSchema = z.enum(PREMARKET_CONFIG.BEDROOMS);
 export const bathroomSchema = z.enum(PREMARKET_CONFIG.BATHROOMS);

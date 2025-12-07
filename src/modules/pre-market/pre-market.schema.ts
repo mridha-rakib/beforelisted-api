@@ -4,7 +4,6 @@ import {
   PREMARKET_CONFIG,
   bathroomSchema,
   bedroomSchema,
-  locationSchema,
   movingDateRangeSchema,
   priceRangeSchema,
 } from "@/config/pre-market.config";
@@ -16,7 +15,20 @@ export const createPreMarketRequestSchema = z.object({
       movingDateRange: movingDateRangeSchema,
       priceRange: priceRangeSchema,
       locations: z
-        .array(locationSchema)
+        .array(
+          z.object({
+            borough: z.string(),
+            neighborhoods: z
+              .array(
+                z
+                  .string()
+                  .min(1, "Neighborhood cannot be empty")
+                  .max(100)
+                  .trim()
+              )
+              .min(1, "At least one neighborhood required"),
+          })
+        )
         .min(1, "At least one location required"),
       bedrooms: z.array(bedroomSchema).optional(),
       bathrooms: z
@@ -75,7 +87,22 @@ export const updatePreMarketRequestSchema = z.object({
     .object({
       movingDateRange: movingDateRangeSchema.optional(),
       priceRange: priceRangeSchema.optional(),
-      locations: z.array(locationSchema).optional(),
+      locations: z
+        .array(
+          z.object({
+            borough: z.string(),
+            neighborhoods: z
+              .array(
+                z
+                  .string()
+                  .min(1, "Neighborhood cannot be empty")
+                  .max(100)
+                  .trim()
+              )
+              .min(1, "At least one neighborhood required"),
+          })
+        )
+        .min(1, "At least one location required"),
       bedrooms: z.array(bedroomSchema).optional(),
       bathrooms: z.array(bathroomSchema).optional(),
       description: z

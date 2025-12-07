@@ -1,17 +1,17 @@
-// pre-market.controller.ts
+// file: src/modules/pre-market/pre-market.controller.ts
 
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
+import { logger } from "@/middlewares/pino-logger";
 import { ForbiddenException } from "@/utils/app-error.utils";
-import { AgentProfileRepository } from "../agent/agent.repository";
-
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
+import { AgentProfileRepository } from "../agent/agent.repository";
+import { GrantAccessRepository } from "../grant-access/grant-access.repository";
 import { GrantAccessService } from "../grant-access/grant-access.service";
 import { PaymentService } from "../payment/payment.service";
-import { PreMarketService } from "./pre-market.service";
-
-import { logger } from "@/middlewares/pino-logger";
+import { PreMarketNotifier } from "./pre-market-notifier";
+import { PreMarketRepository } from "./pre-market.repository";
 import {
   adminApproveSchema,
   adminChargeSchema,
@@ -21,14 +21,31 @@ import {
   requestAccessSchema,
   updatePreMarketRequestSchema,
 } from "./pre-market.schema";
+import { PreMarketService } from "./pre-market.service";
 
 export class PreMarketController {
-  constructor(
-    private readonly preMarketService: PreMarketService,
-    private readonly grantAccessService: GrantAccessService,
-    private readonly paymentService: PaymentService,
-    private readonly agentRepository: AgentProfileRepository
-  ) {}
+  private readonly preMarketService: PreMarketService;
+  private readonly grantAccessService: GrantAccessService;
+  private readonly paymentService: PaymentService;
+  private readonly agentRepository: AgentProfileRepository;
+
+  constructor() {
+    this.preMarketService = new PreMarketService();
+    this.grantAccessService = new GrantAccessService(
+      new GrantAccessRepository(),
+      new PreMarketRepository(),
+      new PaymentService(
+        new GrantAccessRepository(),
+        new PreMarketRepository()
+      ),
+      new PreMarketNotifier()
+    );
+    this.paymentService = new PaymentService(
+      new GrantAccessRepository(),
+      new PreMarketRepository()
+    );
+    this.agentRepository = new AgentProfileRepository();
+  }
 
   // ============================================
   // RENTER: CREATE REQUEST
@@ -135,6 +152,34 @@ export class PreMarketController {
   });
 
   // ============================================
+  // AGENT: GET ALL REQUESTS
+  // ============================================
+
+  /**
+   * Get all pre-market requests (paginated)
+   * GET /pre-market/all
+   * Protected: Agents only
+   *
+   * @param req - Request with query parameters
+   * @param res - Response
+   */
+  getAllRequests = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(preMarketListSchema, req);
+
+    const requests = await this.preMarketService.getAllRequests(
+      validated.query
+    );
+
+    logger.debug({}, "All pre-market requests retrieved");
+    ApiResponse.paginated(
+      res,
+      requests.data,
+      requests.pagination,
+      "All pre-market requests retrieved"
+    );
+  });
+
+  // ============================================
   // AGENT: GET REQUEST DETAILS
   // ============================================
 
@@ -200,6 +245,29 @@ export class PreMarketController {
       "Access requested"
     );
     ApiResponse.created(res, grantAccess, "Access request created");
+  });
+
+  // ============================================
+  // AGENT: CREATE PAYMENT INTENT
+  // ============================================
+
+  /**
+   * Create payment intent for grant access
+   * POST /pre-market/payment/create-intent
+   * Protected: Agents only
+   *
+   * @param req - Request with body
+   * @param res - Response
+   */
+  createPaymentIntent = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId;
+    const { grantAccessId } = req.body;
+
+    const paymentIntent =
+      await this.grantAccessService.createPaymentIntent(grantAccessId);
+
+    logger.info({ userId, grantAccessId }, "Payment intent created");
+    ApiResponse.success(res, paymentIntent, "Payment intent created");
   });
 
   // ============================================

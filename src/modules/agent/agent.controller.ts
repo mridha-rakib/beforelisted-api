@@ -258,26 +258,24 @@ export class AgentController {
    * POST /agent/register
    * ✅ Set refresh token in cookie
    */
-  registerAgent = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(agentRegisterSchema, req);
+  registerAgent = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(agentRegisterSchema, req);
 
-      const result = await this.service.registerAgent(validated.body);
+    const result = await this.service.registerAgent(validated.body);
 
-      res.cookie(
-        COOKIE_CONFIG.REFRESH_TOKEN.name,
-        result.tokens.refreshToken,
-        COOKIE_CONFIG.REFRESH_TOKEN.options
-      );
+    res.cookie(
+      COOKIE_CONFIG.REFRESH_TOKEN.name,
+      result.tokens.refreshToken,
+      COOKIE_CONFIG.REFRESH_TOKEN.options
+    );
 
-      const response = {
-        user: result.user,
-        profile: result.profile,
-        accessToken: result.tokens.accessToken,
-        expiresIn: result.tokens.expiresIn,
-      };
+    const response = {
+      user: result.user,
+      profile: result.profile,
+      accessToken: result.tokens.accessToken,
+      expiresIn: result.tokens.expiresIn,
+    };
 
-      ApiResponse.created(res, response, "Agent registered successfully");
-    }
-  );
+    ApiResponse.created(res, response, "Agent registered successfully");
+  });
 }

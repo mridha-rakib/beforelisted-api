@@ -394,6 +394,11 @@ export class RenterService {
    */
   async getRenterProfile(userId: string): Promise<RenterResponse> {
     const renter = await this.repository.findByUserId(userId);
+    console.log(
+      "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    );
+    console.log(renter);
+    console.log("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
     if (!renter) {
       throw new NotFoundException("Renter profile not found");
     }

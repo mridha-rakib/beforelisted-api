@@ -1,18 +1,16 @@
 // file: src/modules/grant-access/grant-access.service.ts
 
+import { logger } from "@/middlewares/pino-logger";
 import {
   BadRequestException,
   ConflictException,
   NotFoundException,
 } from "@/utils/app-error.utils";
-import { createLogger } from "@/utils/logger";
 import { PreMarketNotifier } from "../notification/pre-market.notifier";
 import { PaymentService } from "../payment/payment.service";
-import { PreMarketRepository } from "../pre-market.repository";
+import { PreMarketRepository } from "../pre-market/pre-market.repository";
 import type { IGrantAccessRequest } from "./grant-access.model";
 import { GrantAccessRepository } from "./grant-access.repository";
-
-const logger = createLogger("GrantAccessService");
 
 export class GrantAccessService {
   constructor(
@@ -87,7 +85,7 @@ export class GrantAccessService {
     if (decision.action === "reject") {
       grantAccess.status = "rejected";
       grantAccess.adminDecision = {
-        decidedBy: decision.adminId,
+        decidedBy: decision.adminId as any,
         decidedAt: new Date(),
         notes: decision.notes,
         isFree: false,
@@ -97,6 +95,7 @@ export class GrantAccessService {
       await this.notifier.notifyAgentOfRejection(grantAccess);
 
       logger.info(`Grant access rejected: ${grantAccessId}`);
+
       return grantAccess;
     }
 
@@ -104,7 +103,7 @@ export class GrantAccessService {
     if (decision.action === "approve" && decision.isFree) {
       grantAccess.status = "approved";
       grantAccess.adminDecision = {
-        decidedBy: decision.adminId,
+        decidedBy: decision.adminId as any,
         decidedAt: new Date(),
         isFree: true,
         notes: decision.notes,
@@ -121,6 +120,7 @@ export class GrantAccessService {
       await this.notifier.notifyAgentOfApproval(grantAccess, true);
 
       logger.info(`Grant access approved (free): ${grantAccessId}`);
+
       return grantAccess;
     }
 
@@ -139,7 +139,7 @@ export class GrantAccessService {
       };
 
       grantAccess.adminDecision = {
-        decidedBy: decision.adminId,
+        decidedBy: decision.adminId as any,
         decidedAt: new Date(),
         chargeAmount: decision.chargeAmount,
         isFree: false,
@@ -154,6 +154,7 @@ export class GrantAccessService {
       logger.info(
         `Grant access charged: ${grantAccessId} - $${decision.chargeAmount}`
       );
+
       return grantAccess;
     }
 

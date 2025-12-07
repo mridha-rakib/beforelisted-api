@@ -1,17 +1,17 @@
 // file: src/modules/agent/agent.model.ts
 
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
-import { model, Schema } from "mongoose";
+import { model, Types } from "mongoose";
 import type { IAgentProfile } from "./agent.interface";
 
 const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
   userId: {
-    type: Schema.Types.ObjectId, // ⚠️ Changed from String to ObjectId
+    type: Types.ObjectId,
     ref: "User",
     required: true,
     unique: true,
     index: true,
-  },
+  } as any,
   licenseNumber: {
     type: String,
     required: true,
@@ -22,12 +22,6 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
     type: String,
     required: true,
   },
-  brokerageAddress: String,
-  licenseExpiryDate: {
-    type: Date,
-    required: true,
-  },
-
   // ============================================
   // VERIFICATION & STATUS
   // ============================================
@@ -53,7 +47,7 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
     index: true,
   },
   approvedByAdmin: {
-    type: Schema.Types.ObjectId,
+    type: Types.ObjectId,
     ref: "User",
   },
   approvedAt: Date,

@@ -3,11 +3,7 @@
 import { authMiddleware } from "@/middlewares/auth.middleware";
 
 import { Router } from "express";
-import { GrantAccessRepository } from "../grant-access/grant-access.repository";
-import { PaymentService } from "../payment/payment.service";
 import { PreMarketController } from "./pre-market.controller";
-import { PreMarketRepository } from "./pre-market.repository";
-import { PreMarketService } from "./pre-market.service";
 
 // ============================================
 // ROUTER SETUP
@@ -15,50 +11,36 @@ import { PreMarketService } from "./pre-market.service";
 
 const router = Router();
 
-// Initialize dependencies
-const preMarketService = new PreMarketService(
-  new PreMarketRepository(),
-  new GrantAccessRepository(),
-  new PaymentService(new GrantAccessRepository(), new PreMarketRepository()),
-  new PreMarketNotifier()
-);
-
-const controller = new PreMarketController(
-  preMarketService,
-  new GrantAccessService(new GrantAccessRepository(), new PaymentService()),
-  new PaymentService(new GrantAccessRepository(), new PreMarketRepository()),
-  new AgentProfileRepository()
-);
-
+const controller = new PreMarketController();
 // ============================================
 // RENTER ROUTES
 // ============================================
 
 router.post(
   "/create",
-  authMiddleware,
-  roleGuard(["Renter"]),
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
   controller.createRequest.bind(controller)
 );
 
 router.get(
   "/my-requests",
-  authMiddleware,
-  roleGuard(["Renter"]),
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
   controller.getRenterRequests.bind(controller)
 );
 
 router.put(
   "/:requestId",
-  authMiddleware,
-  roleGuard(["Renter"]),
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
   controller.updateRequest.bind(controller)
 );
 
 router.delete(
   "/:requestId",
-  authMiddleware,
-  roleGuard(["Renter"]),
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
   controller.deleteRequest.bind(controller)
 );
 
@@ -68,29 +50,29 @@ router.delete(
 
 router.get(
   "/all",
-  authMiddleware,
-  roleGuard(["Agent"]),
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
   controller.getAllRequests.bind(controller)
 );
 
 router.get(
   "/:requestId/details",
-  authMiddleware,
-  roleGuard(["Agent"]),
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
   controller.getRequestDetails.bind(controller)
 );
 
 router.post(
   "/grant-access/request",
-  authMiddleware,
-  roleGuard(["Agent"]),
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
   controller.requestAccess.bind(controller)
 );
 
 router.post(
   "/payment/create-intent",
-  authMiddleware,
-  roleGuard(["Agent"]),
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
   controller.createPaymentIntent.bind(controller)
 );
 
@@ -100,22 +82,22 @@ router.post(
 
 router.post(
   "/grant-access/admin/:requestId/approve",
-  authMiddleware,
-  roleGuard(["Admin"]),
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
   controller.adminApprove.bind(controller)
 );
 
 router.post(
   "/grant-access/admin/:requestId/charge",
-  authMiddleware,
-  roleGuard(["Admin"]),
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
   controller.adminCharge.bind(controller)
 );
 
 router.post(
   "/grant-access/admin/:requestId/reject",
-  authMiddleware,
-  roleGuard(["Admin"]),
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
   controller.adminReject.bind(controller)
 );
 

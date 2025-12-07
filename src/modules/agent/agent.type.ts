@@ -24,8 +24,6 @@ export type AgentRegisterPayload = {
 export type CreateAgentProfilePayload = {
   licenseNumber: string;
   brokerageName: string;
-  brokerageAddress?: string;
-  licenseExpiryDate: Date;
 };
 
 /**
@@ -45,8 +43,6 @@ export type AgentProfileResponse = {
   userId: string;
   licenseNumber: string;
   brokerageName: string;
-  brokerageAddress?: string;
-  licenseExpiryDate: Date;
   isVerified: boolean;
   isSuspended: boolean;
   grantAccessCount: number;

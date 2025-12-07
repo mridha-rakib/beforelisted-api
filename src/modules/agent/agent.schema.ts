@@ -9,21 +9,14 @@ import { z } from "zod";
 export const agentRegisterSchema = z.object({
   body: z.object({
     // User fields (will be passed to auth)
-    email: z.string().email("Invalid email address"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
     fullName: z.string().min(2).max(100),
     phoneNumber: z.string().optional(),
+    email: z.email("Invalid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
 
     // Agent-specific fields
     licenseNumber: z.string().min(1, "License number is required").max(50),
     brokerageName: z.string().min(1, "Brokerage name is required").max(100),
-    brokerageAddress: z.string().max(200).optional(),
-    licenseExpiryDate: z.coerce
-      .date()
-      .refine(
-        (date) => date > new Date(),
-        "License expiry date must be in the future"
-      ),
   }),
 });
 
@@ -34,13 +27,6 @@ export const createAgentProfileSchema = z.object({
   body: z.object({
     licenseNumber: z.string().min(1, "License number is required").max(50),
     brokerageName: z.string().min(1, "Brokerage name is required").max(100),
-    brokerageAddress: z.string().max(200).optional(),
-    licenseExpiryDate: z.coerce
-      .date()
-      .refine(
-        (date) => date > new Date(),
-        "License expiry date must be in the future"
-      ),
   }),
 });
 
@@ -49,15 +35,8 @@ export const createAgentProfileSchema = z.object({
  */
 export const updateAgentProfileSchema = z.object({
   body: z.object({
+    fullName: z.string().min(2).max(100).optional(),
     brokerageName: z.string().min(1).max(100).optional(),
-    brokerageAddress: z.string().max(200).optional(),
-    licenseExpiryDate: z.coerce
-      .date()
-      .refine(
-        (date) => date > new Date(),
-        "License expiry date must be in the future"
-      )
-      .optional(),
   }),
 });
 

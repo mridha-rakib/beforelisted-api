@@ -1,12 +1,11 @@
 // file: src/modules/renter/renter.route.ts
 
-import { AuthMiddleware } from "@/middlewares/auth.middleware";
+import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
 import { RenterController } from "./renter.controller";
 
 const router = Router();
 const controller = new RenterController();
-const authMiddleware = new AuthMiddleware();
 
 // ============================================
 // REGISTRATION ROUTES (Public)
@@ -44,7 +43,7 @@ router.post("/register/admin-referral", controller.registerAdminReferralRenter);
  * GET /renter/profile
  * Get authenticated renter's profile
  */
-router.get("/profile", controller.getRenterProfile);
+router.get("/profile", authMiddleware.verifyToken, controller.getRenterProfile);
 
 /**
  * PUT /renter/profile

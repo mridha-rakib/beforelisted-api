@@ -14,14 +14,6 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   }
 
   // ============================================
-  // CREATE
-  // ============================================
-
-  async create(data: Partial<IPreMarketRequest>): Promise<IPreMarketRequest> {
-    return this.model.create(data);
-  }
-
-  // ============================================
   // READ
   // ============================================
 

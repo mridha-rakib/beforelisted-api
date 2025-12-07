@@ -98,6 +98,12 @@ const envSchema = z.object({
   FIREBASE_PRIVATE_KEY: z.string().nonempty("Firebase private key required."),
   FIREBASE_CLIENT_EMAIL: z.email().nonempty("Firebase client email required."),
 
+  //  STRIPE CREDENTIALS
+  STRIPE_SECRET_KEY: z.string().nonempty("Stripe secret key is required."),
+  STRIPE_WEBHOOK_SECRET: z
+    .string()
+    .nonempty("Stripe webhook secret is required."),
+
   // Frontend URL
   CLIENT_URL: z.string().url().default("http://localhost:3000"),
   LOG_LEVEL: z

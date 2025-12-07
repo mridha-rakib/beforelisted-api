@@ -10,7 +10,7 @@ import { model, Schema, Types, type Document, type Query } from "mongoose";
 export interface IPreMarketRequest
   extends Document<unknown, any, any, Record<string, any>, object> {
   requestId: string;
-  renterId: Types.ObjectId;
+  renterId: Types.ObjectId | string;
   requestName: string;
   description?: string;
 
@@ -24,7 +24,10 @@ export interface IPreMarketRequest
     max: number;
   };
 
-  locations: string[];
+  locations: Array<{
+    borough: string;
+    neighborhoods: string[];
+  }>;
   bedrooms: string[];
   bathrooms: string[];
 
@@ -49,6 +52,8 @@ export interface IPreMarketRequest
     personalGuarantor: boolean;
     thirdPartyGuarantor: boolean;
   };
+
+  preferences: [];
 
   status: "active" | "archived" | "deleted";
 
@@ -103,7 +108,21 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
     max: { type: Number, required: true, min: 0 },
   },
 
-  locations: [],
+  locations: [
+    {
+      borough: {
+        type: String,
+        required: true,
+        index: true,
+      },
+      neighborhoods: [
+        {
+          type: String,
+          required: true,
+        },
+      ],
+    },
+  ],
   bedrooms: [],
   bathrooms: [
     {
@@ -140,6 +159,7 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
     default: "active",
     index: true,
   } as any,
+  preferences: [],
 
   viewedBy: {
     grantAccessAgents: [

@@ -12,6 +12,8 @@ import {
   type IPasswordResetPayload,
   type IWelcomeEmailPayload,
 } from "@/services/email.types";
+import { preMarketAdminNotificationTemplate, preMarketAgentNotificationTemplate } from "./email-notification.templates";
+import { IPreMarketAdminNotificationPayload, IPreMarketAgentNotificationPayload } from "./email-notification.types";
 import { EmailTemplateHelper } from "./email.integration.beforelisted";
 import { EmailTemplates } from "./email.templates.beforelisted";
 
@@ -488,6 +490,137 @@ export class EmailService {
           email: payload.to,
         },
         "Failed to send password changed email"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  // ============================================
+  // ✅ ADD THESE TWO NEW METHODS:
+  // ============================================
+
+  /**
+   * Send pre-market notification email to agents
+   * Called when renter creates new pre-market request
+   * WITHOUT renter information
+   *
+   * @param payload - Agent notification details
+   * @returns Promise with send result
+   */
+  async sendPreMarketNotificationToAgent(
+    payload: IPreMarketAgentNotificationPayload
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, agentType: payload.agentType },
+        "Sending pre-market notification to agent"
+      );
+
+      // Render template (WITHOUT renter info)
+      const html = preMarketAgentNotificationTemplate(
+        payload.agentName,
+        payload.listingTitle,
+        payload.listingDescription,
+        payload.location,
+        payload.serviceType,
+        payload.listingUrl,
+        this.config.logoUrl,
+        this.config.brandColor
+      );
+
+      // Prepare email options
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.agentName },
+        subject: `New Pre-Market Listing Opportunity - ${payload.listingTitle}`,
+        html,
+        priority: "high",
+      };
+
+      // Send email
+      return await this.sendEmail(
+        emailOptions,
+        "PRE_MARKET_AGENT_NOTIFICATION",
+        payload.to
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send pre-market agent notification"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send pre-market notification email to admin
+   * Called when renter creates new pre-market request
+   * WITH full renter information
+   *
+   * @param payload - Admin notification details
+   * @returns Promise with send result
+   */
+  async sendPreMarketNotificationToAdmin(
+    payload: IPreMarketAdminNotificationPayload
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, preMarketRequestId: payload.preMarketRequestId },
+        "Sending pre-market notification to admin with renter info"
+      );
+
+      // Render template (WITH renter info)
+      const html = preMarketAdminNotificationTemplate(
+        payload.listingTitle,
+        payload.listingDescription,
+        payload.location,
+        payload.serviceType,
+        payload.renterName,
+        payload.renterEmail,
+        payload.renterPhone,
+        payload.listingUrl,
+        payload.preMarketRequestId,
+        this.config.logoUrl,
+        this.config.brandColor
+      );
+
+      // Prepare email options
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: "Administrator" },
+        subject: `[ADMIN] New Pre-Market Request - ${payload.listingTitle}`,
+        html,
+        priority: "high",
+      };
+
+      // Send email
+      return await this.sendEmail(
+        emailOptions,
+        "PRE_MARKET_ADMIN_NOTIFICATION",
+        payload.to
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send pre-market admin notification"
       );
 
       return {

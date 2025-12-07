@@ -204,7 +204,10 @@ export class AuthMiddleware {
       }
 
       if (req.user.role !== ROLES.AGENT) {
-        throw new ForbiddenException("Only agents can access this resource");
+        throw new ForbiddenException(
+          "Only agents can access this resource",
+          ErrorCodeEnum.ACCESS_UNAUTHORIZED
+        );
       }
 
       next();

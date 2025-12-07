@@ -106,8 +106,6 @@ export class AgentService {
       profileCompleteness: this.calculateProfileCompleteness({
         licenseNumber: payload.licenseNumber,
         brokerageName: payload.brokerageName,
-        brokerageAddress: payload.brokerageAddress,
-        licenseExpiryDate: payload.licenseExpiryDate,
       }),
     } as Partial<IAgentProfile>);
 
@@ -148,16 +146,10 @@ export class AgentService {
       throw new ConflictException("License number already registered");
     }
 
-    if (new Date(payload.licenseExpiryDate) <= new Date()) {
-      throw new ConflictException("License has already expired");
-    }
-
     const profile = await this.repository.create({
       userId,
       licenseNumber: payload.licenseNumber,
       brokerageName: payload.brokerageName,
-      brokerageAddress: payload.brokerageAddress,
-      licenseExpiryDate: payload.licenseExpiryDate,
       isVerified: false,
       isSuspended: false,
       isApprovedByAdmin: false,
@@ -214,8 +206,6 @@ export class AgentService {
     const completeness = this.calculateProfileCompleteness({
       licenseNumber: updated.licenseNumber,
       brokerageName: updated.brokerageName,
-      brokerageAddress: updated.brokerageAddress,
-      licenseExpiryDate: updated.licenseExpiryDate,
     });
 
     await this.repository.updateProfileCompleteness(userId, completeness);
@@ -477,16 +467,12 @@ export class AgentService {
     payload: CreateAgentProfilePayload
   ): number {
     let completeness = 0;
-    let totalFields = 4;
+    let totalFields = 2;
 
-    if (payload.licenseNumber) completeness += 25;
-    if (payload.brokerageName) completeness += 25;
-    if (payload.brokerageAddress) completeness += 25;
-    else totalFields = 3;
+    if (payload.licenseNumber) completeness += 50;
+    if (payload.brokerageName) completeness += 50;
 
-    if (payload.licenseExpiryDate) completeness += 25;
-
-    return (completeness / (totalFields * 25)) * 100;
+    return (completeness / (totalFields * 50)) * 100;
   }
 
   /**
@@ -498,8 +484,6 @@ export class AgentService {
       userId: profile.userId.toString(),
       licenseNumber: profile.licenseNumber,
       brokerageName: profile.brokerageName,
-      brokerageAddress: profile.brokerageAddress,
-      licenseExpiryDate: profile.licenseExpiryDate,
       isVerified: profile.isVerified,
       isSuspended: profile.isSuspended,
       grantAccessCount: profile.grantAccessCount,

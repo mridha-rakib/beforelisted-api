@@ -12,7 +12,6 @@ const controller = new AgentController();
 /**
  * POST /agent/register
  * Complete agent registration (user + profile)
- * Public - No authentication required
  */
 router.post("/register", controller.registerAgent);
 

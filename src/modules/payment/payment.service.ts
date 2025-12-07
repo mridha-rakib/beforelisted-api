@@ -1,24 +1,27 @@
-// file: src\modules\payment\payment.service.ts
+// file: src/modules/payment/payment.service.ts
 
+import { env } from "@/env";
+import { logger } from "@/middlewares/pino-logger";
+import { NotFoundException } from "@/utils/app-error.utils";
 import Stripe from "stripe";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
-import { PreMarketRepository } from "../pre-market.repository";
-import { PreMarketNotifier } from "../notification/pre-market.notifier";
-import { NotFoundException } from "@/utils/app-error.utils";
-import { env } from "@/config/env";
-import { createLogger } from "@/utils/logger";
-
-const logger = createLogger("PaymentService");
+import { PreMarketNotifier } from "../pre-market/pre-market-notifier";
+import { PreMarketRepository } from "../pre-market/pre-market.repository";
 
 export class PaymentService {
   private stripe: Stripe;
+  private readonly grantAccessRepository: GrantAccessRepository;
+  private readonly preMarketRepository: PreMarketRepository;
+  private readonly notifier: PreMarketNotifier;
 
   constructor(
-    private readonly grantAccessRepository: GrantAccessRepository,
-    private readonly preMarketRepository: PreMarketRepository,
-    private readonly notifier: PreMarketNotifier
+    grantAccessRepository: GrantAccessRepository,
+    preMarketRepository: PreMarketRepository
   ) {
     this.stripe = new Stripe(env.STRIPE_SECRET_KEY);
+    this.grantAccessRepository = grantAccessRepository;
+    this.preMarketRepository = preMarketRepository;
+    this.notifier = new PreMarketNotifier();
   }
 
   // ============================================
@@ -36,7 +39,10 @@ export class PaymentService {
       description: `Pre-Market Access - ${options.metadata.preMarketRequestId}`,
     });
 
-    logger.info(`Payment intent created: ${paymentIntent.id}`, options.metadata);
+    logger.info(
+      `Payment intent created: ${paymentIntent.id}`,
+      options.metadata
+    );
 
     return paymentIntent;
   }
@@ -51,12 +57,16 @@ export class PaymentService {
     });
 
     if (!grantAccess) {
-      logger.error(`Grant access not found for payment intent: ${stripePaymentIntentId}`);
+      logger.error(
+        `Grant access not found for payment intent: ${stripePaymentIntentId}`
+      );
       throw new NotFoundException("Grant access request not found");
     }
 
     // Update payment status
-    await this.grantAccessRepository.recordPaymentSuccess(grantAccess._id.toString());
+    await this.grantAccessRepository.recordPaymentSuccess(
+      grantAccess._id.toString()
+    );
 
     // Add agent to viewedBy
     await this.preMarketRepository.addAgentToViewedBy(
@@ -84,15 +94,22 @@ export class PaymentService {
     });
 
     if (!grantAccess) {
-      logger.error(`Grant access not found for payment intent: ${stripePaymentIntentId}`);
+      logger.error(
+        `Grant access not found for payment intent: ${stripePaymentIntentId}`
+      );
       throw new NotFoundException("Grant access request not found");
     }
 
     // Increment failure count
-    await this.grantAccessRepository.recordPaymentFailure(grantAccess._id.toString());
+    await this.grantAccessRepository.recordPaymentFailure(
+      grantAccess._id.toString()
+    );
 
     // Notify agent
-    const updated = await this.grantAccessRepository.findById(grantAccess._id.toString());
+    const updated = await this.grantAccessRepository.findById(
+      grantAccess._id.toString()
+    );
+
     await this.notifier.notifyAgentOfPaymentFailure(updated!);
 
     logger.info(`Payment failed: ${stripePaymentIntentId}`, {
@@ -110,11 +127,15 @@ export class PaymentService {
 
     switch (event.type) {
       case "payment_intent.succeeded":
-        await this.handlePaymentSuccess((event.data.object as Stripe.PaymentIntent).id);
+        await this.handlePaymentSuccess(
+          (event.data.object as Stripe.PaymentIntent).id
+        );
         break;
 
       case "payment_intent.payment_failed":
-        await this.handlePaymentFailure((event.data.object as Stripe.PaymentIntent).id);
+        await this.handlePaymentFailure(
+          (event.data.object as Stripe.PaymentIntent).id
+        );
         break;
 
       case "charge.refunded":
@@ -125,5 +146,20 @@ export class PaymentService {
       default:
         logger.info(`Unhandled webhook event: ${event.type}`);
     }
+  }
+
+  // ============================================
+  // CONSTRUCT WEBHOOK EVENT
+  // ============================================
+
+  async constructWebhookEvent(
+    rawBody: string | Buffer,
+    signature: string
+  ): Promise<Stripe.Event> {
+    return this.stripe.webhooks.constructEvent(
+      rawBody,
+      signature,
+      env.STRIPE_WEBHOOK_SECRET
+    );
   }
 }
