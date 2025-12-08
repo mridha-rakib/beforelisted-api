@@ -45,7 +45,7 @@ export class ReferralUtil {
    * Validate referral code format
    */
   static isValidCodeFormat(code: string): boolean {
-    const pattern = /^(ADM|AGT)-[A-Z0-9]{12}$/;
+    const pattern = /^(ADM|AGT)-[A-Z0-9]{7}$/;
     return pattern.test(code);
   }
 

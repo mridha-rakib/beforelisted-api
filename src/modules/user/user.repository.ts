@@ -57,7 +57,7 @@ export class UserRepository extends BaseRepository<IUser> {
       .findOne({
         referralCode,
         isDeleted: false,
-        role: { $in: ["admin", "agent"] }, // Only admin/agent have codes
+        role: { $in: ["Admin", "Agent"] }, // Only admin/agent have codes
       })
       .exec();
   }
