@@ -2,33 +2,58 @@
 
 import type { Document, Types } from "mongoose";
 
+export interface IAccessToggleRecord {
+  action: "granted" | "revoked";
+  toggledBy: Types.ObjectId;
+  toggledAt: Date;
+  reason?: string;
+}
+
+export interface IActivationRecord {
+  action: "activated" | "deactivated";
+  changedBy: Types.ObjectId;
+  changedAt: Date;
+  reason?: string;
+}
+
 /**
  * Agent Profile Document Interface
  */
+
 export interface IAgentProfile extends Document {
   _id: Types.ObjectId;
   userId: Types.ObjectId;
   licenseNumber: string;
   brokerageName: string;
-  brokerageAddress?: string;
-  licenseExpiryDate: Date;
-  isVerified: boolean;
-  verifiedAt?: Date;
-  isSuspended: boolean;
-  suspendedAt?: Date;
-  suspensionReason?: string;
-  grantAccessCount: number; // How many renters gave access
-  totalMatches: number; // Total match requests received
-  successfulMatches: number; // Completed deals
-  avgResponseTime?: number; // In hours
+
+  // Activation Status
+  isActive: boolean;
+  activeAt?: Date;
+  activationHistory: IActivationRecord[];
+
+  // Admin Approval
   isApprovedByAdmin: boolean;
-  approvedByAdmin?: string; // Admin ID who approved
+  approvedByAdmin?: Types.ObjectId;
   approvedAt?: Date;
   adminNotes?: string;
+
+  // Referral Analytics
   totalRentersReferred: number;
   activeReferrals: number;
-  referralConversionRate: number; // Percentage
-  profileCompleteness: number; // Percentage 0-100
+  referralConversionRate: number;
+
+  // Access Management
+  hasAccess: boolean;
+  accessToggleHistory: IAccessToggleRecord[];
+  lastAccessToggleAt?: Date;
+
+  // Performance Metrics
+  grantAccessCount: number;
+  totalMatches: number;
+  successfulMatches: number;
+  avgResponseTime?: number;
+  profileCompleteness: number;
+
   createdAt: Date;
   updatedAt: Date;
 }

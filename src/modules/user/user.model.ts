@@ -220,7 +220,7 @@ userSchema.pre(/^find/, function (this: Query<any, IUser>) {
 userSchema.virtual("referralLink").get(function (this: IUser) {
   if (!this.referralCode) return null;
 
-  const baseUrl = process.env.FRONTEND_URL || "https://app.rentersedge.com";
+  const baseUrl = env.CLIENT_URL || "https://app.rentersedge.com";
   return `${baseUrl}/register?ref=${this.referralCode}`;
 });
 
@@ -260,6 +260,7 @@ userSchema.methods.needsPasswordChange = function (this: IUser): boolean {
 userSchema.set("toJSON", { virtuals: true });
 userSchema.set("toObject", { virtuals: true });
 
+import { env } from "@/env";
 import mongoose from "mongoose";
 
 const refreshTokenBlacklistSchema = new mongoose.Schema(

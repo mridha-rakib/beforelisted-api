@@ -63,6 +63,10 @@ export class RenterService {
     if (payload.referralCode) {
       const parsed = ReferralParser.parse(payload.referralCode);
 
+      console.log("==================================");
+      console.log(parsed);
+      console.log("===========================================");
+
       if (parsed.type === "agent_referral") {
         return this.registerAgentReferralRenter(
           payload as AgentReferralRenterRegisterPayload

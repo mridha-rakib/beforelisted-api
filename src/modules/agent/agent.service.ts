@@ -3,7 +3,11 @@
 import { ROLES } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 
-import { ConflictException, NotFoundException } from "@/utils/app-error.utils";
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from "@/utils/app-error.utils";
 import { hashPassword } from "@/utils/password.utils";
 import type { Types } from "mongoose";
 import { AuthUtil } from "../auth/auth.utils";
@@ -15,7 +19,6 @@ import { AgentProfileRepository } from "./agent.repository";
 import type {
   AdminAgentMetricsResponse,
   AdminApproveAgentPayload,
-  AdminSuspendAgentPayload,
   AgentProfileResponse,
   AgentRegisterPayload,
   AgentRegistrationResponse,
@@ -62,11 +65,6 @@ export class AgentService {
       throw new ConflictException("License number already registered");
     }
 
-    // 3. Validate license expiry date
-    if (new Date(payload.licenseExpiryDate) <= new Date()) {
-      throw new ConflictException("License has already expired");
-    }
-
     // 4. Hash password
     const hashedPassword = await hashPassword(payload.password);
 
@@ -92,8 +90,6 @@ export class AgentService {
       userId: user._id,
       licenseNumber: payload.licenseNumber,
       brokerageName: payload.brokerageName,
-      brokerageAddress: payload.brokerageAddress,
-      licenseExpiryDate: payload.licenseExpiryDate,
       isVerified: false,
       isSuspended: false,
       isApprovedByAdmin: false,
@@ -108,6 +104,13 @@ export class AgentService {
         brokerageName: payload.brokerageName,
       }),
     } as Partial<IAgentProfile>);
+
+    await this.emailVerificationService.createOTP({
+      userId: user._id.toString(),
+      email: payload.email,
+      userType: ROLES.AGENT,
+      userName: payload.fullName,
+    });
 
     // 10. Generate JWT tokens
     const tokens = this.generateTokens(
@@ -290,68 +293,49 @@ export class AgentService {
     return this.toResponse(updated);
   }
 
-  async adminVerifyAgent(userId: string): Promise<AgentProfileResponse> {
-    const profile = await this.repository.findByUserId(userId);
-    if (!profile) {
-      throw new NotFoundException("Agent profile not found");
-    }
+  // async adminSuspendAgent(
+  //   userId: string,
+  //   payload: AdminSuspendAgentPayload
+  // ): Promise<AgentProfileResponse> {
+  //   const profile = await this.repository.findByUserId(userId);
+  //   if (!profile) {
+  //     throw new NotFoundException("Agent profile not found");
+  //   }
 
-    if (profile.isVerified) {
-      throw new ConflictException("Agent license is already verified");
-    }
+  //   if (profile.isSuspended) {
+  //     throw new ConflictException("Agent is already suspended");
+  //   }
 
-    const updated = await this.repository.markAsVerified(userId);
-    if (!updated) {
-      throw new NotFoundException("Agent profile not found");
-    }
+  //   const updated = await this.repository.suspendAgent(
+  //     userId,
+  //     payload.suspensionReason
+  //   );
+  //   if (!updated) {
+  //     throw new NotFoundException("Agent profile not found");
+  //   }
 
-    logger.info({ userId }, "Agent license verified by admin");
-    return this.toResponse(updated);
-  }
+  //   logger.info({ userId }, "Agent suspended");
+  //   return this.toResponse(updated);
+  // }
 
-  async adminSuspendAgent(
-    userId: string,
-    payload: AdminSuspendAgentPayload
-  ): Promise<AgentProfileResponse> {
-    const profile = await this.repository.findByUserId(userId);
-    if (!profile) {
-      throw new NotFoundException("Agent profile not found");
-    }
+  // async adminUnsuspendAgent(userId: string): Promise<AgentProfileResponse> {
+  //   const profile = await this.repository.findByUserId(userId);
+  //   if (!profile) {
+  //     throw new NotFoundException("Agent profile not found");
+  //   }
 
-    if (profile.isSuspended) {
-      throw new ConflictException("Agent is already suspended");
-    }
+  //   if (!profile.isSuspended) {
+  //     throw new ConflictException("Agent is not suspended");
+  //   }
 
-    const updated = await this.repository.suspendAgent(
-      userId,
-      payload.suspensionReason
-    );
-    if (!updated) {
-      throw new NotFoundException("Agent profile not found");
-    }
+  //   const updated = await this.repository.unsuspendAgent(userId);
+  //   if (!updated) {
+  //     throw new NotFoundException("Agent profile not found");
+  //   }
 
-    logger.info({ userId }, "Agent suspended");
-    return this.toResponse(updated);
-  }
-
-  async adminUnsuspendAgent(userId: string): Promise<AgentProfileResponse> {
-    const profile = await this.repository.findByUserId(userId);
-    if (!profile) {
-      throw new NotFoundException("Agent profile not found");
-    }
-
-    if (!profile.isSuspended) {
-      throw new ConflictException("Agent is not suspended");
-    }
-
-    const updated = await this.repository.unsuspendAgent(userId);
-    if (!updated) {
-      throw new NotFoundException("Agent profile not found");
-    }
-
-    logger.info({ userId }, "Agent unsuspended");
-    return this.toResponse(updated);
-  }
+  //   logger.info({ userId }, "Agent unsuspended");
+  //   return this.toResponse(updated);
+  // }
 
   async adminGetPendingApprovalAgents(): Promise<AgentProfileResponse[]> {
     const agents: IAgentProfile[] =
@@ -476,24 +460,156 @@ export class AgentService {
   }
 
   /**
+   * Toggle agent access
+   * Automatically switches between grant and revoke
+   */
+  async toggleAccess(
+    agentId: string,
+    adminId: string,
+    reason?: string
+  ): Promise<{
+    hasAccess: boolean;
+    previousAccess: boolean;
+    message: string;
+  }> {
+    if (!agentId || agentId.trim() === "") {
+      throw new BadRequestException("Agent ID is required.");
+    }
+
+    const agent = await this.repository.findById(agentId);
+
+    if (!agent) {
+      throw new NotFoundException("Agent not found.");
+    }
+
+    const previousAccess = agent.hasAccess;
+    const newAccessStatus = !previousAccess;
+
+    const updated = await this.repository.toggleAccess(
+      agentId,
+      adminId,
+      reason
+    );
+
+    const message = newAccessStatus
+      ? `Access granted to ${agent.fullName}`
+      : `Access revoked from ${agent.fullName}`;
+
+    logger.info(
+      {
+        agentId,
+        adminId,
+        previousAccess,
+        newAccess: newAccessStatus,
+        reason,
+      },
+      `Agent access ${newAccessStatus ? "granted" : "revoked"}`
+    );
+
+    return {
+      hasAccess: updated.hasAccess,
+      previousAccess,
+      message,
+    };
+  }
+
+  /**
+   * Get agent access status
+   */
+  async getAccessStatus(agentId: string): Promise<{
+    hasAccess: boolean;
+    lastAccessToggleAt?: Date;
+    toggleHistory?: any[];
+  }> {
+    const agent = await this.repository.findById(agentId);
+    if (!agent) {
+      throw new NotFoundException("Agent not found");
+    }
+
+    const history = await this.repository.getAccessHistory(agentId);
+
+    return {
+      hasAccess: agent.hasAccess,
+      lastAccessToggleAt: agent.lastAccessToggleAt,
+      toggleHistory: history,
+    };
+  }
+
+  /**
+   * Toggle agent active/deactive status
+   * Automatically switches between active and inactive
+   */
+  async toggleAgentActive(
+    userId: string,
+    adminId: string,
+    reason?: string
+  ): Promise<{
+    isActive: boolean;
+    previousStatus: boolean;
+    message: string;
+  }> {
+    if (!userId || userId.trim() === "") {
+      throw new BadRequestException("User ID is required");
+    }
+
+    const agent = await this.repository.findByUserId(userId);
+
+    if (!agent) {
+      throw new NotFoundException("Agent not found");
+    }
+
+    const previousStatus = agent.isActive;
+    const newStatus = !previousStatus;
+
+    const updated = await this.repository.toggleActive(userId, adminId, reason);
+
+    const message = newStatus
+      ? `Agent activated successfully`
+      : `Agent deactivated successfully`;
+    return {
+      isActive: updated.isActive,
+      previousStatus,
+      message,
+    };
+  }
+
+  /**
+   * Get agent activation history
+   */
+  async getActivationHistory(userId: string): Promise<any[]> {
+    return this.repository.getActivationHistory(userId);
+  }
+
+  /**
    * Convert to response (exclude sensitive fields)
    */
-  private toResponse(profile: IAgentProfile): AgentProfileResponse {
+  private toResponse(agent: IAgentProfile): AgentProfileResponse {
     return {
-      _id: profile._id.toString(),
-      userId: profile.userId.toString(),
-      licenseNumber: profile.licenseNumber,
-      brokerageName: profile.brokerageName,
-      isVerified: profile.isVerified,
-      isSuspended: profile.isSuspended,
-      grantAccessCount: profile.grantAccessCount,
-      totalMatches: profile.totalMatches,
-      successfulMatches: profile.successfulMatches,
-      avgResponseTime: profile.avgResponseTime,
-      isApprovedByAdmin: profile.isApprovedByAdmin,
-      profileCompleteness: profile.profileCompleteness,
-      createdAt: profile.createdAt,
-      updatedAt: profile.updatedAt,
+      _id: agent._id.toString(),
+      userId:
+        agent.userId && (agent.userId as any)._id
+          ? agent.userId
+          : agent.userId.toString(),
+      licenseNumber: agent.licenseNumber,
+      brokerageName: agent.brokerageName,
+      isActive: agent.isActive,
+      activeAt: agent.activeAt,
+      isApprovedByAdmin: agent.isApprovedByAdmin,
+      approvedByAdmin: agent.approvedByAdmin?.toString(),
+      approvedAt: agent.approvedAt,
+      adminNotes: agent.adminNotes,
+      totalRentersReferred: agent.totalRentersReferred,
+      activeReferrals: agent.activeReferrals,
+      referralConversionRate: agent.referralConversionRate,
+      hasAccess: agent.hasAccess,
+      lastAccessToggleAt: agent.lastAccessToggleAt,
+      grantAccessCount: agent.grantAccessCount,
+      totalMatches: agent.totalMatches,
+      successfulMatches: agent.successfulMatches,
+      avgResponseTime: agent.avgResponseTime,
+      profileCompleteness: agent.profileCompleteness,
+      createdAt: agent.createdAt,
+      updatedAt: agent.updatedAt,
     };
   }
 }

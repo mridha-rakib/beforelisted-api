@@ -1,7 +1,13 @@
 // file: src/modules/agent/agent.controller.ts
 
 import { COOKIE_CONFIG } from "@/config/cookie.config";
+import { ROLES } from "@/constants/app.constants";
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
+import { logger } from "@/middlewares/pino-logger";
+import {
+  BadRequestException,
+  ForbiddenException,
+} from "@/utils/app-error.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 import type { NextFunction, Request, Response } from "express";
@@ -11,6 +17,7 @@ import {
   adminUnsuspendAgentSchema,
   adminVerifyAgentSchema,
   agentRegisterSchema,
+  agentToggleActiveSchema,
   createAgentProfileSchema,
   getAgentProfileSchema,
   updateAgentProfileSchema,
@@ -50,15 +57,13 @@ export class AgentController {
    * AGENT: Get own profile
    * GET /agent/profile
    */
-  getAgentProfile = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const userId = req.user!.userId;
+  getAgentProfile = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId;
 
-      const result = await this.service.getAgentProfile(userId);
+    const result = await this.service.getAgentProfile(userId);
 
-      ApiResponse.success(res, result, "Agent profile retrieved successfully");
-    }
-  );
+    ApiResponse.success(res, result, "Agent profile retrieved successfully");
+  });
 
   /**
    * AGENT: Update profile
@@ -277,5 +282,120 @@ export class AgentController {
     };
 
     ApiResponse.created(res, response, "Agent registered successfully");
+  });
+
+  /**
+   * Toggle agent access (grant/revoke)
+   * Admin only endpoint
+   *
+   * POST /agent/:agentId/toggle-access
+   * Body: { reason?: string }
+   */
+  toggleAccess = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const { agentId } = req.params;
+      const { reason } = req.body;
+      const adminId = req.user!.userId;
+      const userRole = req.user!.role;
+
+      // Verify admin role
+      if (userRole !== ROLES.ADMIN) {
+        logger.warn(
+          { userId: adminId, agentId, role: userRole },
+          "Unauthorized access toggle attempt"
+        );
+        throw new ForbiddenException("Only admins can toggle agent access");
+      }
+
+      // Validate agent ID
+      if (!agentId || agentId.trim() === "") {
+        throw new BadRequestException("Agent ID is required");
+      }
+
+      // Toggle access
+      const result = await this.service.toggleAccess(agentId, adminId, reason);
+
+      // Return response
+      ApiResponse.success(
+        res,
+        {
+          agentId,
+          hasAccess: result.hasAccess,
+          previousAccess: result.previousAccess,
+        },
+        result.message,
+        200
+      );
+    }
+  );
+
+  /**
+   * Get agent access status
+   * Admin only endpoint
+   *
+   * GET /agent/:agentId/access-status
+   */
+  getAccessStatus = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const { agentId } = req.params;
+      const userRole = req.user!.role;
+
+      // Verify admin role
+      if (userRole !== ROLES.ADMIN) {
+        throw new ForbiddenException(
+          "Only admins can view agent access status"
+        );
+      }
+
+      if (!agentId || agentId.trim() === "") {
+        throw new BadRequestException("Agent ID is required");
+      }
+
+      // Get status
+      const status = await this.service.getAccessStatus(agentId);
+
+      ApiResponse.success(
+        res,
+        {
+          agentId,
+          ...status,
+        },
+        "Access status retrieved",
+        200
+      );
+    }
+  );
+
+  /**
+   * ADMIN: Toggle agent active/deactive status
+   * POST /agent/admin/:userId/toggle-active
+   *
+   * Automatically switches isActive between true and false
+   */
+  toggleAgentActive = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(agentToggleActiveSchema, req);
+    const adminId = req.user!.userId;
+
+    const result = await this.service.toggleAgentActive(
+      validated.params.userId,
+      adminId,
+      validated.body?.reason
+    );
+
+    ApiResponse.success(res, result, result.message);
+  });
+
+  /**
+   * ADMIN: Get agent activation history
+   * GET /agent/admin/:userId/activation-history
+   */
+  getActivationHistory = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(getAgentProfileSchema, req);
+
+    const result = await this.service.getActivationHistory(
+      validated.params.userId
+    );
+
+    ApiResponse.success(res, result, "Activation history retrieved");
   });
 }

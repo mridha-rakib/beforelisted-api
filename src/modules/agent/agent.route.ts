@@ -45,7 +45,7 @@ router.put(
 router.get(
   "/referral-link",
   authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.AGENT),
+  authMiddleware.authorize(ROLES.AGENT, ROLES.AGENT),
   controller.getReferralLink
 );
 
@@ -119,4 +119,46 @@ router.post(
   controller.adminSuspendAgent
 );
 
+/**
+ * Toggle agent access
+ * POST /agent/:agentId/toggle-access
+ * Admin only
+ */
+router.post(
+  "/:agentId/toggle-access",
+  authMiddleware.verifyToken,
+  controller.toggleAccess
+);
+
+/**
+ * Get agent access status
+ * GET /agent/:agentId/access-status
+ * Admin only
+ */
+router.get(
+  "/:agentId/access-status",
+  authMiddleware.verifyToken,
+  controller.getAccessStatus
+);
+
+/**
+ * POST /agent/admin/:userId/toggle-active
+ * Toggle agent active/deactive (automatic switch)
+ */
+router.post(
+  "/admin/:userId/toggle-active",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize(ROLES.ADMIN),
+  controller.toggleAgentActive
+);
+/**
+ * GET /agent/admin/:userId/activation-history
+ * Get agent activation history
+ */
+router.get(
+  "/admin/:userId/activation-history",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize(ROLES.ADMIN),
+  controller.getActivationHistory
+);
 export default router;

@@ -44,6 +44,10 @@ export class PasswordResetController {
     const validated = await zParse(forgotPasswordSchema, req);
     const { email } = validated.body;
 
+    console.log("++++++++++++++++++++++++++++++++");
+    console.log(email);
+    console.log("+++++++++++++++++++++++++++++++");
+
     const result = await this.authService.requestPasswordReset(email);
     // Get user by email to find userId
     // (In real implementation, you'd use UserService)

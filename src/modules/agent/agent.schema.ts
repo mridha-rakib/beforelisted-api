@@ -93,3 +93,14 @@ export const adminVerifyAgentSchema = z.object({
     userId: z.string().min(1, "User ID is required"),
   }),
 });
+
+export const agentToggleActiveSchema = z.object({
+  params: z.object({
+    userId: z.string().min(24),
+  }),
+  body: z
+    .object({
+      reason: z.string().optional(),
+    })
+    .optional(),
+});

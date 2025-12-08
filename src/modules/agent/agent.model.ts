@@ -12,46 +12,52 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
     unique: true,
     index: true,
   } as any,
+
   licenseNumber: {
     type: String,
     required: true,
     unique: true,
     index: true,
   },
+
   brokerageName: {
     type: String,
     required: true,
   },
+
   // ============================================
-  // VERIFICATION & STATUS
+  // ACTIVATION STATUS
   // ============================================
 
-  isVerified: {
+  isActive: {
     type: Boolean,
     default: false,
     index: true,
   },
-  verifiedAt: Date,
 
-  isSuspended: {
-    type: Boolean,
-    default: false,
-    index: true,
+  activeAt: {
+    type: Date,
   },
-  suspendedAt: Date,
-  suspensionReason: String,
-
-  isApprovedByAdmin: {
-    type: Boolean,
-    default: false,
-    index: true,
-  },
-  approvedByAdmin: {
-    type: Types.ObjectId,
-    ref: "User",
-  },
-  approvedAt: Date,
-  adminNotes: String,
+  activationHistory: [
+    {
+      action: {
+        type: String,
+        enum: ["activated", "deactivated"],
+        required: true,
+      },
+      changedBy: {
+        type: Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+      changedAt: {
+        type: Date,
+        default: Date.now,
+      },
+      reason: String,
+      _id: false,
+    },
+  ],
 
   // ============================================
   // REFERRAL ANALYTICS
@@ -84,6 +90,42 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
     default: 0,
     min: 0,
     max: 100,
+  },
+
+  // ============================================
+  // ACCESS MANAGEMENT
+  // ============================================
+
+  hasAccess: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
+
+  accessToggleHistory: [
+    {
+      action: {
+        type: String,
+        enum: ["granted", "revoked"],
+        required: true,
+      },
+      toggledBy: {
+        type: Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+      toggledAt: {
+        type: Date,
+        default: Date.now,
+      },
+      reason: String,
+      _id: false,
+    },
+  ],
+
+  lastAccessToggleAt: {
+    type: Date,
+    index: true,
   },
 
   // ============================================
@@ -132,7 +174,8 @@ agentProfileSchema.pre(/^find/, function (this: any) {
   if (this.getOptions().populateUser) {
     this.populate({
       path: "userId",
-      select: "fullName email phone referralCode totalReferrals",
+      select:
+        "fullName email phoneNumber referralCode totalReferrals accountStatus emailVerified",
     });
   }
 });

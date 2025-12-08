@@ -7,7 +7,7 @@ import crypto from "crypto";
  * Referral code generation and validation
  */
 export class ReferralUtil {
-  private static readonly CODE_LENGTH = 12;
+  private static readonly CODE_LENGTH = 7;
   private static readonly PREFIX = {
     [ROLES.ADMIN]: "ADM",
     [ROLES.AGENT]: "AGT",

@@ -14,8 +14,6 @@ export type AgentRegisterPayload = {
   // Agent-specific fields
   licenseNumber: string;
   brokerageName: string;
-  brokerageAddress?: string;
-  licenseExpiryDate: Date;
 };
 
 /**
@@ -40,17 +38,41 @@ export type UpdateAgentProfilePayload = {
  */
 export type AgentProfileResponse = {
   _id: string;
-  userId: string;
+  userId: string | any; // Can be ID string or populated user object
   licenseNumber: string;
   brokerageName: string;
-  isVerified: boolean;
-  isSuspended: boolean;
+
+  // Activation Status
+  isActive: boolean;
+  activeAt?: Date;
+
+  // Suspension Status
+  // isSuspended: boolean;
+  // suspendedAt?: Date;
+  // suspensionReason?: string;
+
+  // Admin Approval
+  isApprovedByAdmin: boolean;
+  approvedByAdmin?: string;
+  approvedAt?: Date;
+  adminNotes?: string;
+
+  // Referral Analytics
+  totalRentersReferred: number;
+  activeReferrals: number;
+  referralConversionRate: number;
+
+  // Access Management
+  hasAccess: boolean;
+  lastAccessToggleAt?: Date;
+
+  // Performance Metrics
   grantAccessCount: number;
   totalMatches: number;
   successfulMatches: number;
   avgResponseTime?: number;
-  isApprovedByAdmin: boolean;
   profileCompleteness: number;
+
   createdAt: Date;
   updatedAt: Date;
 };

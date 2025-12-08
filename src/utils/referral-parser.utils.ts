@@ -44,7 +44,7 @@ export class ReferralParser {
     ADM: "admin_referral",
   };
 
-  private static readonly CODE_PATTERN = /^(AGT|ADM)-[A-Z0-9]{12}$/;
+  private static readonly CODE_PATTERN = /^(AGT|ADM)-[A-Z0-9]{7,}$/;
   private static readonly PREFIX_PATTERN = /^([A-Z]{3})-/;
 
   // ============================================
@@ -170,7 +170,7 @@ export class ReferralParser {
         type: parsed.type,
         code,
         prefix: parsed.prefix,
-        error: `Invalid referral code format. Expected: ${parsed.prefix}-[12 alphanumeric chars]`,
+        error: `Invalid referral code format. Expected: ${parsed.prefix}-[7 alphanumeric chars]`,
       };
     }
 

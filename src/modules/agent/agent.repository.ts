@@ -1,6 +1,7 @@
 // file: src/modules/agent/agent.repository.ts
 
 import { BaseRepository } from "@/modules/base/base.repository";
+import { NotFoundException } from "@/utils/app-error.utils";
 import { Types } from "mongoose";
 import type { IAgentProfile } from "./agent.interface";
 import { AgentProfile } from "./agent.model";
@@ -17,7 +18,14 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
    * Find agent by user ID
    */
   async findByUserId(userId: string): Promise<IAgentProfile | null> {
-    return this.model.findOne({ userId }).exec();
+    return this.model
+      .findOne({ userId })
+      .populate({
+        path: "userId",
+        select:
+          "fullName email role phoneNumber emailVerified accountStatus referralCode totalReferrals",
+      })
+      .exec();
   }
 
   /**
@@ -244,5 +252,120 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
     data: Partial<IAgentProfile>
   ): Promise<IAgentProfile | null> {
     return this.model.findOneAndUpdate({ userId }, data, { new: true }).exec();
+  }
+
+  /**
+   * Toggle agent access (grant/revoke)
+   */
+
+  async toggleAccess(
+    agentId: string,
+    adminId: string,
+    reason?: string
+  ): Promise<any> {
+    const agent = await this.model.findById(agentId);
+
+    if (!agent) {
+      throw new NotFoundException("Agent not found.");
+    }
+
+    const newAccessStatus = !agent.hasAccess;
+
+    const action = newAccessStatus ? "granted" : "revoked";
+
+    const updated = await this.model
+      .findByIdAndUpdate(
+        agentId,
+        {
+          hasAccess: newAccessStatus,
+          lastAccessToggleAt: new Date(),
+          $push: {
+            accessToggleHistory: {
+              action,
+              toggledBy: adminId,
+              toggledAt: new Date(),
+              reason,
+            },
+          },
+        },
+        { new: true }
+      )
+      .populate("accessToggleHistory.toggledBy", "email fullName");
+
+    return updated;
+  }
+
+  /**
+   * Get access history for an agent
+   */
+  async getAccessHistory(agentId: string): Promise<any> {
+    const agent = await this.model
+      .findById(agentId)
+      .populate("accessToggleHistory.toggledBy", "email fullName")
+      .lean();
+
+    return agent?.accessToggleHistory || [];
+  }
+
+  /**
+   * Find all agents with access
+   */
+  async findWithAccess(): Promise<any[]> {
+    return this.model
+      .find({ hasAccess: true })
+      .select("_id email fullName hasAccess lastAccessToggleAt")
+      .lean();
+  }
+
+  /**
+   * Toggle agent active/deactive status
+   * Automatically switches between active and inactive
+   */
+  async toggleActive(
+    userId: string,
+    adminId: string,
+    reason?: string
+  ): Promise<IAgentProfile> {
+    const agent = await this.model.findOne({ userId });
+
+    if (!agent) {
+      throw new NotFoundException("Agent not found");
+    }
+
+    const newStatus = !agent.isActive;
+    const action = newStatus ? "activated" : "deactivated";
+
+    return this.model
+      .findOneAndUpdate(
+        { userId },
+        {
+          isActive: newStatus,
+          activeAt: newStatus ? new Date() : null,
+          lastActivationChange: new Date(),
+          $push: {
+            activationHistory: {
+              action,
+              changedBy: adminId,
+              changedAt: new Date(),
+              reason,
+            },
+          },
+        },
+        { new: true }
+      )
+      .populate("activationHistory.changedBy", "email fullName")
+      .exec() as any;
+  }
+
+  /**
+   * Get activation history for agent
+   */
+  async getActivationHistory(userId: string): Promise<any[]> {
+    const agent = await this.model
+      .findOne({ userId })
+      .populate("activationHistory.changedBy", "email fullName")
+      .lean();
+
+    return agent?.activationHistory || [];
   }
 }

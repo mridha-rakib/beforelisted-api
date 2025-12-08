@@ -82,17 +82,24 @@ export class EmailVerificationService {
   
    */
   async createOTP(request: ICreateOTPRequest): Promise<ICreateOTPResponse> {
+    // Step 1: Invalidate previous OTPs for this user
+    await this.repository.invalidatePreviousOTPs(request.userId);
+    // Step 2: Check if already verified
     const activeOTP = await this.repository.findActiveByUserId(request.userId);
     if (activeOTP?.verified) {
       throw new BadRequestException("Email already verified for this account");
     }
 
-    // Step 2: Generate OTP (4 digits)
-    // ✅ FIX: Don't spread the OTP result, extract properties directly
+    // Step 3: Generate OTP
     const otpGenerated = this.otpService.generate("EMAIL_VERIFICATION");
 
-    // Step 3: Save to database
-    await this.repository.createOTP({
+    // Step 4: Calculate expiration time
+    const expiresAt = new Date(
+      Date.now() + this.config.OTP_EXPIRY_MINUTES * 60 * 1000
+    );
+
+    // Step 5: Save OTP to database
+    const record = await this.repository.createOTP({
       userId: request.userId,
       email: request.email,
       userType: request.userType,
@@ -103,18 +110,18 @@ export class EmailVerificationService {
       maxAttempts: this.config.MAX_OTP_ATTEMPTS,
     });
 
-    // Step 4: Send verification email
-    const expiresInMinutes = Math.ceil(otpGenerated.expiresInSeconds / 60);
+    // // Step 6: Send verification email
+    // const expiresInMinutes = Math.ceil(otpGenerated.expiresInSeconds / 60);
 
+    // Step 6: Send verification email
     await this.emailService.sendEmailVerification({
       to: request.email,
       userName: request.userName,
       userType: request.userType,
       verificationCode: String(otpGenerated.code),
-      expiresIn: String(expiresInMinutes),
+      expiresIn: String(this.config.OTP_EXPIRY_MINUTES),
     });
 
-    // Step 5: Log event
     logger.info(
       {
         userId: request.userId,
@@ -122,14 +129,14 @@ export class EmailVerificationService {
         userType: request.userType,
         expiresAt: otpGenerated.expiresAt,
       },
-      "Email verification OTP created and sent"
+      "Email verification OTP created and sent successfully"
     );
 
     return {
       otp: otpGenerated.code,
-      code: otpGenerated.code, // Backward compatibility
+      code: otpGenerated.code,
       expiresAt: otpGenerated.expiresAt,
-      expiresInMinutes,
+      expiresInMinutes: this.config.OTP_EXPIRY_MINUTES,
     };
   }
 
@@ -344,6 +351,7 @@ export class EmailVerificationService {
   }
 
   /**
+   *
    * VALIDATE OTP CODE
    * Helper: validate OTP matches and is not expired
    *

@@ -95,21 +95,13 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
       query.userType = userType;
     }
 
-    console.log("===========================================");
-    console.log("Finding OTP for email:", email);
     if (userType) {
       console.log("With userType:", userType);
     }
-    console.log("Query:", query);
-    console.log("===========================================");
 
     const record = await EmailVerificationOTP.findOne(query).sort({
       createdAt: -1,
     });
-
-    console.log("===========================================");
-    console.log("Found OTP record:", record);
-    console.log("===========================================");
 
     return record || null;
   }
