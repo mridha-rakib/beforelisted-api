@@ -84,7 +84,7 @@ export const EMAIL = {
 export const OTP = {
   LENGTH: 4,
   EXPIRY_MINUTES: 10,
-  MAX_ATTEMPTS: 3,
+  MAX_ATTEMPTS: 100,
 } as const;
 
 export const PAGINATION = {

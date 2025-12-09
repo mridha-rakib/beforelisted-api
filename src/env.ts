@@ -51,7 +51,7 @@ const envSchema = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color")
     .default("#1890FF"),
 
-  EMAIL_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(3),
+  EMAIL_MAX_RETRIES: z.coerce.number().int().min(0).max(150).default(100),
   EMAIL_RETRY_DELAY_MS: z.coerce.number().int().min(1000).default(1000),
 
   //  S3

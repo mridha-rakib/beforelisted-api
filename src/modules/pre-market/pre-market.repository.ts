@@ -237,4 +237,22 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
     return PaginationHelper.formatResponse<IPreMarketRequest>(result);
   }
+
+  /**
+   * GET ALL REQUESTS WITH PAGINATION
+   * Returns paginated response with all active pre-market requests
+   * Replaces the inherited findAll() which returns T[]
+   */
+  async findAll(
+    query: PaginationQuery
+  ): Promise<PaginatedResponse<IPreMarketRequest>> {
+    const paginateOptions = PaginationHelper.parsePaginationParams(query);
+
+    const result = await (this.model as any).paginate(
+      { status: "active", isDeleted: false },
+      paginateOptions
+    );
+
+    return PaginationHelper.formatResponse<IPreMarketRequest>(result);
+  }
 }

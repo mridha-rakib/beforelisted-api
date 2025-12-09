@@ -43,7 +43,7 @@ export class EmailVerificationService {
   // ============================================
 
   private readonly config = {
-    MAX_OTP_ATTEMPTS: 5,
+    MAX_OTP_ATTEMPTS: 100,
     MIN_RESEND_INTERVAL_SECONDS: 60,
     MAX_RESENDS_PER_HOUR: 5,
     OTP_EXPIRY_MINUTES: 3,

@@ -66,9 +66,7 @@ export const adminReferralRenterRegisterSchema = z.object({
       questionnaire: z
         .object({
           lookingToPurchase: z.boolean().optional(),
-          purchaseTimeline: z
-            .enum(["immediate", "2025-Q1", "2025-Q2", "2025-Q3", "2025-Q4"])
-            .optional(),
+          purchaseTimeline: z.string().optional(),
           buyerSpecialistNeeded: z.boolean().optional(),
           renterSpecialistNeeded: z.boolean().optional(),
         })
@@ -102,9 +100,7 @@ export const renterRegisterSchema = z.object({
       questionnaire: z
         .object({
           lookingToPurchase: z.boolean().optional(),
-          purchaseTimeline: z
-            .enum(["immediate", "2025-Q1", "2025-Q2", "2025-Q3", "2025-Q4"])
-            .optional(),
+          purchaseTimeline: z.string().optional(),
           buyerSpecialistNeeded: z.boolean().optional(),
           renterSpecialistNeeded: z.boolean().optional(),
         })

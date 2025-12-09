@@ -25,14 +25,6 @@ import type {
 } from "./auth.type";
 import { AuthUtil } from "./auth.utils";
 
-/**
- * Auth Service (SIMPLIFIED & SECURE)
- * ONLY handles: Login, Email Verification, Password Reset, Token Refresh
- *
- * Registration moved to:
- * - Agent: POST /agent/register (AgentService)
- * - Renter: POST /renter/register (RenterService)
- */
 export class AuthService {
   private userService: UserService;
   private passwordResetService: PasswordResetService;
@@ -45,13 +37,6 @@ export class AuthService {
     this.emailService = new EmailService();
     this.emailVerificationService = new EmailVerificationService();
   }
-
-  // ============================================
-  // REMOVED: register() method
-  // ============================================
-  // Registration now handled by:
-  // - AgentService.registerAgent()
-  // - RenterService.registerRenter()
 
   /**
    * Login user (All roles: Admin, Agent, Renter)
@@ -167,7 +152,6 @@ export class AuthService {
 
   /**
    * Verify password reset OTP
-   * ✅ COMPLETE: Validate OTP before password reset
    */
   async verifyPasswordOTP(
     email: string,
@@ -193,7 +177,6 @@ export class AuthService {
 
   /**
    * Verify OTP
-   * ✅ SIMPLIFIED: Delegate to PasswordResetService
    */
   async verifyOTP(email: string, otp: string): Promise<{ message: string }> {
     const user = await this.userService.getUserByEmail(email);
@@ -208,7 +191,6 @@ export class AuthService {
 
   /**
    * Reset password with OTP
-   * ✅ COMPLETE: Update password and require re-login
    */
   async resetPassword(
     email: string,
@@ -343,7 +325,6 @@ export class AuthService {
 
   /**
    * Resend verification code
-   * ✅ UPDATED: Resend OTP instead of token link
    */
   async resendVerificationCode(
     request: Partial<IResendOTPRequest>
@@ -387,10 +368,6 @@ export class AuthService {
   /**
    * Logout user (clear tokens and sessions)
    *  Required by auth controller
-   *
-   * @param token - JWT token (for blacklist if implemented)
-   * @param userId - User ID
-   * @returns Success message
    */
   async logout(token: string, userId: string): Promise<{ message: string }> {
     try {
@@ -412,15 +389,6 @@ export class AuthService {
 
   /**
    * Change password for authenticated user
-   * ✅ Works for ALL user types (Agent, Renter, Admin, User)
-   * ✅ Verifies current password
-   * ✅ Invalidates all refresh tokens (force re-login)
-   * ✅ Sends confirmation email
-   *
-   * @param userId - User ID from JWT token
-   * @param currentPassword - Current password (for verification)
-   * @param newPassword - New password to set
-   * @returns Success message
    */
 
   async changePassword(

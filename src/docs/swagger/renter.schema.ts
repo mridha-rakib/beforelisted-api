@@ -102,7 +102,6 @@ const renterSchemas = {
           },
           purchaseTimeline: {
             type: "string",
-            enum: ["immediate", "2025-Q1", "2025-Q2", "2025-Q3", "2025-Q4"],
             example: "2025-Q2",
           },
           buyerSpecialistNeeded: {

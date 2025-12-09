@@ -39,7 +39,7 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
       expiresAt: data.expiresAt,
       verified: data.verified ?? false,
       attempts: data.attempts ?? 0,
-      maxAttempts: data.maxAttempts ?? 5,
+      maxAttempts: data.maxAttempts ?? 100,
       lastAttemptAt: data.lastAttemptAt,
     });
 

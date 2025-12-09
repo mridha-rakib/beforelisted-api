@@ -32,10 +32,9 @@ export interface IRenterModel extends Document {
     purchaseTimeline?: string;
     buyerSpecialistNeeded?: boolean;
     renterSpecialistNeeded?: boolean;
+    _id: false;
   };
 
-  // Account status
-  // emailVerified: boolean;
   accountStatus: "active" | "suspended" | "pending";
 
   // Soft delete
@@ -52,17 +51,6 @@ export interface IRenterModel extends Document {
   completeProfile(data: Partial<IRenterModel>): Promise<void>;
 }
 
-// ============================================
-// SCHEMA DEFINITION
-// ============================================
-
-/**
- * ✅ Using BaseSchemaUtil.createSchema()
- * This automatically adds:
- * - timestamps (createdAt, updatedAt)
- * - pagination plugin
- * - all Mongoose schema configuration
- */
 const renterSchema = BaseSchemaUtil.createSchema({
   // ============================================
   // USER REFERENCE
@@ -86,10 +74,6 @@ const renterSchema = BaseSchemaUtil.createSchema({
     trim: true,
   } as any,
 
-  // ============================================
-  // REGISTRATION TYPE & REFERRAL TRACKING
-  // ============================================
-
   registrationType: {
     type: String,
     enum: ["normal", "agent_referral", "admin_referral"],
@@ -98,7 +82,6 @@ const renterSchema = BaseSchemaUtil.createSchema({
   } as any,
 
   /**
-   * ✅ Agent who referred this renter (if agent_referral flow)
    * Sparse index: Only indexed if field exists
    */
   referredByAgentId: {
@@ -109,7 +92,6 @@ const renterSchema = BaseSchemaUtil.createSchema({
   } as any,
 
   /**
-   * ✅ Admin who referred this renter (if admin_referral flow)
    * Sparse index: Only indexed if field exists
    */
   referredByAdminId: {
@@ -120,25 +102,9 @@ const renterSchema = BaseSchemaUtil.createSchema({
   } as any,
 
   // ============================================
-  // RENTER PROFILE DATA
-  // ============================================
-  occupation: {
-    type: String,
-    sparse: true,
-  } as any,
-
-  moveInDate: {
-    type: Date,
-    sparse: true,
-  } as any,
-
-  // ============================================
   // QUESTIONNAIRE DATA (For Admin Referral Only)
   // ============================================
-  /**
-   * ✅ Populated only for admin referral flow
-   * Contains renter's preferences and specialist needs
-   */
+
   questionnaire: {
     type: {
       lookingToPurchase: {
@@ -147,7 +113,6 @@ const renterSchema = BaseSchemaUtil.createSchema({
       },
       purchaseTimeline: {
         type: String,
-        enum: ["immediate", "2025-Q1", "2025-Q2", "2025-Q3", "2025-Q4"],
         sparse: true,
       },
       buyerSpecialistNeeded: {
@@ -158,22 +123,10 @@ const renterSchema = BaseSchemaUtil.createSchema({
         type: Boolean,
         default: false,
       },
+      _id: false,
     },
-    sparse: true, // Only exists for admin referral renters
+    sparse: true,
   } as any,
-
-  // emailVerified: {
-  //   type: Boolean,
-  //   default: false,
-  //   index: true,
-  // } as any,
-
-  // accountStatus: {
-  //   type: String,
-  //   enum: ["active", "suspended", "pending"],
-  //   default: "pending",
-  //   index: true,
-  // } as any,
 
   ...BaseSchemaUtil.mergeDefinitions(BaseSchemaUtil.softDeleteFields()),
 });

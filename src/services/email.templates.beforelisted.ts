@@ -29,7 +29,7 @@ export class EmailTemplates {
   // ============================================
 
   /**
-   * Welcome email for new users (standard)
+   * Welcome email for new users
    */
   welcome(
     userName: string,
@@ -225,10 +225,6 @@ export class EmailTemplates {
     `;
   }
 
-  // ============================================
-  // WELCOME WITH AUTO-GENERATED PASSWORD
-  // ============================================
-
   /**
    * Welcome email with auto-generated password
    */
@@ -236,13 +232,13 @@ export class EmailTemplates {
     userName: string,
     temporaryPassword: string,
     loginLink: string,
-    userType: "Agent" | "Renter",
+    userType: "Renter",
     logoUrl?: string,
     brandColor?: string
   ): string {
     const logo = logoUrl || this.logoUrl;
     const color = brandColor || this.brandColor;
-    const role = userType === "Agent" ? "Agent" : "Renter";
+    const role = userType;
 
     return `
 <!DOCTYPE html>
@@ -463,10 +459,6 @@ export class EmailTemplates {
     `;
   }
 
-  // ============================================
-  // EMAIL VERIFICATION
-  // ============================================
-
   /**
    * Email verification code template
    */
@@ -626,10 +618,6 @@ export class EmailTemplates {
     `;
   }
 
-  // ============================================
-  // PASSWORD RESET
-  // ============================================
-
   /**
    * Password reset email
    */
@@ -787,10 +775,6 @@ export class EmailTemplates {
 </html>
     `;
   }
-
-  // ============================================
-  // PASSWORD CHANGED CONFIRMATION
-  // ============================================
 
   /**
    * Password changed confirmation email
@@ -968,22 +952,6 @@ export class EmailTemplates {
     `;
   }
 
-  // ============================================
-  // PASSWORD RESET OTP EMAIL (FIXED)
-  // ============================================
-
-  /**
-   * Password Reset OTP Template
-   * Sent when user requests password reset
-   *
-   * @param userName - User's full name
-   * @param otpCode - 4-digit OTP code
-   * @param expiresIn - Minutes until expiration
-   * @param userType - User type (Agent or Renter) ✅ NEW
-   * @param logoUrl - Brand logo URL
-   * @param brandColor - Brand color (hex)
-   * @returns HTML string
-   */
   passwordResetOTP = (
     userName: string | undefined,
     otpCode: string,
@@ -1120,20 +1088,6 @@ export class EmailTemplates {
   `;
   };
 
-  // ============================================
-  // PASSWORD RESET CONFIRMATION (FIXED)
-  // ============================================
-
-  /**
-   * Password Reset Confirmation Template
-   * Sent after successful password reset
-   *
-   * @param userName - User's full name
-   * @param userType - User type (Agent or Renter) ✅ NEW
-   * @param logoUrl - Brand logo URL
-   * @param brandColor - Brand color (hex)
-   * @returns HTML string
-   */
   passwordResetConfirmation = (
     userName: string | undefined,
     userType?: string,
@@ -1263,4 +1217,382 @@ export class EmailTemplates {
 </html>
   `;
   };
+
+  welcomeAdminReferral(
+    userName: string,
+    email: string,
+    temporaryPassword: string,
+    loginLink: string,
+    accountType: string = "Renter",
+    logoUrl?: string,
+    brandColor?: string
+  ): string {
+    const logo = logoUrl || this.logoUrl;
+    const color = brandColor || this.brandColor;
+
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your BeforeListed Account is Ready</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f5f5f5;
+      line-height: 1.6;
+      color: #333;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1890FF 0%, #0050B3 100%);
+      padding: 40px 30px;
+      text-align: center;
+      color: white;
+    }
+
+    .header-logo {
+      max-width: 150px;
+      height: auto;
+      margin-bottom: 20px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      font-weight: 600;
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    .content {
+      padding: 40px 30px;
+    }
+
+    .greeting {
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+
+    .admin-badge {
+      background-color: #FFF7E6;
+      border-left: 4px solid #FA8C16;
+      padding: 15px;
+      margin-bottom: 25px;
+      border-radius: 4px;
+    }
+
+    .admin-badge-title {
+      font-weight: 600;
+      color: #AD6800;
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+
+    .admin-badge-text {
+      font-size: 13px;
+      color: #B7630C;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-top: 25px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .credentials-box {
+      background-color: #F0F5FF;
+      border: 2px solid #1890FF;
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+    .credential-row {
+      margin-bottom: 12px;
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .credential-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .credential-label {
+      font-weight: 600;
+      color: #333;
+      min-width: 85px;
+      flex-shrink: 0;
+      font-size: 13px;
+    }
+
+    .credential-value {
+      color: #333;
+      word-break: break-all;
+      background-color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      flex: 1;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+    }
+
+    .security-notice {
+      background-color: #FFF7E6;
+      border-left: 4px solid #FA8C16;
+      padding: 12px 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+
+    .security-notice-title {
+      font-weight: 600;
+      color: #AD6800;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+
+    .security-notice-text {
+      font-size: 13px;
+      color: #B7630C;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .cta-button {
+      display: inline-block;
+      background-color: #1890FF;
+      color: white;
+      padding: 12px 30px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      margin-top: 20px;
+      transition: background-color 0.3s;
+    }
+
+    .cta-button:hover {
+      background-color: #0050B3;
+    }
+
+    .action-text {
+      font-size: 13px;
+      color: #666;
+      margin-top: 12px;
+      line-height: 1.6;
+    }
+
+    .action-text strong {
+      word-break: break-all;
+    }
+
+    .getting-started {
+      background-color: #FAFAFA;
+      padding: 20px;
+      border-radius: 6px;
+      margin-top: 25px;
+    }
+
+    .getting-started-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin: 0 0 12px;
+    }
+
+    .getting-started-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .getting-started-list li {
+      font-size: 13px;
+      color: #666;
+      padding: 6px 0 6px 25px;
+      position: relative;
+      line-height: 1.5;
+    }
+
+    .getting-started-list li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #1890FF;
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .footer {
+      background-color: #FAFAFA;
+      padding: 30px;
+      text-align: center;
+      border-top: 1px solid #E8E8E8;
+    }
+
+    .footer-text {
+      font-size: 12px;
+      color: #999;
+      margin: 8px 0;
+      line-height: 1.5;
+    }
+
+    .footer-links {
+      font-size: 11px;
+      margin-top: 15px;
+    }
+
+    .footer-links a {
+      color: #1890FF;
+      text-decoration: none;
+      margin: 0 8px;
+    }
+
+    .footer-links a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        margin: 0;
+        border-radius: 0;
+      }
+
+      .header {
+        padding: 30px 20px;
+      }
+
+      .header h1 {
+        font-size: 24px;
+      }
+
+      .content {
+        padding: 20px;
+      }
+
+      .footer {
+        padding: 20px;
+      }
+
+      .credential-row {
+        flex-direction: column;
+      }
+
+      .credential-label {
+        min-width: auto;
+        margin-bottom: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      ${logo ? `<img src="${logo}" alt="BeforeListed" class="header-logo">` : ""}
+      <h1>Your Account is Ready!</h1>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <p class="greeting">Welcome ${userName}!</p>
+
+      <!-- Admin Referral Badge -->
+      <div class="admin-badge">
+        <div class="admin-badge-title">👤 ADMIN REFERRAL ACCOUNT</div>
+        <p class="admin-badge-text">
+          You've been invited by an administrator to join BeforeListed as a ${accountType}.
+        </p>
+      </div>
+
+      <!-- Credentials Section -->
+      <div class="section-title">Login Credentials</div>
+      <div class="credentials-box">
+        <div class="credential-row">
+          <span class="credential-label">Email:</span>
+          <span class="credential-value">${email}</span>
+        </div>
+        <div class="credential-row">
+          <span class="credential-label">Password:</span>
+          <span class="credential-value">${temporaryPassword}</span>
+        </div>
+      </div>
+
+      <!-- Security Notice -->
+      <div class="security-notice">
+        <div class="security-notice-title">🔒 IMPORTANT SECURITY NOTICE</div>
+        <p class="security-notice-text">
+          Please change your temporary password immediately after your first login.
+        </p>
+      </div>
+
+      <!-- Action Button -->
+      <div class="section-title">Get Started</div>
+      <div>
+        <a href="${loginLink}" class="cta-button">Access Your Dashboard</a>
+        <div class="action-text">
+          Can't click the button? Copy and paste this link into your browser:<br>
+          <strong>${loginLink}</strong>
+        </div>
+      </div>
+
+      <!-- Getting Started Checklist -->
+      <div class="getting-started">
+        <h3 class="getting-started-title">Next Steps:</h3>
+        <ul class="getting-started-list">
+          <li>Log in using the credentials above</li>
+          <li>Change your password immediately</li>
+          <li>Complete your profile</li>
+          <li>Start exploring BeforeListed</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p class="footer-text">
+        If you have any questions or didn't expect this account, please contact our support team.
+      </p>
+      <p class="footer-text"><strong>The BeforeListed Team</strong></p>
+      <div class="footer-links">
+        <a href="mailto:support@beforelisted.com">Contact Support</a> |
+        <a href="#">Help Center</a> |
+        <a href="#">Privacy Policy</a>
+      </div>
+      <p class="footer-text" style="margin-top: 15px; font-size: 10px; color: #ccc;">
+        © ${new Date().getFullYear()} BeforeListed. All rights reserved.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+  }
 }

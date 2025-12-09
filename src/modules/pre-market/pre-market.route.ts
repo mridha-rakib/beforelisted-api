@@ -5,10 +5,6 @@ import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
 import { PreMarketController } from "./pre-market.controller";
 
-// ============================================
-// ROUTER SETUP
-// ============================================
-
 const router = Router();
 
 const controller = new PreMarketController();
@@ -53,6 +49,28 @@ router.get(
   authMiddleware.verifyToken,
   authMiddleware.authorize("Agent"),
   controller.getAllRequests.bind(controller)
+);
+
+/**
+ * GET /pre-market/agent/all-requests
+ * Agent views all available pre-market requests
+ * Data visibility depends on agent type:
+ * - Normal Agent: No renter info
+ * - Grant Access Agent: Full renter info included
+ * Protected: Agents only
+ */
+router.get(
+  "/agent/all-requests",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.getAllRequestsForAgent.bind(controller)
+);
+
+router.get(
+  "/agent/:requestId",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.getRequestForAgent.bind(controller)
 );
 
 router.get(

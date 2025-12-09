@@ -1,6 +1,5 @@
 // file: src/utils/otp.utils.ts
 
-
 /**
  * OTP Configuration Interface
  * Customizable for different use cases
@@ -88,7 +87,7 @@ export class OTPUtil {
 
     let otp: string;
     let attempts = 0;
-    const maxAttempts = 10; // Prevent infinite loops
+    const maxAttempts = 100; // Prevent infinite loops
 
     // Generate OTP with duplicate prevention
     do {

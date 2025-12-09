@@ -9,14 +9,6 @@ import type {
   IEmailTransporter,
 } from "./email.types";
 
-// ============================================
-// NODEMAILER SMTP TRANSPORTER
-// ============================================
-
-/**
- * NodeMailer SMTP Transporter Implementation
- * Implements IEmailTransporter interface for abstraction
- */
 export class NodeMailerSmtpTransporter implements IEmailTransporter {
   private transporter: Transporter;
   private config: IEmailConfig;
@@ -30,7 +22,7 @@ export class NodeMailerSmtpTransporter implements IEmailTransporter {
    */
   constructor(config: IEmailConfig) {
     this.config = config;
-    this.maxRetries = config.maxRetries || 3;
+    this.maxRetries = config.maxRetries || 100;
     this.retryDelayMs = config.retryDelayMs || 1000;
 
     // Create transporter with connection pooling
@@ -189,16 +181,6 @@ export class NodeMailerSmtpTransporter implements IEmailTransporter {
     return this.isConnected;
   }
 
-  // ============================================
-  // PRIVATE METHODS
-  // ============================================
-
-  /**
-   * Prepare and normalize email options
-   * Converts recipients to NodeMailer format
-   * @param options - Raw email options
-   * @returns Normalized options for NodeMailer
-   */
   private prepareEmailOptions(options: IEmailOptions): Record<string, any> {
     const defaultFrom = this.config.from;
     const from = options.from || defaultFrom;
@@ -220,11 +202,6 @@ export class NodeMailerSmtpTransporter implements IEmailTransporter {
     };
   }
 
-  /**
-   * Format recipients to NodeMailer string format
-   * @param recipients - Single recipient or array
-   * @returns Formatted string for NodeMailer
-   */
   private formatRecipients(recipients: any): string {
     if (!recipients) return "";
 
@@ -237,17 +214,12 @@ export class NodeMailerSmtpTransporter implements IEmailTransporter {
       .join(", ");
   }
 
-  /**
-   * Strip HTML tags from content (for plain text version)
-   * @param html - HTML content
-   * @returns Plain text
-   */
   private stripHtmlTags(html: string): string {
     return html
-      .replace(/<[^>]*>/g, "") // Remove HTML tags
-      .replace(/&nbsp;/g, " ") // Replace &nbsp; with space
-      .replace(/&#?\w+;/g, " ") // Replace HTML entities
-      .replace(/\s+/g, " ") // Collapse multiple spaces
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&#?\w+;/g, " ")
+      .replace(/\s+/g, " ")
       .trim();
   }
 
@@ -260,16 +232,6 @@ export class NodeMailerSmtpTransporter implements IEmailTransporter {
   }
 }
 
-// ============================================
-// TRANSPORTER FACTORY
-// ============================================
-
-/**
- * Factory function to create email transporter
- * Supports dependency injection patterns
- * @param config - Email configuration
- * @returns IEmailTransporter instance
- */
 export function createEmailTransporter(
   config: IEmailConfig
 ): IEmailTransporter {

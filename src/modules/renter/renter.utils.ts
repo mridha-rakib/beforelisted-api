@@ -1,26 +1,9 @@
 // file: src/modules/renter/renter.utils.ts
 
-import { logger } from "@/middlewares/pino-logger";
 import { IGeneratedPasswordResponse } from "./renter.interface";
-
-/**
- * Renter Utilities
- * Helper functions for renter registration, password generation, and validation
- * ✅ Reusable across renter module
- * ✅ Type-safe with TypeScript
- * ✅ SOLID principles
- */
-
-/**
- * Renter Utility Functions
- */
 
 export class RenterUtil {
   /**
-   * Generate random password for passwordless registration (admin referral)
-   * Pattern: 12 characters (Uppercase + Lowercase + Numbers)
-   * Example: "aB3cD5eF7gH9"
-   *
    * @returns Generated password with metadata
    */
 
@@ -42,16 +25,10 @@ export class RenterUtil {
         allCharacters[Math.floor(Math.random() * allCharacters.length)];
     }
 
-    // Shuffle password
     password = password
       .split("")
       .sort(() => 0.5 - Math.random())
       .join("");
-
-    logger.debug(
-      { length: password.length },
-      "Auto-generated password created"
-    );
 
     return {
       password,
@@ -60,18 +37,6 @@ export class RenterUtil {
     };
   }
 
-  /**
-   * Validate password strength
-   * Requirements:
-   * - Min 8 characters
-   * - At least 1 uppercase letter
-   * - At least 1 lowercase letter
-   * - At least 1 number
-   * - At least 1 special character (optional)
-   *
-   * @param password - Password to validate
-   * @returns { isValid, message }
-   */
   static validatePasswordStrength(password: string): {
     isValid: boolean;
     message: string;
@@ -110,27 +75,11 @@ export class RenterUtil {
     };
   }
 
-  /**
-   * Validate email format
-   *
-   * @param email - Email to validate
-   * @returns true if valid, false otherwise
-   */
   static validateEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   }
 
-  /**
-   * Validate full name
-   * Requirements:
-   * - Min 2 characters
-   * - Max 100 characters
-   * - Only letters, spaces, hyphens, and apostrophes
-   *
-   * @param fullName - Name to validate
-   * @returns { isValid, message }
-   */
   static validateFullName(fullName: string): {
     isValid: boolean;
     message: string;
@@ -247,33 +196,14 @@ export class RenterUtil {
     return { isValid: false };
   }
 
-  /**
-   * Check if passwords match
-   *
-   * @param password - Password
-   * @param confirmPassword - Confirm password
-   * @returns true if match, false otherwise
-   */
   static passwordsMatch(password: string, confirmPassword: string): boolean {
     return password === confirmPassword;
   }
 
-  /**
-   * Generate verification code (4-digit)
-   * Used for email verification and password reset
-   *
-   * @returns 4-digit code as string
-   */
   static generateVerificationCode(): string {
     return Math.floor(1000 + Math.random() * 9000).toString();
   }
 
-  /**
-   * Get registration type from referral code
-   *
-   * @param referralCode - Referral code or undefined
-   * @returns Registration type
-   */
   static getRegistrationType(
     referralCode?: string
   ): "normal" | "agent_referral" | "admin_referral" {
@@ -297,12 +227,6 @@ export class RenterUtil {
     return "normal";
   }
 
-  /**
-   * Build user data for renter creation
-   *
-   * @param data - Input data
-   * @returns Normalized user data
-   */
   static buildUserData(data: {
     email: string;
     password?: string;

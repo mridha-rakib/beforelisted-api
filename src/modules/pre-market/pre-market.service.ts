@@ -5,11 +5,14 @@ import { logger } from "@/middlewares/pino-logger";
 import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import {
   BadRequestException,
+  ForbiddenException,
   NotFoundException,
 } from "@/utils/app-error.utils";
+import { AgentProfileRepository } from "../agent/agent.repository";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
 import { PaymentService } from "../payment/payment.service";
 import { RenterRepository } from "../renter/renter.repository";
+import { UserRepository } from "../user/user.repository";
 import { preMarketNotifier, PreMarketNotifier } from "./pre-market-notifier";
 import type { IPreMarketRequest } from "./pre-market.model";
 import { PreMarketRepository } from "./pre-market.repository";
@@ -18,6 +21,8 @@ export class PreMarketService {
   private readonly preMarketRepository: PreMarketRepository;
   private readonly grantAccessRepository: GrantAccessRepository;
   private renterRepository: RenterRepository;
+  private agentRepository: AgentProfileRepository;
+  private userRepository: UserRepository;
 
   private readonly paymentService: PaymentService;
   private readonly notifier: PreMarketNotifier;
@@ -25,12 +30,14 @@ export class PreMarketService {
   constructor() {
     this.preMarketRepository = new PreMarketRepository();
     this.grantAccessRepository = new GrantAccessRepository();
+    this.agentRepository = new AgentProfileRepository();
     this.paymentService = new PaymentService(
       this.grantAccessRepository,
       this.preMarketRepository
     );
     this.notifier = new PreMarketNotifier();
     this.renterRepository = new RenterRepository();
+    this.userRepository = new UserRepository();
   }
 
   // ============================================
@@ -295,5 +302,173 @@ export class PreMarketService {
 
   async getPriceRangeStatistics(): Promise<any> {
     return this.preMarketRepository.getPriceRangeStatistics();
+  }
+
+  // ============================================
+  // TASK 1: GET ALL REQUESTS FOR AGENT
+  // ============================================
+
+  async getAllRequestsForAgent(
+    agentId: string,
+    query: PaginationQuery
+  ): Promise<PaginatedResponse<IPreMarketRequest>> {
+    const agent = await this.agentRepository.findByUserId(agentId);
+    if (!agent) {
+      throw new NotFoundException("Agent profile not found");
+    }
+
+    // Get paginated requests
+    const paginatedRequests = await this.preMarketRepository.findAll(query);
+
+    // Enrich each request with renter and referrer info
+    const enrichedRequests = await Promise.all(
+      paginatedRequests.data.map((request: any) =>
+        this.enrichRequestWithRenterInfo(request, agentId, agent.hasAccess)
+      )
+    );
+
+    logger.info(
+      { agentId, agentType: agent.hasAccess ? "GrantAccess" : "Normal" },
+      "Agent retrieved all pre-market requests"
+    );
+
+    return {
+      ...paginatedRequests,
+      data: enrichedRequests,
+    };
+  }
+
+  // ============================================
+  // TASK 2: GET SPECIFIC REQUEST FOR AGENT
+  // ============================================
+
+  async getRequestForAgent(agentId: string, requestId: string): Promise<any> {
+    const agent = await this.agentRepository.findByUserId(agentId);
+    if (!agent) {
+      throw new ForbiddenException("Agent profile not found");
+    }
+
+    const request = await this.getRequestById(requestId);
+
+    const enrichedRequest = await this.enrichRequestWithRenterInfo(
+      request,
+      agentId,
+      agent.hasAccess
+    );
+
+    return enrichedRequest;
+  }
+
+  // ============================================
+  // HELPER: FILTER VISIBILITY
+  // ============================================
+
+  private filterRequestVisibility(
+    request: any,
+    hasGrantAccess: boolean
+  ): IPreMarketRequest {
+    if (hasGrantAccess) {
+      return request;
+    }
+
+    const filtered = {
+      ...request,
+      renterName: undefined,
+      renterEmail: undefined,
+      renterPhone: undefined,
+      renterId: undefined,
+    };
+
+    Object.keys(filtered).forEach((key) => {
+      if (filtered[key] === undefined) {
+        delete filtered[key];
+      }
+    });
+
+    return filtered;
+  }
+
+  /**
+   * HELPER: Enrich request with renter and referrer information
+   * Fetches renter details and referrer (if applicable)
+   */
+  private async enrichRequestWithRenterInfo(
+    request: any,
+    agentId: string,
+    hasGrantAccess: boolean
+  ): Promise<any> {
+    try {
+      // Get renter details
+      const renter = await this.renterRepository.findById(
+        request.renterId.toString()
+      );
+
+      if (!renter) {
+        logger.warn(
+          { renterId: request.renterId, requestId: request.requestId },
+          "Renter not found for request"
+        );
+        return request;
+      }
+
+      // Get referrer information
+      let referrerInfo = null;
+      if (renter.referredByAgentId) {
+        const referrer = await this.userRepository.findById(
+          renter.referredByAgentId.toString()
+        );
+        if (referrer) {
+          referrerInfo = {
+            referrerId: referrer._id,
+            referrerName: referrer.fullName,
+            referrerRole: "Agent",
+            referralType: "agent_referral",
+          };
+        }
+      } else if (renter.referredByAdminId) {
+        const referrer = await this.userRepository.findById(
+          renter.referredByAdminId.toString()
+        );
+        if (referrer) {
+          referrerInfo = {
+            referrerId: referrer._id,
+            referrerName: referrer.fullName,
+            referrerRole: "Admin",
+            referralType: "admin_referral",
+          };
+        }
+      }
+
+      // Build renter info based on visibility
+      const renterInfo: any = {
+        renterId: renter._id,
+        registrationType: renter.registrationType,
+        emailVerified: renter.emailVerified,
+      };
+
+      // Show contact info only to grant access agents
+      if (hasGrantAccess) {
+        renterInfo.renterName = renter.fullName;
+        renterInfo.renterEmail = renter.email;
+        renterInfo.renterPhone = renter.phoneNumber || null;
+      }
+
+      // Add referrer info (visible to all agents)
+      if (referrerInfo) {
+        renterInfo.referrer = referrerInfo;
+      }
+
+      // Merge with request
+      return {
+        ...request,
+        renterInfo,
+      };
+    } catch (error) {
+      logger.error(
+        { error, requestId: request.requestId },
+        "Error enriching request with renter info"
+      );
+      return request;
+    }
   }
 }

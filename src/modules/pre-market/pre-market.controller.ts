@@ -103,9 +103,6 @@ export class PreMarketController {
     );
   });
 
-  // ============================================
-  // RENTER: UPDATE REQUEST
-  // ============================================
   /**
    * Update pre-market request
    * PUT /pre-market/:requestId
@@ -382,5 +379,51 @@ export class PreMarketController {
 
     logger.debug({ eventType: stripeEvent.type }, "Webhook processed");
     ApiResponse.success(res, { received: true });
+  });
+
+  /**
+   * TASK 1: AGENT - GET ALL REQUESTS WITH VISIBILITY CONTROL
+   */
+  getAllRequestsForAgent = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(preMarketListSchema, req);
+    const agentId = req.user!.userId;
+
+    const requests = await this.preMarketService.getAllRequestsForAgent(
+      agentId,
+      validated.query
+    );
+
+    logger.info(
+      { agentId, requestCount: requests.data.length },
+      "Agent retrieved all pre-market requests"
+    );
+
+    ApiResponse.paginated(
+      res,
+      requests.data,
+      requests.pagination,
+      "Pre-market requests retrieved with visibility control"
+    );
+  });
+
+  /**
+   * TASK 2: AGENT - GET SPECIFIC REQUEST WITH VISIBILITY CONTROL
+   */
+  getRequestForAgent = asyncHandler(async (req: Request, res: Response) => {
+    const agentId = req.user!.userId;
+    const { requestId } = req.params;
+
+    const request = await this.preMarketService.getRequestForAgent(
+      agentId,
+      requestId
+    );
+
+    logger.info({ agentId, requestId }, "Agent retrieved specific request");
+
+    ApiResponse.success(
+      res,
+      request,
+      "Pre-market request retrieved with visibility control"
+    );
   });
 }

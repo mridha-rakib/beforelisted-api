@@ -1,5 +1,4 @@
 // file: src/services/email.service.notification-methods.ts
-// Pre-market notification methods to be added to the EmailService class
 
 import { logger } from "@/middlewares/pino-logger";
 import type {
@@ -8,23 +7,6 @@ import type {
 } from "@/services/email-notification.types";
 import type { IEmailOptions, IEmailResult } from "@/services/email.types";
 
-/**
- * These methods should be added to the EmailService class in email.service.ts
- * They are defined here for organizational purposes
- */
-
-// ============================================
-// PRE-MARKET NOTIFICATION METHODS
-// ============================================
-
-/**
- * Send pre-market notification email to agents
- * Called when renter creates new pre-market request
- * WITHOUT renter information (both agent types receive same email)
- *
- * @param payload - Agent notification details
- * @returns Promise with send result
- */
 export async function sendPreMarketNotificationToAgent(
   this: any,
   payload: IPreMarketAgentNotificationPayload
@@ -80,14 +62,6 @@ export async function sendPreMarketNotificationToAgent(
   }
 }
 
-/**
- * Send pre-market notification email to admin
- * Called when renter creates new pre-market request
- * WITH full renter information (admin only)
- *
- * @param payload - Admin notification details
- * @returns Promise with send result
- */
 export async function sendPreMarketNotificationToAdmin(
   this: any,
   payload: IPreMarketAdminNotificationPayload

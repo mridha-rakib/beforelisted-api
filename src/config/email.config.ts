@@ -1,20 +1,8 @@
 // file: src/config/email.config.ts
 
-/**
- * Email Service Configuration
- * ✅ Centralized SMTP configuration
- * ✅ Environment-based settings
- * ✅ Support for multiple providers (Gmail, Brevo, AWS SES, etc.)
- * ✅ Rate limiting & connection pooling
- */
-
 import { env } from "@/env";
 import type { IEmailConfig, ISmtpConfig } from "@/services/email.types";
 import { z } from "zod";
-
-// ============================================
-// VALIDATION SCHEMA
-// ============================================
 
 /**
  * Validate email configuration from environment
@@ -45,13 +33,6 @@ const emailConfigSchema = z.object({
 
 type EmailConfigInput = z.infer<typeof emailConfigSchema>;
 
-// ============================================
-// CONFIGURATION FACTORY
-// ============================================
-
-/**
- * Create email configuration from environment variables
- */
 export function createEmailConfig(): IEmailConfig {
   // Validate environment variables
   const envVars = emailConfigSchema.parse(process.env);
@@ -72,9 +53,6 @@ export function createEmailConfig(): IEmailConfig {
   return config;
 }
 
-/**
- * Create SMTP configuration based on environment
- */
 function createSmtpConfig(envVars: EmailConfigInput): ISmtpConfig {
   const isProduction = envVars.NODE_ENV === "production";
 
@@ -88,57 +66,20 @@ function createSmtpConfig(envVars: EmailConfigInput): ISmtpConfig {
     },
     pool: {
       maxConnections: isProduction ? 5 : 3,
-      maxMessages: isProduction ? 100 : 50,
-      rateDelta: 1000, // 1 second
-      rateLimit: isProduction ? 10 : 20, // Max 10 emails per second in production
+      maxMessages: isProduction ? 200 : 200,
+      rateDelta: 1000,
+      rateLimit: isProduction ? 10 : 100,
     },
-    logger: !isProduction, // Enable logging in development
-    debug: !isProduction, // Enable debug in development
+    logger: !isProduction,
+    debug: !isProduction,
   };
 }
 
-// ============================================
-// PRESET CONFIGURATIONS
-// ============================================
-
-/**
- * Gmail SMTP configuration template
- */
 export const GMAIL_CONFIG_TEMPLATE = {
   host: "smtp.gmail.com",
   port: 587,
   secure: false,
   note: "Use Gmail App Password (not your regular password)",
-};
-
-/**
- * Brevo (formerly Sendinblue) SMTP configuration template
- */
-export const BREVO_CONFIG_TEMPLATE = {
-  host: "smtp-relay.brevo.com",
-  port: 587,
-  secure: false,
-  note: "Use SMTP login credentials from Brevo dashboard",
-};
-
-/**
- * AWS SES SMTP configuration template
- */
-export const AWS_SES_CONFIG_TEMPLATE = {
-  host: "email-smtp.{region}.amazonaws.com",
-  port: 587,
-  secure: false,
-  note: "Replace {region} with your AWS region (e.g., us-east-1)",
-};
-
-/**
- * Mailgun SMTP configuration template
- */
-export const MAILGUN_CONFIG_TEMPLATE = {
-  host: "smtp.mailgun.org",
-  port: 587,
-  secure: false,
-  note: "Use postmaster@{domain} as username",
 };
 
 export const emailConfig = createEmailConfig();

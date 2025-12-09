@@ -102,7 +102,7 @@ export const updatePreMarketRequestSchema = z.object({
               .min(1, "At least one neighborhood required"),
           })
         )
-        .min(1, "At least one location required"),
+        .optional(),
       bedrooms: z.array(bedroomSchema).optional(),
       bathrooms: z.array(bathroomSchema).optional(),
       description: z

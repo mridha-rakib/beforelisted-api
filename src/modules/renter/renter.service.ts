@@ -218,7 +218,7 @@ export class RenterService {
   }
 
   /**
-   * 3️⃣ ADMIN REFERRAL RENTER REGISTRATION (PASSWORDLESS)
+   * ADMIN REFERRAL RENTER REGISTRATION (PASSWORDLESS)
    * Flow: email + referral code (ADM-xxxxx) + auto-generated password + questionnaire
    * Password sent via email + must change on first login
    */
@@ -237,14 +237,17 @@ export class RenterService {
       throw new ConflictException("Email already registered");
     }
 
-    // Step 3: Validate referral code in system and get admin ID
+    // Step 3: Generate random password
+    const temporaryPassword = RenterUtil.generateAutoPassword();
+    const hashedPassword = await hashPassword(temporaryPassword.password);
+
+    // Step 4: Validate referral code in system and get admin ID
     const adminId = await this.validateAndGetAdminFromReferralCode(
       payload.referralCode
     );
 
-    // Step 4: Generate random password
-    const temporaryPassword = RenterUtil.generateAutoPassword().toString();
-    const hashedPassword = await hashPassword(temporaryPassword);
+    // STEP 5: RECORD REFERRAL - INCREMENT ADMIN'S TOTAL REFERRALS
+    await this.referralService.recordReferral(adminId);
 
     // Step 5: Create User account with mustChangePassword flag
     const user = await this.userService.create({
@@ -272,19 +275,67 @@ export class RenterService {
       registrationType: "admin_referral",
       referredByAdminId: adminId,
       accountStatus: "active",
-      questionnaire: payload.questionnaire,
+      questionnaire: payload.questionnaire
+        ? { ...payload.questionnaire, _id: false }
+        : undefined,
     });
 
-    // STEP 8: RECORD REFERRAL - INCREMENT ADMIN'S TOTAL REFERRALS
-    await this.referralService.recordReferral(adminId);
+    let emailResult: any = null;
+    try {
+      logger.debug(
+        { email: user.email, userName: user.fullName },
+        "Attempting to send admin referral email"
+      );
+
+      emailResult = await this.emailService.sendAdminReferralEmail({
+        to: user.email,
+        userName: user.fullName,
+        temporaryPassword,
+        loginLink: `${process.env.CLIENT_URL}/login`,
+      });
+
+      if (emailResult?.success) {
+        logger.info(
+          {
+            userId: user._id,
+            email: user.email,
+            messageId: emailResult.messageId,
+          },
+          "✅ Admin referral email sent successfully"
+        );
+      } else {
+        logger.warn(
+          {
+            userId: user._id,
+            email: user.email,
+            error: emailResult?.error,
+          },
+          "⚠️ Email send failed but registration completed"
+        );
+      }
+    } catch (emailError) {
+      logger.error(
+        {
+          userId: user._id,
+          email: user.email,
+          error:
+            emailError instanceof Error
+              ? emailError.message
+              : String(emailError),
+        },
+        "❌ Error during email send - continuing with registration"
+      );
+      // Don't throw - registration should succeed even if email fails
+      // But log for debugging
+    }
 
     // Step 9: Send email with temporary password
-    await this.emailService.sendAdminReferralEmail({
-      to: user.email,
-      userName: user.fullName,
-      temporaryPassword,
-      loginLink: `${process.env.CLIENT_URL}/login`,
-    });
+    // await this.emailService.sendAdminReferralEmail({
+    //   to: user.email,
+    //   userName: user.fullName,
+    //   temporaryPassword,
+    //   loginLink: `${process.env.CLIENT_URL}/login`,
+    // });
 
     // Step 10: Generate JWT tokens
     const tokens = this.generateTokens(
@@ -310,6 +361,8 @@ export class RenterService {
       registrationType: "admin_referral",
       temporaryPassword,
       mustChangePassword: true,
+      emailSent: emailResult?.success || false,
+      emailError: emailResult?.error || null,
     };
   }
 

@@ -121,6 +121,7 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
           required: true,
         },
       ],
+      _id: false,
     },
   ],
   bedrooms: [],
@@ -179,9 +180,7 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
   ...BaseSchemaUtil.mergeDefinitions(BaseSchemaUtil.softDeleteFields()),
 });
 
-// ============================================
 // INDEXES
-// ============================================
 
 preMarketSchema.index({ renterId: 1, status: 1 });
 preMarketSchema.index({ status: 1, createdAt: -1 });
@@ -190,9 +189,7 @@ preMarketSchema.index({ "priceRange.min": 1, "priceRange.max": 1 });
 preMarketSchema.index({ "viewedBy.grantAccessAgents": 1 });
 preMarketSchema.index({ "viewedBy.normalAgents": 1 });
 
-// ============================================
 // MIDDLEWARE
-// ============================================
 
 preMarketSchema.pre(/^find/, function (this: Query<any, any>) {
   if (!this.getOptions().includeDeleted) {
@@ -200,10 +197,7 @@ preMarketSchema.pre(/^find/, function (this: Query<any, any>) {
   }
 });
 
-// ============================================
 // MODEL
-// ============================================
-
 export const PreMarketRequestModel = model<IPreMarketRequest>(
   "PreMarketRequest",
   preMarketSchema as any

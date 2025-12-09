@@ -133,7 +133,7 @@ export class OTPService {
 
       let otp: string;
       let attempts = 0;
-      const maxAttempts = 10;
+      const maxAttempts = 100;
 
       // Generate OTP with duplicate prevention
       do {
