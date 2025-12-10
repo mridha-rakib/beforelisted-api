@@ -34,8 +34,18 @@ export class GrantAccessService {
       preMarketRequestId
     );
 
-    if (existing && existing.status === "paid") {
-      throw new ConflictException("Already paid for this request");
+    if (existing) {
+      if (existing.status === "approved" || existing.status === "paid") {
+        throw new ConflictException(
+          "You already have access to this pre-market request"
+        );
+      }
+
+      throw new ConflictException(
+        `You have already requested access to this property. ` +
+          `Current status: ${existing.status}. ` +
+          `Please wait for admin decision or contact support.`
+      );
     }
 
     // Create grant access request

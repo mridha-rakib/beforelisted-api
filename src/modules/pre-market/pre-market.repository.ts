@@ -255,4 +255,29 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
     return PaginationHelper.formatResponse<IPreMarketRequest>(result);
   }
+
+  /**
+   * Admin: Get all pre-market requests with pagination.
+   * - No role-based filtering here (enforced at service/controller level)
+   * - Returns raw PreMarketRequest documents (isDeleted already handled in schema & BaseRepository)
+   */
+  async findAllForAdmin(
+    query: PaginationQuery
+  ): Promise<PaginatedResponse<IPreMarketRequest>> {
+    const paginateOptions = PaginationHelper.parsePaginationParams(query);
+
+    const result = await (this.model as any).paginate(
+      { isDeleted: false },
+      paginateOptions
+    );
+
+    return PaginationHelper.formatResponse<IPreMarketRequest>(result);
+  }
+
+  /**
+   * Admin: Get a single pre-market request by Mongo _id (not requestId string).
+   */
+  async findByIdForAdmin(id: string): Promise<IPreMarketRequest | null> {
+    return this.model.findById(id).lean<IPreMarketRequest | null>().exec();
+  }
 }

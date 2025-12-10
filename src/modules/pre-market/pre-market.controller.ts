@@ -426,4 +426,60 @@ export class PreMarketController {
       "Pre-market request retrieved with visibility control"
     );
   });
+
+  // ============================================
+  // ADMIN: GET ALL PRE-MARKET REQUESTS (FULL)
+  // ============================================
+
+  /**
+   * ADMIN: Get all pre-market requests with full renter + referral + agent summary.
+   * GET /pre-market/admin/requests
+   * Protected: Admin only
+   */
+  getAllRequestsForAdmin = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(preMarketListSchema, req);
+
+    const result = await this.preMarketService.getAllRequestsForAdmin(
+      validated.query
+    );
+
+    logger.debug(
+      { adminId: req.user?.userId, itemCount: result.data.length },
+      "Admin retrieved all pre-market requests"
+    );
+
+    ApiResponse.paginated(
+      res,
+      result.data,
+      result.pagination,
+      "Admin pre-market requests retrieved successfully"
+    );
+  });
+
+  // ============================================
+  // ADMIN: GET SINGLE PRE-MARKET REQUEST (FULL)
+  // ============================================
+
+  /**
+   * ADMIN: Get single pre-market request with full renter + referral + agent summary.
+   * GET /pre-market/admin/requests/:requestId
+   * Protected: Admin only
+   */
+  getRequestByIdForAdmin = asyncHandler(async (req: Request, res: Response) => {
+    const { requestId } = req.params;
+
+    logger.debug(
+      { adminId: req.user?.userId, requestId },
+      "Admin retrieving pre-market request details"
+    );
+
+    const request =
+      await this.preMarketService.getRequestByIdForAdmin(requestId);
+
+    ApiResponse.success(
+      res,
+      request,
+      "Admin pre-market request details retrieved successfully"
+    );
+  });
 }

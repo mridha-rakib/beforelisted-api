@@ -1,118 +1,160 @@
-// file: src/modules/admin/admin.type.ts
+// file: src/modules/admin/types/admin-pre-market.type.ts
 
-/**
- * Dashboard metrics response
- */
-export type AdminDashboardMetricsResponse = {
-  overview: {
-    totalUsers: number;
-    totalAgents: number;
-    totalRenters: number;
-    totalRevenue: number;
+import type { PaginatedResponse } from "@/ts/pagination.types";
+
+// ============================================
+// RENTER INFORMATION
+// ============================================
+
+export interface AdminRenterInfo {
+  _id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  registrationType: "normal" | "agent_referral" | "admin_referral";
+  emailVerified: boolean;
+  accountStatus: "active" | "suspended" | "pending";
+  createdAt: Date;
+}
+
+// ============================================
+// REFERRAL INFORMATION
+// ============================================
+
+export interface AdminReferralInfo {
+  referrerId?: string;
+  referrerName?: string;
+  referrerType?: "Admin" | "Agent";
+  referralType: string; // "Direct Registration" | "Agent Referral" | "Admin Passwordless"
+  referred: boolean;
+}
+
+// ============================================
+// PAYMENT INFORMATION (FROM GRANT ACCESS)
+// ============================================
+
+export interface AdminPaymentInfo {
+  amount: number;
+  currency: string;
+  paymentStatus: "pending" | "succeeded" | "failed";
+  paymentDate?: Date;
+  paymentDeadline?: Date;
+  chargeAmount?: number;
+  isFree?: boolean;
+}
+
+// ============================================
+// AGENT REQUEST STATISTICS
+// ============================================
+
+export interface AdminAgentRequestStats {
+  total: number; // Total agents who requested
+  approved: number; // Approved access
+  pending: number; // Awaiting decision
+  rejected: number; // Rejected requests
+}
+
+// ============================================
+// REQUEST DETAILS
+// ============================================
+
+export interface AdminRequestDetails {
+  description?: string;
+  locations: Array<{
+    borough: string;
+    neighborhoods: string[];
+  }>;
+  priceRange: {
+    min: number;
+    max: number;
   };
-  requests: {
-    totalPreMarketRequests: number;
-    activePreMarketRequests: number;
-    totalMatches: number;
-    approvedMatches: number;
+  bedrooms: string[];
+  bathrooms: string[];
+  movingDateRange: {
+    earliest: Date;
+    latest: Date;
   };
-  grantAccess: {
+  unitFeatures?: {
+    laundryInUnit: boolean;
+    privateOutdoorSpace: boolean;
+    dishwasher: boolean;
+  };
+  buildingFeatures?: {
+    doorman: boolean;
+    elevator: boolean;
+    laundryInBuilding: boolean;
+  };
+  petPolicy?: {
+    catsAllowed: boolean;
+    dogsAllowed: boolean;
+  };
+  guarantorRequired?: {
+    personalGuarantor: boolean;
+    thirdPartyGuarantor: boolean;
+  };
+}
+
+// ============================================
+// COMPLETE PRE-MARKET DETAILS FOR ADMIN
+// ============================================
+
+export interface AdminPreMarketDetail {
+  // Request basics
+  _id: string;
+  requestId: string;
+  status: "active" | "archived" | "deleted";
+  createdAt: Date;
+  updatedAt: Date;
+
+  // Renter section
+  renter: AdminRenterInfo;
+
+  // Referral section
+  referral: AdminReferralInfo;
+
+  // Pre-market request details section
+  requestDetails: AdminRequestDetails;
+
+  // Payment section
+  payment: AdminPaymentInfo;
+
+  // Agent requests section
+  agentRequests: AdminAgentRequestStats;
+}
+
+// ============================================
+// PAGINATED RESPONSE
+// ============================================
+
+export interface AdminPreMarketListResponse
+  extends PaginatedResponse<AdminPreMarketDetail> {
+  summary?: {
     totalRequests: number;
-    approvedRequests: number;
-    totalRevenue: number;
-    pendingRequests: number;
+    activeRequests: number;
+    archivedRequests: number;
+    totalAgentsRequesting: number;
   };
-  agents: {
-    totalAgents: number;
-    verifiedAgents: number;
-    suspendedAgents: number;
-    approvedAgents: number;
-    pendingApprovalAgents: number;
-    avgSuccessRate: number;
-  };
-  renters: {
-    totalRenters: number;
-    activeRenters: number;
-    avgRequestsPerRenter: number;
-  };
-  todayStats: {
-    newUsers: number;
-    newMatches: number;
-    newRequests: number;
-    revenueToday: number;
-  };
-};
+}
 
-/**
- * Revenue report response
- */
-export type AdminRevenueReportResponse = {
-  period: "daily" | "weekly" | "monthly" | "yearly";
-  startDate: Date;
-  endDate: Date;
-  totalRevenue: number;
-  grantAccessRevenue: number;
-  breakdown: Array<{
-    date: string;
-    revenue: number;
-    transactions: number;
-  }>;
-};
+// ============================================
+// FILTER QUERY PARAMS
+// ============================================
 
-/**
- * Agent report response
- */
-export type AdminAgentReportResponse = {
-  totalAgents: number;
-  verifiedAgents: number;
-  approvedAgents: number;
-  suspendedAgents: number;
-  pendingApproval: number;
-  topPerformers: Array<{
-    agentId: string;
-    name: string;
-    totalMatches: number;
-    successRate: number;
-    grantAccessCount: number;
-  }>;
-  avgMetrics: {
-    avgMatches: number;
-    avgSuccessRate: number;
-    avgResponseTime: number;
-  };
-};
-
-/**
- * Delete user payload
- */
-export type AdminDeleteUserPayload = {
-  reason: string;
-};
-
-/**
- * Generate report payload
- */
-export type AdminGenerateReportPayload = {
-  reportType: "revenue" | "agents" | "renters" | "matches" | "comprehensive";
-  startDate: Date;
-  endDate: Date;
-  format: "json" | "csv" | "pdf";
-};
-
-/**
- * System health response
- */
-export type AdminSystemHealthResponse = {
-  status: "healthy" | "warning" | "critical";
-  uptime: number;
-  memoryUsage: {
-    used: number;
-    total: number;
-    percentage: number;
-  };
-  databaseConnection: "connected" | "disconnected";
-  activeConnections: number;
-  lastBackup: Date;
-  errors24h: number;
-  warnings24h: number;
-};
+export interface AdminPreMarketFilterQuery {
+  page?: number;
+  limit?: number;
+  sort?: string;
+  // Filters
+  borough?: string;
+  neighborhood?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  bedrooms?: string; // "Studio,1BR,2BR"
+  bathrooms?: string; // "1,2,3"
+  status?: "active" | "archived" | "deleted";
+  registrationType?: "normal" | "agent_referral" | "admin_referral";
+  emailVerified?: boolean;
+  renterName?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}

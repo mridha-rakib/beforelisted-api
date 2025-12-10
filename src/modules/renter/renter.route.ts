@@ -49,11 +49,7 @@ router.get("/profile", authMiddleware.verifyToken, controller.getRenterProfile);
  * PUT /renter/profile
  * Update authenticated renter's profile
  */
-router.put(
-  "/profile",
-
-  controller.updateRenterProfile
-);
+router.put("/profile", controller.updateRenterProfile);
 
 // ============================================
 // ADMIN ROUTES
@@ -63,10 +59,6 @@ router.put(
  * GET /renter/admin/:userId
  * Admin: Get renter profile by ID
  */
-router.get(
-  "/admin/:userId",
-
-  controller.adminGetRenterProfile
-);
+router.get("/admin/:userId", controller.adminGetRenterProfile);
 
 export default router;

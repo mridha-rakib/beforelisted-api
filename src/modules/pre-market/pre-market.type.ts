@@ -1,6 +1,8 @@
 // file: src/modules/pre-market/pre-market.type.ts
 
 import type { PREMARKET_CONFIG } from "@/config/pre-market.config";
+import { PaginatedResponse } from "@/ts/pagination.types";
+import { IPreMarketRequest } from "./pre-market.model";
 
 // ============================================
 // PRE-MARKET REQUEST TYPES
@@ -66,3 +68,42 @@ export type AdminDecisionPayload = {
   chargeAmount?: number;
   notes?: string;
 };
+
+export interface AdminReferrerInfo {
+  referrerId: string;
+  referrerName: string;
+  referrerType: "AGENT" | "ADMIN"; // or "NORMAL" for none
+}
+
+export interface AdminRenterInfo {
+  renterId: string;
+  fullName: string;
+  email: string;
+  phoneNumber?: string;
+  registrationType: "normal" | "agent_referral" | "admin_referral";
+  referralInfo?: AdminReferrerInfo;
+}
+
+export type AdminPreMarketRenterInfo = {
+  renterId: string;
+  fullName: string;
+  email: string;
+  phoneNumber?: string;
+  registrationType: "normal" | "agent_referral" | "admin_referral";
+  referrerName?: string;
+  referrerType?: "AGENT" | "ADMIN" | "NORMAL";
+};
+
+export type AdminAgentRequestSummary = {
+  total: number;
+  approved: number;
+  pending: number;
+};
+
+export type AdminPreMarketRequestItem = IPreMarketRequest & {
+  renterInfo: AdminPreMarketRenterInfo;
+  agentRequestSummary: AdminAgentRequestSummary;
+};
+
+export type AdminPreMarketPaginatedResponse =
+  PaginatedResponse<AdminPreMarketRequestItem>;

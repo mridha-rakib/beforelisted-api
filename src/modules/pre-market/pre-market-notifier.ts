@@ -3,6 +3,7 @@
 import { logger } from "@/middlewares/pino-logger";
 import { emailService } from "@/services/email.service";
 import { AgentProfileRepository } from "../agent/agent.repository";
+import { IGrantAccessRequest } from "../grant-access/grant-access.model";
 
 // ============================================
 // NOTIFICATION TYPES
@@ -366,10 +367,221 @@ export class PreMarketNotifier {
       throw error;
     }
   }
-}
 
-// ============================================
-// SINGLETON EXPORT
-// ============================================
+  async notifyAdminOfGrantAccessRequest(
+    grantAccess: IGrantAccessRequest
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const adminEmail = process.env.ADMIN_EMAIL || "admin@beforelisted.com";
+
+      logger.info(
+        { grantAccessId: grantAccess._id, adminEmail },
+        "📧 Sending grant access request notification to admin"
+      );
+
+      const emailResult = await emailService.sendGrantAccessRequestToAdmin({
+        to: adminEmail,
+        grantAccessId: grantAccess._id.toString(),
+        agentId: grantAccess.agentId.toString(),
+        preMarketRequestId: grantAccess.preMarketRequestId.toString(),
+        status: grantAccess.status,
+        requestedAt: new Date(
+          grantAccess.createdAt || Date.now()
+        ).toLocaleString(),
+      });
+
+      if (emailResult.success) {
+        logger.info(
+          { messageId: emailResult.messageId },
+          "✅ Grant access request notification sent to admin"
+        );
+        return { success: true };
+      } else {
+        logger.warn(
+          { error: emailResult.error },
+          "❌ Failed to send grant access request notification"
+        );
+        return { success: false, error: emailResult.error };
+      }
+    } catch (error) {
+      logger.error(
+        { error },
+        "❌ Error notifying admin of grant access request"
+      );
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  async notifyAgentOfApproval(
+    grantAccess: IGrantAccessRequest,
+    isFree: boolean
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const agent = await this.agentRepository.findById(
+        grantAccess.agentId.toString()
+      );
+
+      if (!agent) {
+        logger.warn(
+          { agentId: grantAccess.agentId },
+          "Agent not found for approval notification"
+        );
+        return { success: false, error: "Agent not found" };
+      }
+
+      logger.info(
+        { grantAccessId: grantAccess._id, agentEmail: agent.email },
+        "📧 Sending approval notification to agent"
+      );
+
+      const emailResult = await emailService.sendGrantAccessApprovalToAgent({
+        to: agent.email,
+        agentName: agent.fullName || agent.name || "Agent",
+        preMarketRequestId: grantAccess.preMarketRequestId.toString(),
+        grantAccessId: grantAccess._id.toString(),
+        isFree,
+        approvalType: isFree ? "free" : "paid",
+        approvalDate: new Date().toLocaleString(),
+      });
+
+      if (emailResult.success) {
+        logger.info(
+          { messageId: emailResult.messageId },
+          "✅ Approval notification sent to agent"
+        );
+        return { success: true };
+      } else {
+        logger.warn(
+          { error: emailResult.error },
+          "❌ Failed to send approval notification"
+        );
+        return { success: false, error: emailResult.error };
+      }
+    } catch (error) {
+      logger.error({ error }, "❌ Error notifying agent of approval");
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  async notifyAgentOfRejection(
+    grantAccess: IGrantAccessRequest
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const agent = await this.agentRepository.findById(
+        grantAccess.agentId.toString()
+      );
+
+      if (!agent) {
+        logger.warn(
+          { agentId: grantAccess.agentId },
+          "Agent not found for rejection notification"
+        );
+        return { success: false, error: "Agent not found" };
+      }
+
+      logger.info(
+        { grantAccessId: grantAccess._id, agentEmail: agent.email },
+        "📧 Sending rejection notification to agent"
+      );
+
+      const emailResult = await emailService.sendGrantAccessRejectionToAgent({
+        to: agent.email,
+        agentName: agent.fullName || agent.name || "Agent",
+        preMarketRequestId: grantAccess.preMarketRequestId.toString(),
+        grantAccessId: grantAccess._id.toString(),
+        rejectionReason:
+          grantAccess.adminDecision?.notes || "Request was not approved",
+        contactEmail: process.env.ADMIN_EMAIL || "admin@beforelisted.com",
+      });
+
+      if (emailResult.success) {
+        logger.info(
+          { messageId: emailResult.messageId },
+          "✅ Rejection notification sent to agent"
+        );
+        return { success: true };
+      } else {
+        logger.warn(
+          { error: emailResult.error },
+          "❌ Failed to send rejection notification"
+        );
+        return { success: false, error: emailResult.error };
+      }
+    } catch (error) {
+      logger.error({ error }, "❌ Error notifying agent of rejection");
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  async sendPaymentLinkToAgent(
+    grantAccess: IGrantAccessRequest
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const agent = await this.agentRepository.findById(
+        grantAccess.agentId.toString()
+      );
+
+      if (!agent) {
+        logger.warn(
+          { agentId: grantAccess.agentId },
+          "Agent not found for payment notification"
+        );
+        return { success: false, error: "Agent not found" };
+      }
+
+      const chargeAmount = grantAccess.payment?.amount || 0;
+
+      logger.info(
+        {
+          grantAccessId: grantAccess._id,
+          agentEmail: agent.email,
+          chargeAmount,
+        },
+        "📧 Sending payment link to agent"
+      );
+
+      const emailResult = await emailService.sendPaymentLinkToAgent({
+        to: agent.email,
+        agentName: agent.fullName || agent.name || "Agent",
+        preMarketRequestId: grantAccess.preMarketRequestId.toString(),
+        grantAccessId: grantAccess._id.toString(),
+        chargeAmount,
+        paymentLink: `${process.env.FRONTEND_URL || "https://app.beforelisted.com"}/payment/${grantAccess._id}`,
+        paymentDeadline: new Date(
+          Date.now() + 7 * 24 * 60 * 60 * 1000
+        ).toLocaleString(), // 7 days
+      });
+
+      if (emailResult.success) {
+        logger.info(
+          { messageId: emailResult.messageId },
+          "✅ Payment link sent to agent"
+        );
+        return { success: true };
+      } else {
+        logger.warn(
+          { error: emailResult.error },
+          "❌ Failed to send payment link"
+        );
+        return { success: false, error: emailResult.error };
+      }
+    } catch (error) {
+      logger.error({ error }, "❌ Error sending payment link to agent");
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+}
 
 export const preMarketNotifier = new PreMarketNotifier();

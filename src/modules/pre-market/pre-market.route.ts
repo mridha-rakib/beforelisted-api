@@ -98,6 +98,28 @@ router.post(
 // ADMIN ROUTES
 // ============================================
 
+/**
+ * GET /pre-market/admin/requests
+ * Admin views all pre-market requests with full details.
+ */
+router.get(
+  "/admin/requests",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.getAllRequestsForAdmin.bind(controller)
+);
+
+/**
+ * GET /pre-market/admin/requests/:requestId
+ * Admin views a single pre-market request with full details.
+ */
+router.get(
+  "/admin/requests/:requestId",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.getRequestByIdForAdmin.bind(controller)
+);
+
 router.post(
   "/grant-access/admin/:requestId/approve",
   authMiddleware.verifyToken,

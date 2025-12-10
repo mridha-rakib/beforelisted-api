@@ -1,6 +1,6 @@
 // file: src/modules/renter/renter.repository.ts
 
-import type { Types } from "mongoose";
+import type { ObjectId, Types } from "mongoose";
 import mongoose from "mongoose";
 import { BaseRepository } from "../base/base.repository";
 import type { IRenterModel } from "./renter.model";
@@ -343,5 +343,29 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
         },
       },
     ]);
+  }
+
+  /**
+   * Find renter by ID with populated referrer details.
+   * Populates:
+   * - referredByAgentId (if agent_referral)
+   * - referredByAdminId (if admin_referral)
+   */
+
+  async findRenterWithReferrer(userId: string | ObjectId): Promise<any> {
+    return this.model
+      .findOne({ userId })
+      .populate({
+        path: "referredByAgentId",
+        select: "fullName email phoneNumber referralCode _id",
+        options: { lean: true },
+      })
+      .populate({
+        path: "referredByAdminId",
+        select: "fullName email phoneNumber referralCode _id",
+        options: { lean: true },
+      })
+      .lean()
+      .exec();
   }
 }

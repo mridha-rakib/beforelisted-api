@@ -2,6 +2,7 @@
 
 import { logger } from "@/middlewares/pino-logger";
 import { BaseRepository } from "@/modules/base/base.repository";
+import { ObjectId } from "mongoose";
 import type { IUser } from "./user.interface";
 import { RefreshTokenBlacklist, User } from "./user.model";
 
@@ -292,5 +293,21 @@ export class UserRepository extends BaseRepository<IUser> {
       logger.error({ userId, error }, "Error deleting refresh tokens");
       throw error;
     }
+  }
+
+  async findRenterWithReferrer(renterId: string | ObjectId): Promise<any> {
+    return this.model
+      .findById(renterId)
+      .populate({
+        path: "referredByAgentId",
+        select: "fullName email phoneNumber referralCode _id",
+        options: { lean: true },
+      })
+      .populate({
+        path: "referredByAdminId",
+        select: "fullName email referralCode _id",
+        options: { lean: true },
+      })
+      .exec();
   }
 }

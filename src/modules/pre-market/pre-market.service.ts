@@ -16,6 +16,11 @@ import { UserRepository } from "../user/user.repository";
 import { preMarketNotifier, PreMarketNotifier } from "./pre-market-notifier";
 import type { IPreMarketRequest } from "./pre-market.model";
 import { PreMarketRepository } from "./pre-market.repository";
+import {
+  AdminAgentRequestSummary,
+  AdminPreMarketPaginatedResponse,
+  AdminPreMarketRequestItem,
+} from "./pre-market.type";
 
 export class PreMarketService {
   private readonly preMarketRepository: PreMarketRepository;
@@ -470,5 +475,168 @@ export class PreMarketService {
       );
       return request;
     }
+  }
+
+  async getAllRequestsForAdmin(
+    query: PaginationQuery
+  ): Promise<AdminPreMarketPaginatedResponse> {
+    const paginated = await this.preMarketRepository.findAllForAdmin(query);
+
+    const enrichedData = await Promise.all(
+      paginated.data.map((request) => this.enrichRequestForAdmin(request))
+    );
+
+    return {
+      ...paginated,
+      data: enrichedData,
+    };
+  }
+
+  /**
+   * Admin: Get single pre-market request with all details.
+   */
+  async getRequestByIdForAdmin(
+    requestId: string
+  ): Promise<AdminPreMarketRequestItem> {
+    const request = await this.preMarketRepository.findByIdForAdmin(requestId);
+
+    if (!request) {
+      throw new NotFoundException("Pre-market request not found");
+    }
+
+    const enriched = await this.enrichRequestForAdmin(request);
+    return enriched;
+  }
+
+  // ============================================
+  // HELPER: ENRICH REQUEST FOR ADMIN VIEW
+  // ============================================
+
+  private async enrichRequestForAdmin(
+    request: IPreMarketRequest
+  ): Promise<AdminPreMarketRequestItem> {
+    console.log("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+    console.log(request);
+    console.log("=========================================================");
+    const renter = await this.renterRepository.findRenterWithReferrer(
+      request.renterId.toString()
+    );
+
+    console.log("============================================");
+    console.log(renter);
+    console.log("===============================================");
+
+    // Build renter info from renter document
+    const renterInfo = await this.buildRenterInfo(renter);
+
+    // 2. Get agent request summary from grant access records
+    const agentRequestSummary = await this.getAgentRequestSummary(
+      request._id.toString()
+    );
+
+    return {
+      ...(request.toObject ? request.toObject() : request),
+      renterInfo,
+      agentRequestSummary,
+    } as AdminPreMarketRequestItem;
+  }
+
+  // ============================================
+  // HELPER: AGENT REQUEST SUMMARY
+  // ============================================
+
+  private async getAgentRequestSummary(
+    preMarketRequestId: string
+  ): Promise<AdminAgentRequestSummary> {
+    const allRequests =
+      await this.grantAccessRepository.findByPreMarketRequestId(
+        preMarketRequestId
+      );
+
+    if (!allRequests || allRequests.length === 0) {
+      return { total: 0, approved: 0, pending: 0 };
+    }
+
+    let approved = 0;
+    let pending = 0;
+
+    for (const req of allRequests) {
+      if (req.status === "approved" || req.status === "paid") {
+        approved += 1;
+      } else if (req.status === "pending") {
+        pending += 1;
+      }
+    }
+
+    return {
+      total: allRequests.length,
+      approved,
+      pending,
+    };
+  }
+
+  /**
+   * Build renterInfo object from Renter document with referrer details.
+   * Handles cases where renter or referrer might not exist.
+   */
+  private async buildRenterInfo(renter: any): Promise<AdminRenterInfo> {
+    if (!renter) {
+      // Renter soft-deleted or not found
+      return {
+        renterId: "",
+        fullName: "Unknown renter",
+        email: "",
+        registrationType: "normal",
+      };
+    }
+
+    const renterInfo: AdminRenterInfo = {
+      renterId: renter._id?.toString() || renter.renterId?.toString() || "",
+      fullName: renter.fullName || "",
+      email: renter.email || "",
+      phoneNumber: renter.phoneNumber,
+      registrationType: renter.registrationType || "normal",
+    };
+
+    // Add referrer info if applicable
+    if (
+      renter.registrationType === "agent_referral" &&
+      renter.referredByAgentId
+    ) {
+      const referrer =
+        typeof renter.referredByAgentId === "object"
+          ? renter.referredByAgentId
+          : await this.userRepository.findById(
+              renter.referredByAgentId.toString()
+            );
+
+      if (referrer) {
+        renterInfo.referralInfo = {
+          referrerId: referrer._id?.toString() || "",
+          referrerName: referrer.fullName || referrer.name || "Unknown",
+          referrerType: "AGENT",
+        };
+      }
+    } else if (
+      renter.registrationType === "admin_referral" &&
+      renter.referredByAdminId
+    ) {
+      const referrer =
+        typeof renter.referredByAdminId === "object"
+          ? renter.referredByAdminId
+          : await this.userRepository.findById(
+              renter.referredByAdminId.toString()
+            );
+
+      if (referrer) {
+        renterInfo.referralInfo = {
+          referrerId: referrer._id?.toString() || "",
+          referrerName: referrer.fullName || referrer.name || "Unknown",
+          referrerType: "ADMIN",
+        };
+      }
+    }
+
+    return renterInfo;
   }
 }

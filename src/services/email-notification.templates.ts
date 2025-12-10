@@ -1,10 +1,5 @@
 // file: src/services/email-notification.templates.ts
 
-/**
- * Email templates for Pre-Market notifications
- * Separate from main templates for organization
- */
-
 // ============================================
 // AGENT NOTIFICATION EMAIL TEMPLATE
 // ============================================

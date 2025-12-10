@@ -2,10 +2,7 @@
 
 /**
  * BeforeListed Email Integration Helper
- * Integrates EmailTemplates with NodeMailer
- * ✅ Safe variable replacement
- * ✅ Debugging support
- * ✅ Type-safe template rendering
+
  */
 
 import { logger } from "@/middlewares/pino-logger";

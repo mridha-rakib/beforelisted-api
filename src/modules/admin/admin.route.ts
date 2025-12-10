@@ -1,101 +1,70 @@
-// file: src/modules/admin/admin.route.ts
+// file: src/modules/admin/routes/admin-pre-market.route.ts
 
-import { ROLES } from "@/constants/app.constants";
 import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
-import { AdminController } from "./admin.controller";
+import { AdminPreMarketController } from "../controllers/admin-pre-market.controller";
 
 const router = Router();
-const controller = new AdminController();
+const controller = new AdminPreMarketController();
 
 /**
- * ===========================
- * ADMIN ROUTES - ALL PROTECTED
- * ===========================
+ * ============================================
+ * ADMIN PRE-MARKET LIST ROUTES
+ * ============================================
  */
 
 /**
- * GET /admin/dashboard/metrics
- * Get dashboard overview metrics
- * Protected: Admin only
- */
-router.get(
-  "/dashboard/metrics",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  controller.getDashboardMetrics
-);
-
-/**
- * GET /admin/reports/revenue
- * Get revenue report
- * Protected: Admin only
+ * GET /admin/pre-market/list
+ * Get all pre-market requests with filters and pagination
+ * Protected: Admins only
+ *
+ * Query Parameters:
+ *   page=1&limit=10&borough=Manhattan&minPrice=2000&maxPrice=5000
+ *   &bedrooms=1BR,2BR&bathrooms=1,2&status=active
  */
 router.get(
-  "/reports/revenue",
+  "/list",
   authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  controller.getRevenueReport
+  authMiddleware.authorize("Admin"),
+  controller.getAllPreMarketRequests.bind(controller)
 );
 
 /**
- * GET /admin/reports/agents
- * Get agent performance report
- * Protected: Admin only
+ * GET /admin/pre-market/:requestId
+ * Get complete pre-market request details for admin
+ *
+ * Includes:
+ * - Renter info (name, email, phone, registration type, email verification, account status)
+ * - Referral info (if referred by agent/admin)
+ * - Complete request details (location, price, bedrooms, bathrooms, features, pet policy, guarantor, moving dates)
+ * - Payment info (charge amount, payment status, payment date)
+ * - Agent requests stats (total, approved, pending, rejected)
+ *
+ * Protected: Admins only
  */
 router.get(
-  "/reports/agents",
+  "/:requestId",
   authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  controller.getAgentPerformanceReport
+  authMiddleware.authorize("Admin"),
+  controller.getPreMarketRequestDetail.bind(controller)
 );
 
 /**
- * POST /admin/reports/generate
- * Generate comprehensive report
- * Protected: Admin only
- */
-router.post(
-  "/reports/generate",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  controller.generateComprehensiveReport
-);
-
-/**
- * GET /admin/analytics/history
- * Get historical analytics
- * Protected: Admin only
+ * GET /admin/pre-market/statistics
+ * Get summary statistics for admin dashboard
+ *
+ * Returns:
+ * - Total requests, active, archived
+ * - Total agents requesting
+ * - Payment pending/succeeded counts
+ *
+ * Protected: Admins only
  */
 router.get(
-  "/analytics/history",
+  "/statistics",
   authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  controller.getHistoricalAnalytics
-);
-
-/**
- * GET /admin/system/health
- * Get system health status
- * Protected: Admin only
- */
-router.get(
-  "/system/health",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  controller.getSystemHealth
-);
-
-/**
- * DELETE /admin/users/:userId
- * Delete user and all related data
- * Protected: Admin only
- */
-router.delete(
-  "/users/:userId",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  controller.deleteUser
+  authMiddleware.authorize("Admin"),
+  controller.getSummaryStatistics.bind(controller)
 );
 
 export default router;

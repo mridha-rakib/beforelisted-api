@@ -20,15 +20,21 @@ import {
   IPreMarketAdminNotificationPayload,
   IPreMarketAgentNotificationPayload,
 } from "./email-notification.types";
+import { EmailTemplateFactory } from "./email-templates/email-template.factory";
 import { EmailTemplates } from "./email.templates.beforelisted";
 
 export class EmailService {
   private transporter = createEmailTransporter(emailConfig);
   private templates = new EmailTemplates();
+  private templateFactory: EmailTemplateFactory;
   private config = emailConfig;
 
   constructor() {
     this.initializeTransporter();
+    this.templateFactory = new EmailTemplateFactory(
+      this.config.logoUrl,
+      this.config.brandColor
+    );
   }
 
   private async initializeTransporter(): Promise<void> {
@@ -48,42 +54,42 @@ export class EmailService {
     }
   }
 
-  private normalizeUserType(
-    userType: string | undefined
-  ): "Agent" | "Renter" | "Admin" | undefined {
-    if (!userType) return undefined;
+  // private normalizeUserType(
+  //   userType: string | undefined
+  // ): "Agent" | "Renter" | "Admin" | undefined {
+  //   if (!userType) return undefined;
 
-    const normalized = userType.trim();
-    if (
-      normalized === "Agent" ||
-      normalized === "Renter" ||
-      normalized === "Admin"
-    ) {
-      return normalized as "Agent" | "Renter" | "Admin";
-    }
+  //   const normalized = userType.trim();
+  //   if (
+  //     normalized === "Agent" ||
+  //     normalized === "Renter" ||
+  //     normalized === "Admin"
+  //   ) {
+  //     return normalized as "Agent" | "Renter" | "Admin";
+  //   }
 
-    logger.warn(
-      { userType, normalized },
-      "Unknown userType - defaulting to undefined"
-    );
-    return undefined;
-  }
+  //   logger.warn(
+  //     { userType, normalized },
+  //     "Unknown userType - defaulting to undefined"
+  //   );
+  //   return undefined;
+  // }
 
-  private normalizeWelcomeUserType(
-    userType: string | undefined
-  ): "Agent" | "Renter" {
-    if (!userType) return "Renter";
+  // private normalizeWelcomeUserType(
+  //   userType: string | undefined
+  // ): "Agent" | "Renter" {
+  //   if (!userType) return "Renter";
 
-    const normalized = userType.toUpperCase().trim();
-    if (normalized === "AGENT") return "Agent";
-    if (normalized === "RENTER") return "Renter";
+  //   const normalized = userType.toUpperCase().trim();
+  //   if (normalized === "AGENT") return "Agent";
+  //   if (normalized === "RENTER") return "Renter";
 
-    logger.warn(
-      { userType, normalized },
-      "Unknown welcome userType - defaulting to Renter"
-    );
-    return "Renter";
-  }
+  //   logger.warn(
+  //     { userType, normalized },
+  //     "Unknown welcome userType - defaulting to Renter"
+  //   );
+  //   return "Renter";
+  // }
 
   async sendPasswordResetOTP(
     userName: string | undefined,
@@ -752,6 +758,214 @@ export class EmailService {
     }
   }
 
+  // ============================================
+  // GRANT ACCESS EMAIL METHODS
+  // ============================================
+  /**
+   * Send grant access request email to admin
+   */
+  async sendGrantAccessRequestToAdmin(payload: {
+    to: string;
+    agentName: string;
+    agentEmail: string;
+    agentCompany: string | null;
+    preMarketRequestId: string;
+    propertyTitle: string;
+    location: string;
+    requestedAt: string;
+    adminDashboardLink: string;
+  }): Promise<IEmailResult> {
+    try {
+      const template = this.templateFactory.createGrantAccessRequest(
+        payload.agentName,
+        payload.agentEmail,
+        payload.agentCompany,
+        payload.preMarketRequestId,
+        payload.propertyTitle,
+        payload.location,
+        payload.requestedAt,
+        payload.adminDashboardLink
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: "Administrator" },
+        subject: template.getSubject(),
+        html: template.render(),
+        priority: template.getEmailPriority(),
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "GRANT_ACCESS_REQUEST_ADMIN",
+        payload.to
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send grant access request email"
+      );
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send grant access approval email to agent
+   */
+  async sendGrantAccessApprovalToAgent(payload: {
+    to: string;
+    agentName: string;
+    propertyTitle: string;
+    location: string;
+    isFree: boolean;
+    chargeAmount?: number;
+    accessLink: string;
+  }): Promise<IEmailResult> {
+    try {
+      const template = this.templateFactory.createGrantAccessApproval(
+        payload.agentName,
+        payload.propertyTitle,
+        payload.location,
+        payload.isFree ? "free" : "paid",
+        payload.chargeAmount || 0,
+        payload.accessLink
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.agentName },
+        subject: template.getSubject(),
+        html: template.render(),
+        priority: template.getEmailPriority(),
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "GRANT_ACCESS_APPROVAL_AGENT",
+        payload.to
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send grant access approval email"
+      );
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send grant access rejection email to agent
+   */
+  async sendGrantAccessRejectionToAgent(payload: {
+    to: string;
+    agentName: string;
+    propertyTitle: string;
+    rejectionReason: string | null;
+    contactEmail: string;
+  }): Promise<IEmailResult> {
+    try {
+      const template = this.templateFactory.createGrantAccessRejection(
+        payload.agentName,
+        payload.propertyTitle,
+        payload.rejectionReason,
+        payload.contactEmail
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.agentName },
+        subject: template.getSubject(),
+        html: template.render(),
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "GRANT_ACCESS_REJECTION_AGENT",
+        payload.to
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send grant access rejection email"
+      );
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send payment link email to agent
+   */
+  async sendPaymentLinkToAgent(payload: {
+    to: string;
+    agentName: string;
+    propertyTitle: string;
+    chargeAmount: number;
+    paymentLink: string;
+    paymentDeadline: string;
+  }): Promise<IEmailResult> {
+    try {
+      const template = this.templateFactory.createPaymentLink(
+        payload.agentName,
+        payload.propertyTitle,
+        payload.chargeAmount,
+        payload.paymentLink,
+        payload.paymentDeadline
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.agentName },
+        subject: template.getSubject(),
+        html: template.render(),
+        priority: template.getEmailPriority(),
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "PAYMENT_LINK_AGENT",
+        payload.to
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send payment link email"
+      );
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
   /**
    * Close SMTP connection (call on app shutdown)
    */
@@ -815,4 +1029,8 @@ export async function cleanupEmailService(): Promise<void> {
       "Error during email service cleanup"
     );
   }
+
+  // ============================================
+  // GRANT ACCESS EMAIL METHODS
+  //============================================
 }

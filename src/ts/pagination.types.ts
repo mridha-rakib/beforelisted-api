@@ -19,7 +19,6 @@ export interface CustomLabels {
   meta?: string;
 }
 
-
 export interface PaginateResult<T> {
   data: T[];
   totalItems: number;
