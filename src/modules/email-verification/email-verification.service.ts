@@ -2,10 +2,6 @@
 
 /**
  * Email Verification Service
- * ✅ Handle email verification OTP generation, validation, and resend
- * ✅ Complete resend flow with expiration and duplicate prevention
- * ✅ Type-safe with proper error handling
- * ✅ SOLID principles applied
  */
 
 import { logger } from "@/middlewares/pino-logger";
@@ -46,7 +42,7 @@ export class EmailVerificationService {
     MAX_OTP_ATTEMPTS: 100,
     MIN_RESEND_INTERVAL_SECONDS: 60,
     MAX_RESENDS_PER_HOUR: 5,
-    OTP_EXPIRY_MINUTES: 3,
+    OTP_EXPIRY_MINUTES: 5,
     OTP_LENGTH: 4,
   };
   constructor(
@@ -207,10 +203,6 @@ export class EmailVerificationService {
 
   /**
    * RESEND OTP
-   * ✅ Main new feature: resend when expired
-   * ✅ Rate limiting + resend cooldown
-   * ✅ Generic for all user types
-   *
    * @param request - Contains email and userType
    * @returns New OTP expiration details
    */
@@ -257,13 +249,12 @@ export class EmailVerificationService {
     );
 
     // Step 6: Save new OTP to database
-    // ✅ FIX: Use createOTP method with proper parameters
     await this.repository.createOTP({
       userId: existingOTP.userId,
       email: request.email,
       userType: request.userType,
-      code: newOTPGenerated.code, // ✅ FIX: Don't spread
-      expiresAt: newOTPGenerated.expiresAt, // ✅ FIX: Don't spread
+      code: newOTPGenerated.code,
+      expiresAt: newOTPGenerated.expiresAt,
       verified: false,
       attempts: 0,
       maxAttempts: this.config.MAX_OTP_ATTEMPTS,

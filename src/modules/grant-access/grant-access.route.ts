@@ -2,10 +2,10 @@
 
 import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
-import { PreMarketNotifier } from "../notification/pre-market.notifier";
+import { GrantAccessController } from "../grant-access/grant-access.service";
 import { PaymentService } from "../payment/payment.service";
+import { PreMarketNotifier } from "../pre-market/pre-market-notifier";
 import { PreMarketRepository } from "../pre-market/pre-market.repository";
-import { GrantAccessController } from "./grant-access.controller";
 import { GrantAccessRepository } from "./grant-access.repository";
 import { GrantAccessService } from "./grant-access.service";
 

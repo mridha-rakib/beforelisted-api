@@ -468,7 +468,7 @@ export class AgentService {
     adminId: string,
     reason?: string
   ): Promise<{
-    hasAccess: boolean;
+    hasGrantAccess: boolean;
     previousAccess: boolean;
     message: string;
   }> {
@@ -482,7 +482,7 @@ export class AgentService {
       throw new NotFoundException("Agent not found.");
     }
 
-    const previousAccess = agent.hasAccess;
+    const previousAccess = agent.hasGrantAccess;
     const newAccessStatus = !previousAccess;
 
     const updated = await this.repository.toggleAccess(
@@ -507,7 +507,7 @@ export class AgentService {
     );
 
     return {
-      hasAccess: updated.hasAccess,
+      hasGrantAccess: updated.hasGrantAccess,
       previousAccess,
       message,
     };
@@ -517,7 +517,7 @@ export class AgentService {
    * Get agent access status
    */
   async getAccessStatus(agentId: string): Promise<{
-    hasAccess: boolean;
+    hasGrantAccess: boolean;
     lastAccessToggleAt?: Date;
     toggleHistory?: any[];
   }> {
@@ -529,7 +529,7 @@ export class AgentService {
     const history = await this.repository.getAccessHistory(agentId);
 
     return {
-      hasAccess: agent.hasAccess,
+      hasGrantAccess: agent.hasGrantAccess,
       lastAccessToggleAt: agent.lastAccessToggleAt,
       toggleHistory: history,
     };
@@ -581,6 +581,59 @@ export class AgentService {
   }
 
   /**
+   * Check if agent has access to view request details
+   * Checks BOTH:
+   * 1. Admin-granted access (hasGrantAccess = true)
+   * 2. Payment-based access (GrantAccess status = "paid")
+   */
+  private async checkAgentAccessToRequest(
+    agentId: string,
+    requestId: string
+  ): Promise<{
+    hasAccess: boolean;
+    accessType: "admin-granted" | "payment-based" | "none";
+    grantAccessRecord?: any;
+  }> {
+    // 1. Check admin-granted access first
+    const agent = await this.agentRepository.findByUserId(agentId);
+
+    if (agent?.hasGrantAccess) {
+      return {
+        hasAccess: true,
+        accessType: "admin-granted",
+      };
+    }
+
+    // 2. Check payment-based access (specific request)
+    const grantAccess = await this.grantAccessRepository.findOne({
+      agentId,
+      preMarketRequestId: requestId,
+      status: { $in: ["approved", "paid"] },
+    });
+
+    if (grantAccess?.status === "paid") {
+      return {
+        hasAccess: true,
+        accessType: "payment-based",
+        grantAccessRecord: grantAccess,
+      };
+    }
+
+    if (grantAccess?.status === "approved") {
+      return {
+        hasAccess: true,
+        accessType: "payment-based",
+        grantAccessRecord: grantAccess,
+      };
+    }
+
+    return {
+      hasAccess: false,
+      accessType: "none",
+    };
+  }
+
+  /**
    * Convert to response (exclude sensitive fields)
    */
   private toResponse(agent: IAgentProfile): AgentProfileResponse {
@@ -601,7 +654,7 @@ export class AgentService {
       totalRentersReferred: agent.totalRentersReferred,
       activeReferrals: agent.activeReferrals,
       referralConversionRate: agent.referralConversionRate,
-      hasAccess: agent.hasAccess,
+      hasGrantAccess: agent.hasGrantAccess,
       lastAccessToggleAt: agent.lastAccessToggleAt,
       grantAccessCount: agent.grantAccessCount,
       totalMatches: agent.totalMatches,

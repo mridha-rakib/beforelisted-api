@@ -6,7 +6,7 @@ export interface IAccessToggleRecord {
   action: "granted" | "revoked";
   toggledBy: Types.ObjectId;
   toggledAt: Date;
-  reason?: string;
+  // reason?: string;
 }
 
 export interface IActivationRecord {
@@ -43,7 +43,7 @@ export interface IAgentProfile extends Document {
   referralConversionRate: number;
 
   // Access Management
-  hasAccess: boolean;
+  hasGrantAccess: boolean;
   accessToggleHistory: IAccessToggleRecord[];
   lastAccessToggleAt?: Date;
 

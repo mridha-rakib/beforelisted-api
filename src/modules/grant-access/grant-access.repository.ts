@@ -1,6 +1,7 @@
 // file: src/modules/grant-access/grant-access.repository.ts
 
 import { BaseRepository } from "@/modules/base/base.repository";
+import { Types } from "mongoose";
 import {
   GrantAccessRequestModel,
   type IGrantAccessRequest,
@@ -42,7 +43,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
   }
 
   async findByPreMarketRequestId(
-    preMarketRequestId: string
+    preMarketRequestId: string | Types.ObjectId
   ): Promise<IGrantAccessRequest[]> {
     return this.model
       .find({ preMarketRequestId })

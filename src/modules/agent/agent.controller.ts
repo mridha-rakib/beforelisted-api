@@ -320,7 +320,7 @@ export class AgentController {
         res,
         {
           agentId,
-          hasAccess: result.hasAccess,
+          hasGrantAccess: result.hasGrantAccess,
           previousAccess: result.previousAccess,
         },
         result.message,

@@ -1,7 +1,7 @@
 // file: src/modules/pre-market/pre-market.model.ts
 
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
-import { model, Schema, Types, type Document, type Query } from "mongoose";
+import { model, Types, type Document, type Query } from "mongoose";
 
 // ============================================
 // INTERFACE
@@ -156,7 +156,7 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
 
   status: {
     type: String,
-    enum: ["active", "archived", "deleted"],
+    enum: ["active", "Available", "match", "matched", "deleted"],
     default: "active",
     index: true,
   } as any,
@@ -165,13 +165,13 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
   viewedBy: {
     grantAccessAgents: [
       {
-        type: Schema.Types.ObjectId,
+        type: Types.ObjectId,
         ref: "User",
       },
     ],
     normalAgents: [
       {
-        type: Schema.Types.ObjectId,
+        type: Types.ObjectId,
         ref: "User",
       },
     ],

@@ -2,6 +2,7 @@
 
 import type { PREMARKET_CONFIG } from "@/config/pre-market.config";
 import { PaginatedResponse } from "@/ts/pagination.types";
+import { Types } from "mongoose";
 import { IPreMarketRequest } from "./pre-market.model";
 
 // ============================================
@@ -103,7 +104,28 @@ export type AdminAgentRequestSummary = {
 export type AdminPreMarketRequestItem = IPreMarketRequest & {
   renterInfo: AdminPreMarketRenterInfo;
   agentRequestSummary: AdminAgentRequestSummary;
+  agentRequests: AgentRequestDetail[];
 };
 
 export type AdminPreMarketPaginatedResponse =
   PaginatedResponse<AdminPreMarketRequestItem>;
+
+export interface AgentRequestDetail {
+  _id: string | Types.ObjectId;
+  agentId: string;
+  agent: {
+    agentId: string;
+    fullName: string;
+    email: string;
+    phoneNumber?: string;
+    role: string;
+    profileImageUrl?: string;
+  };
+  status: "pending" | "approved" | "rejected" | "paid";
+  requestedAt: Date;
+  payment?: {
+    amount: number;
+    currency: string;
+    status: string;
+  };
+}

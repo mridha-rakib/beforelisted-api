@@ -96,12 +96,12 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
   // ACCESS MANAGEMENT
   // ============================================
 
-  hasAccess: {
+  hasGrantAccess: {
     type: Boolean,
     default: false,
     index: true,
+    description: "Admin-granted access to view all pre-market requests",
   },
-
   accessToggleHistory: [
     {
       action: {
@@ -118,7 +118,6 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
         type: Date,
         default: Date.now,
       },
-      reason: String,
       _id: false,
     },
   ],

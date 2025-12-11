@@ -239,21 +239,25 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   }
 
   /**
-   * GET ALL REQUESTS WITH PAGINATION
-   * Returns paginated response with all active pre-market requests
-   * Replaces the inherited findAll() which returns T[]
+   * Get all requests available for grant access agents
+   * Filter by status = "Match" and exclude requests already viewed by this agent
    */
-  async findAll(
+  async findForGrantAccessAgents(
+    agentId: string,
     query: PaginationQuery
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
 
     const result = await (this.model as any).paginate(
-      { status: "active", isDeleted: false },
+      {
+        status: "match",
+        isDeleted: false,
+        "viewedBy.grantAccessAgents": { $ne: agentId },
+      },
       paginateOptions
     );
 
-    return PaginationHelper.formatResponse<IPreMarketRequest>(result);
+    return PaginationHelper.formatResponse(result);
   }
 
   /**
@@ -279,5 +283,60 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
    */
   async findByIdForAdmin(id: string): Promise<IPreMarketRequest | null> {
     return this.model.findById(id).lean<IPreMarketRequest | null>().exec();
+  }
+
+  async findAvailableForNormalAgents(
+    agentId: string,
+    query: PaginationQuery
+  ): Promise<PaginatedResponse<IPreMarketRequest>> {
+    const paginateOptions = PaginationHelper.parsePaginationParams(query);
+
+    // Get requests that:
+    // - Have status = "Available"
+    // - Not yet viewed by this agent
+    // - Agent hasn't already requested access to
+    const result = await (this.model as any).paginate(
+      {
+        status: "Available",
+        isDeleted: false,
+        "viewedBy.normalAgents": { $ne: agentId },
+      },
+      paginateOptions
+    );
+
+    return PaginationHelper.formatResponse(result);
+  }
+
+  /**
+   * Get all requests visible to agent
+   * Includes:
+   * - Requests with status "match" (for admin-granted agents)
+   * - Requests this agent paid for access to
+   */
+  async findVisibleForAgent(
+    agentId: string,
+    query: PaginationQuery,
+    hasAdminAccess: boolean
+  ): Promise<null> {
+    const paginateOptions = PaginationHelper.parsePaginationParams(query);
+
+    // Base query
+    let filter: any = {
+      isDeleted: false,
+    };
+
+    if (hasAdminAccess) {
+      // Admin-granted agents see "match" status requests
+      filter.status = "match";
+      filter["viewedBy.grantAccessAgents"] = { $ne: agentId };
+    } else {
+      // Normal agents see "Available" status requests
+      filter.status = "Available";
+      filter["viewedBy.normalAgents"] = { $ne: agentId };
+    }
+
+    const result = await (this.model as any).paginate(filter, paginateOptions);
+
+    return PaginationHelper.formatResponse(result);
   }
 }

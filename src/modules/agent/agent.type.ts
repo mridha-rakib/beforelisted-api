@@ -63,7 +63,7 @@ export type AgentProfileResponse = {
   referralConversionRate: number;
 
   // Access Management
-  hasAccess: boolean;
+  hasGrantAccess: boolean;
   lastAccessToggleAt?: Date;
 
   // Performance Metrics

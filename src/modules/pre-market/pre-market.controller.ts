@@ -201,11 +201,11 @@ export class PreMarketController {
 
     // Check visibility
     if (!agent.hasGrantAccess) {
-      const hasAccess = request.viewedBy.normalAgents.some(
+      const hasGrantAccess = request.viewedBy.normalAgents.some(
         (id: any) => id.toString() === userId
       );
 
-      if (!hasAccess) {
+      if (!hasGrantAccess) {
         throw new ForbiddenException(
           "Must request access to view renter information"
         );
@@ -482,4 +482,151 @@ export class PreMarketController {
       "Admin pre-market request details retrieved successfully"
     );
   });
+
+  /**
+   * GET /pre-market/agent/all-requests
+   * PHASE -1: Get all available pre-market requests for grant access agents
+   *
+   * Only shows:
+   * - Requests with status = "Match"
+   * - Not yet viewed by this agent
+   * - Full renter information included
+   *
+   * Protected: Grant Access Agents only
+   */
+  getAllRequestsForGrantAccessAgents = asyncHandler(
+    async (req: Request, res: Response) => {
+      const validated = await zParse(preMarketListSchema, req);
+      const userId = req.user!.userId;
+
+      const requests =
+        await this.preMarketService.getRequestsForGrantAccessAgents(
+          userId,
+          validated.query
+        );
+
+      logger.debug(
+        { userId, itemCount: requests.data.length },
+        "Grant access agent retrieved all available requests"
+      );
+
+      ApiResponse.paginated(
+        res,
+        requests.data,
+        requests.pagination,
+        "Available pre-market requests retrieved"
+      );
+    }
+  );
+
+  /**
+   * GET /pre-market/agent/:requestId
+   * PHASE -1: Get specific pre-market request details
+   *
+   * For grant access agents:
+   * - Shows full renter information
+   * - Shows all request details
+   * - Shows referral information
+   *
+   * Protected: Grant Access Agents only
+   */
+  getRequestDetailsForGrantAccessAgent = asyncHandler(
+    async (req: Request, res: Response) => {
+      const userId = req.user!.userId;
+      const { requestId } = req.params;
+
+      // Verify agent has grant access
+      const agent = await this.agentRepository.findByUserId(userId);
+      if (!agent || !agent.hasGrantAccess) {
+        throw new ForbiddenException(
+          "You do not have grant access to view this request"
+        );
+      }
+
+      const request = await this.preMarketService.getRequestById(requestId);
+
+      // Enrich with full renter info
+      const enriched =
+        await this.preMarketService.enrichRequestWithFullRenterInfo(
+          request,
+          userId
+        );
+
+      // Mark as viewed
+      await this.preMarketService.markRequestAsViewedByAgent(
+        requestId,
+        userId,
+        "grantAccessAgents"
+      );
+
+      logger.debug(
+        { userId, requestId },
+        "Grant access agent retrieved request details"
+      );
+
+      ApiResponse.success(
+        res,
+        enriched,
+        "Pre-market request details retrieved"
+      );
+    }
+  );
+
+  getRequestDetailsForAgent = asyncHandler(
+    async (req: Request, res: Response) => {
+      const userId = req.user!.userId;
+      const { requestId } = req.params;
+
+      // Get agent profile
+      const agent = await this.agentRepository.findByUserId(userId);
+      if (!agent) {
+        throw new ForbiddenException("Agent profile not found");
+      }
+
+      // Get request
+      const request = await this.preMarketService.getRequestById(requestId);
+
+      // Check dual access
+      const accessCheck = await this.preMarketService.checkAgentAccessToRequest(
+        userId,
+        requestId
+      );
+
+      if (!accessCheck.hasAccess) {
+        throw new ForbiddenException(
+          "You don't have access to this request. " +
+            "Request access or pay to view renter information."
+        );
+      }
+
+      // Mark as viewed
+      await this.preMarketRepository.addAgentToViewedBy(
+        requestId,
+        userId,
+        agent.hasGrantAccess ? "grantAccessAgents" : "normalAgents"
+      );
+
+      // Log access type
+      logger.info(
+        { userId, requestId, accessType: accessCheck.accessType },
+        "Agent accessed request"
+      );
+
+      // Return with renter info
+      const enriched =
+        await this.preMarketService.enrichRequestWithFullRenterInfo(
+          request,
+          userId
+        );
+
+      ApiResponse.success(
+        res,
+        {
+          ...enriched,
+          accessType: accessCheck.accessType,
+        },
+        "Pre-market request details"
+      );
+    }
+  );
 }

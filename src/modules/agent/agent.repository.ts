@@ -269,7 +269,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
       throw new NotFoundException("Agent not found.");
     }
 
-    const newAccessStatus = !agent.hasAccess;
+    const newAccessStatus = !agent.hasGrantAccess;
 
     const action = newAccessStatus ? "granted" : "revoked";
 
@@ -277,7 +277,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
       .findByIdAndUpdate(
         agentId,
         {
-          hasAccess: newAccessStatus,
+          hasGrantAccess: newAccessStatus,
           lastAccessToggleAt: new Date(),
           $push: {
             accessToggleHistory: {
@@ -290,7 +290,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
         },
         { new: true }
       )
-      .populate("accessToggleHistory.toggledBy", "email fullName");
+      .populate("hasGrantAccess.toggledBy", "email fullName");
 
     return updated;
   }
@@ -301,10 +301,10 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
   async getAccessHistory(agentId: string): Promise<any> {
     const agent = await this.model
       .findById(agentId)
-      .populate("accessToggleHistory.toggledBy", "email fullName")
+      .populate("hasGrantAccess.toggledBy", "email fullName")
       .lean();
 
-    return agent?.accessToggleHistory || [];
+    return agent?.hasGrantAccess || [];
   }
 
   /**
@@ -312,8 +312,8 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
    */
   async findWithAccess(): Promise<any[]> {
     return this.model
-      .find({ hasAccess: true })
-      .select("_id email fullName hasAccess lastAccessToggleAt")
+      .find({ hasGrantAccess: true })
+      .select("_id email fullName hasGrantAccess lastAccessToggleAt")
       .lean();
   }
 
