@@ -2,7 +2,7 @@
 
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
-import { ForbiddenException } from "@/utils/app-error.utils";
+import { ForbiddenException, NotFoundException } from "@/utils/app-error.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 import type { Request, Response } from "express";
@@ -28,6 +28,7 @@ export class PreMarketController {
   private readonly grantAccessService: GrantAccessService;
   private readonly paymentService: PaymentService;
   private readonly agentRepository: AgentProfileRepository;
+  private readonly preMarketRepository: PreMarketRepository;
 
   constructor() {
     this.preMarketService = new PreMarketService();
@@ -45,6 +46,7 @@ export class PreMarketController {
       new PreMarketRepository()
     );
     this.agentRepository = new AgentProfileRepository();
+    this.preMarketRepository = new PreMarketRepository();
   }
 
   // ============================================
@@ -167,7 +169,6 @@ export class PreMarketController {
       validated.query
     );
 
-    logger.debug({}, "All pre-market requests retrieved");
     ApiResponse.paginated(
       res,
       requests.data,
@@ -192,28 +193,68 @@ export class PreMarketController {
     const userId = req.user!.userId;
     const { requestId } = req.params;
 
+    // Get agent profile
     const agent = await this.agentRepository.findByUserId(userId);
     if (!agent) {
       throw new ForbiddenException("Agent profile not found");
     }
 
+    // Get request - ALWAYS return it
     const request = await this.preMarketService.getRequestById(requestId);
-
-    // Check visibility
-    if (!agent.hasGrantAccess) {
-      const hasGrantAccess = request.viewedBy.normalAgents.some(
-        (id: any) => id.toString() === userId
-      );
-
-      if (!hasGrantAccess) {
-        throw new ForbiddenException(
-          "Must request access to view renter information"
-        );
-      }
+    if (!request) {
+      throw new NotFoundException("Pre-market request not found");
     }
 
-    logger.debug({ userId, requestId }, "Request details retrieved");
-    ApiResponse.success(res, request, "Pre-market request details");
+    // Check if agent can see RENTER INFO (not listing visibility)
+    const accessCheck = await this.preMarketService.canAgentSeeRenterInfo(
+      userId,
+      requestId
+    );
+
+    // Mark as viewed
+    await this.preMarketRepository.addAgentToViewedBy(
+      requestId,
+      userId,
+      "normalAgents"
+    );
+
+    let response: any = {
+      ...request,
+      canRequestAccess: !accessCheck.canSee,
+    };
+
+    // Include renter info if agent has access
+    if (accessCheck.canSee) {
+      const enriched =
+        await this.preMarketService.enrichRequestWithFullRenterInfo(
+          request,
+          userId
+        );
+      response = {
+        ...response,
+        renterInfo: enriched.renterInfo,
+        accessType: accessCheck.accessType,
+      };
+
+      logger.info(
+        { userId, requestId, accessType: accessCheck.accessType },
+        `Request accessed with ${accessCheck.accessType} renter info access`
+      );
+    } else {
+      response = {
+        ...response,
+        renterInfo: null,
+        accessType: "none",
+        message: "Request grant access to see renter information",
+      };
+
+      logger.info(
+        { userId, requestId },
+        "Request accessed without renter info (can request access)"
+      );
+    }
+
+    ApiResponse.success(res, response, "Pre-market request details");
   });
 
   // ============================================
@@ -530,6 +571,48 @@ export class PreMarketController {
    *
    * Protected: Grant Access Agents only
    */
+  // getRequestDetailsForGrantAccessAgent = asyncHandler(
+  //   async (req: Request, res: Response) => {
+  //     const userId = req.user!.userId;
+  //     const { requestId } = req.params;
+
+  //     // Verify agent has grant access
+  //     const agent = await this.agentRepository.findByUserId(userId);
+  //     if (!agent || !agent.hasGrantAccess) {
+  //       throw new ForbiddenException(
+  //         "You do not have grant access to view this request"
+  //       );
+  //     }
+
+  //     const request = await this.preMarketService.getRequestById(requestId);
+
+  //     // Enrich with full renter info
+  //     const enriched =
+  //       await this.preMarketService.enrichRequestWithFullRenterInfo(
+  //         request,
+  //         userId
+  //       );
+
+  //     // Mark as viewed
+  //     await this.preMarketService.markRequestAsViewedByAgent(
+  //       requestId,
+  //       userId,
+  //       "grantAccessAgents"
+  //     );
+
+  //     logger.debug(
+  //       { userId, requestId },
+  //       "Grant access agent retrieved request details"
+  //     );
+
+  //     ApiResponse.success(
+  //       res,
+  //       enriched,
+  //       "Pre-market request details retrieved"
+  //     );
+  //   }
+  // );
+
   getRequestDetailsForGrantAccessAgent = asyncHandler(
     async (req: Request, res: Response) => {
       const userId = req.user!.userId;
@@ -545,7 +628,7 @@ export class PreMarketController {
 
       const request = await this.preMarketService.getRequestById(requestId);
 
-      // Enrich with full renter info
+      // ← Once method is public, THIS LINE WORKS
       const enriched =
         await this.preMarketService.enrichRequestWithFullRenterInfo(
           request,
@@ -553,13 +636,13 @@ export class PreMarketController {
         );
 
       // Mark as viewed
-      await this.preMarketService.markRequestAsViewedByAgent(
+      await this.preMarketRepository.addAgentToViewedBy(
         requestId,
         userId,
         "grantAccessAgents"
       );
 
-      logger.debug(
+      logger.info(
         { userId, requestId },
         "Grant access agent retrieved request details"
       );

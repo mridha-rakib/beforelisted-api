@@ -51,6 +51,13 @@ router.get(
   controller.getAllRequests.bind(controller)
 );
 
+router.get(
+  "/:requestId",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.getRequestDetails.bind(controller)
+);
+
 /**
  * GET /pre-market/agent/all-requests
  * Agent views all available pre-market requests
@@ -68,7 +75,6 @@ router.get(
 
 /**
  * GET /pre-market/agent/:requestId
- * PHASE -1: Grant access agent views specific request with full details
  */
 router.get(
   "/agent/:requestId",

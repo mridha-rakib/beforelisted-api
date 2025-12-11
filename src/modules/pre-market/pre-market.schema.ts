@@ -60,8 +60,8 @@ export const createPreMarketRequestSchema = z.object({
         .optional(),
       guarantorRequired: z
         .object({
-          personalGuarantor: z.boolean().optional(),
-          thirdPartyGuarantor: z.boolean().optional(),
+          personalGuarantor: z.boolean().default(false),
+          thirdPartyGuarantor: z.boolean().default(false),
         })
         .optional(),
     })
@@ -111,16 +111,16 @@ export const updatePreMarketRequestSchema = z.object({
         .optional(),
       unitFeatures: z
         .object({
-          laundryInUnit: z.boolean().optional(),
-          privateOutdoorSpace: z.boolean().optional(),
-          dishwasher: z.boolean().optional(),
+          laundryInUnit: z.boolean().default(false),
+          privateOutdoorSpace: z.boolean().default(false),
+          dishwasher: z.boolean().default(false),
         })
         .optional(),
       buildingFeatures: z
         .object({
-          doorman: z.boolean().optional(),
-          elevator: z.boolean().optional(),
-          laundryInBuilding: z.boolean().optional(),
+          doorman: z.boolean().default(false),
+          elevator: z.boolean().default(false),
+          laundryInBuilding: z.boolean().default(false),
         })
         .optional(),
       petPolicy: z

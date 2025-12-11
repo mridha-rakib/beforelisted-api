@@ -2,6 +2,7 @@
 
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
+
 import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import {
   BadRequestException,
@@ -57,7 +58,7 @@ export class PreMarketService {
     payload: {
       movingDateRange: { earliest: Date; latest: Date };
       priceRange: { min: number; max: number };
-      locations: string[];
+      locations: { borough: string; neighborhoods: string[] }[];
       bedrooms?: string[];
       bathrooms: string[];
       unitFeatures?: any;
@@ -208,7 +209,7 @@ export class PreMarketService {
   async getAllRequests(
     query: PaginationQuery
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
-    return this.preMarketRepository.findAll(query) as any;
+    return this.preMarketRepository.findAllWithPagination(query) as any;
   }
 
   async getRenterRequests(
@@ -225,7 +226,7 @@ export class PreMarketService {
       throw new NotFoundException("Pre-market request not found");
     }
 
-    return request;
+    return request.toObject ? request.toObject() : request;
   }
 
   async getRequestByRequestId(requestId: string): Promise<IPreMarketRequest> {
@@ -437,7 +438,6 @@ export class PreMarketService {
       const renterInfo: any = {
         renterId: renter._id,
         registrationType: renter.registrationType,
-        emailVerified: renter.emailVerified,
       };
 
       // Show contact info only to grant access agents
@@ -738,11 +738,10 @@ export class PreMarketService {
   }
 
   /**
-   * PHASE -1: Enrich request with FULL renter information
    * Only for grant access agents (full visibility)
    */
-  private async enrichRequestWithFullRenterInfo(
-    request: any,
+  public async enrichRequestWithFullRenterInfo(
+    request: IPreMarketRequest,
     agentId: string
   ): Promise<any> {
     try {
@@ -752,11 +751,16 @@ export class PreMarketService {
       );
 
       if (!renter) {
+        logger.warn(
+          { renterId: request.renterId, requestId: request.requestId },
+          "Renter not found for request"
+        );
         return request;
       }
 
       // Get referrer information if applicable
       let referrerInfo = null;
+
       if (renter.referredByAgentId) {
         const referrer = await this.userRepository.findById(
           renter.referredByAgentId.toString()
@@ -764,7 +768,7 @@ export class PreMarketService {
         if (referrer) {
           referrerInfo = {
             referrerId: referrer._id?.toString(),
-            referrerName: referrer.fullName || referrer.name,
+            referrerName: referrer.fullName,
             referrerRole: "Agent",
             referralType: "agent_referral",
           };
@@ -776,21 +780,20 @@ export class PreMarketService {
         if (referrer) {
           referrerInfo = {
             referrerId: referrer._id?.toString(),
-            referrerName: referrer.fullName || referrer.name,
+            referrerName: referrer.fullName,
             referrerRole: "Admin",
             referralType: "admin_referral",
           };
         }
       }
 
-      // Build full renter info (grant access = all fields visible)
+      // Build full renter info
       const renterInfo = {
         renterId: renter._id?.toString(),
         renterName: renter.fullName,
         renterEmail: renter.email,
         renterPhone: renter.phoneNumber,
         registrationType: renter.registrationType,
-        emailVerified: renter.emailVerified,
         referrer: referrerInfo,
       };
 
@@ -798,7 +801,6 @@ export class PreMarketService {
       return {
         ...request,
         renterInfo,
-        status: "match",
       };
     } catch (error) {
       logger.error(
@@ -809,31 +811,56 @@ export class PreMarketService {
     }
   }
 
-  // File: src/modules/pre-market/pre-market.service.ts
-
+  /**
+   * Now returns listings WITH or WITHOUT renter info based on access
+   */
   async getAvailableRequestsForNormalAgents(
     agentId: string,
     query: PaginationQuery
-  ): Promise<any> {
+  ): Promise<PaginatedResponse<IPreMarketRequest>> {
+    const agent = await this.agentRepository.findByUserId(agentId);
+    if (!agent) {
+      throw new ForbiddenException("Agent profile not found");
+    }
+
+    // Get all Available status requests
     const paginated =
       await this.preMarketRepository.findAvailableForNormalAgents(
         agentId,
         query
       );
 
-    // Return with minimal info (no renter details)
-    const enrichedData = paginated.data.map((request) => ({
-      _id: request._id,
-      requestId: request.requestId,
-      status: "Available", // Show "Available" status
-      locations: request.locations,
-      priceRange: request.priceRange,
-      bedrooms: request.bedrooms,
-      bathrooms: request.bathrooms,
-      movingDateRange: request.movingDateRange,
-      description: request.description,
-      // NO renter info - they must request access first
-    }));
+    // For each request, conditionally include renter info
+    const enrichedData = await Promise.all(
+      paginated.data.map(async (request) => {
+        const accessCheck = await this.canAgentSeeRenterInfo(
+          agentId,
+          request._id!.toString()
+        );
+
+        if (accessCheck.canSee) {
+          const enriched = await this.enrichRequestWithFullRenterInfo(
+            request,
+            agentId
+          );
+          return {
+            ...enriched,
+            renterInfo: enriched.renterInfo,
+            accessType: accessCheck.accessType,
+            canRequestAccess: false,
+          };
+        } else {
+          return {
+            ...request,
+            renterInfo: null,
+            accessType: "none",
+            canRequestAccess: true,
+            requestAccessMessage:
+              "Request grant access to see renter information",
+          };
+        }
+      })
+    );
 
     // Mark as viewed
     const requestIds = paginated.data.map((r) => r._id?.toString());
@@ -891,13 +918,9 @@ export class PreMarketService {
       );
     }
 
-    if (
-      grantAccess.status === "pending" ||
-      (grantAccess.status === "pending" &&
-        !grantAccess.payment?.paymentStatus === "succeeded")
-    ) {
+    if (grantAccess.status === "pending") {
       throw new ForbiddenException(
-        "Your access request is pending admin approval or payment"
+        "Your access request is pending admin approval"
       );
     }
 
@@ -909,7 +932,7 @@ export class PreMarketService {
     throw new ForbiddenException("You do not have access to this request");
   }
 
-  private async checkAgentAccessToRequest(
+  public async checkAgentAccessToRequest(
     agentId: string,
     requestId: string
   ): Promise<{
@@ -919,7 +942,6 @@ export class PreMarketService {
   }> {
     // Check if agent has admin-granted access
     const agent = await this.agentRepository.findByUserId(agentId);
-
     if (agent && agent.hasGrantAccess) {
       return {
         hasAccess: true,
@@ -931,7 +953,7 @@ export class PreMarketService {
     const grantAccess = await this.grantAccessRepository.findOne({
       agentId,
       preMarketRequestId: requestId,
-      status: "paid",
+      status: { $in: ["approved", "paid"] },
     });
 
     if (grantAccess) {
@@ -946,5 +968,70 @@ export class PreMarketService {
       hasAccess: false,
       accessType: "none",
     };
+  }
+
+  /**
+   * Check if agent has access to view RENTER INFO for a request
+   * Returns true if:
+   * 1. Agent has admin-granted access (hasGrantAccess = true), OR
+   * 2. Agent paid for this specific request (status = "approved" or "paid")
+   */
+  async canAgentSeeRenterInfo(
+    agentId: string,
+    requestId: string | Types.ObjectId
+  ): Promise<{
+    canSee: boolean;
+    accessType: "admin-granted" | "payment-based" | "none";
+  }> {
+    // Check 1: Admin-granted access
+    const agent = await this.agentRepository.findByUserId(agentId);
+    if (agent?.hasGrantAccess) {
+      return {
+        canSee: true,
+        accessType: "admin-granted",
+      };
+    }
+
+    // Check 2: Payment-based access for THIS specific request
+    const grantAccess = await this.grantAccessRepository.findOne({
+      agentId,
+      preMarketRequestId: requestId,
+      status: { $in: ["approved", "paid"] },
+    });
+
+    if (grantAccess) {
+      return {
+        canSee: true,
+        accessType: "payment-based",
+      };
+    }
+
+    return {
+      canSee: false,
+      accessType: "none",
+    };
+  }
+
+  /**
+   * Mark request as viewed by agent
+   * Adds agent to viewedBy array to track engagement
+   */
+  async markRequestAsViewedByAgent(
+    requestId: string,
+    agentId: string,
+    type: "grantAccessAgents" | "normalAgents"
+  ): Promise<void> {
+    try {
+      await this.preMarketRepository.addAgentToViewedBy(
+        requestId,
+        agentId,
+        type
+      );
+    } catch (error) {
+      logger.warn(
+        { error, requestId, agentId },
+        "Failed to mark request as viewed"
+      );
+    }
   }
 }

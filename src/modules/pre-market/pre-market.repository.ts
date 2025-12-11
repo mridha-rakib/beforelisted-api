@@ -17,6 +17,19 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   // READ
   // ============================================
 
+  async findAllWithPagination(
+    query: PaginationQuery
+  ): Promise<PaginatedResponse<IPreMarketRequest>> {
+    const paginateOptions = PaginationHelper.parsePaginationParams(query);
+
+    const result = await (this.model as any).paginate(
+      { isDeleted: false },
+      paginateOptions
+    );
+
+    return PaginationHelper.formatResponse(result);
+  }
+
   async findByRequestId(requestId: string): Promise<IPreMarketRequest | null> {
     return this.model
       .findOne({ requestId })
@@ -338,5 +351,12 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     const result = await (this.model as any).paginate(filter, paginateOptions);
 
     return PaginationHelper.formatResponse(result);
+  }
+
+  async getRequestById(id: string): Promise<IPreMarketRequest | null> {
+    return this.model
+      .findById(id)
+      .lean()
+      .exec() as Promise<IPreMarketRequest | null>;
   }
 }
