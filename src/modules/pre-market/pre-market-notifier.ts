@@ -327,7 +327,7 @@ export class PreMarketNotifier {
 
       return agents.map((agent) => ({
         id: agent._id.toString(),
-        name: agent.fullName || agent.name,
+        name: agent.fullName,
         email: agent.email,
         hasGrantAccess: agent.hasGrantAccess || false,
       }));

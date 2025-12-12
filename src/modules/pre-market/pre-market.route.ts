@@ -41,30 +41,12 @@ router.delete(
 );
 
 // ============================================
-// AGENT ROUTES
+// AGENT ROUTES - GRANT ACCESS AGENTS FIRST
+// (More specific routes BEFORE generic ones)
 // ============================================
-
-router.get(
-  "/all",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize("Agent"),
-  controller.getAllRequests.bind(controller)
-);
-
-router.get(
-  "/:requestId",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize("Agent"),
-  controller.getRequestDetails.bind(controller)
-);
-
 /**
  * GET /pre-market/agent/all-requests
- * Agent views all available pre-market requests
- * Data visibility depends on agent type:
- * - Normal Agent: No renter info
- * - Grant Access Agent: Full renter info included
- * Protected: Agents only
+ * Grant Access Agents: View ALL requests with FULL renter info
  */
 router.get(
   "/agent/all-requests",
@@ -75,6 +57,8 @@ router.get(
 
 /**
  * GET /pre-market/agent/:requestId
+ * Grant Access Agents: View SPECIFIC request with FULL renter info
+ * Path must include agent to avoid conflicting with /:requestId
  */
 router.get(
   "/agent/:requestId",
@@ -83,13 +67,39 @@ router.get(
   controller.getRequestDetailsForGrantAccessAgent.bind(controller)
 );
 
+// ============================================
+// AGENT ROUTES - GENERIC (ALL AGENTS)
+// (Less specific routes AFTER specific ones)
+// ============================================
+
+/**
+ * GET /pre-market/all
+ * Normal Agents: View all AVAILABLE requests
+ * Renter info visibility depends on access level
+ */
 router.get(
-  "/agent/:requestId",
+  "/all",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Agent"),
-  controller.getRequestForAgent.bind(controller)
+  controller.getAllRequests.bind(controller)
 );
 
+/**
+ * GET /pre-market/:requestId
+ * Normal Agents: View specific request details
+ * Must request/pay for renter information
+ */
+router.get(
+  "/:requestId",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.getRequestDetails.bind(controller)
+);
+
+/**
+ * GET /pre-market/:requestId/details
+ * Alternative route for request details (deprecated - use /:requestId)
+ */
 router.get(
   "/:requestId/details",
   authMiddleware.verifyToken,
@@ -97,6 +107,13 @@ router.get(
   controller.getRequestDetails.bind(controller)
 );
 
+// ============================================
+// AGENT ACCESS MANAGEMENT
+// ============================================
+/**
+ * POST /pre-market/grant-access/request
+ * Request access to view renter information
+ */
 router.post(
   "/grant-access/request",
   authMiddleware.verifyToken,
@@ -104,6 +121,10 @@ router.post(
   controller.requestAccess.bind(controller)
 );
 
+/**
+ * POST /pre-market/payment/create-intent
+ * Create Stripe payment intent for access
+ */
 router.post(
   "/payment/create-intent",
   authMiddleware.verifyToken,

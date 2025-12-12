@@ -263,9 +263,9 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
     const result = await (this.model as any).paginate(
       {
-        status: "match",
         isDeleted: false,
-        "viewedBy.grantAccessAgents": { $ne: agentId },
+        // isDeleted: false,
+        // "viewedBy.grantAccessAgents": { $ne: agentId },
       },
       paginateOptions
     );
@@ -304,10 +304,6 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
 
-    // Get requests that:
-    // - Have status = "Available"
-    // - Not yet viewed by this agent
-    // - Agent hasn't already requested access to
     const result = await (this.model as any).paginate(
       {
         status: "Available",
@@ -330,7 +326,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     agentId: string,
     query: PaginationQuery,
     hasAdminAccess: boolean
-  ): Promise<null> {
+  ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
 
     // Base query

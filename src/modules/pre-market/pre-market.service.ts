@@ -88,7 +88,7 @@ export class PreMarketService {
     // Generate request ID
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 10);
-    const requestId = `BeforeListed-PM-${timestamp}-${randomStr}`;
+    const requestId = `BL-TM-${randomStr}`;
     const requestName = requestId;
 
     // Create request
@@ -136,69 +136,57 @@ export class PreMarketService {
     request: any,
     renterId: string
   ): Promise<void> {
-    try {
-      // Get renter details for notification payload
-      const renter = await this.renterRepository.findById(renterId);
+    // Get renter details for notification payload
+    const renter = await this.renterRepository.findById(renterId);
 
-      if (!renter) {
-        logger.warn(
-          { renterId, requestId: request._id },
-          "Renter not found for notification"
-        );
-        return;
-      }
-
-      // Build frontend listing URL
-      const listingUrl = `${env.CLIENT_URL}/listings/${request._id}`;
-
-      // Prepare notification payload
-      const notificationPayload = {
-        preMarketRequestId: request._id.toString(),
-        title: request.title,
-        description: request.description,
-        location: request.location,
-        serviceType: request.serviceType,
-        renterId: renterId,
-        renterName: renter.fullName,
-        renterEmail: renter.email,
-        renterPhone: renter.phoneNumber,
-        listingUrl,
-      };
-
-      // Send notifications via notifier service
-      const result =
-        await preMarketNotifier.notifyNewRequest(notificationPayload);
-
-      if (result.success) {
-        logger.info(
-          {
-            requestId: request._id,
-            agentsNotified: result.agentsNotified,
-            adminNotified: result.adminNotified,
-            emailsSent: result.emailsSent,
-          },
-          "✅ All notifications sent successfully"
-        );
-      } else {
-        logger.warn(
-          {
-            requestId: request._id,
-            success: result.success,
-            errors: result.errors,
-          },
-          "⚠️ Some notifications failed"
-        );
-      }
-    } catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : String(error),
-          requestId: request._id,
-          renterId,
-        },
-        "❌ Error in sendNotifications"
+    if (!renter) {
+      logger.warn(
+        { renterId, requestId: request._id },
+        "Renter not found for notification"
       );
-      // Continue - don't let notification errors propagate
+      return;
+    }
+
+    // Build frontend listing URL
+    const listingUrl = `${env.CLIENT_URL}/listings/${request._id}`;
+
+    // Prepare notification payload
+    const notificationPayload = {
+      preMarketRequestId: request._id.toString(),
+      title: request.title,
+      description: request.description,
+      location: request.location,
+      serviceType: request.serviceType,
+      renterId: renterId,
+      renterName: renter.fullName,
+      renterEmail: renter.email,
+      renterPhone: renter.phoneNumber,
+      listingUrl,
+    };
+
+    // Send notifications via notifier service
+    const result =
+      await preMarketNotifier.notifyNewRequest(notificationPayload);
+
+    if (result.success) {
+      logger.info(
+        {
+          requestId: request._id,
+          agentsNotified: result.agentsNotified,
+          adminNotified: result.adminNotified,
+          emailsSent: result.emailsSent,
+        },
+        "✅ All notifications sent successfully"
+      );
+    } else {
+      logger.warn(
+        {
+          requestId: request._id,
+          success: result.success,
+          errors: result.errors,
+        },
+        "⚠️ Some notifications failed"
+      );
     }
   }
 
@@ -246,7 +234,7 @@ export class PreMarketService {
   async updateRequest(
     renterId: string,
     requestId: string,
-    payload: Partial<IPreMarketRequest>
+    payload: any
   ): Promise<IPreMarketRequest> {
     const request = await this.getRequestById(requestId);
 
@@ -275,7 +263,7 @@ export class PreMarketService {
     // Update
     const updated = await this.preMarketRepository.updateById(
       requestId,
-      payload
+      payload as Partial<IPreMarketRequest>
     );
 
     logger.info({ renterId }, `Pre-market request updated: ${requestId}`);
@@ -392,78 +380,70 @@ export class PreMarketService {
     agentId: string,
     hasGrantAccess: boolean
   ): Promise<any> {
-    try {
-      // Get renter details
-      const renter = await this.renterRepository.findById(
-        request.renterId.toString()
-      );
+    // Get renter details
+    const renter = await this.renterRepository.findById(
+      request.renterId.toString()
+    );
 
-      if (!renter) {
-        logger.warn(
-          { renterId: request.renterId, requestId: request.requestId },
-          "Renter not found for request"
-        );
-        return request;
-      }
-
-      // Get referrer information
-      let referrerInfo = null;
-      if (renter.referredByAgentId) {
-        const referrer = await this.userRepository.findById(
-          renter.referredByAgentId.toString()
-        );
-        if (referrer) {
-          referrerInfo = {
-            referrerId: referrer._id,
-            referrerName: referrer.fullName,
-            referrerRole: "Agent",
-            referralType: "agent_referral",
-          };
-        }
-      } else if (renter.referredByAdminId) {
-        const referrer = await this.userRepository.findById(
-          renter.referredByAdminId.toString()
-        );
-        if (referrer) {
-          referrerInfo = {
-            referrerId: referrer._id,
-            referrerName: referrer.fullName,
-            referrerRole: "Admin",
-            referralType: "admin_referral",
-          };
-        }
-      }
-
-      // Build renter info based on visibility
-      const renterInfo: any = {
-        renterId: renter._id,
-        registrationType: renter.registrationType,
-      };
-
-      // Show contact info only to grant access agents
-      if (hasGrantAccess) {
-        renterInfo.renterName = renter.fullName;
-        renterInfo.renterEmail = renter.email;
-        renterInfo.renterPhone = renter.phoneNumber || null;
-      }
-
-      // Add referrer info (visible to all agents)
-      if (referrerInfo) {
-        renterInfo.referrer = referrerInfo;
-      }
-
-      // Merge with request
-      return {
-        ...request,
-        renterInfo,
-      };
-    } catch (error) {
-      logger.error(
-        { error, requestId: request.requestId },
-        "Error enriching request with renter info"
+    if (!renter) {
+      logger.warn(
+        { renterId: request.renterId, requestId: request.requestId },
+        "Renter not found for request"
       );
       return request;
     }
+
+    // Get referrer information
+    let referrerInfo = null;
+    if (renter.referredByAgentId) {
+      const referrer = await this.userRepository.findById(
+        renter.referredByAgentId.toString()
+      );
+      if (referrer) {
+        referrerInfo = {
+          referrerId: referrer._id,
+          referrerName: referrer.fullName,
+          referrerRole: "Agent",
+          referralType: "agent_referral",
+        };
+      }
+    } else if (renter.referredByAdminId) {
+      const referrer = await this.userRepository.findById(
+        renter.referredByAdminId.toString()
+      );
+      if (referrer) {
+        referrerInfo = {
+          referrerId: referrer._id,
+          referrerName: referrer.fullName,
+          referrerRole: "Admin",
+          referralType: "admin_referral",
+        };
+      }
+    }
+
+    // Build renter info based on visibility
+    const renterInfo: any = {
+      renterId: renter._id,
+      registrationType: renter.registrationType,
+    };
+
+    // Show contact info only to grant access agents
+    if (hasGrantAccess) {
+      renterInfo.renterName = renter.fullName;
+      renterInfo.renterEmail = renter.email;
+      renterInfo.renterPhone = renter.phoneNumber || null;
+    }
+
+    // Add referrer info (visible to all agents)
+    if (referrerInfo) {
+      renterInfo.referrer = referrerInfo;
+    }
+
+    // Merge with request
+    return {
+      ...request,
+      renterInfo,
+    };
   }
 
   async getAllRequestsForAdmin(
@@ -504,6 +484,9 @@ export class PreMarketService {
   private async enrichRequestForAdmin(
     request: IPreMarketRequest
   ): Promise<AdminPreMarketRequestItem> {
+    console.log("++++++++++++++++++++++++++++++++++++++++++++");
+    console.log(request);
+    console.log("++++++++++++++++++++++++++++++++++++++++++++");
     const renter = await this.renterRepository.findRenterWithReferrer(
       request.renterId.toString()
     );
@@ -743,72 +726,63 @@ export class PreMarketService {
   public async enrichRequestWithFullRenterInfo(
     request: IPreMarketRequest,
     agentId: string
-  ): Promise<any> {
-    try {
-      // Get renter details
-      const renter = await this.renterRepository.findById(
-        request.renterId.toString()
-      );
+  ) {
+    const renter = await this.renterRepository.findRenterWithReferrer(
+      request.renterId.toString()
+    );
 
-      if (!renter) {
-        logger.warn(
-          { renterId: request.renterId, requestId: request.requestId },
-          "Renter not found for request"
-        );
-        return request;
-      }
-
-      // Get referrer information if applicable
-      let referrerInfo = null;
-
-      if (renter.referredByAgentId) {
-        const referrer = await this.userRepository.findById(
-          renter.referredByAgentId.toString()
-        );
-        if (referrer) {
-          referrerInfo = {
-            referrerId: referrer._id?.toString(),
-            referrerName: referrer.fullName,
-            referrerRole: "Agent",
-            referralType: "agent_referral",
-          };
-        }
-      } else if (renter.referredByAdminId) {
-        const referrer = await this.userRepository.findById(
-          renter.referredByAdminId.toString()
-        );
-        if (referrer) {
-          referrerInfo = {
-            referrerId: referrer._id?.toString(),
-            referrerName: referrer.fullName,
-            referrerRole: "Admin",
-            referralType: "admin_referral",
-          };
-        }
-      }
-
-      // Build full renter info
-      const renterInfo = {
-        renterId: renter._id?.toString(),
-        renterName: renter.fullName,
-        renterEmail: renter.email,
-        renterPhone: renter.phoneNumber,
-        registrationType: renter.registrationType,
-        referrer: referrerInfo,
-      };
-
-      // Return enriched request
-      return {
-        ...request,
-        renterInfo,
-      };
-    } catch (error) {
-      logger.error(
-        { error, requestId: request.requestId, agentId },
-        "Error enriching request with renter info"
+    if (!renter) {
+      logger.warn(
+        { renterId: request.renterId, requestId: request.requestId },
+        "Renter not found for request"
       );
       return request;
     }
+
+    // Get referrer information if applicable
+    let referrerInfo = null;
+
+    if (renter.referredByAgentId) {
+      const referrer = await this.userRepository.findById(
+        renter.referredByAgentId.toString()
+      );
+      if (referrer) {
+        referrerInfo = {
+          referrerId: referrer._id?.toString(),
+          referrerName: referrer.fullName,
+          referrerRole: "Agent",
+          referralType: "agent_referral",
+        };
+      }
+    } else if (renter.referredByAdminId) {
+      const referrer = await this.userRepository.findById(
+        renter.referredByAdminId._id
+      );
+      if (referrer) {
+        referrerInfo = {
+          referrerId: referrer._id?.toString(),
+          referrerName: referrer.fullName,
+          referrerRole: "Admin",
+          referralType: "admin_referral",
+        };
+      }
+    }
+
+    // Build full renter info
+    const renterInfo = {
+      renterId: renter._id?.toString(),
+      renterName: renter.fullName,
+      renterEmail: renter.email,
+      renterPhone: renter.phoneNumber,
+      registrationType: renter.registrationType,
+      referrer: referrerInfo,
+    };
+
+    // Return enriched request
+    return {
+      ...request,
+      renterInfo,
+    };
   }
 
   /**
@@ -1021,17 +995,6 @@ export class PreMarketService {
     agentId: string,
     type: "grantAccessAgents" | "normalAgents"
   ): Promise<void> {
-    try {
-      await this.preMarketRepository.addAgentToViewedBy(
-        requestId,
-        agentId,
-        type
-      );
-    } catch (error) {
-      logger.warn(
-        { error, requestId, agentId },
-        "Failed to mark request as viewed"
-      );
-    }
+    await this.preMarketRepository.addAgentToViewedBy(requestId, agentId, type);
   }
 }
