@@ -150,6 +150,22 @@ export class PreMarketController {
     ApiResponse.success(res, { message: "Pre-market request deleted" });
   });
 
+  getRenterRequestById = asyncHandler(async (req: Request, res: Response) => {
+    const renterId = req.user!.userId;
+    const { requestId } = req.params;
+
+    const request = await this.preMarketService.getRenterRequestById(
+      renterId,
+      requestId
+    );
+
+    ApiResponse.success(
+      res,
+      request,
+      "Your pre-market request details retrieved"
+    );
+  });
+
   // ============================================
   // AGENT: GET ALL REQUESTS
   // ============================================
@@ -712,4 +728,17 @@ export class PreMarketController {
       );
     }
   );
+
+  adminDeleteRequest = asyncHandler(async (req: Request, res: Response) => {
+    const adminId = req.user!.userId;
+    const { requestId } = req.params;
+
+    await this.preMarketService.adminDeleteRequest(requestId);
+
+    logger.warn({ adminId, requestId }, "Admin deleted pre-market request");
+
+    ApiResponse.success(res, {
+      message: "Pre-market request deleted successfully",
+    });
+  });
 }

@@ -65,7 +65,7 @@ export class PreMarketService {
       buildingFeatures?: any;
       petPolicy?: any;
       guarantorRequired?: any;
-      description?: string;
+      preferences?: string[];
     }
   ): Promise<IPreMarketRequest> {
     // Validate date range
@@ -85,10 +85,8 @@ export class PreMarketService {
       );
     }
 
-    // Generate request ID
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 10);
-    const requestId = `BL-TM-${randomStr}`;
+    const randomStr = Math.random().toString(36).substring(5, 10);
+    const requestId = `BeforeListed-${randomStr}`;
     const requestName = requestId;
 
     // Create request
@@ -104,8 +102,8 @@ export class PreMarketService {
       unitFeatures: payload.unitFeatures || {},
       buildingFeatures: payload.buildingFeatures || {},
       petPolicy: payload.petPolicy || {},
+      preferences: payload.preferences || [],
       guarantorRequired: payload.guarantorRequired || {},
-      description: payload.description,
       status: "active",
       viewedBy: {
         grantAccessAgents: [],
@@ -996,5 +994,62 @@ export class PreMarketService {
     type: "grantAccessAgents" | "normalAgents"
   ): Promise<void> {
     await this.preMarketRepository.addAgentToViewedBy(requestId, agentId, type);
+  }
+
+  /**
+   * Get renter's specific pre-market request
+   * Only the renter who owns it can view
+   */
+  async getRenterRequestById(
+    renterId: string,
+    requestId: string
+  ): Promise<IPreMarketRequest> {
+    const request = await this.preMarketRepository.findById(requestId);
+
+    if (!request) {
+      throw new NotFoundException("Pre-market request not found");
+    }
+
+    // Verify ownership
+    if (request.renterId.toString() !== renterId) {
+      throw new ForbiddenException(
+        "You can only view your own pre-market requests"
+      );
+    }
+
+    logger.info(
+      { renterId, requestId: request.requestId },
+      "Renter retrieved their request details"
+    );
+
+    return request;
+  }
+
+  // ============================================
+  // ADMIN: DELETE PRE-MARKET REQUEST
+  // ============================================
+
+  /**
+   * Admin can delete any pre-market request
+   * Soft delete - marks as deleted without removing from DB
+   * Related grant access records are also marked as deleted
+   */
+  async adminDeleteRequest(requestId: string): Promise<void> {
+    const request = await this.preMarketRepository.findById(requestId);
+
+    if (!request) {
+      throw new NotFoundException("Pre-market request not found");
+    }
+
+    // Delete the request (soft delete)
+    await this.preMarketRepository.deleteById(requestId);
+
+    // Also clean up related grant access records
+    await this.grantAccessRepository.softDeleteByPreMarketRequestId(requestId);
+
+    logger.warn(
+      { requestId, renterId: request.renterId },
+      "Admin deleted pre-market request"
+    );
   }
 }

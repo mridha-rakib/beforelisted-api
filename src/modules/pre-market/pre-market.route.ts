@@ -26,6 +26,13 @@ router.get(
   controller.getRenterRequests.bind(controller)
 );
 
+router.get(
+  "/renter/:requestId",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
+  controller.getRenterRequestById.bind(controller)
+);
+
 router.put(
   "/:requestId",
   authMiddleware.verifyToken,
@@ -179,10 +186,23 @@ router.post(
   controller.adminReject.bind(controller)
 );
 
+/**
+ * DELETE /pre-market/admin/requests/:requestId
+ * Admin deletes any pre-market request
+ * Protected: Admins only
+ * Performs soft delete
+ */
+router.delete(
+  "/admin/requests/:requestId",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.adminDeleteRequest.bind(controller)
+);
+
 // ============================================
 // WEBHOOK (No auth required)
 // ============================================
 
-router.post("/payment/webhook", controller.handleWebhook.bind(controller));
+// router.post("/payment/webhook", controller.handleWebhook.bind(controller));
 
 export default router;

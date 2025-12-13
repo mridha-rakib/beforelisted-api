@@ -12,7 +12,6 @@ export interface IPreMarketRequest
   requestId: string;
   renterId: Types.ObjectId | string;
   requestName: string;
-  description?: string;
 
   movingDateRange: {
     earliest: Date;
@@ -53,7 +52,7 @@ export interface IPreMarketRequest
     thirdPartyGuarantor: boolean;
   };
 
-  preferences: [];
+  preferences: string[];
 
   status: "active" | "archived" | "deleted";
 

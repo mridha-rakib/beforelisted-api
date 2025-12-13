@@ -40,8 +40,8 @@ export class PaymentService {
     });
 
     logger.info(
-      `Payment intent created: ${paymentIntent.id}`,
-      options.metadata
+      options.metadata,
+      `Payment intent created: ${paymentIntent.id}`
     );
 
     return paymentIntent;
@@ -76,12 +76,15 @@ export class PaymentService {
     );
 
     // Notify agent
-    await this.notifier.notifyAgentOfPaymentSuccess(grantAccess);
+    // await this.notifier.notifyAgentOfPaymentSuccess(grantAccess);
 
-    logger.info(`Payment successful: ${stripePaymentIntentId}`, {
-      grantAccessId: grantAccess._id,
-      agentId: grantAccess.agentId,
-    });
+    logger.info(
+      {
+        grantAccessId: grantAccess._id,
+        agentId: grantAccess.agentId,
+      },
+      `Payment successful: ${stripePaymentIntentId}`
+    );
   }
 
   // ============================================
@@ -110,12 +113,15 @@ export class PaymentService {
       grantAccess._id.toString()
     );
 
-    await this.notifier.notifyAgentOfPaymentFailure(updated!);
+    // await this.notifier.notifyAgentOfPaymentFailure(updated!);
 
-    logger.info(`Payment failed: ${stripePaymentIntentId}`, {
-      grantAccessId: grantAccess._id,
-      failureCount: updated?.payment?.failureCount,
-    });
+    logger.info(
+      {
+        grantAccessId: grantAccess._id,
+        failureCount: updated?.payment?.failureCount,
+      },
+      `Payment failed: ${stripePaymentIntentId}`
+    );
   }
 
   // ============================================

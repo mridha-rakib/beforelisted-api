@@ -12,11 +12,6 @@
           "type": "string"
         },
         {
-          "title": "Description",
-          "name": "description",
-          "type": "string"
-        },
-        {
           "title": "Publishing date",
           "name": "date",
           "type": "datetime",

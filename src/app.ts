@@ -14,8 +14,28 @@ import rootRouter from "@/routes/index.route.js";
 
 import { env } from "./env.js";
 import { pinoLogger } from "./middlewares/pino-logger.js";
+import { PreMarketController } from "./modules/pre-market/pre-market.controller.js";
 
 const app: Application = express();
+const controller = new PreMarketController();
+// Capture raw body for Stripe signature verification
+const captureRawBody = (
+  req: any,
+  res: any,
+  buf: Buffer,
+  encoding: string | undefined
+) => {
+  if (buf && buf.length) {
+    req.rawBody = buf.toString((encoding as BufferEncoding) || "utf8");
+  }
+};
+
+// POST webhook with raw body middleware
+app.post(
+  "/api/v1/pre-market/payment/webhook",
+  express.raw({ type: "application/json", verify: captureRawBody }),
+  controller.handleWebhook.bind(controller)
+);
 
 app.use(
   cors({
@@ -23,15 +43,6 @@ app.use(
     credentials: true,
   })
 );
-// app.use(
-//   cors({
-//     origin: process.env.CLIENT_URL || "http://localhost:3000",
-//     credentials: true,
-//     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-//     allowedHeaders: ["Content-Type", "Authorization"],
-//     maxAge: 86400, // 24 hours
-//   })
-// );
 
 app.use(express.json());
 app.use(pinoLogger());

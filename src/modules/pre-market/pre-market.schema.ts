@@ -64,6 +64,7 @@ export const createPreMarketRequestSchema = z.object({
           thirdPartyGuarantor: z.boolean().default(false),
         })
         .optional(),
+      preferences: z.array(z.string().trim()).optional(),
     })
     .refine(
       (data) => data.movingDateRange.earliest < data.movingDateRange.latest,
@@ -105,10 +106,6 @@ export const updatePreMarketRequestSchema = z.object({
         .optional(),
       bedrooms: z.array(bedroomSchema).optional(),
       bathrooms: z.array(bathroomSchema).optional(),
-      description: z
-        .string()
-        .max(PREMARKET_CONFIG.DESCRIPTION_MAX_LENGTH)
-        .optional(),
       unitFeatures: z
         .object({
           laundryInUnit: z.boolean().default(false),
