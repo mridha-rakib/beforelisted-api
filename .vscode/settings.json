@@ -57,7 +57,8 @@
     "superadmin",
     "unbookmark",
     "unsuspended",
-    "uuidv"
+    "uuidv",
+    "virtuals"
   ],
   "CodeGPT.apiKey": "Perplexity"
 }

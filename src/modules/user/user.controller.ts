@@ -13,10 +13,6 @@ import {
 } from "./user.schema";
 import { UserService } from "./user.service";
 
-/**
- * User Controller
- * Handles HTTP requests for user operations
- */
 export class UserController {
   private userService: UserService;
 

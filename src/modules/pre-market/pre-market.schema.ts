@@ -79,9 +79,7 @@ export const createPreMarketRequestSchema = z.object({
     }),
 });
 
-// ============================================
-// UPDATE PRE-MARKET REQUEST
-// ============================================
+
 
 export const updatePreMarketRequestSchema = z.object({
   body: z
@@ -155,9 +153,6 @@ export const updatePreMarketRequestSchema = z.object({
     ),
 });
 
-// ============================================
-// REQUEST ACCESS SCHEMA
-// ============================================
 
 export const requestAccessSchema = z.object({
   body: z.object({
@@ -165,9 +160,6 @@ export const requestAccessSchema = z.object({
   }),
 });
 
-// ============================================
-// ADMIN DECISION SCHEMA
-// ============================================
 
 export const adminApproveSchema = z.object({
   params: z.object({
@@ -197,10 +189,6 @@ export const adminRejectSchema = z.object({
   }),
 });
 
-// ============================================
-// PAGINATION SCHEMA
-// ============================================
-
 export const preMarketListSchema = z.object({
   query: z.object({
     page: z.coerce.number().positive().default(1),
@@ -215,4 +203,21 @@ export const preMarketListSchema = z.object({
     minPrice: z.coerce.number().optional(),
     maxPrice: z.coerce.number().optional(),
   }),
+});
+
+export const toggleListingActivationSchema = z.object({
+  params: z.object({
+    requestId: z.string().min(24, "Invalid request ID"),
+  }),
+  body: z.object({
+    isActive: z.boolean(),
+  }),
+});
+
+export const adminToggleListingStatusSchema = z.object({
+  params: z.object({
+    renterId: z.string().min(24, "Invalid renter ID"),
+    listingId: z.string().min(24, "Invalid listing ID"),
+  }),
+  body: z.object({}),
 });

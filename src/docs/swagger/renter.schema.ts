@@ -1,5 +1,5 @@
 // File: src/docs/swagger/renter.schemas.ts
-// Renter Module - Reusable Schemas
+
 
 const renterSchemas = {
   NormalRenterRegisterRequest: {

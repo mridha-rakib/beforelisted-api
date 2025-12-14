@@ -2,21 +2,15 @@ import { ACCOUNT_STATUS } from "@/constants";
 import { ROLES } from "@/constants/app.constants";
 import type { Document, Types } from "mongoose";
 
-/**
- * Base User Document Interface
- * ✅ Only data properties, methods are separate
- */
 export interface IUser extends Document {
-  // CORE FIELDS
   _id: Types.ObjectId;
   email: string;
-  password?: string; // Selected with .select("+password")
+  password?: string;
   phoneNumber?: string;
   fullName: string;
   role: (typeof ROLES)[keyof typeof ROLES];
   accountStatus: (typeof ACCOUNT_STATUS)[keyof typeof ACCOUNT_STATUS];
 
-  // PROFILE FIELDS
   /**
    * User's profile image URL from S3
    */
@@ -45,7 +39,6 @@ export interface IUser extends Document {
   deletedAt?: Date;
   deletedBy?: Types.ObjectId | IUser;
 
-  // TIMESTAMPS (from BaseSchemaUtil)
   createdAt: Date;
   updatedAt: Date;
 
@@ -100,9 +93,8 @@ export interface IUserStats {
 }
 
 /**
-
-Password Reset OTP Document Interface
-*/
+ *Password Reset OTP Document Interface
+ */
 export interface IPasswordResetOTP extends Document {
   userId: string;
   otp: string;
@@ -115,10 +107,6 @@ export interface IPasswordResetOTP extends Document {
 }
 
 // 🔑 REFRESH TOKEN BLACKLIST
-/**
- * IRefreshTokenBlacklist - Invalidated tokens
- * Used for logout and security operations
- */
 export interface IRefreshTokenBlacklist extends Document {
   userId: Types.ObjectId | string;
   token: string;

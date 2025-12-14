@@ -4,6 +4,7 @@ import { logger } from "@/middlewares/pino-logger";
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from "@/utils/app-error.utils";
 import { PreMarketNotifier } from "../notification/pre-market.notifier";
@@ -28,6 +29,20 @@ export class GrantAccessService {
     agentId: string,
     preMarketRequestId: string
   ): Promise<IGrantAccessRequest> {
+    const listingActivationCheck =
+      await this.preMarketRepository.findByIdWithActivationStatus(
+        preMarketRequestId
+      );
+
+    if (!listingActivationCheck) {
+      throw new NotFoundException("Pre-market request not found");
+    }
+
+    if (!listingActivationCheck.isActive) {
+      throw new ForbiddenException(
+        "This listing is no longer accepting requests"
+      );
+    }
     // Check if already requested
     const existing = await this.grantAccessRepository.findByAgentAndRequest(
       agentId,
@@ -62,7 +77,7 @@ export class GrantAccessService {
       },
     });
 
-    logger.info(`Grant access requested: ${preMarketRequestId}`, { agentId });
+    logger.info({ agentId }, `Grant access requested: ${preMarketRequestId}`);
 
     // Notify admin
     await this.notifier.notifyAdminOfGrantAccessRequest(grantAccess);

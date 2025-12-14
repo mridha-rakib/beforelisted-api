@@ -43,22 +43,63 @@ router.post("/register/admin-referral", controller.registerAdminReferralRenter);
  * GET /renter/profile
  * Get authenticated renter's profile
  */
-router.get("/profile", authMiddleware.verifyToken, controller.getRenterProfile);
+router.get(
+  "/profile",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
+  controller.getRenterProfile
+);
 
 /**
  * PUT /renter/profile
  * Update authenticated renter's profile
  */
-router.put("/profile", controller.updateRenterProfile);
+router.put(
+  "/profile",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
+  controller.updateRenterProfile
+);
 
 // ============================================
 // ADMIN ROUTES
 // ============================================
 
 /**
- * GET /renter/admin/:userId
- * Admin: Get renter profile by ID
+ * GET /admin/renters
+ * Get all renters with pagination and optional filtering
+ * Query params: page, limit, accountStatus
+ * Protected: Admins only
  */
-router.get("/admin/:userId", controller.adminGetRenterProfile);
+router.get(
+  "/admin/renters",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.getAllRenters.bind(controller)
+);
+
+/**
+ * GET /admin/renters/:renterId
+ * Get detailed renter profile with referral info and listings
+ * Protected: Admins only
+ */
+router.get(
+  "/admin/renters/:renterId",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.getRenterDetailsForAdmin.bind(controller)
+);
+
+/**
+ * GET /admin/:userId
+ * Existing admin route - Get renter profile by ID
+ * Protected: Admins only
+ */
+router.get(
+  "/admin/:userId",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.adminGetRenterProfile.bind(controller)
+);
 
 export default router;

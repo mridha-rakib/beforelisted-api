@@ -27,7 +27,11 @@ import type {
 } from "./renter.type";
 import { RenterUtil } from "./renter.utils";
 
+import { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
+import { AgentProfileRepository } from "../agent/agent.repository";
+import { PreMarketRepository } from "../pre-market/pre-market.repository";
 import { ReferralService } from "../referral/referral.service";
+import { UserRepository } from "../user/user.repository";
 
 /**
  * Renter Service
@@ -62,10 +66,6 @@ export class RenterService {
     // Detect registration type
     if (payload.referralCode) {
       const parsed = ReferralParser.parse(payload.referralCode);
-
-      console.log("==================================");
-      console.log(parsed);
-      console.log("===========================================");
 
       if (parsed.type === "agent_referral") {
         return this.registerAgentReferralRenter(
@@ -552,5 +552,145 @@ export class RenterService {
   ): Promise<string> {
     const referrer = await this.referralService.validateReferralCode(code);
     return referrer._id.toString();
+  }
+
+  async getAllRenters(
+    query: PaginationQuery,
+    accountStatus?: string
+  ): Promise<PaginatedResponse<any>> {
+    const result = await this.repository.findAllWithListingCount(
+      query,
+      accountStatus
+    );
+
+    const data = result.data.map((renter: any) => ({
+      _id: renter._id,
+      userId: renter.userId,
+      email: renter.email,
+      fullName: renter.fullName,
+      phoneNumber: renter.phoneNumber,
+      accountStatus: renter.accountStatus,
+      totalListings: renter.totalListings,
+      createdAt: renter.createdAt,
+    }));
+
+    return {
+      success: true,
+      data,
+      pagination: result.pagination,
+    };
+  }
+
+  /**
+   * Get renter details with referral info and listings
+   * Admin view: Detailed renter profile
+   * @param renterId - Renter ID
+   */
+  async getRenterDetailsForAdmin(renterId: string): Promise<any> {
+    // Get renter basic info
+    const renter = await this.repository.findByIdWithReferralInfo(renterId);
+
+    if (!renter) {
+      throw new NotFoundException("Renter not found");
+    }
+
+    // Get referrer details
+    let referralInfo: any = {
+      registrationType: renter.registrationType,
+    };
+
+
+    if (renter.referredByAgentId) {
+      const agent = await new AgentProfileRepository().findById(
+        renter.referredByAgentId.toString()
+      );
+      
+      if (agent) {
+        // Get agent's user details for email and fullName
+        const agentUser = await new UserRepository().findById(
+          agent.userId.toString()
+        );
+        
+        referralInfo.referredByAgentId = renter.referredByAgentId;
+        referralInfo.referredByAgent = agentUser
+          ? {
+              _id: agent._id,
+              fullName: agentUser.fullName,
+              email: agentUser.email,
+              role: "Agent",
+            }
+          : null;
+      }
+    }
+
+    if (renter.referredByAdminId) {
+      const admin = await new UserRepository().findById(
+        renter.referredByAdminId.toString()
+      );
+      
+      referralInfo.referredByAdmin = admin
+        ? {
+            _id: admin._id,
+            fullName: admin.fullName,
+            email: admin.email,
+            role: "Admin",
+          }
+        : null;
+    }
+
+    // Get renter's pre-market listings
+    // Note: Pre-market renterId references userId, not renter._id
+    const listings = await new PreMarketRepository().findByRenterIdAll(
+      renter.userId._id.toString(),
+      true // include inactive listings
+    );
+
+    // Map listings for display
+    const preMarketListings = listings.map((listing: any) => ({
+      _id: listing._id,
+      requestId: listing.requestId,
+      requestName: listing.requestName,
+      isActive: listing.isActive,
+      status: listing.status,
+      priceRange: listing.priceRange,
+      locations: listing.locations,
+      movingDateRange: listing.movingDateRange,
+      viewedBy: {
+        grantAccessAgents: listing.viewedBy?.grantAccessAgents?.length || 0,
+        normalAgents: listing.viewedBy?.normalAgents?.length || 0,
+      },
+      createdAt: listing.createdAt,
+      updatedAt: listing.updatedAt,
+    }));
+
+    return {
+      _id: renter._id,
+      email: renter.email,
+      fullName: renter.fullName,
+      phoneNumber: renter.phoneNumber,
+      accountStatus: renter.accountStatus,
+      // emailVerified: renter.emailVerified,
+      // occupations: renter.occupations,
+      moveInDate: renter.moveInDate,
+      petFriendly: renter.petFriendly,
+      referralInfo,
+      preMarketListings,
+      createdAt: renter.createdAt,
+    };
+  }
+
+  /**
+   * Get renter's pre-market listings
+   * @param renterId - Renter ID
+   * @param includeInactive - Include deactivated listings
+   */
+  async getRenterListings(
+    renterId: string,
+    includeInactive: boolean = true
+  ): Promise<any[]> {
+    return new PreMarketRepository().findByRenterIdAll(
+      renterId,
+      includeInactive
+    );
   }
 }

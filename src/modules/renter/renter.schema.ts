@@ -232,3 +232,47 @@ export const getRenterProfileSchema = z.object({
     userId: z.string().min(1),
   }),
 });
+
+/**
+ * Schema for GET /admin/renters
+ * Validates pagination and filtering parameters
+ */
+export const renterListSchema = z.object({
+  query: z.object({
+    page: z
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 1))
+      .refine((val) => val >= 1, "Page must be >= 1"),
+
+    limit: z
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 10))
+      .refine(
+        (val) => val >= 1 && val <= 100,
+        "Limit must be between 1 and 100"
+      ),
+
+    accountStatus: z
+      .enum(["pending", "active", "suspended", "deactivated"])
+      .optional(),
+
+    sort: z.string().optional().default("-createdAt"),
+
+    search: z.string().optional(),
+  }),
+});
+
+/**
+ * Schema for GET /admin/renters/:renterId
+ * Validates renter ID parameter
+ */
+export const renterDetailSchema = z.object({
+  params: z.object({
+    renterId: z
+      .string()
+      .min(24, "Invalid renter ID format")
+      .max(24, "Invalid renter ID format"),
+  }),
+});

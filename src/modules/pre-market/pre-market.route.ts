@@ -47,6 +47,13 @@ router.delete(
   controller.deleteRequest.bind(controller)
 );
 
+router.put(
+  "/:requestId/toggle-status",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
+  controller.toggleListingActivation.bind(controller)
+);
+
 // ============================================
 // AGENT ROUTES - GRANT ACCESS AGENTS FIRST
 // (More specific routes BEFORE generic ones)
@@ -197,6 +204,13 @@ router.delete(
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
   controller.adminDeleteRequest.bind(controller)
+);
+
+router.put(
+  "/admin/renters/:renterId/listings/:listingId/toggle-status",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.adminToggleListingStatus.bind(controller)
 );
 
 // ============================================

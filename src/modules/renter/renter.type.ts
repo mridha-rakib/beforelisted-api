@@ -1,6 +1,8 @@
 // file: src/modules/renter/renter.type.ts
 
 import { Types } from "mongoose";
+import { z } from "zod";
+import { renterDetailSchema, renterListSchema } from "./renter.schema";
 
 // ============================================
 // REGISTRATION PAYLOADS
@@ -181,3 +183,6 @@ export type RenterControllerResponse = {
   temporaryPassword?: string; // For admin referral
   mustChangePassword?: boolean; // For admin referral
 };
+
+export type RenterListRequest = z.infer<typeof renterListSchema>;
+export type RenterDetailRequest = z.infer<typeof renterDetailSchema>;

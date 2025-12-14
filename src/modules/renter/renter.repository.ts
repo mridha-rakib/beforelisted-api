@@ -1,5 +1,7 @@
 // file: src/modules/renter/renter.repository.ts
 
+import { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
+import { PaginationHelper } from "@/utils/pagination-helper";
 import type { ObjectId, Types } from "mongoose";
 import mongoose from "mongoose";
 import { BaseRepository } from "../base/base.repository";
@@ -367,5 +369,99 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
       })
       .lean()
       .exec();
+  }
+
+  async findAllWithListingCount(
+    query: PaginationQuery,
+    accountStatus?: string
+  ): Promise<PaginatedResponse<any>> {
+    const paginateOptions = PaginationHelper.parsePaginationParams(query);
+    const page = paginateOptions.page || 1;
+    const limit = paginateOptions.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const matchFilter: any = { isDeleted: false };
+    if (accountStatus) {
+      matchFilter.accountStatus = accountStatus;
+    }
+
+    const pipeline = [
+      { $match: matchFilter },
+      {
+        $lookup: {
+          from: "premarketrequests",
+          let: { userId: "$userId" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$renterId", "$$userId"] },
+                isDeleted: false,
+              },
+            },
+          ],
+          as: "preMarketListings",
+        },
+      },
+      {
+        $addFields: {
+          totalListings: { $size: "$preMarketListings" },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          userId: 1,
+          email: 1,
+          fullName: 1,
+          phoneNumber: 1,
+          accountStatus: 1,
+          totalListings: 1,
+          createdAt: 1,
+        },
+      },
+      { $sort: { createdAt: -1 as const } },
+      { $skip: skip },
+      { $limit: limit },
+    ];
+
+    const data = await this.model.aggregate(pipeline);
+
+    const countPipeline = [{ $match: matchFilter }, { $count: "total" }];
+    const countResult = await this.model.aggregate(countPipeline);
+    const total = countResult[0]?.total || 0;
+
+    return PaginationHelper.buildResponse(data, total, page, limit);
+  }
+
+  /**
+   * Get renter with full details including referral info
+   * @param renterId - Renter ID
+   */
+  async findByIdWithReferralInfo(
+    renterId: string
+  ): Promise<IRenterModel | null> {
+    return this.model
+      .findById(renterId)
+      .populate("userId")
+      .lean() as Promise<IRenterModel | null>;
+    // .select(
+    //   "_id email fullName phoneNumber accountStatus occupations moveInDate " +
+    //     "petFriendly emailVerified registrationType referredByAgentId referredByAdminId createdAt"
+    // )
+  }
+
+  /**
+   * Get referrer information (agent or admin who referred this renter)
+   * @param renterId - Renter ID
+   */
+  async getReferrerInfo(renterId: string): Promise<{
+    referredByAgentId?: string;
+    referredByAdminId?: string;
+    registrationType?: string;
+  } | null> {
+    return this.model
+      .findById(renterId)
+      .select("referredByAgentId referredByAdminId registrationType")
+      .lean() as Promise<any>;
   }
 }

@@ -2,6 +2,8 @@
 
 import { COOKIE_CONFIG } from "@/config/cookie.config";
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
+import { logger } from "@/middlewares/pino-logger";
+import { BadRequestException } from "@/utils/app-error.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 import type { NextFunction, Request, Response } from "express";
@@ -10,6 +12,7 @@ import {
   agentReferralRenterRegisterSchema,
   getRenterProfileSchema,
   normalRenterRegisterSchema,
+  renterListSchema,
   renterRegisterSchema,
   updateRenterProfileSchema,
 } from "./renter.schema";
@@ -151,4 +154,52 @@ export class RenterController {
 
     ApiResponse.success(res, result, "Renter profile retrieved successfully");
   });
+
+  /**
+   * ADMIN: Get all renters (paginated, filterable)
+   * GET /admin/renters?page=1&limit=10&accountStatus=active
+   * Protected: Admins only
+   */
+  getAllRenters = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(renterListSchema, req);
+    const { accountStatus } = validated.query;
+
+    const result = await this.service.getAllRenters(
+      validated.query,
+      accountStatus
+    );
+
+    ApiResponse.paginated(
+      res,
+      result.data,
+      result.pagination,
+      "Renters retrieved successfully"
+    );
+  });
+
+  /**
+   * ADMIN: Get renter details with referral info and listings
+   * GET /admin/renters/:renterId
+   * Protected: Admins only
+   *
+   * Response includes:
+   * - Basic renter info
+   * - Referral information (who referred this renter)
+   * - All pre-market listings (active + deactivated)
+   */
+  getRenterDetailsForAdmin = asyncHandler(
+    async (req: Request, res: Response) => {
+      const { renterId } = req.params;
+
+      if (!renterId || renterId.length !== 24) {
+        throw new BadRequestException("Invalid renter ID format");
+      }
+
+      const renter = await this.service.getRenterDetailsForAdmin(renterId);
+
+      logger.info({ renterId }, "Admin viewed renter details");
+
+      ApiResponse.success(res, renter, "Renter details retrieved successfully");
+    }
+  );
 }

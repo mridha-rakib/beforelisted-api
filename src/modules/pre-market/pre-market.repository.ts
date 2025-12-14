@@ -273,11 +273,6 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return PaginationHelper.formatResponse(result);
   }
 
-  /**
-   * Admin: Get all pre-market requests with pagination.
-   * - No role-based filtering here (enforced at service/controller level)
-   * - Returns raw PreMarketRequest documents (isDeleted already handled in schema & BaseRepository)
-   */
   async findAllForAdmin(
     query: PaginationQuery
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
@@ -291,9 +286,6 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return PaginationHelper.formatResponse<IPreMarketRequest>(result);
   }
 
-  /**
-   * Admin: Get a single pre-market request by Mongo _id (not requestId string).
-   */
   async findByIdForAdmin(id: string): Promise<IPreMarketRequest | null> {
     return this.model.findById(id).lean<IPreMarketRequest | null>().exec();
   }
@@ -316,12 +308,6 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return PaginationHelper.formatResponse(result);
   }
 
-  /**
-   * Get all requests visible to agent
-   * Includes:
-   * - Requests with status "match" (for admin-granted agents)
-   * - Requests this agent paid for access to
-   */
   async findVisibleForAgent(
     agentId: string,
     query: PaginationQuery,
@@ -354,5 +340,52 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       .findById(id)
       .lean()
       .exec() as Promise<IPreMarketRequest | null>;
+  }
+
+  async toggleListingActive(
+    id: string,
+    isActive: boolean
+  ): Promise<IPreMarketRequest | null> {
+    return this.model.findByIdAndUpdate(id, { isActive }, { new: true });
+  }
+
+  /**
+   * Get all listings for a renter
+   * @param renterId - Renter ID
+   * @param includeInactive - Include deactivated listings
+   */
+
+  async findByRenterIdAll(
+    renterId: string,
+    includeInactive: boolean = true
+  ): Promise<IPreMarketRequest[]> {
+    const query: any = {
+      renterId,
+      isDeleted: false,
+    };
+
+    if (!includeInactive) {
+      query.isActive = true;
+    }
+
+    return this.model
+      .find(query)
+      .sort({ createdAt: -1 })
+      .lean<IPreMarketRequest[]>()
+      .exec();
+  }
+
+  async isListingActive(id: string): Promise<boolean> {
+    const listing = await this.model.findById(id).select("isActive").lean();
+    return listing?.isActive ?? false;
+  }
+
+  async findByIdWithActivationStatus(
+    id: string
+  ): Promise<IPreMarketRequest | null> {
+    return this.model
+      .findById(id)
+      .select("isActive status requestId renterId")
+      .lean() as Promise<IPreMarketRequest | null>;
   }
 }

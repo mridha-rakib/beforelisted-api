@@ -2,7 +2,11 @@
 
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
-import { ForbiddenException, NotFoundException } from "@/utils/app-error.utils";
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from "@/utils/app-error.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 import type { Request, Response } from "express";
@@ -19,6 +23,7 @@ import {
   createPreMarketRequestSchema,
   preMarketListSchema,
   requestAccessSchema,
+  toggleListingActivationSchema,
   updatePreMarketRequestSchema,
 } from "./pre-market.schema";
 import { PreMarketService } from "./pre-market.service";
@@ -741,4 +746,92 @@ export class PreMarketController {
       message: "Pre-market request deleted successfully",
     });
   });
+
+  /**
+   * PUT /pre-market/:requestId/toggle-status
+   * Protected: Renters only
+   */
+  toggleListingActivation = asyncHandler(
+    async (req: Request, res: Response) => {
+      const validated = await zParse(toggleListingActivationSchema, req);
+      const userId = req.user!.userId;
+
+      const updated = await this.preMarketService.toggleListingActivation(
+        validated.params.requestId,
+        validated.body.isActive,
+        userId,
+        "Renter"
+      );
+
+      logger.info(
+        { userId, listingId: validated.params.requestId },
+        `Listing ${validated.body.isActive ? "activated" : "deactivated"}`
+      );
+
+      ApiResponse.success(
+        res,
+        updated,
+        `Listing ${validated.body.isActive ? "activated" : "deactivated"} successfully`
+      );
+    }
+  );
+
+  adminToggleListingStatus = asyncHandler(
+    async (req: Request, res: Response) => {
+      const adminId = req.user!.userId;
+      const { renterId, listingId } = req.params;
+
+      // Validate IDs format
+      if (!listingId || listingId.length < 24) {
+        throw new BadRequestException("Invalid listing ID");
+      }
+
+      // Get current listing to check its status
+      const currentListing =
+        await this.preMarketRepository.getRequestById(listingId);
+
+      if (!currentListing) {
+        throw new NotFoundException("Pre-market request (listing) not found");
+      }
+
+      // Verify listing belongs to the specified renter
+      if (currentListing.renterId.toString() !== renterId) {
+        throw new BadRequestException(
+          "Listing does not belong to the specified renter"
+        );
+      }
+
+      const currentStatus = currentListing.isActive ?? true;
+      const newStatus = !currentStatus;
+
+      // Update listing with toggled status
+      const updated = await this.preMarketService.toggleListingActivation(
+        listingId,
+        newStatus,
+        adminId,
+        "Admin"
+      );
+
+      // Log the action
+      logger.info(
+        {
+          adminId,
+          renterId,
+          listingId,
+          previousStatus: currentStatus,
+          newStatus: newStatus,
+        },
+        `Admin toggled listing status: ${
+          newStatus ? "activated" : "deactivated"
+        }`
+      );
+
+      // Return success response with updated listing
+      ApiResponse.success(
+        res,
+        updated,
+        `Listing ${newStatus ? "activated" : "deactivated"} successfully`
+      );
+    }
+  );
 }

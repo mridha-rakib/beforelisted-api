@@ -482,9 +482,6 @@ export class PreMarketService {
   private async enrichRequestForAdmin(
     request: IPreMarketRequest
   ): Promise<AdminPreMarketRequestItem> {
-    console.log("++++++++++++++++++++++++++++++++++++++++++++");
-    console.log(request);
-    console.log("++++++++++++++++++++++++++++++++++++++++++++");
     const renter = await this.renterRepository.findRenterWithReferrer(
       request.renterId.toString()
     );
@@ -1050,6 +1047,106 @@ export class PreMarketService {
     logger.warn(
       { requestId, renterId: request.renterId },
       "Admin deleted pre-market request"
+    );
+  }
+
+  // ============================================
+  // LISTING ACTIVATION/DEACTIVATION
+  // ============================================
+
+  /**
+   * Toggle listing activation status (Admin or Renter)
+   * @param listingId - Pre-market listing ID
+   * @param isActive - New activation status
+   * @param userId - User performing action
+   * @param userRole - User role (Admin or Renter)
+   */
+  async toggleListingActivation(
+    listingId: string,
+    isActive: boolean,
+    userId: string,
+    userRole: string
+  ): Promise<IPreMarketRequest> {
+
+    const listing = await this.getRequestById(listingId);
+
+    // Check authorization
+    if (userRole === "Renter") {
+      // Renter can only toggle own listings
+      if (listing.renterId.toString() !== userId) {
+        throw new ForbiddenException("You can only manage your own listings");
+      }
+    } else if (userRole !== "Admin") {
+      // Only Admin or Renter allowed
+      throw new ForbiddenException(
+        "You don't have permission to manage listings"
+      );
+    }
+
+    // Update listing
+    const updated = await this.preMarketRepository.toggleListingActive(
+      listingId,
+      isActive
+    );
+
+    if (!updated) {
+      throw new NotFoundException("Pre-market request not found");
+    }
+
+    logger.info(
+      { userId, listingId, isActive, userRole },
+      `Listing activation toggled: ${isActive ? "activated" : "deactivated"}`
+    );
+
+    return updated;
+  }
+
+  /**
+   * Check if agent can access listing (activation guard)
+   * @param listingId - Pre-market listing ID
+   */
+  async canAgentAccessListing(listingId: string): Promise<{
+    canAccess: boolean;
+    isActive: boolean;
+    reason?: string;
+  }> {
+    const listing =
+      await this.preMarketRepository.findByIdWithActivationStatus(listingId);
+
+    if (!listing) {
+      return {
+        canAccess: false,
+        isActive: false,
+        reason: "Listing not found",
+      };
+    }
+
+    if (!listing.isActive) {
+      return {
+        canAccess: false,
+        isActive: false,
+        reason: "This listing is no longer accepting requests",
+      };
+    }
+
+    return {
+      canAccess: true,
+      isActive: true,
+    };
+  }
+
+  /**
+   * Get all listings for a renter (admin view)
+   * @param renterId - Renter ID
+   * @param includeInactive - Include deactivated listings
+   */
+  async getRenterListings(
+    renterId: string,
+    includeInactive: boolean = true
+  ): Promise<IPreMarketRequest[]> {
+    return this.preMarketRepository.findByRenterIdAll(
+      renterId,
+      includeInactive
     );
   }
 }

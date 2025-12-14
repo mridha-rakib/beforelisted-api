@@ -4,11 +4,10 @@ import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 import { model, Types, type Document, type Query } from "mongoose";
 
 // ============================================
-// INTERFACE
+// INTERFACE <unknown, any, any, Record<string, any>, object>
 // ============================================
 
-export interface IPreMarketRequest
-  extends Document<unknown, any, any, Record<string, any>, object> {
+export interface IPreMarketRequest extends Document {
   requestId: string;
   renterId: Types.ObjectId | string;
   requestName: string;
@@ -54,8 +53,8 @@ export interface IPreMarketRequest
 
   preferences: string[];
 
-  status: "active" | "archived" | "deleted";
-
+  status: "active" | "Available" | "match" | "matched" | "deleted";
+  isActive: boolean;
   viewedBy: {
     grantAccessAgents: Types.ObjectId[];
     normalAgents: Types.ObjectId[];
@@ -159,6 +158,12 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
     default: "active",
     index: true,
   } as any,
+
+  isActive: {
+    type: Boolean,
+    default: true,
+    index: true,
+  } as any,
   preferences: [],
 
   viewedBy: {
@@ -182,6 +187,7 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
 // INDEXES
 
 preMarketSchema.index({ renterId: 1, status: 1 });
+preMarketSchema.index({ renterId: 1, isActive: 1 });
 preMarketSchema.index({ status: 1, createdAt: -1 });
 preMarketSchema.index({ locations: 1 });
 preMarketSchema.index({ "priceRange.min": 1, "priceRange.max": 1 });

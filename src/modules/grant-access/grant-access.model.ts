@@ -7,8 +7,8 @@ import { model, Schema, Types, type Document } from "mongoose";
 export interface IGrantAccessRequest
   extends Document<unknown, any, any, Record<string, any>, object> {
   _id: Types.ObjectId;
-  preMarketRequestId: Types.ObjectId;
-  agentId: Types.ObjectId;
+  preMarketRequestId: Types.ObjectId | string;
+  agentId: Types.ObjectId | string;
   status: (typeof GRANT_ACCESS_CONFIG.STATUSES)[number];
 
   payment?: {
