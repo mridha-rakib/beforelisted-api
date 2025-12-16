@@ -1,13 +1,12 @@
-// File: src/docs/swagger/auth.swagger.ts
-// Authentication Module - Endpoint Documentation
+// file: src/docs/swagger/auth.swagger.ts
+// Complete OpenAPI paths for Authentication endpoints
 
-const authPaths = {
+export const authPaths = {
   "/auth/login": {
     post: {
       tags: ["Authentication"],
-      summary: "User Login",
-      description:
-        "Authenticate user with email and password. Returns JWT tokens and user information.",
+      summary: "Login user",
+      description: "Authenticate user with email and password. Sets refresh token in httpOnly cookie.",
       operationId: "loginUser",
       requestBody: {
         required: true,
@@ -30,7 +29,7 @@ const authPaths = {
             },
           },
         },
-        "401": {
+        "400": {
           description: "Invalid credentials",
           content: {
             "application/json": {
@@ -40,15 +39,11 @@ const authPaths = {
             },
           },
         },
-        "422": {
-          description: "Validation error",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/ValidationErrorResponse",
-              },
-            },
-          },
+        "401": {
+          description: "Unauthorized - Invalid email or password",
+        },
+        "404": {
+          description: "User not found",
         },
       },
     },
@@ -57,9 +52,8 @@ const authPaths = {
   "/auth/verify-email": {
     post: {
       tags: ["Authentication"],
-      summary: "Verify Email Address",
-      description:
-        "Verify user email with 4-digit code sent to email during registration.",
+      summary: "Verify email with verification code",
+      description: "Verify user's email address using the verification code sent to their email.",
       operationId: "verifyEmail",
       requestBody: {
         required: true,
@@ -77,17 +71,7 @@ const authPaths = {
           content: {
             "application/json": {
               schema: {
-                type: "object",
-                properties: {
-                  success: {
-                    type: "boolean",
-                    example: true,
-                  },
-                  message: {
-                    type: "string",
-                    example: "Email verified successfully",
-                  },
-                },
+                $ref: "#/components/schemas/VerifyEmailResponse",
               },
             },
           },
@@ -95,15 +79,8 @@ const authPaths = {
         "400": {
           description: "Invalid or expired verification code",
         },
-        "422": {
-          description: "Validation error",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/ValidationErrorResponse",
-              },
-            },
-          },
+        "404": {
+          description: "User not found",
         },
       },
     },
@@ -112,9 +89,9 @@ const authPaths = {
   "/auth/resend-verification": {
     post: {
       tags: ["Authentication"],
-      summary: "Resend Verification Code",
-      description: "Resend verification code to registered email address.",
-      operationId: "resendVerification",
+      summary: "Resend verification code",
+      description: "Request a new verification code to be sent to the user's email.",
+      operationId: "resendVerificationCode",
       requestBody: {
         required: true,
         content: {
@@ -127,24 +104,17 @@ const authPaths = {
       },
       responses: {
         "200": {
-          description: "Verification code resent",
+          description: "Verification code sent successfully",
           content: {
             "application/json": {
               schema: {
-                type: "object",
-                properties: {
-                  success: {
-                    type: "boolean",
-                    example: true,
-                  },
-                  message: {
-                    type: "string",
-                    example: "Verification code sent to email",
-                  },
-                },
+                $ref: "#/components/schemas/ResendVerificationResponse",
               },
             },
           },
+        },
+        "400": {
+          description: "Bad request",
         },
         "404": {
           description: "User not found",
@@ -156,8 +126,8 @@ const authPaths = {
   "/auth/verify-otp": {
     post: {
       tags: ["Authentication"],
-      summary: "Verify OTP (Password Reset)",
-      description: "Verify OTP code for password reset verification.",
+      summary: "Verify OTP code",
+      description: "Verify OTP sent to user's email for password reset or authentication.",
       operationId: "verifyOTP",
       requestBody: {
         required: true,
@@ -175,17 +145,7 @@ const authPaths = {
           content: {
             "application/json": {
               schema: {
-                type: "object",
-                properties: {
-                  success: {
-                    type: "boolean",
-                    example: true,
-                  },
-                  message: {
-                    type: "string",
-                    example: "OTP verified. Proceed with password reset.",
-                  },
-                },
+                $ref: "#/components/schemas/VerifyOTPResponse",
               },
             },
           },
@@ -193,43 +153,60 @@ const authPaths = {
         "400": {
           description: "Invalid or expired OTP",
         },
+        "404": {
+          description: "User not found",
+        },
       },
     },
   },
 
-  "/auth/request-password-reset": {
+  "/auth/refresh-token": {
     post: {
-      tags: ["Authentication - Password Reset"],
-      summary: "Request Password Reset",
-      description: "Request password reset by sending OTP to registered email.",
-      operationId: "requestPasswordReset",
+      tags: ["Authentication"],
+      summary: "Refresh access token",
+      description: "Get a new access token using the refresh token stored in cookie.",
+      operationId: "refreshAccessToken",
+      responses: {
+        "200": {
+          description: "Access token refreshed successfully",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/RefreshTokenResponse",
+              },
+            },
+          },
+        },
+        "401": {
+          description: "Refresh token expired or invalid",
+        },
+      },
+    },
+  },
+
+  "/auth/forgot-password": {
+    post: {
+      tags: ["Password Reset"],
+      summary: "Request password reset",
+      description: "Request a password reset OTP to be sent to the user's email.",
+      operationId: "forgotPassword",
       requestBody: {
         required: true,
         content: {
           "application/json": {
             schema: {
-              $ref: "#/components/schemas/RequestPasswordResetRequest",
+              $ref: "#/components/schemas/ForgotPasswordRequest",
             },
           },
         },
       },
       responses: {
         "200": {
-          description: "OTP sent to email for password reset",
+          description: "Password reset OTP sent to email",
           content: {
             "application/json": {
               schema: {
-                type: "object",
-                properties: {
-                  success: {
-                    type: "boolean",
-                    example: true,
-                  },
-                  message: {
-                    type: "string",
-                    example: "OTP sent to your email. Valid for 10 minutes.",
-                  },
-                },
+                $ref: "#/components/schemas/ForgotPasswordResponse",
               },
             },
           },
@@ -241,11 +218,45 @@ const authPaths = {
     },
   },
 
+  "/auth/verify-password-otp": {
+    post: {
+      tags: ["Password Reset"],
+      summary: "Verify password reset OTP",
+      description: "Verify the OTP sent for password reset.",
+      operationId: "verifyPasswordOTP",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              $ref: "#/components/schemas/VerifyPasswordOTPRequest",
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "OTP verified successfully",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/VerifyPasswordOTPResponse",
+              },
+            },
+          },
+        },
+        "400": {
+          description: "Invalid or expired OTP",
+        },
+      },
+    },
+  },
+
   "/auth/reset-password": {
     post: {
-      tags: ["Authentication - Password Reset"],
-      summary: "Reset Password",
-      description: "Reset password using email, OTP, and new password.",
+      tags: ["Password Reset"],
+      summary: "Reset password with OTP",
+      description: "Reset user password using verified OTP.",
       operationId: "resetPassword",
       requestBody: {
         required: true,
@@ -263,24 +274,44 @@ const authPaths = {
           content: {
             "application/json": {
               schema: {
-                type: "object",
-                properties: {
-                  success: {
-                    type: "boolean",
-                    example: true,
-                  },
-                  message: {
-                    type: "string",
-                    example:
-                      "Password reset successfully. Please login with new password.",
-                  },
-                },
+                $ref: "#/components/schemas/ResetPasswordResponse",
               },
             },
           },
         },
         "400": {
-          description: "Invalid OTP or expired token",
+          description: "Invalid or expired OTP",
+        },
+      },
+    },
+  },
+
+  "/auth/resend-password-otp": {
+    post: {
+      tags: ["Password Reset"],
+      summary: "Resend password reset OTP",
+      description: "Request a new password reset OTP to be sent to email.",
+      operationId: "resendPasswordOTP",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              $ref: "#/components/schemas/ResendPasswordOTPRequest",
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Password reset OTP resent to email",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/ResendPasswordOTPResponse",
+              },
+            },
+          },
         },
       },
     },
@@ -288,10 +319,9 @@ const authPaths = {
 
   "/auth/change-password": {
     put: {
-      tags: ["Authentication - Password Reset"],
-      summary: "Change Password (Authenticated)",
-      description:
-        "Change password for authenticated user. Requires current password verification.",
+      tags: ["Authentication"],
+      summary: "Change password (authenticated user)",
+      description: "Change password for authenticated user. Requires current password verification.",
       operationId: "changePassword",
       security: [
         {
@@ -314,62 +344,16 @@ const authPaths = {
           content: {
             "application/json": {
               schema: {
-                type: "object",
-                properties: {
-                  success: {
-                    type: "boolean",
-                    example: true,
-                  },
-                  message: {
-                    type: "string",
-                    example: "Password changed successfully",
-                  },
-                },
+                $ref: "#/components/schemas/ChangePasswordResponse",
               },
             },
           },
+        },
+        "400": {
+          description: "Invalid current password",
         },
         "401": {
-          description: "Unauthorized or invalid current password",
-        },
-        "422": {
-          description: "Validation error",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/ValidationErrorResponse",
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-
-  "/auth/refresh-token": {
-    post: {
-      tags: ["Authentication"],
-      summary: "Refresh Access Token",
-      description: "Get new access token using refresh token from cookie.",
-      operationId: "refreshToken",
-      security: [
-        {
-          cookieAuth: [],
-        },
-      ],
-      responses: {
-        "200": {
-          description: "New access token generated",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/RefreshTokenResponse",
-              },
-            },
-          },
-        },
-        "401": {
-          description: "Invalid or expired refresh token",
+          description: "Unauthorized",
         },
       },
     },
@@ -378,8 +362,8 @@ const authPaths = {
   "/auth/logout": {
     post: {
       tags: ["Authentication"],
-      summary: "User Logout",
-      description: "Logout user and clear authentication tokens.",
+      summary: "Logout user",
+      description: "Logout authenticated user. Clears refresh token cookie.",
       operationId: "logout",
       security: [
         {
@@ -392,17 +376,7 @@ const authPaths = {
           content: {
             "application/json": {
               schema: {
-                type: "object",
-                properties: {
-                  success: {
-                    type: "boolean",
-                    example: true,
-                  },
-                  message: {
-                    type: "string",
-                    example: "Logged out successfully",
-                  },
-                },
+                $ref: "#/components/schemas/LogoutResponse",
               },
             },
           },

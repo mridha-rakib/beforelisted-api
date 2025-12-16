@@ -54,6 +54,13 @@ router.put(
   controller.toggleListingActivation.bind(controller)
 );
 
+router.get(
+  "/renter/requests/with-agents",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
+  controller.getRenterRequestsWithAgents.bind(controller)
+);
+
 // ============================================
 // AGENT ROUTES - GRANT ACCESS AGENTS FIRST
 // (More specific routes BEFORE generic ones)
@@ -66,7 +73,7 @@ router.get(
   "/agent/all-requests",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Agent"),
-  controller.getAllRequestsForGrantAccessAgents.bind(controller)
+  controller.getAllRequestsForAgent.bind(controller)
 );
 
 /**
@@ -211,6 +218,21 @@ router.put(
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
   controller.adminToggleListingStatus.bind(controller)
+);
+
+// Admin Excel endpoints
+router.get(
+  "/admin/excel-download",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.downloadConsolidatedExcel
+);
+
+router.get(
+  "/admin/excel-stats",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.getExcelStats
 );
 
 // ============================================

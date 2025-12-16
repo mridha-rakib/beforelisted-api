@@ -76,6 +76,18 @@ router.get(
 // );
 
 /**
+ * GET /agent/admin/excel-download
+ * Download agent Excel (admin only)
+ * NOTE: Must be before /admin/:userId to avoid route conflict
+ */
+router.get(
+  "/admin/excel-download",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize(ROLES.ADMIN),
+  controller.downloadAgentConsolidatedExcel
+);
+
+/**
  * GET /agent/admin/:userId
  * Get specific agent profile (admin only)
  */
@@ -161,4 +173,5 @@ router.get(
   authMiddleware.authorize(ROLES.ADMIN),
   controller.getActivationHistory
 );
+
 export default router;

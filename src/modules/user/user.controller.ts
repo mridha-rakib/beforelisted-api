@@ -5,12 +5,7 @@ import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 import type { NextFunction, Request, Response } from "express";
-import {
-  changeEmailSchema,
-  deleteUserSchema,
-  updateUserSchema,
-  verifyNewEmailSchema,
-} from "./user.schema";
+import { deleteUserSchema, updateUserSchema } from "./user.schema";
 import { UserService } from "./user.service";
 
 export class UserController {
@@ -50,39 +45,6 @@ export class UserController {
       ApiResponse.success(res, result, MESSAGES.USER.USER_UPDATED);
     }
   );
-
-  /**
-   * Request email change (send verification)
-   * POST /user/change-email
-   */
-  requestEmailChange = asyncHandler(async (req: Request, res: Response) => {
-    const validated = await zParse(changeEmailSchema, req);
-    const userId = req.user!.userId;
-
-    const result = await this.userService.requestEmailChange(
-      userId,
-      validated.body.newEmail
-    );
-
-    ApiResponse.success(res, result);
-  });
-
-  /**
-   * Verify new email
-   * POST /user/verify-new-email
-   */
-  verifyNewEmail = asyncHandler(async (req: Request, res: Response) => {
-    const validated = await zParse(verifyNewEmailSchema, req);
-    const userId = req.user!.userId;
-
-    const result = await this.userService.verifyNewEmail(
-      userId,
-      validated.body.newEmail,
-      validated.body.verificationCode
-    );
-
-    ApiResponse.success(res, result);
-  });
 
   /**
    * Delete user account (soft delete)

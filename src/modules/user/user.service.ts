@@ -2,12 +2,8 @@
 
 import { MESSAGES } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
-import { EmailService, emailService } from "@/services/email.service";
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from "@/utils/app-error.utils";
+import { EmailService } from "@/services/email.service";
+import { NotFoundException } from "@/utils/app-error.utils";
 import type { IUser } from "./user.interface";
 import { UserRepository } from "./user.repository";
 import type {
@@ -149,79 +145,6 @@ export class UserService {
 
     logger.info({ userId }, "User profile updated");
     return this.toUserResponse(updatedUser);
-  }
-
-  /**
-   * Request email change
-   */
-  async requestEmailChange(
-    userId: string,
-    newEmail: string
-  ): Promise<{ message: string }> {
-    // Check if new email already exists
-    const existingUser = await this.getUserByEmail(newEmail);
-    if (existingUser) {
-      throw new ConflictException("Email already in use");
-    }
-
-    const user = await this.userRepository.findById(userId);
-    if (!user) {
-      throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
-    }
-
-    // Generate verification code
-    const verificationCode = Math.floor(
-      100000 + Math.random() * 900000
-    ).toString();
-
-    await this.userRepository.updateVerificationToken(userId, {
-      emailVerificationToken: verificationCode,
-      emailVerificationExpiresAt: new Date(Date.now() + 30 * 60 * 1000),
-    });
-
-    // Send verification email to new address
-    await emailService.sendEmailVerification({
-      to: newEmail,
-      userName: user.fullName,
-      userType: user.role as "Admin" | "Agent" | "Renter",
-      verificationCode,
-      expiresIn: "30 minutes",
-    });
-
-    return { message: "Verification code sent to new email" };
-  }
-
-  /**
-   * Verify new email
-   */
-  async verifyNewEmail(
-    userId: string,
-    newEmail: string,
-    verificationCode: string
-  ): Promise<{ message: string }> {
-    const user = await this.userRepository.findById(userId);
-    if (!user) {
-      throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
-    }
-
-    // Verify code
-    if (
-      user.emailVerificationToken !== verificationCode ||
-      !user.emailVerificationExpiresAt ||
-      user.emailVerificationExpiresAt < new Date()
-    ) {
-      throw new BadRequestException("Invalid or expired verification code");
-    }
-
-    // Update email
-    await this.userRepository.updateById(userId, {
-      email: newEmail,
-      emailVerificationToken: undefined,
-      emailVerificationExpiresAt: undefined,
-    });
-
-    logger.info({ userId, newEmail }, "Email changed successfully");
-    return { message: "Email updated successfully" };
   }
 
   /**

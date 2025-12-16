@@ -1,5 +1,6 @@
 // file: src/modules/renter/renter.repository.ts
 
+import { logger } from "@/middlewares/pino-logger";
 import { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import { PaginationHelper } from "@/utils/pagination-helper";
 import type { ObjectId, Types } from "mongoose";
@@ -345,6 +346,64 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
         },
       },
     ]);
+  }
+
+  async findAll(): Promise<any[]> {
+    try {
+      const result = await this.model.aggregate([
+        { $match: { isDeleted: false } },
+
+        {
+          $lookup: {
+            from: "users",
+            localField: "userId",
+            foreignField: "_id",
+            as: "userData",
+          },
+        },
+        {
+          $addFields: {
+            userInfo: {
+              $arrayElemAt: ["$userData", 0],
+            },
+          },
+        },
+        {
+          $project: {
+            userData: 0,
+          },
+        },
+        { $sort: { createdAt: -1 } },
+      ]);
+
+      return result;
+    } catch (error) {
+      logger.error({ error }, "Error in Renter findAll aggregation");
+      throw error;
+    }
+  }
+
+  async count(): Promise<number> {
+    return await this.model.countDocuments({ isDeleted: false });
+  }
+
+  async updateExcelMetadata(metadata: any): Promise<void> {
+    const db = this.model.db;
+    await db
+      .collection("excel_metadata")
+      .updateOne(
+        { type: "renters" },
+        { $set: { ...metadata, updatedAt: new Date() } },
+        { upsert: true }
+      );
+  }
+
+  /**
+   * ✅ Get Excel metadata
+   */
+  async getExcelMetadata(): Promise<any> {
+    const db = this.model.db;
+    return await db.collection("excel_metadata").findOne({ type: "renters" });
   }
 
   /**

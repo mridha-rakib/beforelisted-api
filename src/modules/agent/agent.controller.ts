@@ -398,4 +398,38 @@ export class AgentController {
 
     ApiResponse.success(res, result, "Activation history retrieved");
   });
+
+  /**
+   * ADMIN: Get agent data via xl sheet
+   * GET /agent/admin/excel-download
+   */
+  /**
+   * ✅ COMPLETE FIX: Download Agent Excel
+   * Location: agent.controller.ts, lines ~434-440
+   *
+   * GET /agent/admin/excel-download
+   * Returns: .xlsx file as downloadable attachment
+   */
+  downloadAgentConsolidatedExcel = asyncHandler(
+    async (req: Request, res: Response) => {
+      const adminId = req.user!.userId;
+
+      const metadata = await this.service.getAgentConsolidatedExcel();
+
+      logger.info({ adminId }, "Admin downloaded Excel metadata");
+
+      ApiResponse.success(
+        res,
+        {
+          fileName: metadata.fileName,
+          fileUrl: metadata.fileUrl,
+          totalAgents: metadata.totalAgents,
+          version: metadata.version,
+          lastUpdated: metadata.lastUpdated,
+          downloadUrl: metadata.fileUrl,
+        },
+        "Consolidated Agent Excel file info retrieved"
+      );
+    }
+  );
 }

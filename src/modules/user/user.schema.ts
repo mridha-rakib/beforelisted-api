@@ -14,25 +14,6 @@ export const updateUserSchema = z.object({
 });
 
 /**
- * Change email validation
- */
-export const changeEmailSchema = z.object({
-  body: z.object({
-    newEmail: z.string().email(MESSAGES.VALIDATION.INVALID_EMAIL),
-  }),
-});
-
-/**
- * Verify new email validation
- */
-export const verifyNewEmailSchema = z.object({
-  body: z.object({
-    newEmail: z.string().email(MESSAGES.VALIDATION.INVALID_EMAIL),
-    verificationCode: z.string().min(1, "Verification code is required"),
-  }),
-});
-
-/**
  * Change password validation
  */
 export const changePasswordSchema = z.object({

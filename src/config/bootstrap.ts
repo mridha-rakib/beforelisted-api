@@ -2,6 +2,7 @@
 
 import { logger } from "@/middlewares/pino-logger";
 import { AdminSeeder } from "@/seeders/admin.seeder";
+import { NoticeSeeder } from "@/seeders/notice.seeder";
 
 /**
  * Bootstrap application
@@ -13,6 +14,7 @@ export async function bootstrapApplication(): Promise<void> {
 
     // Run admin seeder
     await AdminSeeder.run();
+    await NoticeSeeder.run();
 
     logger.info("✅ Application bootstrapped successfully");
   } catch (error) {

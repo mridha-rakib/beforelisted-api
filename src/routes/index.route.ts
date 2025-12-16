@@ -1,6 +1,8 @@
 import agentRouter from "@/modules/agent/agent.route";
 import authRouter from "@/modules/auth/auth.route";
+import faqRouter from "@/modules/faq/faq.route";
 import fileRouter from "@/modules/file/file.route";
+import noticeRouter from "@/modules/notice/notice.route";
 import preMarketRouter from "@/modules/pre-market/pre-market.route";
 import renterRouter from "@/modules/renter/renter.route";
 import userRouter from "@/modules/user/user.route";
@@ -33,10 +35,14 @@ const moduleRoutes = [
     path: "/pre-market",
     route: preMarketRouter,
   },
-  // {
-  //   path: "/admin",
-  //   route: adminRouter,
-  // },
+  {
+    path: "/notice",
+    route: noticeRouter,
+  },
+  {
+    path: "/faq",
+    route: faqRouter,
+  },
 ];
 
 moduleRoutes.forEach((route) => router.use(route.path, route.route));

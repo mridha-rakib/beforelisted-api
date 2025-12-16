@@ -3,12 +3,14 @@
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 
+import { ExcelService } from "@/services/excel.service";
 import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
 } from "@/utils/app-error.utils";
+import { PaginationHelper } from "@/utils/pagination-helper";
 import { Types } from "mongoose";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
@@ -32,6 +34,7 @@ export class PreMarketService {
   private renterRepository: RenterRepository;
   private agentRepository: AgentProfileRepository;
   private userRepository: UserRepository;
+  private readonly excelService: ExcelService;
 
   private readonly paymentService: PaymentService;
   private readonly notifier: PreMarketNotifier;
@@ -47,11 +50,8 @@ export class PreMarketService {
     this.notifier = new PreMarketNotifier();
     this.renterRepository = new RenterRepository();
     this.userRepository = new UserRepository();
+    this.excelService = new ExcelService();
   }
-
-  // ============================================
-  // CREATE REQUEST
-  // ============================================
 
   async createRequest(
     renterId: string,
@@ -68,7 +68,6 @@ export class PreMarketService {
       preferences?: string[];
     }
   ): Promise<IPreMarketRequest> {
-    // Validate date range
     const earliest = new Date(payload.movingDateRange.earliest);
     const latest = new Date(payload.movingDateRange.latest);
 
@@ -111,8 +110,6 @@ export class PreMarketService {
       },
     });
 
-    logger.info({ renterId }, `Pre-market request created: ${requestId}`);
-
     // Send notifications
     this.sendNotifications(request, renterId).catch((error) => {
       logger.error(
@@ -120,6 +117,10 @@ export class PreMarketService {
         "Failed to send notifications (non-blocking - request already created)"
       );
       // Don't throw - notification failure should not break response
+    });
+
+    this.updateConsolidatedExcel().catch((error) => {
+      logger.error({ error }, "Consolidated Excel update failed");
     });
 
     return request;
@@ -145,10 +146,8 @@ export class PreMarketService {
       return;
     }
 
-    // Build frontend listing URL
     const listingUrl = `${env.CLIENT_URL}/listings/${request._id}`;
 
-    // Prepare notification payload
     const notificationPayload = {
       preMarketRequestId: request._id.toString(),
       title: request.title,
@@ -162,7 +161,6 @@ export class PreMarketService {
       listingUrl,
     };
 
-    // Send notifications via notifier service
     const result =
       await preMarketNotifier.notifyNewRequest(notificationPayload);
 
@@ -276,12 +274,10 @@ export class PreMarketService {
   async deleteRequest(renterId: string, requestId: string): Promise<void> {
     const request = await this.getRequestById(requestId);
 
-    // Verify ownership
     if (request.renterId.toString() !== renterId) {
       throw new BadRequestException("Cannot delete others' requests");
     }
 
-    // Soft delete
     await this.preMarketRepository.softDelete(requestId);
 
     logger.info({ renterId }, `Pre-market request deleted: ${requestId}`);
@@ -312,11 +308,211 @@ export class PreMarketService {
       throw new NotFoundException("Agent profile not found");
     }
 
+    // ============================================
+    // GRANT ACCESS AGENTS: See ALL listings
+    // ============================================
     if (agent.hasGrantAccess) {
-      return this.getRequestsForGrantAccessAgents(agentId, query);
+      logger.info(
+        { agentId, type: "grant-access" },
+        "Grant access agent fetching all pre-market listings"
+      );
+
+      const paginated =
+        await this.preMarketRepository.findAllWithPagination(query);
+
+      const enrichedData = await Promise.all(
+        paginated.data.map(async (request) => {
+          const renterInfo = await this.getRenterInfoForRequest(
+            request.renterId.toString()
+          );
+          return {
+            ...request,
+            renterInfo,
+            status: "matched",
+          };
+        })
+      );
+
+      // Track agent views
+      await Promise.all(
+        paginated.data.map((request) =>
+          this.preMarketRepository.addAgentToViewedBy(
+            request._id!.toString(),
+            agentId,
+            "grantAccessAgents"
+          )
+        )
+      );
+
+      return {
+        data: enrichedData,
+        pagination: {
+          ...paginated.pagination,
+        },
+      } as any;
     }
 
-    return this.getAvailableRequestsForNormalAgents(agentId, query);
+    // ============================================
+    // NORMAL AGENTS: See ONLY paid listings
+    // ============================================
+    logger.info(
+      { agentId, type: "normal" },
+      "Normal agent fetching their paid pre-market listings"
+    );
+
+    // Step 1: Get all GrantAccess records for this agent with status = "paid"
+    const paidAccess = await this.grantAccessRepository.findByAgentIdAndStatus(
+      agentId,
+      "paid"
+    );
+
+    if (!Array.isArray(paidAccess) || paidAccess.length === 0) {
+      logger.info({ agentId }, "Normal agent has no paid access yet");
+      return PaginationHelper.buildResponse(
+        [],
+        0,
+        (query.page as number) || 1,
+        (query.limit as number) || 10
+      ) as any;
+    }
+
+    // Step 2: Get listing IDs from paid access records
+    const preMarketRequestIds = paidAccess.map((access) =>
+      access.preMarketRequestId.toString()
+    );
+
+    // const paginationOptions =
+    //   await this.preMarketRepository.findAllWithPagination(query);
+    // let paginated: any;
+    // // Step 3: Fetch actual listings by IDs
+    // const listings =
+    //   await this.preMarketRepository.findByIds(preMarketRequestIds);
+
+    // console.log("++++++++++++++++++++++++++++++++++++++++++++++");
+    // console.log("ALL listings: ", listings);
+    // console.log("+++++++++++++++++++++++++++++++++++++++++++++++++");
+
+    // // if (!listings || listings.length === 0) {
+    // //   return {
+    // //     data: [],
+    // //     pagination: {
+    // //       page: 1,
+    // //       limit: query.limit || 10,
+    // //       total: 0,
+    // //       pages: 0,
+    // //     },
+    // //   } as any;
+    // // }
+
+    // // Step 4: Enrich with renter info
+    // const enrichedData = await Promise.all(
+    //   listings.map(async (request: any) => {
+    //     const renterInfo = await this.getRenterInfoForRequest(
+    //       request.renterId.toString()
+    //     );
+    //     return {
+    //       ...request,
+    //       renterInfo,
+    //       status: "matched",
+    //     };
+    //   })
+    // );
+
+    const listings =
+      await this.preMarketRepository.findByIds(preMarketRequestIds);
+
+    if (!listings || listings.length === 0) {
+      return PaginationHelper.buildResponse(
+        [],
+        0,
+        (query.page as number) || 1,
+        (query.limit as number) || 10
+      ) as any;
+    }
+
+    // Manual pagination - counts ONLY your filtered results
+    const page = (query.page as number) || 1;
+    const limit = (query.limit as number) || 10;
+    const total = listings.length; // ✅ 6 - not 36!
+    const pages = Math.ceil(total / limit);
+    const startIndex = (page - 1) * limit;
+    const paginatedData = listings.slice(startIndex, startIndex + limit);
+
+    // Enrich with renter info
+    const enrichedData = await Promise.all(
+      paginatedData.map(async (request: any) => {
+        const renterInfo = await this.getRenterInfoForRequest(
+          request.renterId?.toString()
+        );
+        return {
+          ...request,
+          renterInfo,
+          status: "matched",
+        };
+      })
+    );
+
+    // Track views
+    await Promise.all(
+      paginatedData.map((request: any) =>
+        this.preMarketRepository.addAgentToViewedBy(
+          request._id!.toString(),
+          agentId,
+          "normalAgents"
+        )
+      )
+    );
+
+    // Return with CORRECT pagination count
+    const response = PaginationHelper.buildResponse(
+      enrichedData,
+      total, // ✅ 6 - correct count (not 36)
+      page,
+      limit
+    ) as any;
+
+    return response;
+
+    // Enrich with renter info
+    // const enrichedData = await Promise.all(
+    //   paginated.data.map(async (request: any) => {
+    //     const renterInfo = await this.getRenterInfoForRequest(
+    //       request.renterId.toString()
+    //     );
+    //     return {
+    //       ...request,
+    //       renterInfo,
+    //       status: "matched",
+    //     };
+    //   })
+    // );
+
+    // Track agent views
+    // await Promise.all(
+    //   paginated.data.map((request: any) =>
+    //     this.preMarketRepository.addAgentToViewedBy(
+    //       request._id!.toString(),
+    //       agentId,
+    //       "normalAgents"
+    //     )
+    //   )
+    // );
+
+    // // ✅ Return with built-in formatResponse()
+    // return PaginationHelper.formatResponse({
+    //   data: enrichedData,
+    //   pagination: {
+    //     currentPage: paginated.page || 1,
+    //     pageCount: paginated.pages || 0,
+    //     totalItems: paginated.total || 0,
+    //     itemsPerPage: paginated.limit || 10,
+    //     hasNext: paginated.hasNextPage || false,
+    //     hasPrev: paginated.hasPrevPage || false,
+    //     nextPage: paginated.nextPage || null,
+    //     prevPage: paginated.prevPage || null,
+    //     slNo: paginated.pagingCounter || 0,
+    //   },
+    // }) as any;
   }
 
   // ============================================
@@ -419,25 +615,21 @@ export class PreMarketService {
       }
     }
 
-    // Build renter info based on visibility
     const renterInfo: any = {
       renterId: renter._id,
       registrationType: renter.registrationType,
     };
 
-    // Show contact info only to grant access agents
     if (hasGrantAccess) {
       renterInfo.renterName = renter.fullName;
       renterInfo.renterEmail = renter.email;
       renterInfo.renterPhone = renter.phoneNumber || null;
     }
 
-    // Add referrer info (visible to all agents)
     if (referrerInfo) {
       renterInfo.referrer = referrerInfo;
     }
 
-    // Merge with request
     return {
       ...request,
       renterInfo,
@@ -486,10 +678,8 @@ export class PreMarketService {
       request.renterId.toString()
     );
 
-    // Build renter info from renter document
     const renterInfo = await this.buildRenterInfo(renter);
 
-    // 2. Get agent request summary from grant access records
     const agentRequestSummary = await this.getAgentRequestSummary(
       request._id!.toString()
     );
@@ -563,7 +753,6 @@ export class PreMarketService {
       registrationType: renter.registrationType || "normal",
     };
 
-    // Add referrer info if applicable
     if (
       renter.registrationType === "agent_referral" &&
       renter.referredByAgentId
@@ -1042,7 +1231,7 @@ export class PreMarketService {
     await this.preMarketRepository.deleteById(requestId);
 
     // Also clean up related grant access records
-    await this.grantAccessRepository.softDeleteByPreMarketRequestId(requestId);
+    // await this.grantAccessRepository.softDeleteByPreMarketRequestId(requestId);
 
     logger.warn(
       { requestId, renterId: request.renterId },
@@ -1067,7 +1256,6 @@ export class PreMarketService {
     userId: string,
     userRole: string
   ): Promise<IPreMarketRequest> {
-
     const listing = await this.getRequestById(listingId);
 
     // Check authorization
@@ -1148,5 +1336,252 @@ export class PreMarketService {
       renterId,
       includeInactive
     );
+  }
+
+  async getRenterRequestsWithAgents(
+    renterId: string,
+    query: PaginationQuery
+  ): Promise<{
+    data: any[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }> {
+    // Step 1: Get ALL requests for this renter
+    const requests = await this.preMarketRepository.findByRenterId(
+      renterId,
+      query
+    );
+
+    if (!requests || requests.data.length === 0) {
+      return {
+        data: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalItems: 0,
+          itemsPerPage: 10,
+          hasNext: false,
+          hasPrev: false,
+        },
+      };
+    }
+
+    const requestsWithAgents = await Promise.all(
+      requests.data.map(async (request) => {
+        try {
+          const requestId = request._id!.toString();
+          const grantAccessRecords =
+            await this.grantAccessRepository.findByPreMarketRequestId(
+              requestId
+            );
+
+          const agentMap = new Map<string, { status: string; record: any }>();
+
+          for (const record of grantAccessRecords || []) {
+            const agentId = record.agentId.toString();
+            if (!agentMap.has(agentId)) {
+              agentMap.set(agentId, {
+                status: record.status,
+                record,
+              });
+            }
+          }
+
+          const grantAccessAgents =
+            await this.agentRepository.findAllGrantAccessAgent({
+              hasGrantAccess: true,
+            });
+
+          const uniqueAgentIds = new Set<string>();
+
+          for (const id of agentMap.keys()) {
+            uniqueAgentIds.add(id);
+          }
+
+          for (const agent of grantAccessAgents) {
+            if (agent.userId) {
+              uniqueAgentIds.add(agent.userId.toString());
+            }
+          }
+
+          const agentIds = Array.from(uniqueAgentIds);
+
+          const agents = [];
+
+          for (const agentId of agentIds) {
+            try {
+              // Get agent profile (company, license)
+              const agentProfile =
+                await this.agentRepository.findByUserId(agentId);
+
+              // Get agent user (name, email, phone, image)
+              const agentUser = await this.userRepository.findById(agentId);
+
+              if (agentProfile && agentUser) {
+                const accessInfo = agentMap.get(agentId);
+                const hasGrantAccess = agentProfile.hasGrantAccess;
+                const isPaid = accessInfo?.status === "paid";
+
+                if (hasGrantAccess || isPaid) {
+                  agents.push({
+                    _id: agentProfile._id?.toString(),
+                    userId: agentUser._id?.toString(),
+                    fullName: agentUser.fullName,
+                    email: agentUser.email,
+                    phoneNumber: agentUser.phoneNumber || null,
+                    licenseNumber: agentProfile.licenseNumber,
+                    profileImageUrl: agentUser.profileImageUrl || null,
+                    accessStatus: accessInfo?.status,
+                    ...(agentProfile.hasGrantAccess && {
+                      hasGrantAccess: agentProfile.hasGrantAccess,
+                    }),
+                  });
+                }
+              }
+            } catch (error) {
+              logger.warn(
+                { agentId, requestId },
+                "Failed to fetch agent details, skipping"
+              );
+              continue;
+            }
+          }
+
+          // Sort agents by name for consistent ordering
+          agents.sort((a, b) => a.fullName.localeCompare(b.fullName));
+
+          // Return request with agent matches
+          const requestObject = request.toObject ? request.toObject() : request;
+
+          return {
+            ...requestObject,
+            agentMatches: {
+              totalCount: agents.length,
+              agents: agents,
+            },
+          };
+        } catch (error) {
+          logger.warn(
+            { requestId: request._id, error },
+            "Failed to fetch agents for request, returning without agents"
+          );
+
+          // Return request without agents if fetch fails
+          const requestObject = request.toObject ? request.toObject() : request;
+          return {
+            ...requestObject,
+            agentMatches: {
+              totalCount: 0,
+              agents: [],
+            },
+          };
+        }
+      })
+    );
+
+    return {
+      data: requestsWithAgents,
+      pagination: requests.pagination,
+    };
+  }
+
+  private async getRenterInfoForRequest(renterId: string) {
+    const renter = await this.renterRepository.findRenterWithReferrer(renterId);
+
+    if (!renter) {
+      return null;
+    }
+
+    let referrerInfo = null;
+
+    if (renter.referredByAgentId) {
+      const referrer = await this.userRepository.findById(
+        renter.referredByAgentId.toString()
+      );
+      if (referrer) {
+        referrerInfo = {
+          referrerId: referrer._id?.toString(),
+          referrerName: referrer.fullName,
+          referrerType: "AGENT",
+        };
+      }
+    } else if (renter.referredByAdminId) {
+      const referrer = await this.userRepository.findById(
+        typeof renter.referredByAdminId === "string"
+          ? renter.referredByAdminId
+          : renter.referredByAdminId._id
+      );
+      if (referrer) {
+        referrerInfo = {
+          referrerId: referrer._id?.toString(),
+          referrerName: referrer.fullName,
+          referrerType: "ADMIN",
+        };
+      }
+    }
+
+    return {
+      renterId: renter._id?.toString() || renterId,
+      fullName: renter.fullName,
+      email: renter.email,
+      phoneNumber: renter.phoneNumber,
+      registrationType: renter.registrationType,
+      referralInfo: referrerInfo,
+    };
+  }
+
+  /**
+   * Update the single consolidated Excel file
+   * Called after every new request creation
+   */
+  private async updateConsolidatedExcel(): Promise<void> {
+    // 1. Generate Excel with ALL requests
+    const buffer = await this.excelService.generateConsolidatedPreMarketExcel();
+
+    // 2. Upload to S3
+    const { url, fileName } =
+      await this.excelService.uploadConsolidatedExcel(buffer);
+
+    // 3. Get current total count
+    const totalRequests = await this.preMarketRepository.count();
+
+    // 4. Get previous version number
+    const previousMetadata = await this.preMarketRepository.getExcelMetadata();
+    const version = (previousMetadata?.version || 0) + 1;
+
+    // 5. Update metadata in database
+    await this.preMarketRepository.updateExcelMetadata({
+      type: "pre_market",
+      fileName,
+      fileUrl: url,
+      lastUpdated: new Date(),
+      totalRequests,
+      version,
+      generatedAt: new Date(),
+    });
+
+    logger.info(
+      { url, fileName, version, totalRequests },
+      "Consolidated Excel updated"
+    );
+  }
+
+  /**
+   * Get consolidated Excel file info
+   * Can be called by admin to get download link
+   */
+  async getConsolidatedExcel(): Promise<any> {
+    const metadata = await this.preMarketRepository.getExcelMetadata();
+
+    if (!metadata) {
+      throw new NotFoundException("No consolidated Excel file found");
+    }
+    return metadata;
   }
 }

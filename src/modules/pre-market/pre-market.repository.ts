@@ -1,5 +1,6 @@
 // file: src/modules/pre-market/pre-market.repository.ts
 
+import { logger } from "@/middlewares/pino-logger";
 import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import { PaginationHelper } from "@/utils/pagination-helper";
 import { BaseRepository } from "../base/base.repository";
@@ -12,10 +13,6 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   constructor() {
     super(PreMarketRequestModel);
   }
-
-  // ============================================
-  // READ
-  // ============================================
 
   async findAllWithPagination(
     query: PaginationQuery
@@ -387,5 +384,129 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       .findById(id)
       .select("isActive status requestId renterId")
       .lean() as Promise<IPreMarketRequest | null>;
+  }
+
+  /**
+   * Get all active requests (for Excel export)
+   * Uses aggregation to reliably join renter data
+   * Note: renterId stores User._id, and Renter.userId also stores User._id
+   */
+  // async findAll(): Promise<IPreMarketRequest[]> {
+  //   return (await this.model.aggregate([
+  //     { $match: { isDeleted: false } },
+  //     {
+  //       $lookup: {
+  //         from: "renters",  // Renters collection
+  //         localField: "renterId",  // PreMarketRequest.renterId = User._id
+  //         foreignField: "userId",  // Renter.userId = User._id
+  //         as: "renterData",
+  //       },
+  //     },
+  //     {
+  //       $addFields: {
+  //         renterInfo: { $arrayElemAt: ["$renterData", 0] },
+  //       },
+  //     },
+  //     {
+  //       $project: {
+  //         renterData: 0,
+  //       },
+  //     },
+  //     { $sort: { createdAt: -1 } },
+  //   ])) as any;
+  // }
+
+  async findAll(): Promise<any[]> {
+    try {
+      const result = await this.model.aggregate([
+        { $match: { isDeleted: false } },
+
+        {
+          $lookup: {
+            from: "renters",
+            localField: "renterId",
+            foreignField: "userId",
+            as: "renterData",
+          },
+        },
+
+        {
+          $addFields: {
+            renterInfo: {
+              $arrayElemAt: ["$renterData", 0],
+            },
+          },
+        },
+
+        {
+          $project: {
+            renterData: 0,
+          },
+        },
+
+        { $sort: { createdAt: -1 } },
+      ]);
+
+      return result;
+    } catch (error) {
+      logger.error({ error }, "Error in findAll aggregation");
+      throw error;
+    }
+  }
+
+  /**
+   * Count total active requests
+   */
+  async count(): Promise<number> {
+    return await this.model.countDocuments({ isDeleted: false });
+  }
+
+  /**
+   * Update Excel metadata in separate collection
+   */
+  async updateExcelMetadata(metadata: any): Promise<void> {
+    const db = this.model.db;
+    await db
+      .collection("excel_metadata")
+      .updateOne(
+        { type: "pre_market" },
+        { $set: { ...metadata, updatedAt: new Date() } },
+        { upsert: true }
+      );
+  }
+
+  /**
+   * Get Excel metadata
+   */
+  async getExcelMetadata(): Promise<any> {
+    const db = this.model.db;
+    return await db
+      .collection("excel_metadata")
+      .findOne({ type: "pre_market" });
+  }
+
+  async findByIds(ids: string[]): Promise<IPreMarketRequest[]> {
+    if (!ids || ids.length === 0) {
+      return [];
+    }
+
+    return this.model
+      .find({
+        _id: { $in: ids },
+        isDeleted: false,
+        status: "active",
+      })
+      .lean()
+      .exec() as unknown as Promise<IPreMarketRequest[]>;
+
+    // return PaginationHelper.formatResponse(response) as any;
+  }
+
+  findByIdsWithPagination(ids: any[], query: PaginationQuery) {
+    const paginationOptions = PaginationHelper.parsePaginationParams(query);
+    return (this.model as any).paginate(
+      { _id: { $in: ids }, isDeleted: false, status: "active" },
+      paginationOptions
+    );
   }
 }

@@ -149,4 +149,18 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       },
     ]);
   }
+
+  async findByAgentIdAndStatus(
+    agentId: string,
+    status: "pending" | "approved" | "rejected" | "paid"
+  ): Promise<IGrantAccessRequest[]> {
+    return this.model
+      .find({
+        agentId,
+        status,
+      })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec() as unknown as Promise<IGrantAccessRequest[]>;
+  }
 }

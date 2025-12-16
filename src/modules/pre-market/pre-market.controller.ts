@@ -834,4 +834,106 @@ export class PreMarketController {
       );
     }
   );
+
+  /**
+   * GET /pre-market/renter/requests/with-agents
+   *
+   */
+
+  getRenterRequestsWithAgents = asyncHandler(
+    async (req: Request, res: Response) => {
+      const validated = await zParse(preMarketListSchema, req);
+      const renterId = req.user!.userId;
+
+      logger.debug(
+        { renterId },
+        "Renter retrieving all requests with agent matches"
+      );
+
+      // Get all requests with their agents
+      const result = await this.preMarketService.getRenterRequestsWithAgents(
+        renterId,
+        validated.query
+      );
+
+      const totalAgents = result.data.reduce(
+        (sum: number, r: any) => sum + (r.agentMatches?.totalCount || 0),
+        0
+      );
+
+      logger.info(
+        {
+          renterId,
+          requestCount: result.data.length,
+          totalAgents: totalAgents,
+        },
+        "Renter retrieved all requests with agents"
+      );
+
+      ApiResponse.paginated(
+        res,
+        result.data,
+        result.pagination,
+        "All pre-market requests with matched agents retrieved successfully"
+      );
+    }
+  );
+
+  /**
+   * Download consolidated Excel file info
+   * GET /api/pre-market/admin/excel-download
+   * Protected: Admin only
+   */
+  downloadConsolidatedExcel = asyncHandler(
+    async (req: Request, res: Response) => {
+      const adminId = req.user!.userId;
+
+      const metadata = await this.preMarketService.getConsolidatedExcel();
+
+      logger.info({ adminId }, "Admin downloaded Excel metadata");
+
+      ApiResponse.success(
+        res,
+        {
+          fileName: metadata.fileName,
+          fileUrl: metadata.fileUrl,
+          totalRequests: metadata.totalRequests,
+          version: metadata.version,
+          lastUpdated: metadata.lastUpdated,
+          downloadUrl: metadata.fileUrl, // Direct S3 link
+        },
+        "Consolidated Excel file info retrieved"
+      );
+    }
+  );
+
+  /**
+   * Get Excel generation stats
+   * GET /api/pre-market/admin/excel-stats
+   * Protected: Admin only
+   */
+  getExcelStats = asyncHandler(async (req: Request, res: Response) => {
+    const adminId = req.user!.userId;
+
+    const metadata = await this.preMarketService.getConsolidatedExcel();
+
+    logger.info(
+      { adminId, version: metadata.version },
+      "Admin viewed Excel stats"
+    );
+
+    ApiResponse.success(
+      res,
+      {
+        totalRequests: metadata.totalRequests,
+        version: metadata.version,
+        lastUpdated: metadata.lastUpdated,
+        fileName: metadata.fileName,
+        fileSize: "Check S3 for actual size",
+        updateFrequency: "On every new request creation",
+        storageLocation: "uploads/pre-market/excel/master/",
+      },
+      "Excel statistics"
+    );
+  });
 }

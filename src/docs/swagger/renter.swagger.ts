@@ -1,28 +1,20 @@
-// File: src/docs/swagger/renter.swagger.ts
-// Renter Module - Endpoint Documentation
+// file: src/docs/swagger/renter.swagger.ts
+// Complete OpenAPI paths for Renter endpoints
 
-const renterPaths = {
+export const renterPaths = {
   "/renter/register": {
     post: {
-      tags: ["Renter - Registration"],
-      summary: "Register as Renter (Auto-Detect)",
+      tags: ["Renter Management"],
+      summary: "Register renter (auto-detect type)",
       description:
-        "Register as renter with auto-detection of registration type (normal, agent referral, or admin referral).",
+        "Register as renter. Auto-detects: Normal, Agent Referral, or Admin Referral.",
       operationId: "registerRenter",
       requestBody: {
         required: true,
         content: {
           "application/json": {
             schema: {
-              oneOf: [
-                { $ref: "#/components/schemas/NormalRenterRegisterRequest" },
-                {
-                  $ref: "#/components/schemas/AgentReferralRenterRegisterRequest",
-                },
-                {
-                  $ref: "#/components/schemas/AdminRenterReferralRegisterRequest",
-                },
-              ],
+              $ref: "#/components/schemas/RenterRegisterRequest",
             },
           },
         },
@@ -33,26 +25,16 @@ const renterPaths = {
           content: {
             "application/json": {
               schema: {
-                $ref: "#/components/schemas/RenterRegistrationResponse",
+                $ref: "#/components/schemas/RenterRegisterResponse",
               },
-            },
-          },
-          headers: {
-            "Set-Cookie": {
-              schema: {
-                type: "string",
-                example:
-                  "refreshToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...; Path=/; HttpOnly; Secure; SameSite=Strict",
-              },
-              description: "Refresh token stored in httpOnly cookie",
             },
           },
         },
         "400": {
-          description: "Invalid input or duplicate email",
+          description: "Invalid input or invalid referral code",
         },
-        "422": {
-          description: "Validation error",
+        "409": {
+          description: "Email already exists",
         },
       },
     },
@@ -60,9 +42,9 @@ const renterPaths = {
 
   "/renter/register/normal": {
     post: {
-      tags: ["Renter - Registration"],
-      summary: "Register as Normal Renter (Explicit)",
-      description: "Explicit normal renter registration without referral code.",
+      tags: ["Renter Management"],
+      summary: "Register as normal renter",
+      description: "Register as renter without any referral code (explicit).",
       operationId: "registerNormalRenter",
       requestBody: {
         required: true,
@@ -80,16 +62,16 @@ const renterPaths = {
           content: {
             "application/json": {
               schema: {
-                $ref: "#/components/schemas/RenterRegistrationResponse",
+                $ref: "#/components/schemas/RenterRegisterResponse",
               },
             },
           },
         },
         "400": {
-          description: "Invalid input or duplicate email",
+          description: "Invalid input",
         },
-        "422": {
-          description: "Validation error",
+        "409": {
+          description: "Email already exists",
         },
       },
     },
@@ -97,10 +79,9 @@ const renterPaths = {
 
   "/renter/register/agent-referral": {
     post: {
-      tags: ["Renter - Registration"],
-      summary: "Register via Agent Referral (Explicit)",
-      description:
-        "Register as renter using agent referral code. Requires valid agent referral code starting with AGT-.",
+      tags: ["Renter Management"],
+      summary: "Register with agent referral",
+      description: "Register as renter via agent referral code (AGT-xxxxxxxx).",
       operationId: "registerAgentReferralRenter",
       requestBody: {
         required: true,
@@ -114,20 +95,20 @@ const renterPaths = {
       },
       responses: {
         "201": {
-          description: "Renter registered via agent referral successfully",
+          description: "Renter registered via agent referral",
           content: {
             "application/json": {
               schema: {
-                $ref: "#/components/schemas/RenterRegistrationResponse",
+                $ref: "#/components/schemas/RenterRegisterResponse",
               },
             },
           },
         },
         "400": {
-          description: "Invalid referral code or duplicate email",
+          description: "Invalid referral code or input",
         },
-        "422": {
-          description: "Validation error",
+        "409": {
+          description: "Email already exists",
         },
       },
     },
@@ -135,10 +116,10 @@ const renterPaths = {
 
   "/renter/register/admin-referral": {
     post: {
-      tags: ["Renter - Registration"],
-      summary: "Register via Admin Referral (Passwordless)",
+      tags: ["Renter Management"],
+      summary: "Register with admin referral (passwordless)",
       description:
-        "Register as renter using admin referral code. Password is auto-generated and sent to email. Must be changed on first login.",
+        "Register as renter via admin referral code (ADM-xxxxxxxx). Password auto-generated.",
       operationId: "registerAdminReferralRenter",
       requestBody: {
         required: true,
@@ -152,40 +133,20 @@ const renterPaths = {
       },
       responses: {
         "201": {
-          description: "Renter registered via admin referral successfully",
+          description: "Renter registered via admin referral",
           content: {
             "application/json": {
               schema: {
-                allOf: [
-                  { $ref: "#/components/schemas/RenterRegistrationResponse" },
-                  {
-                    type: "object",
-                    properties: {
-                      data: {
-                        type: "object",
-                        properties: {
-                          temporaryPassword: {
-                            type: "string",
-                            description: "Temporary password sent to email",
-                          },
-                          mustChangePassword: {
-                            type: "boolean",
-                            example: true,
-                          },
-                        },
-                      },
-                    },
-                  },
-                ],
+                $ref: "#/components/schemas/AdminReferralRegisterResponse",
               },
             },
           },
         },
         "400": {
-          description: "Invalid referral code or duplicate email",
+          description: "Invalid referral code or input",
         },
-        "422": {
-          description: "Validation error",
+        "409": {
+          description: "Email already exists",
         },
       },
     },
@@ -193,9 +154,9 @@ const renterPaths = {
 
   "/renter/profile": {
     get: {
-      tags: ["Renter - Profile"],
-      summary: "Get Renter Profile",
-      description: "Get authenticated renter's profile information.",
+      tags: ["Renter Management"],
+      summary: "Get renter profile",
+      description: "Retrieve authenticated renter's profile.",
       operationId: "getRenterProfile",
       security: [
         {
@@ -204,30 +165,17 @@ const renterPaths = {
       ],
       responses: {
         "200": {
-          description: "Renter profile retrieved successfully",
+          description: "Profile retrieved successfully",
           content: {
             "application/json": {
               schema: {
-                type: "object",
-                properties: {
-                  success: {
-                    type: "boolean",
-                    example: true,
-                  },
-                  data: {
-                    $ref: "#/components/schemas/RenterResponse",
-                  },
-                  message: {
-                    type: "string",
-                    example: "Renter profile retrieved successfully",
-                  },
-                },
+                $ref: "#/components/schemas/GetRenterProfileResponse",
               },
             },
           },
         },
         "401": {
-          description: "Unauthorized - invalid or missing token",
+          description: "Unauthorized",
         },
         "404": {
           description: "Renter profile not found",
@@ -236,8 +184,8 @@ const renterPaths = {
     },
 
     put: {
-      tags: ["Renter - Profile"],
-      summary: "Update Renter Profile",
+      tags: ["Renter Management"],
+      summary: "Update renter profile",
       description: "Update authenticated renter's profile information.",
       operationId: "updateRenterProfile",
       security: [
@@ -257,36 +205,139 @@ const renterPaths = {
       },
       responses: {
         "200": {
-          description: "Renter profile updated successfully",
+          description: "Profile updated successfully",
           content: {
             "application/json": {
               schema: {
-                type: "object",
-                properties: {
-                  success: {
-                    type: "boolean",
-                    example: true,
-                  },
-                  data: {
-                    $ref: "#/components/schemas/RenterResponse",
-                  },
-                  message: {
-                    type: "string",
-                    example: "Renter profile updated successfully",
-                  },
-                },
+                $ref: "#/components/schemas/UpdateRenterProfileResponse",
+              },
+            },
+          },
+        },
+        "400": {
+          description: "Invalid input data",
+        },
+        "401": {
+          description: "Unauthorized",
+        },
+      },
+    },
+  },
+
+  "/admin/renters": {
+    get: {
+      tags: ["Renter Management - Admin"],
+      summary: "Get all renters (Admin only)",
+      description:
+        "Retrieve list of renters with pagination and optional filtering.",
+      operationId: "getAllRenters",
+      security: [
+        {
+          bearerAuth: [],
+        },
+      ],
+      parameters: [
+        {
+          name: "page",
+          in: "query",
+          schema: {
+            type: "integer",
+            example: 1,
+          },
+          description: "Page number (1-indexed)",
+        },
+        {
+          name: "limit",
+          in: "query",
+          schema: {
+            type: "integer",
+            example: 10,
+          },
+          description: "Results per page (1-100)",
+        },
+        {
+          name: "accountStatus",
+          in: "query",
+          schema: {
+            type: "string",
+            enum: ["pending", "active", "suspended", "deactivated"],
+            example: "active",
+          },
+        },
+        {
+          name: "search",
+          in: "query",
+          schema: {
+            type: "string",
+          },
+          description: "Search by email or name",
+        },
+      ],
+      responses: {
+        "200": {
+          description: "Renters retrieved successfully",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/PaginatedRentersResponse",
               },
             },
           },
         },
         "401": {
-          description: "Unauthorized - invalid or missing token",
+          description: "Unauthorized",
+        },
+        "403": {
+          description: "Forbidden - Admin role required",
+        },
+      },
+    },
+  },
+
+  "/admin/renters/{renterId}": {
+    get: {
+      tags: ["Renter Management - Admin"],
+      summary: "Get renter details (Admin only)",
+      description: "Retrieve renter profile with referral info and listings.",
+      operationId: "getRenterDetailsForAdmin",
+      security: [
+        {
+          bearerAuth: [],
+        },
+      ],
+      parameters: [
+        {
+          name: "renterId",
+          in: "path",
+          required: true,
+          schema: {
+            type: "string",
+          },
+          description: "Renter ID (24-character MongoDB ID)",
+        },
+      ],
+      responses: {
+        "200": {
+          description: "Renter details retrieved successfully",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/RenterDetailsResponse",
+              },
+            },
+          },
+        },
+        "400": {
+          description: "Invalid renter ID format",
+        },
+        "401": {
+          description: "Unauthorized",
+        },
+        "403": {
+          description: "Forbidden - Admin role required",
         },
         "404": {
-          description: "Renter profile not found",
-        },
-        "422": {
-          description: "Validation error",
+          description: "Renter not found",
         },
       },
     },
@@ -294,10 +345,9 @@ const renterPaths = {
 
   "/renter/admin/{userId}": {
     get: {
-      tags: ["Renter - Admin Operations"],
-      summary: "Get Renter Profile by ID (Admin)",
-      description:
-        "Admin endpoint to retrieve specific renter profile by user ID.",
+      tags: ["Renter Management - Admin"],
+      summary: "Get renter profile by ID (Admin only)",
+      description: "Retrieve specific renter's profile.",
       operationId: "adminGetRenterProfile",
       security: [
         {
@@ -309,42 +359,27 @@ const renterPaths = {
           name: "userId",
           in: "path",
           required: true,
-          description: "User ID of the renter",
           schema: {
             type: "string",
-            example: "507f1f77bcf86cd799439011",
           },
         },
       ],
       responses: {
         "200": {
-          description: "Renter profile retrieved successfully",
+          description: "Profile retrieved successfully",
           content: {
             "application/json": {
               schema: {
-                type: "object",
-                properties: {
-                  success: {
-                    type: "boolean",
-                    example: true,
-                  },
-                  data: {
-                    $ref: "#/components/schemas/RenterResponse",
-                  },
-                  message: {
-                    type: "string",
-                    example: "Renter profile retrieved successfully",
-                  },
-                },
+                $ref: "#/components/schemas/GetRenterProfileResponse",
               },
             },
           },
         },
         "401": {
-          description: "Unauthorized - invalid or missing token",
+          description: "Unauthorized",
         },
         "403": {
-          description: "Forbidden - admin role required",
+          description: "Forbidden - Admin role required",
         },
         "404": {
           description: "Renter not found",

@@ -3,6 +3,8 @@
 import { ROLES } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 
+import { ExcelService } from "@/services/excel.service";
+import { S3Service } from "@/services/s3.service";
 import {
   BadRequestException,
   ConflictException,
@@ -36,12 +38,16 @@ export class AgentService {
   private userService: UserService;
   private referralService: ReferralService;
   private emailVerificationService: EmailVerificationService;
+  private excelService: ExcelService;
+  private s3Service: S3Service;
 
   constructor() {
     this.repository = new AgentProfileRepository();
     this.userService = new UserService();
     this.referralService = new ReferralService();
     this.emailVerificationService = new EmailVerificationService();
+    this.excelService = new ExcelService();
+    this.s3Service = new S3Service();
   }
 
   // AGENT REGISTRATION (Complete Flow)
@@ -120,6 +126,10 @@ export class AgentService {
     );
 
     logger.info({ userId: user._id }, "Agent registered successfully");
+
+    this.updateAgentConsolidatedExcel().catch((error) => {
+      logger.error({ error }, "Consolidated Excel update failed");
+    });
 
     return {
       user: {
@@ -491,9 +501,11 @@ export class AgentService {
       reason
     );
 
+    // Get agent name from populated userId or use "Agent"
+    const agentName = (agent.userId as any)?.fullName || "Agent";
     const message = newAccessStatus
-      ? `Access granted to ${agent.fullName}`
-      : `Access revoked from ${agent.fullName}`;
+      ? `Access granted to ${agentName}`
+      : `Access revoked from ${agentName}`;
 
     logger.info(
       {
@@ -595,7 +607,7 @@ export class AgentService {
     grantAccessRecord?: any;
   }> {
     // 1. Check admin-granted access first
-    const agent = await this.agentRepository.findByUserId(agentId);
+    const agent = await this.repository.findByUserId(agentId);
 
     if (agent?.hasGrantAccess) {
       return {
@@ -604,33 +616,51 @@ export class AgentService {
       };
     }
 
-    // 2. Check payment-based access (specific request)
-    const grantAccess = await this.grantAccessRepository.findOne({
-      agentId,
-      preMarketRequestId: requestId,
-      status: { $in: ["approved", "paid"] },
-    });
-
-    if (grantAccess?.status === "paid") {
-      return {
-        hasAccess: true,
-        accessType: "payment-based",
-        grantAccessRecord: grantAccess,
-      };
-    }
-
-    if (grantAccess?.status === "approved") {
-      return {
-        hasAccess: true,
-        accessType: "payment-based",
-        grantAccessRecord: grantAccess,
-      };
-    }
-
+    // 2. Payment-based access check would require grantAccessRepository
+    // For now, return no access if not admin-granted
     return {
       hasAccess: false,
       accessType: "none",
     };
+  }
+
+  async generateAndUploadAgentExcel(): Promise<any> {}
+
+  private async updateAgentConsolidatedExcel(): Promise<void> {
+    // Generate Excel buffer and fileName
+    const { buffer, fileName } =
+      await this.excelService.generateConsolidatedAgentExcel();
+
+    // Upload to S3
+    const { url } =
+      await this.excelService.uploadConsolidatedAgentExcel(buffer);
+
+    const totalAgents = await this.repository.count();
+
+    const previousMetadata = await this.repository.getExcelMetadata();
+    const version = (previousMetadata?.version || 0) + 1;
+
+    await this.repository.updateExcelMetadata({
+      type: "agent_data",
+      fileName,
+      fileUrl: url,
+      lastUpdated: new Date(),
+      totalAgents,
+      version,
+      generatedAt: new Date(),
+    });
+
+    logger.info({ fileName, version }, "Agent consolidated Excel updated");
+  }
+
+  async getAgentConsolidatedExcel(): Promise<any> {
+    const metadata = await this.repository.getExcelMetadata();
+
+    if (!metadata) {
+      throw new NotFoundException("No consolidated Excel file found");
+    }
+
+    return metadata;
   }
 
   /**

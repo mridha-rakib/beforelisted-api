@@ -368,4 +368,79 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
 
     return agent?.activationHistory || [];
   }
+
+  /**
+   * ✅ Get all agents with user data (for Excel export)
+   * Uses aggregation to reliably join user data
+   *
+   * Relationship:
+   * - AgentProfile.userId = User._id
+   */
+
+  async findAll(): Promise<IAgentProfile[]> {
+    return this.model
+      .aggregate([
+        // Match all agent profiles (no isDeleted field in AgentProfile model)
+        { $match: {} },
+        {
+          $lookup: {
+            from: "users",
+            localField: "userId",
+            foreignField: "_id",
+            as: "userInfo",
+          },
+        },
+        {
+          $addFields: {
+            userId: { $arrayElemAt: ["$userInfo", 0] },
+          },
+        },
+        { $project: { userInfo: 0 } },
+        { $sort: { createdAt: -1 } },
+      ])
+      .exec() as Promise<IAgentProfile[]>;
+  }
+
+  async countAgents(): Promise<any> {
+    return this.model.countDocuments({});
+  }
+
+  async count(): Promise<number> {
+    return await this.model.countDocuments({});
+  }
+
+  async updateExcelMetadata(metadata: any): Promise<any> {
+    const db = this.model.db;
+
+    await db.collection("excel_metadata").updateOne(
+      {
+        type: "agent_data",
+      },
+      { $set: { ...metadata, updatedAt: new Date() } },
+      { upsert: true }
+    );
+  }
+
+  async getExcelMetadata(): Promise<any> {
+    const db = this.model.db;
+    return await db
+      .collection("excel_metadata")
+      .findOne({ type: "agent_data" });
+  }
+
+  /**
+   * Find all agents with grant access
+   */
+  async findAllGrantAccessAgent(
+    filter: { hasGrantAccess: boolean }
+  ): Promise<IAgentProfile[]> {
+    return this.model
+      .find({ hasGrantAccess: filter.hasGrantAccess })
+      .populate({
+        path: "userId",
+        select: "fullName email phoneNumber referralCode",
+      })
+      .lean()
+      .exec() as any;
+  }
 }

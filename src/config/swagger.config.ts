@@ -5,8 +5,18 @@ import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 
 // Import module schemas
+import agentSchemas from "@/docs/swagger/agent.schemas";
+import agentPaths from "@/docs/swagger/agent.swagger";
 import authSchemas from "@/docs/swagger/auth.schemas";
 import authPaths from "@/docs/swagger/auth.swagger";
+import faqSchemas from "@/docs/swagger/faq.schemas";
+import faqPaths from "@/docs/swagger/faq.swagger";
+import fileSchemas from "@/docs/swagger/file.schemas";
+import filePaths from "@/docs/swagger/file.swagger";
+import monthlyReportSchemas from "@/docs/swagger/monthly-report.schemas";
+import monthlyReportPaths from "@/docs/swagger/monthly-report.swagger";
+import preMarketSchemas from "@/docs/swagger/pre-market.schemas";
+import preMarketPaths from "@/docs/swagger/pre-market.swagger";
 import renterSchemas from "@/docs/swagger/renter.schema";
 import renterPaths from "@/docs/swagger/renter.swagger";
 import userSchemas from "@/docs/swagger/user.schemas";
@@ -30,11 +40,11 @@ const options = {
     },
     servers: [
       {
-        url: "http://localhost:5000/api/v1",
+        url: "http://localhost:7070/api/v1",
         description: "Development Server",
       },
       {
-        url: "https://api.rentermanagement.com/api/v1",
+        url: "https://broadcasting-framing-showcase-tourism.trycloudflare.com/api/v1",
         description: "Production Server",
       },
     ],
@@ -56,8 +66,13 @@ const options = {
       },
       schemas: {
         ...authSchemas,
-        ...renterSchemas,
         ...userSchemas,
+        ...agentSchemas,
+        ...renterSchemas,
+        ...preMarketSchemas,
+        ...fileSchemas,
+        ...monthlyReportSchemas,
+        ...faqSchemas,
       },
     },
     security: [
@@ -69,13 +84,19 @@ const options = {
   apis: [], // We'll use direct path objects instead
 };
 
-const swaggerSpec = swaggerJsdoc(options);
+const swaggerSpec: any = swaggerJsdoc(options);
 
 // Manually add paths from modules
 swaggerSpec.paths = {
   ...authPaths,
-  ...renterPaths,
   ...userPaths,
+  ...agentPaths,
+  ...renterPaths,
+  ...preMarketPaths,
+  ...filePaths,
+  ...monthlyReportPaths,
+  ...faqPaths,
 };
 
 export { swaggerSpec, swaggerUi };
+

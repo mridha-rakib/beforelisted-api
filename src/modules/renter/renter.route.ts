@@ -102,4 +102,5 @@ router.get(
   controller.adminGetRenterProfile.bind(controller)
 );
 
+
 export default router;

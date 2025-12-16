@@ -135,6 +135,8 @@ export class RenterService {
       user.role
     );
 
+    void this.updateConsolidatedExcel();
+
     return {
       user: this.userService.toUserResponse(user),
       renter: this.toRenterResponse(renterProfile),
@@ -209,6 +211,8 @@ export class RenterService {
       user.email,
       user.role
     );
+
+    void this.updateConsolidatedExcel();
     return {
       user: this.userService.toUserResponse(user),
       renter: this.toRenterResponse(renterProfile),
@@ -325,17 +329,7 @@ export class RenterService {
         },
         "❌ Error during email send - continuing with registration"
       );
-      // Don't throw - registration should succeed even if email fails
-      // But log for debugging
     }
-
-    // Step 9: Send email with temporary password
-    // await this.emailService.sendAdminReferralEmail({
-    //   to: user.email,
-    //   userName: user.fullName,
-    //   temporaryPassword,
-    //   loginLink: `${process.env.CLIENT_URL}/login`,
-    // });
 
     // Step 10: Generate JWT tokens
     const tokens = this.generateTokens(
@@ -344,15 +338,7 @@ export class RenterService {
       user.role
     );
 
-    logger.info(
-      {
-        userId: user._id,
-        email: user.email,
-        registrationType: "admin_referral",
-        adminId,
-      },
-      "Admin referral renter registration completed (passwordless)"
-    );
+    void this.updateConsolidatedExcel();
 
     return {
       user: this.userService.toUserResponse(user),
@@ -599,18 +585,17 @@ export class RenterService {
       registrationType: renter.registrationType,
     };
 
-
     if (renter.referredByAgentId) {
       const agent = await new AgentProfileRepository().findById(
         renter.referredByAgentId.toString()
       );
-      
+
       if (agent) {
         // Get agent's user details for email and fullName
         const agentUser = await new UserRepository().findById(
           agent.userId.toString()
         );
-        
+
         referralInfo.referredByAgentId = renter.referredByAgentId;
         referralInfo.referredByAgent = agentUser
           ? {
@@ -627,7 +612,7 @@ export class RenterService {
       const admin = await new UserRepository().findById(
         renter.referredByAdminId.toString()
       );
-      
+
       referralInfo.referredByAdmin = admin
         ? {
             _id: admin._id,
@@ -692,5 +677,51 @@ export class RenterService {
       renterId,
       includeInactive
     );
+  }
+
+  /**
+   * ✅ Async background job to generate/update Renter Excel
+   * Called after every new renter registration
+   * Non-blocking: User gets response before Excel is generated
+   */
+  async updateConsolidatedExcel(): Promise<void> {
+    // Fire and forget - don't wait for completion
+    setImmediate(async () => {
+      try {
+        logger.info("Starting async Renter Excel update");
+
+        // Step 1: Generate Excel
+        const excelBuffer =
+          await excelService.generateConsolidatedRenterExcel();
+
+        // Step 2: Upload to S3
+        const { url, fileName } =
+          await excelService.uploadConsolidatedRenterExcel(excelBuffer);
+
+        // Step 3: Get current count
+        const totalRenters = await this.repository.count();
+
+        // Step 4: Save metadata
+        await this.repository.updateExcelMetadata({
+          type: "renters",
+          fileName,
+          fileUrl: url,
+          totalRenters,
+          version: totalRenters, // Version = total count
+          lastUpdated: new Date(),
+        });
+
+        logger.info(
+          { fileName, totalRenters },
+          "Renter Excel updated successfully"
+        );
+      } catch (error) {
+        logger.error(
+          { error },
+          "Failed to update Renter Excel (non-blocking, continuing)"
+        );
+        // Don't throw - this is background job, don't affect user registration
+      }
+    });
   }
 }

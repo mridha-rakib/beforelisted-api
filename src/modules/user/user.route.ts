@@ -33,28 +33,6 @@ router.put(
 );
 
 /**
- * POST /user/change-email
- * Request email change (sends verification)
- * Protected: Any authenticated user
- */
-router.post(
-  "/change-email",
-  authMiddleware.verifyToken,
-  userController.requestEmailChange
-);
-
-/**
- * POST /user/verify-new-email
- * Verify new email with code
- * Protected: Any authenticated user
- */
-router.post(
-  "/verify-new-email",
-  authMiddleware.verifyToken,
-  userController.verifyNewEmail
-);
-
-/**
  * DELETE /user
  * Delete own account (soft delete)
  * Protected: Any authenticated user
