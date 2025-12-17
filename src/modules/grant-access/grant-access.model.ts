@@ -9,7 +9,7 @@ export interface IGrantAccessRequest
   _id: Types.ObjectId;
   preMarketRequestId: Types.ObjectId | string;
   agentId: Types.ObjectId | string;
-  status: (typeof GRANT_ACCESS_CONFIG.STATUSES)[number];
+  status: "pending" | "approved" | "rejected" | "paid";
 
   payment?: {
     amount: number;
@@ -78,8 +78,24 @@ const grantAccessSchema = BaseSchemaUtil.createSchema({
       min: 0,
       max: GRANT_ACCESS_CONFIG.MAX_PAYMENT_ATTEMPTS,
     },
+
     failedAt: [Date],
     succeededAt: Date,
+
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+    deletedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
 
   adminDecision: {

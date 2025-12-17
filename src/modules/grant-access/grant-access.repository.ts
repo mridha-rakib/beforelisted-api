@@ -163,4 +163,214 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       .lean()
       .exec() as unknown as Promise<IGrantAccessRequest[]>;
   }
+
+  async getAllWithPaymentInfo(filters?: {
+    paymentStatus?: "pending" | "succeeded" | "failed";
+    accessStatus?: "pending" | "approved" | "rejected" | "paid";
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    data: IGrantAccessRequest[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      pages: number;
+    };
+  }> {
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const query: any = {};
+
+    // Filter by payment status
+    if (filters?.paymentStatus) {
+      query["payment.paymentStatus"] = filters.paymentStatus;
+    }
+
+    // Filter by access status
+    if (filters?.accessStatus) {
+      query.status = filters.accessStatus;
+    }
+
+    const total = await this.model.countDocuments(query);
+
+    const data = await this.model
+      .find(query)
+      .populate("agentId", "fullName email phoneNumber")
+      .populate("preMarketRequestId", "requestId")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean()
+      .exec();
+
+    return {
+      data: data as IGrantAccessRequest[],
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async getPaymentStats(): Promise<{
+    totalRequests: number;
+    totalPaid: number;
+    totalPending: number;
+    totalFailed: number;
+    totalRevenue: number;
+    averagePayment: number;
+    paymentsByStatus: Record<string, number>;
+    paymentsByAccessStatus: Record<string, number>;
+  }> {
+    const totalRequests = await this.model.countDocuments();
+
+    const stats = await this.model.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalPaid: {
+            $sum: {
+              $cond: [{ $eq: ["$payment.paymentStatus", "succeeded"] }, 1, 0],
+            },
+          },
+          totalPending: {
+            $sum: {
+              $cond: [{ $eq: ["$payment.paymentStatus", "pending"] }, 1, 0],
+            },
+          },
+          totalFailed: {
+            $sum: {
+              $cond: [{ $eq: ["$payment.paymentStatus", "failed"] }, 1, 0],
+            },
+          },
+          totalRevenue: {
+            $sum: {
+              $cond: [
+                { $eq: ["$payment.paymentStatus", "succeeded"] },
+                "$payment.amount",
+                0,
+              ],
+            },
+          },
+          averagePayment: {
+            $avg: {
+              $cond: [
+                { $eq: ["$payment.paymentStatus", "succeeded"] },
+                "$payment.amount",
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    const statusStats = await this.model.aggregate([
+      {
+        $group: {
+          _id: "$payment.paymentStatus",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const accessStatusStats = await this.model.aggregate([
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const paymentsByStatus: Record<string, number> = {};
+    statusStats.forEach((stat) => {
+      paymentsByStatus[stat._id || "unknown"] = stat.count;
+    });
+
+    const paymentsByAccessStatus: Record<string, number> = {};
+    accessStatusStats.forEach((stat) => {
+      paymentsByAccessStatus[stat._id || "unknown"] = stat.count;
+    });
+
+    const result = stats || {};
+
+    return {
+      totalRequests,
+      totalPaid: result.totalPaid || 0,
+      totalPending: result.totalPending || 0,
+      totalFailed: result.totalFailed || 0,
+      totalRevenue: result.totalRevenue || 0,
+      averagePayment: result.averagePayment || 0,
+      paymentsByStatus,
+      paymentsByAccessStatus,
+    };
+  }
+
+  async deletePayment(paymentId: string): Promise<IGrantAccessRequest | null> {
+    const deleted = await this.model.findByIdAndDelete(paymentId).lean().exec();
+    return deleted as IGrantAccessRequest | null;
+  }
+
+  async deleteMultiplePayments(paymentIds: string[]): Promise<number> {
+    const result = await this.model.deleteMany({ _id: { $in: paymentIds } });
+    return result.deletedCount || 0;
+  }
+
+  async softDeletePayment(
+    paymentId: string,
+    deletedBy: string,
+    reason?: string
+  ): Promise<IGrantAccessRequest | null> {
+    const updated = await this.model
+      .findByIdAndUpdate(
+        paymentId,
+        {
+          $set: {
+            isDeleted: true,
+            deletedAt: new Date(),
+            deletedBy,
+            deleteReason: reason || "No reason provided",
+            updatedAt: new Date(),
+          },
+        },
+        { new: true }
+      )
+      .lean()
+      .exec();
+    return updated as IGrantAccessRequest | null;
+  }
+
+  async restorePayment(paymentId: string): Promise<IGrantAccessRequest | null> {
+    const restored = await this.model
+      .findByIdAndUpdate(
+        paymentId,
+        {
+          $set: {
+            isDeleted: false,
+            deletedAt: null,
+            deletedBy: null,
+            deleteReason: null,
+            updatedAt: new Date(),
+          },
+        },
+        { new: true }
+      )
+      .lean()
+      .exec();
+    return restored as IGrantAccessRequest | null;
+  }
+
+  async getPaymentDeletionHistory(paymentId: string): Promise<any> {
+    return await this.model
+      .findById(paymentId)
+      .select("isDeleted deletedAt deletedBy deleteReason")
+      .lean()
+      .exec();
+  }
 }

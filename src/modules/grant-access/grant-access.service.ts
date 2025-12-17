@@ -7,8 +7,8 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@/utils/app-error.utils";
-import { PreMarketNotifier } from "../notification/pre-market.notifier";
 import { PaymentService } from "../payment/payment.service";
+import { PreMarketNotifier } from "../pre-market/pre-market-notifier";
 import { PreMarketRepository } from "../pre-market/pre-market.repository";
 import type { IGrantAccessRequest } from "./grant-access.model";
 import { GrantAccessRepository } from "./grant-access.repository";
@@ -221,5 +221,182 @@ export class GrantAccessService {
       clientSecret: paymentIntent.client_secret!,
       amount: grantAccess.payment.amount,
     };
+  }
+
+  async getAdminPayments(filters?: {
+    paymentStatus?: "pending" | "succeeded" | "failed";
+    accessStatus?: "pending" | "approved" | "rejected" | "paid";
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    data: any[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      pages: number;
+    };
+  }> {
+    logger.info({ filters }, "Admin fetching all payments");
+
+    const result =
+      await this.grantAccessRepository.getAllWithPaymentInfo(filters);
+
+    // Enrich with additional info
+    const enrichedData = result.data.map((item: any) => ({
+      id: item._id,
+      agentId: item.agentId?.id || item.agentId,
+      agentName: item.agentId?.fullName || "Unknown",
+      agentEmail: item.agentId?.email || "N/A",
+      agentPhone: item.agentId?.phoneNumber || "N/A",
+      preMarketRequestId:
+        item.preMarketRequestId?.id || item.preMarketRequestId,
+      listingRequestId: item.preMarketRequestId?.requestId || "N/A",
+      status: item.status, // pending, approved, rejected, paid
+      paymentStatus: item.payment?.paymentStatus || "N/A", // pending, succeeded, failed
+      amount: item.payment?.amount || 0,
+      currency: item.payment?.currency || "USD",
+      isFree: item.adminDecision?.isFree || false,
+      failureCount: item.payment?.failureCount || 0,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      decisionNotes: item.adminDecision?.notes || null,
+      decisionDate: item.adminDecision?.decidedAt || null,
+    }));
+
+    logger.info(
+      { count: enrichedData.length, total: result.pagination.total },
+      "Admin payments retrieved"
+    );
+
+    return {
+      data: enrichedData,
+      pagination: result.pagination,
+    };
+  }
+
+  /**
+   * Get payment statistics (Admin only)
+   */
+  async getAdminPaymentStats(): Promise<any> {
+    logger.info("Admin fetching payment statistics");
+
+    const stats = await this.grantAccessRepository.getPaymentStats();
+
+    logger.info(stats, "Payment statistics retrieved");
+
+    return {
+      overview: {
+        totalRequests: stats.totalRequests,
+        totalPaid: stats.totalPaid,
+        totalPending: stats.totalPending,
+        totalFailed: stats.totalFailed,
+      },
+      revenue: {
+        totalRevenue: stats.totalRevenue,
+        averagePayment: Math.round(stats.averagePayment * 100) / 100,
+      },
+      breakdown: {
+        byPaymentStatus: stats.paymentsByStatus,
+        byAccessStatus: stats.paymentsByAccessStatus,
+      },
+    };
+  }
+
+  async deleteAdminPayment(paymentId: string, adminId: string): Promise<any> {
+    const payment = await this.grantAccessRepository.findById(paymentId);
+    if (!payment) throw new NotFoundException("Payment not found");
+
+    const deleted = await this.grantAccessRepository.deletePayment(paymentId);
+    if (!deleted) throw new Error("Failed to delete payment");
+
+    return {
+      success: true,
+      message: "Payment deleted successfully",
+      deletedPayment: {
+        id: deleted._id,
+        agentId: deleted.agentId,
+        amount: deleted.payment?.amount,
+      },
+    };
+  }
+
+  async softDeleteAdminPayment(
+    paymentId: string,
+    adminId: string,
+    reason?: string
+  ): Promise<any> {
+    const payment = await this.grantAccessRepository.findById(paymentId);
+    if (!payment) throw new NotFoundException("Payment not found");
+
+    const softDeleted = await this.grantAccessRepository.softDeletePayment(
+      paymentId,
+      adminId,
+      reason
+    );
+    if (!softDeleted) throw new Error("Failed to soft delete");
+
+    return {
+      success: true,
+      message: "Payment soft deleted successfully",
+      softDeletedPayment: {
+        id: softDeleted._id,
+        isDeleted: true,
+        deletedAt: softDeleted.deletedAt,
+      },
+    };
+  }
+
+  async bulkDeletePayments(
+    paymentIds: string[],
+    adminId: string
+  ): Promise<any> {
+    if (!paymentIds?.length)
+      throw new BadRequestException("No payment IDs provided");
+    if (paymentIds.length > 100)
+      throw new BadRequestException("Cannot delete more than 100 at once");
+
+    const payments = await this.grantAccessRepository.find({
+      _id: { $in: paymentIds },
+    });
+    const foundCount = payments.length;
+    const missingCount = paymentIds.length - foundCount;
+
+    if (foundCount === 0) throw new NotFoundException("No payments found");
+
+    const deletedCount =
+      await this.grantAccessRepository.deleteMultiplePayments(paymentIds);
+
+    return {
+      success: true,
+      deletedCount,
+      failedCount: missingCount,
+      message: `Deleted ${deletedCount}. ${missingCount} not found.`,
+    };
+  }
+
+  async restoreDeletedPayment(
+    paymentId: string,
+    adminId: string
+  ): Promise<any> {
+    const payment = await this.grantAccessRepository.findById(paymentId);
+    if (!payment) throw new NotFoundException("Payment not found");
+    if (!payment.isDeleted)
+      throw new BadRequestException("Payment not marked as deleted");
+
+    const restored = await this.grantAccessRepository.restorePayment(paymentId);
+    if (!restored) throw new Error("Failed to restore payment");
+
+    return {
+      success: true,
+      message: "Payment restored successfully",
+      restoredPayment: { id: restored._id, isDeleted: false },
+    };
+  }
+
+  async getPaymentDeletionHistory(paymentId: string): Promise<any> {
+    return await this.grantAccessRepository.getPaymentDeletionHistory(
+      paymentId
+    );
   }
 }

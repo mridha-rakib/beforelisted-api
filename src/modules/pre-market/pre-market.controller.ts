@@ -34,6 +34,7 @@ export class PreMarketController {
   private readonly paymentService: PaymentService;
   private readonly agentRepository: AgentProfileRepository;
   private readonly preMarketRepository: PreMarketRepository;
+  private readonly grantAccessRepository: GrantAccessRepository;
 
   constructor() {
     this.preMarketService = new PreMarketService();
@@ -52,6 +53,7 @@ export class PreMarketController {
     );
     this.agentRepository = new AgentProfileRepository();
     this.preMarketRepository = new PreMarketRepository();
+    this.grantAccessRepository = new GrantAccessRepository();
   }
 
   // ============================================
@@ -636,41 +638,119 @@ export class PreMarketController {
 
   getRequestDetailsForGrantAccessAgent = asyncHandler(
     async (req: Request, res: Response) => {
-      const userId = req.user!.userId;
+      const agentId = req.user!.userId;
       const { requestId } = req.params;
 
       // Verify agent has grant access
-      const agent = await this.agentRepository.findByUserId(userId);
-      if (!agent || !agent.hasGrantAccess) {
+      const agent = await this.agentRepository.findByUserId(agentId);
+      if (!agent) {
         throw new ForbiddenException(
           "You do not have grant access to view this request"
         );
       }
 
       const request = await this.preMarketService.getRequestById(requestId);
+      if (!request) {
+        throw new NotFoundException("Pre-market request not found");
+      }
 
-      // ← Once method is public, THIS LINE WORKS
+      if (agent.hasGrantAccess === true) {
+        const enriched =
+          await this.preMarketService.enrichRequestWithFullRenterInfo(
+            request,
+            agentId
+          );
+
+        await this.preMarketRepository.addAgentToViewedBy(
+          requestId,
+          agentId,
+          "grantAccessAgents"
+        );
+        ApiResponse.success(
+          res,
+          enriched,
+          "Pre-market request details retrieved"
+        );
+      }
+
+      // ============================================
+      // NORMAL AGENTS: See ONLY paid listings
+      // ============================================
+      logger.info(
+        { agentId, type: "normal" },
+        "🔒 Normal agent - checking if they have PAID access for this request"
+      );
+
+      const paidAccess = await this.grantAccessRepository.findOne({
+        agentId: agentId,
+        preMarketRequestId: requestId,
+        status: { $in: ["approved", "paid"] },
+      });
+
+      if (!paidAccess) {
+        logger.warn(
+          { agentId, requestId },
+          "❌ Normal agent does NOT have paid access to this request"
+        );
+
+        throw new ForbiddenException(
+          "You do not have access to this request. Request access or pay to view renter information."
+        );
+      }
+
+      logger.info(
+        { agentId, requestId, accessStatus: paidAccess.status },
+        `✅ Normal agent has ${paidAccess.status} access to this request`
+      );
+
+      // ✅ Enrich with full renter info (since they paid)
       const enriched =
         await this.preMarketService.enrichRequestWithFullRenterInfo(
           request,
-          userId
+          agentId
         );
 
-      // Mark as viewed
-      await this.preMarketRepository.addAgentToViewedBy(
-        requestId,
-        userId,
-        "grantAccessAgents"
-      );
-
       logger.info(
-        { userId, requestId },
-        "Grant access agent retrieved request details"
+        { agentId, requestId },
+        "Request enriched with renter information"
       );
 
-      ApiResponse.success(
+      // ✅ Track as normal agent
+      try {
+        await this.preMarketRepository.addAgentToViewedBy(
+          requestId,
+          agentId,
+          "normalAgents"
+        );
+
+        logger.info(
+          { agentId, requestId },
+          "✅ Marked as viewed by normal agent"
+        );
+      } catch (error) {
+        logger.warn(
+          { agentId, requestId, error },
+          "Failed to track view (non-blocking)"
+        );
+      }
+
+      // ✅ Return full response
+      logger.info(
+        {
+          agentId,
+          requestId,
+          accessType: paidAccess.status,
+          renterName: enriched.renterInfo?.renterName,
+        },
+        "✅ Returning full request details to normal agent (paid access)"
+      );
+
+      return ApiResponse.success(
         res,
-        enriched,
+        {
+          ...enriched,
+          accessType: paidAccess.status,
+        },
         "Pre-market request details retrieved"
       );
     }

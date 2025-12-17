@@ -376,47 +376,9 @@ export class PreMarketService {
       ) as any;
     }
 
-    // Step 2: Get listing IDs from paid access records
     const preMarketRequestIds = paidAccess.map((access) =>
       access.preMarketRequestId.toString()
     );
-
-    // const paginationOptions =
-    //   await this.preMarketRepository.findAllWithPagination(query);
-    // let paginated: any;
-    // // Step 3: Fetch actual listings by IDs
-    // const listings =
-    //   await this.preMarketRepository.findByIds(preMarketRequestIds);
-
-    // console.log("++++++++++++++++++++++++++++++++++++++++++++++");
-    // console.log("ALL listings: ", listings);
-    // console.log("+++++++++++++++++++++++++++++++++++++++++++++++++");
-
-    // // if (!listings || listings.length === 0) {
-    // //   return {
-    // //     data: [],
-    // //     pagination: {
-    // //       page: 1,
-    // //       limit: query.limit || 10,
-    // //       total: 0,
-    // //       pages: 0,
-    // //     },
-    // //   } as any;
-    // // }
-
-    // // Step 4: Enrich with renter info
-    // const enrichedData = await Promise.all(
-    //   listings.map(async (request: any) => {
-    //     const renterInfo = await this.getRenterInfoForRequest(
-    //       request.renterId.toString()
-    //     );
-    //     return {
-    //       ...request,
-    //       renterInfo,
-    //       status: "matched",
-    //     };
-    //   })
-    // );
 
     const listings =
       await this.preMarketRepository.findByIds(preMarketRequestIds);
@@ -433,7 +395,7 @@ export class PreMarketService {
     // Manual pagination - counts ONLY your filtered results
     const page = (query.page as number) || 1;
     const limit = (query.limit as number) || 10;
-    const total = listings.length; // ✅ 6 - not 36!
+    const total = listings.length; 
     const pages = Math.ceil(total / limit);
     const startIndex = (page - 1) * limit;
     const paginatedData = listings.slice(startIndex, startIndex + limit);
@@ -466,53 +428,12 @@ export class PreMarketService {
     // Return with CORRECT pagination count
     const response = PaginationHelper.buildResponse(
       enrichedData,
-      total, // ✅ 6 - correct count (not 36)
+      total,
       page,
       limit
     ) as any;
 
     return response;
-
-    // Enrich with renter info
-    // const enrichedData = await Promise.all(
-    //   paginated.data.map(async (request: any) => {
-    //     const renterInfo = await this.getRenterInfoForRequest(
-    //       request.renterId.toString()
-    //     );
-    //     return {
-    //       ...request,
-    //       renterInfo,
-    //       status: "matched",
-    //     };
-    //   })
-    // );
-
-    // Track agent views
-    // await Promise.all(
-    //   paginated.data.map((request: any) =>
-    //     this.preMarketRepository.addAgentToViewedBy(
-    //       request._id!.toString(),
-    //       agentId,
-    //       "normalAgents"
-    //     )
-    //   )
-    // );
-
-    // // ✅ Return with built-in formatResponse()
-    // return PaginationHelper.formatResponse({
-    //   data: enrichedData,
-    //   pagination: {
-    //     currentPage: paginated.page || 1,
-    //     pageCount: paginated.pages || 0,
-    //     totalItems: paginated.total || 0,
-    //     itemsPerPage: paginated.limit || 10,
-    //     hasNext: paginated.hasNextPage || false,
-    //     hasPrev: paginated.hasPrevPage || false,
-    //     nextPage: paginated.nextPage || null,
-    //     prevPage: paginated.prevPage || null,
-    //     slNo: paginated.pagingCounter || 0,
-    //   },
-    // }) as any;
   }
 
   // ============================================
