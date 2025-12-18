@@ -4,6 +4,7 @@ import { MESSAGES } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 import { EmailService } from "@/services/email.service";
 import { NotFoundException } from "@/utils/app-error.utils";
+import { ReferralService } from "../referral/referral.service";
 import type { IUser } from "./user.interface";
 import { UserRepository } from "./user.repository";
 import type {
@@ -14,11 +15,13 @@ import type {
 
 export class UserService {
   private userRepository: UserRepository;
+  private referralService: ReferralService;
   private emailService: EmailService;
 
   constructor() {
     this.userRepository = new UserRepository();
     this.emailService = new EmailService();
+    this.referralService = new ReferralService();
   }
 
   toUserResponse(user: IUser): UserResponse {
@@ -151,12 +154,11 @@ export class UserService {
    * Delete user account (soft delete)
    */
   async deleteUserAccount(userId: string): Promise<{ message: string }> {
-    const user = await this.userRepository.softDeleteUser(userId, userId);
+    const user = await this.userRepository.permanentlyDeleteUser(userId);
     if (!user) {
       throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
     }
 
-    logger.info({ userId }, "User account deleted (soft delete)");
     return { message: MESSAGES.USER.USER_DELETED };
   }
 
@@ -210,22 +212,6 @@ export class UserService {
    */
   async adminGetUser(userId: string): Promise<UserResponse> {
     return this.getUserById(userId);
-  }
-
-  /**
-   * ADMIN: Delete user (soft delete)
-   */
-  async adminDeleteUser(
-    userId: string,
-    deletedBy: string
-  ): Promise<{ message: string }> {
-    const user = await this.userRepository.softDeleteUser(userId, deletedBy);
-    if (!user) {
-      throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
-    }
-
-    logger.info({ userId, deletedBy }, "User deleted by admin");
-    return { message: MESSAGES.USER.USER_DELETED };
   }
 
   /**
@@ -326,6 +312,30 @@ export class UserService {
     }
 
     logger.debug({ userId }, "User retrieved with password field");
+
+    return user;
+  }
+
+  async getReferralStats(userId: string): Promise<{
+    referralCode: string | null;
+    referralLink: string | null;
+    totalReferrals: number;
+    referredUsers: any[];
+  }> {
+    return this.referralService.getReferralStats(userId);
+  }
+
+  async updateAccountStatus(
+    userId: string,
+    status: "active" | "inactive" | "pending"
+  ): Promise<IUser | null> {
+    const user = await this.userRepository.updateById(userId, {
+      accountStatus: status,
+    });
+
+    if (user) {
+      logger.info({ userId, newStatus: status }, "User account status updated");
+    }
 
     return user;
   }

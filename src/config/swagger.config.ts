@@ -1,5 +1,4 @@
 // file: src/config/swagger.config.ts
-// Main Swagger/OpenAPI Configuration
 
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
@@ -99,4 +98,3 @@ swaggerSpec.paths = {
 };
 
 export { swaggerSpec, swaggerUi };
-

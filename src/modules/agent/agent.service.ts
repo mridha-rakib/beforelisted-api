@@ -20,7 +20,6 @@ import type { IAgentProfile } from "./agent.interface";
 import { AgentProfileRepository } from "./agent.repository";
 import type {
   AdminAgentMetricsResponse,
-  AdminApproveAgentPayload,
   AgentProfileResponse,
   AgentRegisterPayload,
   AgentRegistrationResponse,
@@ -28,11 +27,6 @@ import type {
   UpdateAgentProfilePayload,
 } from "./agent.type";
 
-/**
- * Agent Service
- * Handles ALL agent-related business logic including registration
- * All methods properly typed
- */
 export class AgentService {
   private repository: AgentProfileRepository;
   private userService: UserService;
@@ -50,20 +44,14 @@ export class AgentService {
     this.s3Service = new S3Service();
   }
 
-  // AGENT REGISTRATION (Complete Flow)
-  /**
-   * Complete agent registration
-   */
   async registerAgent(
     payload: AgentRegisterPayload
   ): Promise<AgentRegistrationResponse> {
-    // 1. Check if email already exists
     const existingUser = await this.userService.getUserByEmail(payload.email);
     if (existingUser) {
       throw new ConflictException("Email already registered");
     }
 
-    // 2. Check if license number already exists
     const existingAgent = await this.repository.findByLicenseNumber(
       payload.licenseNumber
     );
@@ -71,10 +59,8 @@ export class AgentService {
       throw new ConflictException("License number already registered");
     }
 
-    // 4. Hash password
     const hashedPassword = await hashPassword(payload.password);
 
-    // 5. Create user account
     const user = await this.userService.create({
       email: payload.email,
       password: hashedPassword,
@@ -85,13 +71,11 @@ export class AgentService {
       accountStatus: "pending",
     });
 
-    // 6. Generate referral code for agent
     const referralCode = await this.referralService.generateReferralCode(
       user._id.toString(),
       ROLES.AGENT
     );
 
-    // 7. Create agent profile
     const profile = await this.repository.create({
       userId: user._id,
       licenseNumber: payload.licenseNumber,
@@ -105,10 +89,6 @@ export class AgentService {
       totalRentersReferred: 0,
       activeReferrals: 0,
       referralConversionRate: 0,
-      profileCompleteness: this.calculateProfileCompleteness({
-        licenseNumber: payload.licenseNumber,
-        brokerageName: payload.brokerageName,
-      }),
     } as Partial<IAgentProfile>);
 
     await this.emailVerificationService.createOTP({
@@ -118,14 +98,11 @@ export class AgentService {
       userName: payload.fullName,
     });
 
-    // 10. Generate JWT tokens
     const tokens = this.generateTokens(
       user._id.toString(),
       user.email,
       user.role
     );
-
-    logger.info({ userId: user._id }, "Agent registered successfully");
 
     this.updateAgentConsolidatedExcel().catch((error) => {
       logger.error({ error }, "Consolidated Excel update failed");
@@ -144,7 +121,6 @@ export class AgentService {
     };
   }
 
-  // AGENT PROFILE OPERATIONS
   /**
    * Create agent profile (INTERNAL)
    */
@@ -172,10 +148,8 @@ export class AgentService {
       totalRentersReferred: 0,
       activeReferrals: 0,
       referralConversionRate: 0,
-      profileCompleteness: this.calculateProfileCompleteness(payload),
     } as Partial<IAgentProfile>);
 
-    logger.info({ userId }, "Agent profile created");
     return this.toResponse(profile);
   }
 
@@ -191,9 +165,6 @@ export class AgentService {
     return this.toResponse(profile);
   }
 
-  /**
-   * Update agent profile
-   */
   async updateAgentProfile(
     userId: string,
     payload: UpdateAgentProfilePayload
@@ -216,19 +187,9 @@ export class AgentService {
       throw new NotFoundException("Agent profile not found");
     }
 
-    const completeness = this.calculateProfileCompleteness({
-      licenseNumber: updated.licenseNumber,
-      brokerageName: updated.brokerageName,
-    });
-
-    await this.repository.updateProfileCompleteness(userId, completeness);
-
     return this.toResponse(updated);
   }
 
-  /**
-   * Get agent statistics
-   */
   async getAgentStats(userId: string): Promise<{
     grantAccessCount: number;
     totalMatches: number;
@@ -243,10 +204,6 @@ export class AgentService {
     return stats;
   }
 
-  /**
-   *  Get agent referral statistics and link
-   * Retrieves referral code, link, total count, and referred users
-   */
   async getReferralStats(userId: string): Promise<{
     referralCode: string | null;
     referralLink: string | null;
@@ -258,9 +215,6 @@ export class AgentService {
 
   // ADMIN OPERATIONS
 
-  /**
-   * ADMIN: Get all agents (Properly typed)
-   */
   async adminGetAllAgents(): Promise<AgentProfileResponse[]> {
     const agents: IAgentProfile[] = await this.repository.find({});
     return agents.map((agent: IAgentProfile) => this.toResponse(agent));
@@ -275,78 +229,6 @@ export class AgentService {
     return this.toResponse(profile);
   }
 
-  async adminApproveAgent(
-    userId: string,
-    adminId: string,
-    payload: AdminApproveAgentPayload
-  ): Promise<AgentProfileResponse> {
-    const profile = await this.repository.findByUserId(userId);
-    if (!profile) {
-      throw new NotFoundException("Agent profile not found");
-    }
-
-    if (profile.isApprovedByAdmin) {
-      throw new ConflictException("Agent is already approved");
-    }
-
-    const updated = await this.repository.approveAgent(
-      userId,
-      adminId,
-      payload.adminNotes
-    );
-
-    if (!updated) {
-      throw new NotFoundException("Agent profile not found");
-    }
-
-    logger.info({ userId, adminId }, "Agent approved by admin");
-    return this.toResponse(updated);
-  }
-
-  // async adminSuspendAgent(
-  //   userId: string,
-  //   payload: AdminSuspendAgentPayload
-  // ): Promise<AgentProfileResponse> {
-  //   const profile = await this.repository.findByUserId(userId);
-  //   if (!profile) {
-  //     throw new NotFoundException("Agent profile not found");
-  //   }
-
-  //   if (profile.isSuspended) {
-  //     throw new ConflictException("Agent is already suspended");
-  //   }
-
-  //   const updated = await this.repository.suspendAgent(
-  //     userId,
-  //     payload.suspensionReason
-  //   );
-  //   if (!updated) {
-  //     throw new NotFoundException("Agent profile not found");
-  //   }
-
-  //   logger.info({ userId }, "Agent suspended");
-  //   return this.toResponse(updated);
-  // }
-
-  // async adminUnsuspendAgent(userId: string): Promise<AgentProfileResponse> {
-  //   const profile = await this.repository.findByUserId(userId);
-  //   if (!profile) {
-  //     throw new NotFoundException("Agent profile not found");
-  //   }
-
-  //   if (!profile.isSuspended) {
-  //     throw new ConflictException("Agent is not suspended");
-  //   }
-
-  //   const updated = await this.repository.unsuspendAgent(userId);
-  //   if (!updated) {
-  //     throw new NotFoundException("Agent profile not found");
-  //   }
-
-  //   logger.info({ userId }, "Agent unsuspended");
-  //   return this.toResponse(updated);
-  // }
-
   async adminGetPendingApprovalAgents(): Promise<AgentProfileResponse[]> {
     const agents: IAgentProfile[] =
       await this.repository.findPendingApprovalAgents();
@@ -359,14 +241,13 @@ export class AgentService {
   }
 
   /**
-   * ADMIN: Get agent metrics (✅ FIXED - Strongly typed reduce callbacks)
+   * ADMIN: Get agent metrics
    */
   async adminGetAgentMetrics(): Promise<AdminAgentMetricsResponse> {
     const statuses = await this.repository.countByStatus();
 
     const allAgents: IAgentProfile[] = await this.repository.find({});
 
-    // ✅ FIXED: Explicitly type reduce parameters
     const avgSuccessRate =
       allAgents.length > 0
         ? Math.round(
@@ -380,7 +261,6 @@ export class AgentService {
           )
         : 0;
 
-    // ✅ FIXED: Explicitly type reduce parameters
     const totalMatches = allAgents.reduce(
       (sum: number, agent: IAgentProfile) => sum + agent.totalMatches,
       0
@@ -402,14 +282,6 @@ export class AgentService {
       avgSuccessRate,
     };
   }
-
-  // async adminGetAllAgentMetrics(): Promise<AdminAgentMetricsResponse> {
-  //   const metrics = await this.repository.getAdminMetrics();
-  //   return metrics;
-  // }
-  // ============================================
-  // INTERNAL HELPER METHODS
-  // ============================================
 
   async incrementGrantAccessCount(userId: string): Promise<void> {
     await this.repository.incrementGrantAccessCount(userId);
@@ -452,21 +324,6 @@ export class AgentService {
       refreshToken,
       expiresIn: "7d",
     };
-  }
-
-  /**
-   * Calculate profile completeness percentage
-   */
-  private calculateProfileCompleteness(
-    payload: CreateAgentProfilePayload
-  ): number {
-    let completeness = 0;
-    let totalFields = 2;
-
-    if (payload.licenseNumber) completeness += 50;
-    if (payload.brokerageName) completeness += 50;
-
-    return (completeness / (totalFields * 50)) * 100;
   }
 
   /**
@@ -547,10 +404,6 @@ export class AgentService {
     };
   }
 
-  /**
-   * Toggle agent active/deactive status
-   * Automatically switches between active and inactive
-   */
   async toggleAgentActive(
     userId: string,
     adminId: string,
@@ -575,6 +428,42 @@ export class AgentService {
 
     const updated = await this.repository.toggleActive(userId, adminId, reason);
 
+    // ============ ADD THIS BLOCK ============
+    if (newStatus) {
+      await this.userService.updateAccountStatus(userId, "active");
+    } else {
+      await this.userService.updateAccountStatus(userId, "inactive");
+    }
+
+    const { NotificationService } = await import(
+      "../notification/notification.service"
+    );
+    const notificationService = new NotificationService();
+
+    try {
+      const user = await this.userService.getById(userId);
+      if (newStatus) {
+        await notificationService.notifyAgentActivated({
+          agentId: user!._id.toString(),
+          agentEmail: user!.email,
+          agentName: user!.fullName,
+          activatedBy: adminId,
+        });
+      } else {
+        await notificationService.notifyAgentDeactivated({
+          agentId: user!._id.toString(),
+          agentName: user!.fullName,
+          reason,
+        });
+      }
+    } catch (error) {
+      logger.error(
+        { error, userId },
+        "Failed to send agent status notification"
+      );
+    }
+    // ============ END ADD ============
+
     const message = newStatus
       ? `Agent activated successfully`
       : `Agent deactivated successfully`;
@@ -592,46 +481,12 @@ export class AgentService {
     return this.repository.getActivationHistory(userId);
   }
 
-  /**
-   * Check if agent has access to view request details
-   * Checks BOTH:
-   * 1. Admin-granted access (hasGrantAccess = true)
-   * 2. Payment-based access (GrantAccess status = "paid")
-   */
-  private async checkAgentAccessToRequest(
-    agentId: string,
-    requestId: string
-  ): Promise<{
-    hasAccess: boolean;
-    accessType: "admin-granted" | "payment-based" | "none";
-    grantAccessRecord?: any;
-  }> {
-    // 1. Check admin-granted access first
-    const agent = await this.repository.findByUserId(agentId);
-
-    if (agent?.hasGrantAccess) {
-      return {
-        hasAccess: true,
-        accessType: "admin-granted",
-      };
-    }
-
-    // 2. Payment-based access check would require grantAccessRepository
-    // For now, return no access if not admin-granted
-    return {
-      hasAccess: false,
-      accessType: "none",
-    };
-  }
-
   async generateAndUploadAgentExcel(): Promise<any> {}
 
   private async updateAgentConsolidatedExcel(): Promise<void> {
-    // Generate Excel buffer and fileName
     const { buffer, fileName } =
       await this.excelService.generateConsolidatedAgentExcel();
 
-    // Upload to S3
     const { url } =
       await this.excelService.uploadConsolidatedAgentExcel(buffer);
 
@@ -663,9 +518,6 @@ export class AgentService {
     return metadata;
   }
 
-  /**
-   * Convert to response (exclude sensitive fields)
-   */
   private toResponse(agent: IAgentProfile): AgentProfileResponse {
     return {
       _id: agent._id.toString(),
@@ -677,20 +529,13 @@ export class AgentService {
       brokerageName: agent.brokerageName,
       isActive: agent.isActive,
       activeAt: agent.activeAt,
-      isApprovedByAdmin: agent.isApprovedByAdmin,
-      approvedByAdmin: agent.approvedByAdmin?.toString(),
-      approvedAt: agent.approvedAt,
-      adminNotes: agent.adminNotes,
       totalRentersReferred: agent.totalRentersReferred,
       activeReferrals: agent.activeReferrals,
-      referralConversionRate: agent.referralConversionRate,
       hasGrantAccess: agent.hasGrantAccess,
       lastAccessToggleAt: agent.lastAccessToggleAt,
       grantAccessCount: agent.grantAccessCount,
       totalMatches: agent.totalMatches,
       successfulMatches: agent.successfulMatches,
-      avgResponseTime: agent.avgResponseTime,
-      profileCompleteness: agent.profileCompleteness,
       createdAt: agent.createdAt,
       updatedAt: agent.updatedAt,
     };

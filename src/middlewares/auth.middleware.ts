@@ -29,15 +29,7 @@ declare global {
   }
 }
 
-/**
- * Authentication Middleware
- * Verifies JWT token and attaches user info to request
- */
 export class AuthMiddleware {
-  /**
-   * Verify JWT Token
-   * Validates access token and attaches decoded payload to req.user
-   */
   static verifyToken = (req: Request, res: Response, next: NextFunction) => {
     try {
       const authHeader = req.get("Authorization") || req.get("authorization");
@@ -56,10 +48,8 @@ export class AuthMiddleware {
 
       const token = authHeader.substring(7);
 
-      // Verify token
       const payload = AuthUtil.verifyAccessToken(token);
 
-      // Attach user info to request
       req.user = {
         userId: payload.userId,
         email: payload.email,
@@ -83,10 +73,6 @@ export class AuthMiddleware {
     }
   };
 
-  /**
-   * Authorize by Role
-   * Check if user has required role(s)
-   */
   static authorize = (...allowedRoles: string[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
       try {
@@ -120,10 +106,6 @@ export class AuthMiddleware {
     };
   };
 
-  /**
-   * Optional Authentication
-   * Verifies token if present, but doesn't require it
-   */
   static optionalAuth = (req: Request, res: Response, next: NextFunction) => {
     try {
       const authHeader = req.get("Authorization") || req.get("authorization");
@@ -145,7 +127,6 @@ export class AuthMiddleware {
 
       next();
     } catch (error) {
-      // Don't throw error for optional auth, just skip
       logger.debug(
         { error: (error as any).message },
         "Optional token verification skipped"
@@ -154,10 +135,6 @@ export class AuthMiddleware {
     }
   };
 
-  /**
-   * Verify Token Expiration
-   * Check if token is about to expire
-   */
   static checkTokenExpiration = (
     req: Request,
     res: Response,
@@ -171,7 +148,6 @@ export class AuthMiddleware {
       const now = Math.floor(Date.now() / 1000);
       const expiresIn = req.user.exp - now;
 
-      // Warn if token expires in less than 5 minutes
       if (expiresIn < 300 && expiresIn > 0) {
         logger.warn(
           { userId: req.user.userId, expiresIn },
@@ -186,10 +162,6 @@ export class AuthMiddleware {
     }
   };
 
-  /**
-   * Verify Agent Access
-   * Check if agent has grant access
-   */
   static verifyAgentAccess = (
     req: Request,
     res: Response,
@@ -230,20 +202,12 @@ export class AuthMiddleware {
         throw new UnauthorizedException(MESSAGES.AUTH.UNAUTHORIZED_ACCESS);
       }
 
-      // This would require fetching user from DB to check emailVerified field
-      // For now, just verify token exists (user is authenticated)
-      // In production, cache emailVerified status or check at service level
-
       next();
     } catch (error) {
       next(error);
     }
   };
 
-  /**
-   * Verify Account Status
-   * Check if account is active
-   */
   static verifyAccountStatus = (
     req: Request,
     res: Response,
@@ -254,9 +218,6 @@ export class AuthMiddleware {
         throw new UnauthorizedException(MESSAGES.AUTH.UNAUTHORIZED_ACCESS);
       }
 
-      // This would require fetching user from DB to check accountStatus
-      // Recommended to check at service level instead
-
       next();
     } catch (error) {
       next(error);
@@ -264,9 +225,6 @@ export class AuthMiddleware {
   };
 }
 
-/**
- * Export middleware functions as singletons for convenience
- */
 export const authMiddleware = {
   verifyToken: AuthMiddleware.verifyToken,
   authorize: AuthMiddleware.authorize,

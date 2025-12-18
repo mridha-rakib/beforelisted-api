@@ -67,6 +67,10 @@ export class RenterService {
     if (payload.referralCode) {
       const parsed = ReferralParser.parse(payload.referralCode);
 
+      console.log("+++++++++++++++++++++++++++++");
+      console.log(parsed);
+      console.log("+++++++++++++++++++++++++++++");
+
       if (parsed.type === "agent_referral") {
         return this.registerAgentReferralRenter(
           payload as AgentReferralRenterRegisterPayload
@@ -154,6 +158,11 @@ export class RenterService {
   ): Promise<RenterRegistrationResponse> {
     // Step 1: Validate referral code format
     const parsed = ReferralParser.parse(payload.referralCode);
+
+    console.log("+++++++++++++++++++++++++++++");
+    console.log(parsed);
+    console.log("+++++++++++++++++++++++++++++");
+
     if (!parsed.isValid || parsed.type !== "agent_referral") {
       throw new BadRequestException("Invalid agent referral code");
     }
@@ -169,6 +178,10 @@ export class RenterService {
       payload.referralCode
     );
 
+    console.log("+++++++++++++++++++++++++++++");
+    console.log("Agent ID from referral code:", agentId);
+    console.log("+++++++++++++++++++++++++++++");
+
     // Step 4: Hash password
     const hashedPassword = await hashPassword(payload.password);
 
@@ -182,6 +195,10 @@ export class RenterService {
       emailVerified: false,
       accountStatus: "pending",
     });
+
+    console.log("+++++++++++++++++++++++++++++");
+    console.log("Agent ID from referral code:", user);
+    console.log("+++++++++++++++++++++++++++++");
 
     // Step 6: Create OTP for email verification
     await this.emailVerificationService.createOTP({

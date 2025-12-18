@@ -1,9 +1,6 @@
 // file: src/modules/agent/agent.type.ts
 
-/**
- * Agent Registration Payload (Complete registration)
- * Includes both user and agent-specific fields
- */
+
 export type AgentRegisterPayload = {
   // User fields
   email: string;
@@ -16,62 +13,44 @@ export type AgentRegisterPayload = {
   brokerageName: string;
 };
 
-/**
- * Create agent profile payload (INTERNAL - after user created)
- */
+
 export type CreateAgentProfilePayload = {
   licenseNumber: string;
   brokerageName: string;
 };
 
-/**
- * Update agent profile payload
- */
+
 export type UpdateAgentProfilePayload = {
   brokerageName?: string;
-  brokerageAddress?: string;
   licenseExpiryDate?: Date;
 };
 
-/**
- * Agent profile response
- */
+
 export type AgentProfileResponse = {
   _id: string;
-  userId: string | any; // Can be ID string or populated user object
+  userId: string | any; 
   licenseNumber: string;
   brokerageName: string;
 
-  // Activation Status
+
   isActive: boolean;
   activeAt?: Date;
 
-  // Suspension Status
-  // isSuspended: boolean;
-  // suspendedAt?: Date;
-  // suspensionReason?: string;
 
-  // Admin Approval
-  isApprovedByAdmin: boolean;
-  approvedByAdmin?: string;
-  approvedAt?: Date;
-  adminNotes?: string;
 
-  // Referral Analytics
   totalRentersReferred: number;
   activeReferrals: number;
-  referralConversionRate: number;
 
-  // Access Management
+
+
   hasGrantAccess: boolean;
   lastAccessToggleAt?: Date;
 
-  // Performance Metrics
+
   grantAccessCount: number;
   totalMatches: number;
   successfulMatches: number;
-  avgResponseTime?: number;
-  profileCompleteness: number;
+
 
   createdAt: Date;
   updatedAt: Date;
@@ -96,23 +75,7 @@ export type AgentRegistrationResponse = {
   };
 };
 
-/**
- * Admin approve payload
- */
-export type AdminApproveAgentPayload = {
-  adminNotes?: string;
-};
 
-/**
- * Admin suspend payload
- */
-export type AdminSuspendAgentPayload = {
-  suspensionReason: string;
-};
-
-/**
- * Admin metrics payload
- */
 export type AdminAgentMetricsResponse = {
   totalAgents: number;
   verifiedAgents: number;

@@ -1,4 +1,5 @@
 // file: src/utils/audit-fields.ts
+
 import { Schema } from "mongoose";
 
 export function addAuditFields(schema: Schema) {

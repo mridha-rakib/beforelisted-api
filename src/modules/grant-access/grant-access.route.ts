@@ -5,9 +5,9 @@ import { Router } from "express";
 import { PaymentService } from "../payment/payment.service";
 import { PreMarketNotifier } from "../pre-market/pre-market-notifier";
 import { PreMarketRepository } from "../pre-market/pre-market.repository";
-import { GrantAccessController } from "./grant-access.controller"; // ✅ FIX #1
+import { GrantAccessController } from "./grant-access.controller";
 import { GrantAccessRepository } from "./grant-access.repository";
-import { GrantAccessService } from "./grant-access.service"; // ✅ ADD THIS
+import { GrantAccessService } from "./grant-access.service";
 
 // ========================================
 // ROUTER SETUP
@@ -42,12 +42,12 @@ const controller = new GrantAccessController(grantAccessService);
  * Create payment intent for grant access
  * Protected: Agents only
  */
-router.post(
-  "/payment/create-intent",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize("Agent"),
-  controller.createPaymentIntent.bind(controller)
-);
+// router.post(
+//   "/payment/create-intent",
+//   authMiddleware.verifyToken,
+//   authMiddleware.authorize("Agent"),
+//   controller.createPaymentIntent.bind(controller)
+// );
 
 // ============================================
 // ADMIN ROUTES
@@ -86,36 +86,62 @@ router.delete(
   controller.deletePayment.bind(controller)
 );
 
-// Soft delete
-router.delete(
-  "/admin/payments/:paymentId/soft",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize("Admin"),
-  controller.softDeletePayment.bind(controller)
-);
-
-// Bulk delete
-router.post(
-  "/admin/payments/bulk-delete",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize("Admin"),
-  controller.bulkDeletePayments.bind(controller)
-);
-
-// Restore
-router.put(
-  "/admin/payments/:paymentId/restore",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize("Admin"),
-  controller.restorePayment.bind(controller)
-);
-
 // History
 router.get(
   "/admin/payments/:paymentId/deletion-history",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
   controller.getPaymentDeletionHistory.bind(controller)
+);
+
+// ============================================
+// ADMIN ROUTES - INCOME ANALYTICS
+// ============================================
+
+/**
+ * GET /admin/income/monthly
+ * Get monthly income breakdown
+ * Query: ?year=2025
+ */
+router.get(
+  "/admin/income/monthly",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.getMonthlyIncome.bind(controller)
+);
+
+/**
+ * GET /admin/income/monthly/:year/:month
+ * Get detailed income for specific month
+ */
+router.get(
+  "/admin/income/monthly/:year/:month",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.getMonthlyIncomeDetail.bind(controller)
+);
+
+/**
+ * GET /admin/income/range
+ * Get income for date range
+ * Query: ?startDate=2025-01-01&endDate=2025-12-31
+ */
+router.get(
+  "/admin/income/range",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.getIncomeByRange.bind(controller)
+);
+
+/**
+ * GET /admin/income/year/:year
+ * Get yearly income breakdown
+ */
+router.get(
+  "/admin/income/year/:year",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.getYearlyIncome.bind(controller)
 );
 
 export default router;

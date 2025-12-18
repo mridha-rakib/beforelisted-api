@@ -81,28 +81,6 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
   }
 
   /**
-   * Approve agent (admin)
-   */
-  async approveAgent(
-    userId: string,
-    adminId: string,
-    adminNotes?: string
-  ): Promise<IAgentProfile | null> {
-    return this.model
-      .findOneAndUpdate(
-        { userId },
-        {
-          isApprovedByAdmin: true,
-          approvedByAdmin: adminId,
-          approvedAt: new Date(),
-          adminNotes,
-        },
-        { new: true }
-      )
-      .exec();
-  }
-
-  /**
    * Suspend agent (admin)
    */
   async suspendAgent(
@@ -182,21 +160,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
       .exec();
   }
 
-  /**
-   * Update profile completeness
-   */
-  async updateProfileCompleteness(
-    userId: string,
-    completeness: number
-  ): Promise<IAgentProfile | null> {
-    return this.model
-      .findOneAndUpdate(
-        { userId },
-        { profileCompleteness: Math.min(completeness, 100) },
-        { new: true }
-      )
-      .exec();
-  }
+
 
   /**
    * Count agents by status

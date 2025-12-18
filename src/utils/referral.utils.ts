@@ -7,16 +7,12 @@ import crypto from "crypto";
  * Referral code generation and validation
  */
 export class ReferralUtil {
-  private static readonly CODE_LENGTH = 7;
+  private static readonly CODE_LENGTH = 8;
   private static readonly PREFIX = {
     [ROLES.ADMIN]: "ADM",
     [ROLES.AGENT]: "AGT",
   };
 
-  /**
-   * Generate unique referral code for admin or agent
-   * Format: ADM-XXXXXXXXXXXX or AGT-XXXXXXXXXXXX
-   */
   static generateReferralCode(
     role: typeof ROLES.ADMIN | typeof ROLES.AGENT
   ): string {
@@ -45,7 +41,7 @@ export class ReferralUtil {
    * Validate referral code format
    */
   static isValidCodeFormat(code: string): boolean {
-    const pattern = /^(ADM|AGT)-[A-Z0-9]{7}$/;
+    const pattern = /^(ADM|AGT)-[A-Z0-9]{8}$/;
     return pattern.test(code);
   }
 
@@ -53,6 +49,6 @@ export class ReferralUtil {
    * Generate full referral link
    */
   static generateReferralLink(referralCode: string, baseUrl: string): string {
-    return `${baseUrl}/register?ref=${referralCode}`;
+    return `${baseUrl}/signup?ref=${referralCode}`;
   }
 }

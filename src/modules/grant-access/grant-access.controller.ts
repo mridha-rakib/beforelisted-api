@@ -449,50 +449,6 @@ export class GrantAccessController {
     return ApiResponse.success(res, result.deletedPayment, result.message);
   });
 
-  softDeletePayment = asyncHandler(async (req: Request, res: Response) => {
-    const adminId = req.user!.userId;
-    const { paymentId } = req.params;
-    const { reason } = req.body;
-    if (!paymentId) throw new BadRequestException("Payment ID required");
-
-    const result = await this.grantAccessService.softDeleteAdminPayment(
-      paymentId,
-      adminId,
-      reason
-    );
-    return ApiResponse.success(res, result.softDeletedPayment, result.message);
-  });
-
-  bulkDeletePayments = asyncHandler(async (req: Request, res: Response) => {
-    const adminId = req.user!.userId;
-    const { paymentIds } = req.body;
-    if (!Array.isArray(paymentIds) || !paymentIds.length) {
-      throw new BadRequestException("Payment IDs array required");
-    }
-
-    const result = await this.grantAccessService.bulkDeletePayments(
-      paymentIds,
-      adminId
-    );
-    return ApiResponse.success(
-      res,
-      { deletedCount: result.deletedCount, failedCount: result.failedCount },
-      result.message
-    );
-  });
-
-  restorePayment = asyncHandler(async (req: Request, res: Response) => {
-    const adminId = req.user!.userId;
-    const { paymentId } = req.params;
-    if (!paymentId) throw new BadRequestException("Payment ID required");
-
-    const result = await this.grantAccessService.restoreDeletedPayment(
-      paymentId,
-      adminId
-    );
-    return ApiResponse.success(res, result.restoredPayment, result.message);
-  });
-
   getPaymentDeletionHistory = asyncHandler(
     async (req: Request, res: Response) => {
       const { paymentId } = req.params;
@@ -507,6 +463,109 @@ export class GrantAccessController {
       );
     }
   );
+
+  /**
+   * GET /admin/income/monthly
+   * Get monthly income breakdown for all months
+   */
+  getMonthlyIncome = asyncHandler(async (req: Request, res: Response) => {
+    const adminId = req.user!.userId;
+    const { year } = req.query;
+
+    logger.info({ adminId, year }, "Admin viewing monthly income");
+
+    const yearNum = year ? parseInt(year as string) : undefined;
+    const data =
+      await this.grantAccessService.getMonthlyIncomeAnalytics(yearNum);
+
+    logger.info({ adminId }, "Monthly income data retrieved");
+
+    return ApiResponse.success(
+      res,
+      data,
+      "Monthly income retrieved successfully"
+    );
+  });
+
+  /**
+   * GET /admin/income/monthly/:year/:month
+   * Get detailed income for specific month
+   */
+  getMonthlyIncomeDetail = asyncHandler(async (req: Request, res: Response) => {
+    const adminId = req.user!.userId;
+    const { year, month } = req.params;
+
+    logger.info(
+      { adminId, year, month },
+      "Admin viewing monthly income detail"
+    );
+
+    if (!year || !month) {
+      throw new BadRequestException("Year and month are required");
+    }
+
+    const data = await this.grantAccessService.getMonthlyIncomeDetail(
+      parseInt(year),
+      parseInt(month)
+    );
+
+    logger.info({ adminId, year, month }, "Monthly income detail retrieved");
+
+    return ApiResponse.success(
+      res,
+      data,
+      `Income details for ${data.monthName}`
+    );
+  });
+
+  /**
+   * GET /admin/income/range
+   * Get income for date range
+   */
+  getIncomeByRange = asyncHandler(async (req: Request, res: Response) => {
+    const adminId = req.user!.userId;
+    const { startDate, endDate } = req.query;
+
+    logger.info({ adminId, startDate, endDate }, "Admin viewing income range");
+
+    if (!startDate || !endDate) {
+      throw new BadRequestException("startDate and endDate are required");
+    }
+
+    const data = await this.grantAccessService.getIncomeByDateRange(
+      startDate as string,
+      endDate as string
+    );
+
+    logger.info({ adminId }, "Income range retrieved");
+
+    return ApiResponse.success(
+      res,
+      data,
+      "Income range retrieved successfully"
+    );
+  });
+
+  /**
+   * GET /admin/income/year/:year
+   * Get yearly income breakdown
+   */
+  getYearlyIncome = asyncHandler(async (req: Request, res: Response) => {
+    const adminId = req.user!.userId;
+    const { year } = req.params;
+
+    logger.info({ adminId, year }, "Admin viewing yearly income");
+
+    if (!year) {
+      throw new BadRequestException("Year is required");
+    }
+
+    const data = await this.grantAccessService.getYearlyIncome(parseInt(year));
+
+    logger.info({ adminId, year }, "Yearly income retrieved");
+
+    return ApiResponse.success(res, data, `Income for ${year}`);
+  });
 }
 
 export default GrantAccessController;

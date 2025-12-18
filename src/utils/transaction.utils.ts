@@ -21,8 +21,3 @@ export class TransactionHelper {
     }
   }
 }
-
-// Usage:
-// const result = await TransactionHelper.withTransaction(async (session) => {
-//   // Multi-step operation
-// });

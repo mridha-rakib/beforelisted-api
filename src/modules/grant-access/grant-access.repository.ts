@@ -317,60 +317,211 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
     return deleted as IGrantAccessRequest | null;
   }
 
-  async deleteMultiplePayments(paymentIds: string[]): Promise<number> {
-    const result = await this.model.deleteMany({ _id: { $in: paymentIds } });
-    return result.deletedCount || 0;
-  }
-
-  async softDeletePayment(
-    paymentId: string,
-    deletedBy: string,
-    reason?: string
-  ): Promise<IGrantAccessRequest | null> {
-    const updated = await this.model
-      .findByIdAndUpdate(
-        paymentId,
-        {
-          $set: {
-            isDeleted: true,
-            deletedAt: new Date(),
-            deletedBy,
-            deleteReason: reason || "No reason provided",
-            updatedAt: new Date(),
-          },
-        },
-        { new: true }
-      )
-      .lean()
-      .exec();
-    return updated as IGrantAccessRequest | null;
-  }
-
-  async restorePayment(paymentId: string): Promise<IGrantAccessRequest | null> {
-    const restored = await this.model
-      .findByIdAndUpdate(
-        paymentId,
-        {
-          $set: {
-            isDeleted: false,
-            deletedAt: null,
-            deletedBy: null,
-            deleteReason: null,
-            updatedAt: new Date(),
-          },
-        },
-        { new: true }
-      )
-      .lean()
-      .exec();
-    return restored as IGrantAccessRequest | null;
-  }
-
   async getPaymentDeletionHistory(paymentId: string): Promise<any> {
     return await this.model
       .findById(paymentId)
       .select("isDeleted deletedAt deletedBy deleteReason")
       .lean()
       .exec();
+  }
+
+  /**
+   * Get monthly income breakdown
+   */
+  async getMonthlyIncome(year?: number): Promise<any[]> {
+    const startYear = year || new Date().getFullYear();
+    const startDate = new Date(`${startYear}-01-01`);
+    const endDate = new Date(`${startYear}-12-31T23:59:59`);
+
+    const results = await this.model.aggregate([
+      {
+        $match: {
+          "payment.paymentStatus": "succeeded",
+          "payment.succeededAt": { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$payment.succeededAt" },
+            month: { $month: "$payment.succeededAt" },
+          },
+          totalRevenue: { $sum: "$payment.amount" },
+          paymentCount: { $sum: 1 },
+          averagePayment: { $avg: "$payment.amount" },
+        },
+      },
+      {
+        $sort: { "_id.year": -1, "_id.month": -1 },
+      },
+    ]);
+
+    return results.map((item: any) => ({
+      month: `${item._id.year}-${String(item._id.month).padStart(2, "0")}`,
+      monthName: new Date(item._id.year, item._id.month - 1).toLocaleDateString(
+        "en-US",
+        { month: "long", year: "numeric" }
+      ),
+      totalRevenue: item.totalRevenue,
+      paymentCount: item.paymentCount,
+      averagePayment: Math.round(item.averagePayment * 100) / 100,
+      currency: "USD",
+    }));
+  }
+
+  /**
+   * Get income for specific month with daily breakdown
+   */
+  async getMonthlyIncomeDetail(year: number, month: number): Promise<any> {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    const monthlyData = await this.model.aggregate([
+      {
+        $match: {
+          "payment.paymentStatus": "succeeded",
+          "payment.succeededAt": { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$payment.amount" },
+          paymentCount: { $sum: 1 },
+          averagePayment: { $avg: "$payment.amount" },
+        },
+      },
+    ]);
+
+    const dailyData = await this.model.aggregate([
+      {
+        $match: {
+          "payment.paymentStatus": "succeeded",
+          "payment.succeededAt": { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$payment.succeededAt" },
+          },
+          revenue: { $sum: "$payment.amount" },
+          paymentCount: { $sum: 1 },
+          agentCount: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { _id: 1 },
+      },
+    ]);
+
+    const data = monthlyData[0] || {
+      totalRevenue: 0,
+      paymentCount: 0,
+      averagePayment: 0,
+    };
+
+    return {
+      month: `${year}-${String(month).padStart(2, "0")}`,
+      monthName: new Date(year, month - 1).toLocaleDateString("en-US", {
+        month: "long",
+      }),
+      totalRevenue: data.totalRevenue,
+      paymentCount: data.paymentCount,
+      averagePayment: Math.round(data.averagePayment * 100) / 100,
+      currency: "USD",
+      details: dailyData,
+    };
+  }
+
+  /**
+   * Get income for date range
+   */
+  async getIncomeByDateRange(startDate: Date, endDate: Date): Promise<any> {
+    const results = await this.model.aggregate([
+      {
+        $match: {
+          "payment.paymentStatus": "succeeded",
+          "payment.succeededAt": { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$payment.succeededAt" },
+            month: { $month: "$payment.succeededAt" },
+          },
+          totalRevenue: { $sum: "$payment.amount" },
+          paymentCount: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { "_id.year": 1, "_id.month": 1 },
+      },
+    ]);
+
+    const totalRevenue = results.reduce(
+      (sum: number, item: any) => sum + item.totalRevenue,
+      0
+    );
+
+    return {
+      startDate,
+      endDate,
+      totalRevenue,
+      totalPayments: results.reduce(
+        (sum: number, item: any) => sum + item.paymentCount,
+        0
+      ),
+      monthCount: results.length,
+      averagePerMonth:
+        results.length > 0
+          ? Math.round((totalRevenue / results.length) * 100) / 100
+          : 0,
+      months: results.map((item: any) => ({
+        month: `${item._id.year}-${String(item._id.month).padStart(2, "0")}`,
+        monthName: new Date(
+          item._id.year,
+          item._id.month - 1
+        ).toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+        totalRevenue: item.totalRevenue,
+        paymentCount: item.paymentCount,
+      })),
+    };
+  }
+
+  /**
+   * Get yearly income breakdown
+   */
+  async getYearlyIncome(year: number): Promise<any> {
+    const startDate = new Date(`${year}-01-01`);
+    const endDate = new Date(`${year}-12-31T23:59:59`);
+
+    const yearlyData = await this.model.aggregate([
+      {
+        $match: {
+          "payment.paymentStatus": "succeeded",
+          "payment.succeededAt": { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$payment.amount" },
+          paymentCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const monthlyData = await this.getMonthlyIncome(year);
+
+    const data = yearlyData[0] || { totalRevenue: 0, paymentCount: 0 };
+
+    return {
+      year,
+      totalRevenue: data.totalRevenue,
+      totalPayments: data.paymentCount,
+      monthlyBreakdown: monthlyData,
+    };
   }
 }

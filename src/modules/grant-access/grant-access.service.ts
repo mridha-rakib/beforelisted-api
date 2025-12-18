@@ -321,82 +321,82 @@ export class GrantAccessService {
     };
   }
 
-  async softDeleteAdminPayment(
-    paymentId: string,
-    adminId: string,
-    reason?: string
-  ): Promise<any> {
-    const payment = await this.grantAccessRepository.findById(paymentId);
-    if (!payment) throw new NotFoundException("Payment not found");
-
-    const softDeleted = await this.grantAccessRepository.softDeletePayment(
-      paymentId,
-      adminId,
-      reason
-    );
-    if (!softDeleted) throw new Error("Failed to soft delete");
-
-    return {
-      success: true,
-      message: "Payment soft deleted successfully",
-      softDeletedPayment: {
-        id: softDeleted._id,
-        isDeleted: true,
-        deletedAt: softDeleted.deletedAt,
-      },
-    };
-  }
-
-  async bulkDeletePayments(
-    paymentIds: string[],
-    adminId: string
-  ): Promise<any> {
-    if (!paymentIds?.length)
-      throw new BadRequestException("No payment IDs provided");
-    if (paymentIds.length > 100)
-      throw new BadRequestException("Cannot delete more than 100 at once");
-
-    const payments = await this.grantAccessRepository.find({
-      _id: { $in: paymentIds },
-    });
-    const foundCount = payments.length;
-    const missingCount = paymentIds.length - foundCount;
-
-    if (foundCount === 0) throw new NotFoundException("No payments found");
-
-    const deletedCount =
-      await this.grantAccessRepository.deleteMultiplePayments(paymentIds);
-
-    return {
-      success: true,
-      deletedCount,
-      failedCount: missingCount,
-      message: `Deleted ${deletedCount}. ${missingCount} not found.`,
-    };
-  }
-
-  async restoreDeletedPayment(
-    paymentId: string,
-    adminId: string
-  ): Promise<any> {
-    const payment = await this.grantAccessRepository.findById(paymentId);
-    if (!payment) throw new NotFoundException("Payment not found");
-    if (!payment.isDeleted)
-      throw new BadRequestException("Payment not marked as deleted");
-
-    const restored = await this.grantAccessRepository.restorePayment(paymentId);
-    if (!restored) throw new Error("Failed to restore payment");
-
-    return {
-      success: true,
-      message: "Payment restored successfully",
-      restoredPayment: { id: restored._id, isDeleted: false },
-    };
-  }
-
   async getPaymentDeletionHistory(paymentId: string): Promise<any> {
     return await this.grantAccessRepository.getPaymentDeletionHistory(
       paymentId
     );
+  }
+
+  /**
+   * Get monthly income analytics
+   */
+  async getMonthlyIncomeAnalytics(year?: number): Promise<any> {
+    logger.info({ year }, "Fetching monthly income analytics");
+
+    const monthlyData = await this.grantAccessRepository.getMonthlyIncome(year);
+
+    logger.info({ count: monthlyData.length }, "Monthly income data retrieved");
+
+    return monthlyData;
+  }
+
+  /**
+   * Get detailed income for specific month
+   */
+  async getMonthlyIncomeDetail(year: number, month: number): Promise<any> {
+    logger.info({ year, month }, "Fetching monthly income details");
+
+    if (month < 1 || month > 12) {
+      throw new BadRequestException("Month must be between 1 and 12");
+    }
+
+    const detail = await this.grantAccessRepository.getMonthlyIncomeDetail(
+      year,
+      month
+    );
+
+    logger.info({ year, month }, "Monthly income details retrieved");
+
+    return detail;
+  }
+
+  /**
+   * Get income for date range
+   */
+  async getIncomeByDateRange(startDate: string, endDate: string): Promise<any> {
+    logger.info({ startDate, endDate }, "Fetching income for date range");
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new BadRequestException("Invalid date format. Use YYYY-MM-DD");
+    }
+
+    if (start > end) {
+      throw new BadRequestException("Start date must be before end date");
+    }
+
+    const range = await this.grantAccessRepository.getIncomeByDateRange(
+      start,
+      end
+    );
+
+    logger.info({ startDate, endDate }, "Income range retrieved");
+
+    return range;
+  }
+
+  /**
+   * Get yearly income
+   */
+  async getYearlyIncome(year: number): Promise<any> {
+    logger.info({ year }, "Fetching yearly income");
+
+    const yearly = await this.grantAccessRepository.getYearlyIncome(year);
+
+    logger.info({ year }, "Yearly income retrieved");
+
+    return yearly;
   }
 }

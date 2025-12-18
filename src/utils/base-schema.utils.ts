@@ -1,4 +1,5 @@
 // file: src/utils/base-schema.utils.ts
+
 import { mongoosePaginate } from "@/config/paginate.config";
 import type { SchemaDefinition, SchemaOptions } from "mongoose";
 import { Schema } from "mongoose";

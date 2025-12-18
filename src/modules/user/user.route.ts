@@ -8,89 +8,29 @@ import { UserController } from "./user.controller";
 const router = Router();
 const userController = new UserController();
 
-/**
- * ===========================
- * USER ROUTES (Authenticated)
- * ===========================
- */
 
-/**
- * GET /user/profile
- * Get authenticated user's profile
- * Protected: Any authenticated user
- */
 router.get("/profile", authMiddleware.verifyToken, userController.getProfile);
 
-/**
- * PUT /user/profile
- * Update authenticated user's profile
- * Protected: Any authenticated user
- */
 router.put(
   "/profile",
   authMiddleware.verifyToken,
   userController.updateProfile
 );
 
-/**
- * DELETE /user
- * Delete own account (soft delete)
- * Protected: Any authenticated user
- */
 router.delete("/", authMiddleware.verifyToken, userController.deleteAccount);
 
-/**
- * ===========================
- * ADMIN ROUTES
- * ===========================
- */
+router.get(
+  "/admin/referral-link",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize(ROLES.ADMIN),
+  userController.getReferralLink
+);
 
-/**
- * GET /user/:userId
- * Get specific user by ID
- * Protected: Admin only
- */
 router.get(
   "/:userId",
   authMiddleware.verifyToken,
   authMiddleware.authorize(ROLES.ADMIN),
   userController.adminGetUser
-);
-
-/**
- * DELETE /user/:userId
- * Soft delete user
- * Protected: Admin only
- */
-router.delete(
-  "/:userId",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  userController.adminDeleteUser
-);
-
-/**
- * POST /user/:userId/restore
- * Restore soft-deleted user
- * Protected: Admin only
- */
-router.post(
-  "/:userId/restore",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  userController.adminRestoreUser
-);
-
-/**
- * DELETE /user/:userId/permanent
- * Permanently delete user (hard delete)
- * Protected: Admin only
- */
-router.delete(
-  "/:userId/permanent",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  userController.adminPermanentlyDeleteUser
 );
 
 export default router;

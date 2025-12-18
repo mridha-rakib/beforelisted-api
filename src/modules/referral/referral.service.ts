@@ -1,6 +1,6 @@
 // file: src/modules/referral/referral.service.ts
 
-import { ROLES } from "@/constants/app.constants";
+import { ROLES as RolesEnum } from "@/constants/app.constants";
 import {
   BadRequestException,
   NotFoundException,
@@ -29,7 +29,9 @@ export class ReferralService {
   async validateReferralCode(referralCode: string): Promise<IUser> {
     // Validate format
     if (!ReferralUtil.isValidCodeFormat(referralCode)) {
-      throw new BadRequestException("Invalid referral code format");
+      throw new BadRequestException(
+        "Invalid referral code format  herer............"
+      );
     }
 
     // Find user with this referral code
@@ -52,7 +54,10 @@ export class ReferralService {
     }
 
     // Verify referrer is admin or agent
-    if (referrer.role !== ROLES.ADMIN && referrer.role !== ROLES.AGENT) {
+    if (
+      referrer.role !== RolesEnum.ADMIN &&
+      referrer.role !== RolesEnum.AGENT
+    ) {
       throw new BadRequestException("Invalid referrer role");
     }
 
@@ -64,9 +69,9 @@ export class ReferralService {
    */
   async generateReferralCode(
     userId: string,
-    role: ROLES.ADMIN | ROLES.AGENT
+    role: typeof RolesEnum.ADMIN | typeof RolesEnum.AGENT
   ): Promise<string> {
-    const prefix = role === ROLES.ADMIN ? "ADM" : "AGT";
+    const prefix = role === RolesEnum.ADMIN ? "ADM" : "AGT";
     const referralCode =
       await this.userRepository.generateUniqueReferralCode(prefix);
 
@@ -111,7 +116,9 @@ export class ReferralService {
   /**
    * Extract referrer role from referral code
    */
-  extractReferrerRole(referralCode: string): ROLES.ADMIN | ROLES.AGENT | null {
+  extractReferrerRole(
+    referralCode: string
+  ): typeof RolesEnum.ADMIN | typeof RolesEnum.AGENT | null {
     return ReferralUtil.extractRoleFromCode(referralCode);
   }
 }

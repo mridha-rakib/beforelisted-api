@@ -1,6 +1,6 @@
 // file: src/modules/auth/auth.service.ts
 
-import { MESSAGES } from "@/constants/app.constants";
+import { MESSAGES, ROLES } from "@/constants/app.constants";
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import { EmailService } from "@/services/email.service";
@@ -110,6 +110,27 @@ export class AuthService {
       { userId: result.userId, userType: result.userType },
       "Email verified and user marked"
     );
+
+    if (result.userType === ROLES.AGENT) {
+      const { NotificationService } = await import(
+        "../notification/notification.service"
+      );
+      const notificationService = new NotificationService();
+
+      try {
+        await notificationService.notifyAdminsAgentPendingApproval({
+          agentId: user._id.toString(),
+          agentEmail: user.email,
+          agentName: user.fullName,
+          licenseNumber: user.referralCode || "N/A",
+        });
+      } catch (error) {
+        logger.error(
+          { error, userId: user._id },
+          "Failed to send agent approval notification"
+        );
+      }
+    }
 
     await this.emailService.sendWelcomeEmail({
       to: user.email,

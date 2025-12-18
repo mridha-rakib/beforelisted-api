@@ -14,18 +14,14 @@ export class UserRepository extends BaseRepository<IUser> {
     super(User);
   }
 
-  /**
-   * Find user by email (excludes soft-deleted)
-   */
+ 
   async findByEmail(email: string): Promise<IUser | null> {
     return this.model
       .findOne({ email: email.toLowerCase(), isDeleted: false })
       .exec();
   }
 
-  /**
-   * Find user by email with password
-   */
+  
   async findByEmailWithPassword(email: string): Promise<IUser | null> {
     return this.model
       .findOne({ email: email.toLowerCase(), isDeleted: false })
@@ -33,9 +29,6 @@ export class UserRepository extends BaseRepository<IUser> {
       .exec();
   }
 
-  /**
-   * Find user by verification token
-   */
   async findByVerificationToken(token: string): Promise<IUser | null> {
     return this.model
       .findOne({
@@ -46,26 +39,17 @@ export class UserRepository extends BaseRepository<IUser> {
       .exec();
   }
 
-  // ============================================
-  // REFERRAL-SPECIFIC METHODS
-  // ============================================
-
-  /**
-   * Find user by referral code
-   */
+ 
   async findByReferralCode(referralCode: string): Promise<IUser | null> {
     return this.model
       .findOne({
         referralCode,
         isDeleted: false,
-        role: { $in: ["Admin", "Agent"] }, // Only admin/agent have codes
+        role: { $in: ["Admin", "Agent"] }, 
       })
       .exec();
   }
 
-  /**
-   * Generate unique referral code
-   */
   async generateUniqueReferralCode(prefix: string): Promise<string> {
     const crypto = require("crypto");
     let isUnique = false;
@@ -90,9 +74,7 @@ export class UserRepository extends BaseRepository<IUser> {
     return referralCode;
   }
 
-  /**
-   * Increment referral count for admin/agent
-   */
+ 
   async incrementReferralCount(userId: string): Promise<IUser | null> {
     return this.model
       .findByIdAndUpdate(
@@ -108,9 +90,6 @@ export class UserRepository extends BaseRepository<IUser> {
       .exec();
   }
 
-  /**
-   * Update referral count (set specific value)
-   */
   async updateReferralCount(
     userId: string,
     count: number
@@ -120,9 +99,6 @@ export class UserRepository extends BaseRepository<IUser> {
       .exec();
   }
 
-  /**
-   * Get users referred by a specific user
-   */
   async getReferredUsers(referrerId: string): Promise<IUser[]> {
     return this.model
       .find({
@@ -133,9 +109,6 @@ export class UserRepository extends BaseRepository<IUser> {
       .exec();
   }
 
-  /**
-   * Count referred users
-   */
   async countReferredUsers(referrerId: string): Promise<number> {
     return this.model
       .countDocuments({
@@ -145,9 +118,6 @@ export class UserRepository extends BaseRepository<IUser> {
       .exec();
   }
 
-  // ============================================
-  // EXISTING METHODS (keeping your implementations)
-  // ============================================
 
   async findByRole(role: string): Promise<IUser[]> {
     return this.model.find({ role, isDeleted: false }).exec();
@@ -216,23 +186,6 @@ export class UserRepository extends BaseRepository<IUser> {
       .exec();
   }
 
-  async softDeleteUser(
-    userId: string,
-    deletedBy: string
-  ): Promise<IUser | null> {
-    return this.model
-      .findByIdAndUpdate(
-        userId,
-        {
-          isDeleted: true,
-          deletedAt: new Date(),
-          deletedBy,
-          accountStatus: "inactive",
-        },
-        { new: true }
-      )
-      .exec();
-  }
 
   async restoreUser(userId: string): Promise<IUser | null> {
     return this.model
@@ -267,21 +220,11 @@ export class UserRepository extends BaseRepository<IUser> {
       .exec();
   }
 
-  /**
-   * Find user by ID with password
-   * Used for password change operations
-   */
+ 
   async findByIdWithPassword(userId: string): Promise<IUser | null> {
     return this.model.findById(userId).select("+password").exec();
   }
 
-  /**
-   * Delete all refresh tokens for a user
-   * Used when user logs out or changes password
-   *
-   * @param userId - User ID
-   * @returns Number of tokens deleted
-   */
   async deleteAllRefreshTokens(userId: string): Promise<number> {
     try {
       const result = await RefreshTokenBlacklist.deleteMany({

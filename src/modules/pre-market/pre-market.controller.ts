@@ -222,19 +222,16 @@ export class PreMarketController {
       throw new ForbiddenException("Agent profile not found");
     }
 
-    // Get request - ALWAYS return it
     const request = await this.preMarketService.getRequestById(requestId);
     if (!request) {
       throw new NotFoundException("Pre-market request not found");
     }
 
-    // Check if agent can see RENTER INFO (not listing visibility)
     const accessCheck = await this.preMarketService.canAgentSeeRenterInfo(
       userId,
       requestId
     );
 
-    // Mark as viewed
     await this.preMarketRepository.addAgentToViewedBy(
       requestId,
       userId,

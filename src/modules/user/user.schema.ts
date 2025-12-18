@@ -3,9 +3,7 @@
 import { MESSAGES } from "@/constants/app.constants";
 import { z } from "zod";
 
-/**
- * Update user profile validation
- */
+
 export const updateUserSchema = z.object({
   body: z.object({
     fullName: z.string().min(2).max(100).optional(),
@@ -13,9 +11,7 @@ export const updateUserSchema = z.object({
   }),
 });
 
-/**
- * Change password validation
- */
+
 export const changePasswordSchema = z.object({
   body: z.object({
     currentPassword: z.string().min(1, "Current password is required"),
@@ -23,9 +19,6 @@ export const changePasswordSchema = z.object({
   }),
 });
 
-/**
- * Admin update user validation
- */
 export const adminUpdateUserSchema = z.object({
   body: z.object({
     fullName: z.string().min(2).max(100).optional(),
@@ -36,9 +29,6 @@ export const adminUpdateUserSchema = z.object({
   }),
 });
 
-/**
- * List users query validation
- */
 export const listUsersSchema = z.object({
   query: z.object({
     page: z.coerce.number().positive().default(1).optional(),
@@ -52,9 +42,6 @@ export const listUsersSchema = z.object({
   }),
 });
 
-/**
- * Delete user validation
- */
 export const deleteUserSchema = z.object({
   params: z.object({
     userId: z.string().min(1, "User ID is required"),

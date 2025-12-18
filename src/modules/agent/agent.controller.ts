@@ -12,10 +12,6 @@ import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 import type { NextFunction, Request, Response } from "express";
 import {
-  adminApproveAgentSchema,
-  adminSuspendAgentSchema,
-  adminUnsuspendAgentSchema,
-  adminVerifyAgentSchema,
   agentRegisterSchema,
   agentToggleActiveSchema,
   createAgentProfileSchema,
@@ -24,10 +20,6 @@ import {
 } from "./agent.schema";
 import { AgentService } from "./agent.service";
 
-/**
- * Agent Controller
- * Handles HTTP requests for agent profiles
- */
 export class AgentController {
   private service: AgentService;
 
@@ -35,10 +27,6 @@ export class AgentController {
     this.service = new AgentService();
   }
 
-  /**
-   * AGENT: Create agent profile (during signup)
-   * POST /agent
-   */
   createAgentProfile = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
       const validated = await zParse(createAgentProfileSchema, req);
@@ -53,10 +41,6 @@ export class AgentController {
     }
   );
 
-  /**
-   * AGENT: Get own profile
-   * GET /agent/profile
-   */
   getAgentProfile = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.userId;
 
@@ -65,10 +49,6 @@ export class AgentController {
     ApiResponse.success(res, result, "Agent profile retrieved successfully");
   });
 
-  /**
-   * AGENT: Update profile
-   * PUT /agent/profile
-   */
   updateAgentProfile = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
       const validated = await zParse(updateAgentProfileSchema, req);
@@ -83,11 +63,6 @@ export class AgentController {
     }
   );
 
-  /**
-   * AUTHENTICATED: Get agent referral link and statistics
-   * GET /agent/referral-link
-   * Returns: { referralCode, referralLink, totalReferrals, referredUsersCount }
-   */
   getReferralLink = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
       const userId = req.user!.userId;
@@ -179,74 +154,6 @@ export class AgentController {
   );
 
   /**
-   * ADMIN: Approve agent
-   * POST /agent/admin/:userId/approve
-   */
-  adminApproveAgent = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(adminApproveAgentSchema, req);
-      const adminId = req.user!.userId;
-
-      const result = await this.service.adminApproveAgent(
-        validated.params.userId,
-        adminId,
-        validated.body
-      );
-
-      ApiResponse.success(res, result, "Agent approved successfully");
-    }
-  );
-
-  /**
-   * ADMIN: Verify agent license
-   * POST /agent/admin/:userId/verify
-   */
-  adminVerifyAgent = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(adminVerifyAgentSchema, req);
-
-      const result = await this.service.adminVerifyAgent(
-        validated.params.userId
-      );
-
-      ApiResponse.success(res, result, "Agent license verified successfully");
-    }
-  );
-
-  /**
-   * ADMIN: Suspend agent
-   * POST /agent/admin/:userId/suspend
-   */
-  adminSuspendAgent = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(adminSuspendAgentSchema, req);
-
-      const result = await this.service.adminSuspendAgent(
-        validated.params.userId,
-        validated.body
-      );
-
-      ApiResponse.success(res, result, "Agent suspended successfully");
-    }
-  );
-
-  /**
-   * ADMIN: Unsuspend agent
-   * POST /agent/admin/:userId/unsuspend
-   */
-  adminUnsuspendAgent = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const validated = await zParse(adminUnsuspendAgentSchema, req);
-
-      const result = await this.service.adminUnsuspendAgent(
-        validated.params.userId
-      );
-
-      ApiResponse.success(res, result, "Agent unsuspended successfully");
-    }
-  );
-
-  /**
    * ADMIN: Get agent metrics
    * GET /agent/admin/metrics
    */
@@ -261,7 +168,6 @@ export class AgentController {
   /**
    * PUBLIC: Register as agent
    * POST /agent/register
-   * ✅ Set refresh token in cookie
    */
   registerAgent = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(agentRegisterSchema, req);
@@ -285,9 +191,6 @@ export class AgentController {
   });
 
   /**
-   * Toggle agent access (grant/revoke)
-   * Admin only endpoint
-   *
    * POST /agent/:agentId/toggle-access
    * Body: { reason?: string }
    */
@@ -307,13 +210,37 @@ export class AgentController {
         throw new ForbiddenException("Only admins can toggle agent access");
       }
 
-      // Validate agent ID
       if (!agentId || agentId.trim() === "") {
         throw new BadRequestException("Agent ID is required");
       }
 
-      // Toggle access
       const result = await this.service.toggleAccess(agentId, adminId, reason);
+
+      // ============ ADD THIS BLOCK ============
+      const { NotificationService } = await import(
+        "../notification/notification.service"
+      );
+      const notificationService = new NotificationService();
+
+      try {
+        const user = await this.userService.getById(agentId);
+        if (result.hasGrantAccess) {
+          await notificationService.notifyAgentAccessGranted({
+            agentId: user._id.toString(),
+            agentName: user.fullName,
+            grantedBy: adminId,
+          });
+        } else {
+          await notificationService.notifyAgentAccessRevoked({
+            agentId: user._id.toString(),
+            agentName: user.fullName,
+            reason,
+          });
+        }
+      } catch (error) {
+        logger.error({ error, agentId }, "Failed to send access notification");
+      }
+      // ============ END ADD ============
 
       // Return response
       ApiResponse.success(
@@ -332,7 +259,6 @@ export class AgentController {
   /**
    * Get agent access status
    * Admin only endpoint
-   *
    * GET /agent/:agentId/access-status
    */
   getAccessStatus = asyncHandler(
@@ -340,7 +266,6 @@ export class AgentController {
       const { agentId } = req.params;
       const userRole = req.user!.role;
 
-      // Verify admin role
       if (userRole !== ROLES.ADMIN) {
         throw new ForbiddenException(
           "Only admins can view agent access status"
@@ -351,7 +276,6 @@ export class AgentController {
         throw new BadRequestException("Agent ID is required");
       }
 
-      // Get status
       const status = await this.service.getAccessStatus(agentId);
 
       ApiResponse.success(
@@ -369,8 +293,6 @@ export class AgentController {
   /**
    * ADMIN: Toggle agent active/deactive status
    * POST /agent/admin/:userId/toggle-active
-   *
-   * Automatically switches isActive between true and false
    */
   toggleAgentActive = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(agentToggleActiveSchema, req);
@@ -399,17 +321,6 @@ export class AgentController {
     ApiResponse.success(res, result, "Activation history retrieved");
   });
 
-  /**
-   * ADMIN: Get agent data via xl sheet
-   * GET /agent/admin/excel-download
-   */
-  /**
-   * ✅ COMPLETE FIX: Download Agent Excel
-   * Location: agent.controller.ts, lines ~434-440
-   *
-   * GET /agent/admin/excel-download
-   * Returns: .xlsx file as downloadable attachment
-   */
   downloadAgentConsolidatedExcel = asyncHandler(
     async (req: Request, res: Response) => {
       const adminId = req.user!.userId;

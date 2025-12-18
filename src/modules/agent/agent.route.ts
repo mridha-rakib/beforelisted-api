@@ -39,13 +39,13 @@ router.put(
 );
 
 /**
- * ✅ NEW: GET /agent/referral-link
+ * NEW: GET /agent/referral-link
  * Get agent's referral code and link
  */
 router.get(
   "/referral-link",
   authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.AGENT, ROLES.AGENT),
+  authMiddleware.authorize(ROLES.AGENT),
   controller.getReferralLink
 );
 
@@ -63,17 +63,6 @@ router.get(
   authMiddleware.authorize(ROLES.ADMIN),
   controller.adminGetAllAgents
 );
-
-/**
- * GET /agent/admin/metrics
- * Get agent metrics (admin only)
- */
-// router.get(
-//   "/admin/metrics",
-//   authMiddleware.verifyToken,
-//   authMiddleware.authorize(ROLES.ADMIN),
-//   controller.adminGetMetrics
-// );
 
 /**
  * GET /agent/admin/excel-download
@@ -99,39 +88,6 @@ router.get(
 );
 
 /**
- * POST /agent/admin/approve/:userId
- * Approve agent (admin only)
- */
-router.post(
-  "/admin/approve/:userId",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  controller.adminApproveAgent
-);
-
-/**
- * POST /agent/admin/verify/:userId
- * Verify agent (admin only)
- */
-router.post(
-  "/admin/verify/:userId",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  controller.adminVerifyAgent
-);
-
-/**
- * POST /agent/admin/suspend/:userId
- * Suspend agent (admin only)
- */
-router.post(
-  "/admin/suspend/:userId",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  controller.adminSuspendAgent
-);
-
-/**
  * Toggle agent access
  * POST /agent/:agentId/toggle-access
  * Admin only
@@ -139,6 +95,7 @@ router.post(
 router.post(
   "/:agentId/toggle-access",
   authMiddleware.verifyToken,
+  authMiddleware.authorize(ROLES.ADMIN),
   controller.toggleAccess
 );
 
@@ -150,12 +107,13 @@ router.post(
 router.get(
   "/:agentId/access-status",
   authMiddleware.verifyToken,
+  authMiddleware.authorize(ROLES.ADMIN),
   controller.getAccessStatus
 );
 
 /**
  * POST /agent/admin/:userId/toggle-active
- * Toggle agent active/deactive (automatic switch)
+ * Toggle agent active/deactivate (automatic switch)
  */
 router.post(
   "/admin/:userId/toggle-active",

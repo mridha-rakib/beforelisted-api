@@ -82,16 +82,6 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
     min: 0,
   },
 
-  /**
-   * Conversion rate: (activeReferrals / totalRentersReferred) * 100
-   */
-  referralConversionRate: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 100,
-  },
-
   // ============================================
   // ACCESS MANAGEMENT
   // ============================================
@@ -144,27 +134,10 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
     default: 0,
   },
   avgResponseTime: Number,
-
-  profileCompleteness: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 100,
-  },
 });
 
-// ============================================
-// INDEXES
-// ============================================
-
-agentProfileSchema.index({ userId: 1, isVerified: 1 });
-agentProfileSchema.index({ isApprovedByAdmin: 1, isSuspended: 1 });
 agentProfileSchema.index({ createdAt: -1 });
 agentProfileSchema.index({ totalRentersReferred: -1 }); // Leaderboard
-
-// ============================================
-// MIDDLEWARE
-// ============================================
 
 /**
  * Auto-populate userId with user details

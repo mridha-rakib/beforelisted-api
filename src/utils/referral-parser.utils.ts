@@ -1,13 +1,8 @@
 // File: src/utils/referral-parser.utils.ts
-/**
- * Referral Code Parser
- */
 
 import { ROLES } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
-// ============================================
-// TYPES
-// ============================================
+
 export type ReferralType = "normal" | "agent_referral" | "admin_referral";
 
 export type ReferralPrefix = "AGT" | "ADM";
@@ -31,13 +26,6 @@ export interface ReferralValidationResult {
 // REFERRAL PARSER (REUSABLE)
 // ============================================
 
-/**
- * ReferralParser
- * ✅ Single Responsibility: Parse referral codes
- * ✅ Used by: RenterService, AgentService
- * ✅ No side effects - pure utility
- */
-
 export class ReferralParser {
   private static readonly PREFIX_MAP: Record<ReferralPrefix, ReferralType> = {
     AGT: "agent_referral",
@@ -53,8 +41,8 @@ export class ReferralParser {
 
   /**
    * Parse referral code from query parameter
-   * ✅ Returns typed ParsedReferral
-   * ✅ Handles: undefined, invalid, valid codes
+   * Returns typed ParsedReferral
+   * Handles: undefined, invalid, valid codes
    *
    * @param referralCode - Query param value (undefined or string)
    * @returns ParsedReferral with type and validation status
@@ -68,7 +56,6 @@ export class ReferralParser {
       };
     }
 
-    // Case 2: Try to extract prefix
     const prefixMatch = referralCode.match(this.PREFIX_PATTERN);
     if (!prefixMatch) {
       logger.warn({ code: referralCode }, "Invalid referral code format");
@@ -82,7 +69,6 @@ export class ReferralParser {
     const prefix = prefixMatch[1] as ReferralPrefix;
     const registrationType = this.PREFIX_MAP[prefix];
 
-    // Case 3: Valid prefix but invalid full format
     if (!this.CODE_PATTERN.test(referralCode)) {
       logger.warn(
         { code: referralCode, prefix },
@@ -96,7 +82,6 @@ export class ReferralParser {
       };
     }
 
-    // Case 4: Valid referral code
     logger.debug(
       { code: referralCode, type: registrationType },
       "Referral code parsed successfully"
@@ -111,8 +96,6 @@ export class ReferralParser {
 
   /**
    * Extract prefix from code (no validation)
-   * ✅ Pure utility for prefix extraction
-   *
    * @param code - Referral code
    * @returns Prefix or null
    */
@@ -123,8 +106,6 @@ export class ReferralParser {
 
   /**
    * Check if code is agent referral
-   * ✅ Type guard for agent referrals
-   *
    * @param referralCode - Code to check
    * @returns boolean
    */
@@ -135,8 +116,6 @@ export class ReferralParser {
 
   /**
    * Check if code is admin referral (passwordless)
-   * ✅ Type guard for admin referrals
-   *
    * @param referralCode - Code to check
    * @returns boolean
    */
@@ -184,8 +163,6 @@ export class ReferralParser {
 
   /**
    * Get registration type name for logging/display
-   * ✅ Human-readable type names
-   *
    * @param type - ReferralType
    * @returns Display name
    */
@@ -200,8 +177,6 @@ export class ReferralParser {
 
   /**
    * Get role from referral code
-   * ✅ Maps to ROLES constant
-   *
    * @param code - Referral code
    * @returns ROLES.ADMIN | ROLES.AGENT | null
    */

@@ -113,7 +113,7 @@ export const renterRegisterSchema = z.object({
       if (data.referralCode) {
         const validation = ReferralParser.validate(data.referralCode);
 
-        logger.warn(validation, "Validation debuging.");
+        logger.warn(validation, "Validation debugging.");
         if (!validation.isValid) {
           ctx.addIssue({
             code: "custom",

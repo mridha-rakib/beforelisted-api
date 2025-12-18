@@ -1,14 +1,14 @@
 // file: src/modules/notice/notice.model.ts
 
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Document, Schema, Types } from "mongoose";
 
 export interface INotice extends Document {
-  _id: mongoose.Types.ObjectId;
+  _id: Types.ObjectId;
 
   content: string;
   isActive: boolean;
-  createdBy: mongoose.Types.ObjectId;
-  updatedBy?: mongoose.Types.ObjectId;
+  createdBy: Types.ObjectId;
+  updatedBy?: Types.ObjectId;
   updatedAt: Date;
 }
 

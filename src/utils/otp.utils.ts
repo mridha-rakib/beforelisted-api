@@ -1,13 +1,9 @@
 // file: src/utils/otp.utils.ts
 
-/**
- * OTP Configuration Interface
- * Customizable for different use cases
- */
 export interface IOTPConfig {
-  length: number; // OTP length in digits (default: 4)
-  expiryMinutes: number; // Expiry time in minutes (default: 10)
-  allowDuplicates: boolean; // Allow same OTP to be generated twice (default: false)
+  length: number;
+  expiryMinutes: number;
+  allowDuplicates: boolean;
 }
 
 /**
@@ -15,20 +11,20 @@ export interface IOTPConfig {
  * Standard response structure
  */
 export interface IOTPResult {
-  code: string; // 4-digit OTP code
-  expiresAt: Date; // Expiration timestamp
-  expiresInSeconds: number; // TTL in seconds
-  createdAt: Date; // Creation timestamp
+  code: string;
+  expiresAt: Date;
+  expiresInSeconds: number;
+  createdAt: Date;
 }
 
 /**
  * OTP Validation Result Interface
  */
 export interface IOTPValidationResult {
-  isValid: boolean; // Validation status
-  message: string; // Validation message
-  isExpired?: boolean; // Whether OTP is expired
-  remainingSeconds?: number; // Seconds until expiration
+  isValid: boolean;
+  message: string;
+  isExpired?: boolean;
+  remainingSeconds?: number;
 }
 
 /**
@@ -47,34 +43,9 @@ export class OTPUtil {
     allowDuplicates: false,
   };
 
-  /**
-   * Track recently generated OTPs to prevent duplicates
-   * Key: module/purpose, Value: Set of recent OTPs
-   * (In production, use Redis or database for persistence)
-   */
   private static readonly recentOTPs = new Map<string, Set<string>>();
-  private static readonly MAX_RECENT_OTPS = 100; // Keep track of last 100 OTPs per module
+  private static readonly MAX_RECENT_OTPS = 100;
 
-  /**
-   * Generate a 4-digit OTP (1000-9999)
-   *
-   * @param config - Optional configuration override
-   * @param moduleKey - Unique key for the calling module (for duplicate prevention)
-   * @returns IOTPResult with OTP code and expiration details
-   *
-   * @example
-   * // Simple usage - Email Verification
-   * const otp = OTPUtil.generate({ expiryMinutes: 10 });
-   * console.log(otp.code); // "4567"
-   * console.log(otp.expiresAt); // Date object
-   *
-   * @example
-   * // With module tracking - Forgot Password
-   * const otp = OTPUtil.generate(
-   *   { expiryMinutes: 5, allowDuplicates: false },
-   *   "FORGOT_PASSWORD"
-   * );
-   */
   static generate(
     config?: Partial<IOTPConfig>,
     moduleKey?: string
@@ -87,7 +58,7 @@ export class OTPUtil {
 
     let otp: string;
     let attempts = 0;
-    const maxAttempts = 100; // Prevent infinite loops
+    const maxAttempts = 5;
 
     // Generate OTP with duplicate prevention
     do {
@@ -99,14 +70,12 @@ export class OTPUtil {
         break;
       }
 
-      // Check if OTP was recently generated
       const recentSet = OTPUtil.recentOTPs.get(moduleKey);
       if (!recentSet || !recentSet.has(otp)) {
         break;
       }
     } while (attempts < maxAttempts);
 
-    // Track OTP if module key provided
     if (moduleKey) {
       OTPUtil.trackOTP(moduleKey, otp);
     }
@@ -126,59 +95,11 @@ export class OTPUtil {
     };
   }
 
-  /**
-   * Generate a 6-digit OTP (100000-999999)
-   * Useful for higher security scenarios (SMS, 2FA)
-   *
-   * @param expiryMinutes - Expiration time in minutes
-   * @returns IOTPResult with 6-digit OTP
-   *
-   * @example
-   * const otp = OTPUtil.generate6Digit(15);
-   * console.log(otp.code); // "456789"
-   */
-  static generate6Digit(expiryMinutes: number = 10): IOTPResult {
-    return OTPUtil.generate({ length: 6, expiryMinutes });
-  }
-
-  /**
-   * Generate an 8-digit OTP (10000000-99999999)
-   * Maximum security OTP
-   *
-   * @param expiryMinutes - Expiration time in minutes
-   * @returns IOTPResult with 8-digit OTP
-   *
-   * @example
-   * const otp = OTPUtil.generate8Digit(5);
-   * console.log(otp.code); // "45678901"
-   */
-  static generate8Digit(expiryMinutes: number = 10): IOTPResult {
-    return OTPUtil.generate({ length: 8, expiryMinutes });
-  }
-
-  /**
-   * Validate OTP
-   * Checks format, value range, and expiration
-   *
-   * @param otp - OTP code to validate
-   * @param expiresAt - Expiration timestamp
-   * @param expectedLength - Expected OTP length (default: 4)
-   * @returns IOTPValidationResult
-   *
-   * @example
-   * const result = OTPUtil.validate("1234", expiresAt);
-   * if (result.isValid) {
-   *   console.log("OTP is valid");
-   * } else {
-   *   console.log(result.message); // "OTP has expired"
-   * }
-   */
   static validate(
     otp: string,
     expiresAt: Date,
     expectedLength: number = 4
   ): IOTPValidationResult {
-    // Check if OTP exists
     if (!otp) {
       return {
         isValid: false,
@@ -186,7 +107,6 @@ export class OTPUtil {
       };
     }
 
-    // Check format - must be numeric
     if (!/^\d+$/.test(otp)) {
       return {
         isValid: false,
@@ -194,7 +114,6 @@ export class OTPUtil {
       };
     }
 
-    // Check length
     if (otp.length !== expectedLength) {
       return {
         isValid: false,
@@ -227,50 +146,16 @@ export class OTPUtil {
     };
   }
 
-  /**
-   * Get remaining time for OTP (in seconds)
-   *
-   * @param expiresAt - Expiration timestamp
-   * @returns Remaining seconds, or 0 if expired
-   *
-   * @example
-   * const remaining = OTPUtil.getRemainingSeconds(expiresAt);
-   * console.log(`OTP expires in ${remaining} seconds`);
-   */
   static getRemainingSeconds(expiresAt: Date): number {
     const now = new Date();
     const remaining = Math.floor((expiresAt.getTime() - now.getTime()) / 1000);
     return Math.max(0, remaining);
   }
 
-  /**
-   * Check if OTP is expired
-   *
-   * @param expiresAt - Expiration timestamp
-   * @returns true if expired, false otherwise
-   *
-   * @example
-   * if (OTPUtil.isExpired(expiresAt)) {
-   *   console.log("Please request a new OTP");
-   * }
-   */
   static isExpired(expiresAt: Date): boolean {
     return new Date() > expiresAt;
   }
 
-  /**
-   * Clear expired OTPs from tracking (call periodically in production)
-   *
-   * @param moduleKey - Module key to clear, or undefined to clear all
-   *
-   * @example
-   * // Clear all OTPs for a specific module
-   * OTPUtil.clearOTPs("EMAIL_VERIFICATION");
-   *
-   * @example
-   * // Clear all tracked OTPs
-   * OTPUtil.clearOTPs();
-   */
   static clearOTPs(moduleKey?: string): void {
     if (moduleKey) {
       OTPUtil.recentOTPs.delete(moduleKey);
@@ -279,21 +164,6 @@ export class OTPUtil {
     }
   }
 
-  /**
-   * Get OTP statistics (for monitoring/debugging)
-   *
-   * @returns Statistics object with module keys and OTP counts
-   *
-   * @example
-   * const stats = OTPUtil.getStats();
-   * console.log(stats);
-   * // {
-   * //   totalModules: 3,
-   * //   EMAIL_VERIFICATION: 45,
-   * //   FORGOT_PASSWORD: 12,
-   * //   ...
-   * // }
-   */
   static getStats(): Record<string, number> {
     const stats: Record<string, number> = { totalModules: 0 };
     OTPUtil.recentOTPs.forEach((otpSet, moduleKey) => {
@@ -303,14 +173,6 @@ export class OTPUtil {
     return stats;
   }
 
-  // ============================================
-  // PRIVATE HELPER METHODS
-  // ============================================
-
-  /**
-   * Generate random OTP of specified length
-   * @private
-   */
   private static generateRandomOTP(length: number): string {
     const min = Math.pow(10, length - 1); // 10^(length-1)
     const max = Math.pow(10, length) - 1; // 10^length - 1
@@ -354,24 +216,10 @@ export class OTPUtil {
   }
 }
 
-// ============================================
-// CONVENIENCE EXPORTS
-// ============================================
-
-/**
- * Quick generate function (default 4-digit OTP, 10 min expiry)
- * @example
- * const otp = generateOTP();
- */
 export function generateOTP(): IOTPResult {
   return OTPUtil.generate();
 }
 
-/**
- * Quick validate function
- * @example
- * const result = validateOTP("1234", expiresAt);
- */
 export function validateOTP(
   otp: string,
   expiresAt: Date,
