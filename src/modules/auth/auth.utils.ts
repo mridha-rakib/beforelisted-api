@@ -6,17 +6,12 @@ import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
 import type { JWTPayload } from "../user/user.type";
 
-/**
 
-Auth Utilities
 
-Handles JWT tokens, OTP generation, and related security functions
-//*Generate Access Token
-*/
 export class AuthUtil {
   static generateAccessToken(payload: JWTPayload): string {
     return jwt.sign(payload, env.JWT_SECRET, {
-      expiresIn: JWT.ACCESS_EXPIRY,
+      expiresIn: JWT.ACCESS_EXPIRY as any,
     });
   }
 
@@ -26,7 +21,7 @@ Generate Refresh Token
 */
   static generateRefreshToken(userId: string): string {
     return jwt.sign({ userId }, env.JWT_REFRESH_SECRET, {
-      expiresIn: JWT.REFRESH_EXPIRY,
+      expiresIn: JWT.REFRESH_EXPIRY as any,
     });
   }
 
@@ -82,23 +77,7 @@ Generate OTP (4 digits)
     return Math.floor(Math.random() * (max - min + 1) + min).toString();
   }
 
-  /**
 
-Generate Random Password
-/
-static generateRandomPassword(length: number = 16): string {
-const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&';
-let password = '';
-for (let i = 0; i < length; i++) {
-password += chars.charAt(Math.floor(Math.random() * chars.length));
-}
-return password;
-}
-
-/**
-
-Generate Referral Code
-*/
   static generateReferralCode(prefix: string): string {
     const randomPart = uuidv4()
       .replace(/-/g, "")
@@ -118,18 +97,15 @@ Generate Referral URL Slug
     return `${slug}-${uuidv4().substring(0, 8)}`;
   }
 
-  /**
 
-Calculate token expiration time
-*/
   static getTokenExpirationTime(expiryString: string): Date {
     const expiryDate = new Date();
     const match = expiryString.match(/(\d+)([dhms])/);
     if (!match) return expiryDate;
 
-    const value = parseInt(match);
+    const value = parseInt(match[1]);
 
-    const unit = match;
+    const unit = match[2];
 
     switch (unit) {
       case "d":
@@ -149,67 +125,36 @@ Calculate token expiration time
     return expiryDate;
   }
 
-  /**
 
-Calculate OTP expiration time (10 minutes)
-*/
   static getOTPExpirationTime(): Date {
     const expiryDate = new Date();
     expiryDate.setMinutes(expiryDate.getMinutes() + OTP.EXPIRY_MINUTES);
     return expiryDate;
   }
 
-  /**
 
-Calculate referral code expiration time (30 days)
-*/
   static getReferralCodeExpirationTime(): Date {
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + REFERRAL_CODE.EXPIRY_DAYS!);
     return expiryDate;
   }
 
-  /**
-
-Verify email format
-*/
   static isValidEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+.[^\s@]+$/;
     return emailRegex.test(email);
   }
 
-  /**
 
-Validate password strength
-
-Requirements: min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
-/
-static isStrongPassword(password: string): boolean {
-const strongPasswordRegex =
-/^(?=.[a-z])(?=.[A-Z])(?=.\d)(?=.[@$!%?&])[A-Za-z\d@$!%*?&]{8,}$/;
-return strongPasswordRegex.test(password);
-}
-
-/**
-
-Generate verification link
-*/
   static generateVerificationLink(baseURL: string, token: string): string {
     return `${baseURL}/api/v1/auth/verify-email?token=${token}`;
   }
 
-  /**
 
-Generate password reset link
-*/
   static generatePasswordResetLink(baseURL: string, token: string): string {
     return `${baseURL}/api/v1/auth/reset-password?token=${token}`;
   }
 
-  /**
 
-Generate admin referral link
-*/
   static generateAdminReferralLink(
     baseURL: string,
     referralSlug: string
@@ -217,10 +162,6 @@ Generate admin referral link
     return `${baseURL}/auth/register?ref=${referralSlug}`;
   }
 
-  /**
-
-Generate agent referral link
-*/
   static generateAgentReferralLink(
     baseURL: string,
     referralCode: string

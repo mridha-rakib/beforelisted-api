@@ -75,17 +75,16 @@ export type AdminUpdateUserPayload = {
   phoneNumber?: string;
   phone?: string;
   email?: string;
-  accountStatus?: "active" | "suspended" | "inactive" | "pending";
+  accountStatus?: "active" | "inactive" | "pending";
   role?: "admin" | "agent" | "renter";
 };
 
-/**
- * JWT Payload
- */
 export type JWTPayload = {
   userId: string;
   email: string;
   role: string;
+  accountStatus: string;
+  emailVerified?: boolean;
   iat?: number;
   exp?: number;
 };

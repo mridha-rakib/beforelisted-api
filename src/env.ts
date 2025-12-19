@@ -93,10 +93,8 @@ const envSchema = z.object({
       message: "MAX_PDF_SIZE must be a valid number",
     }),
 
-  //  firebase fcm config
-  FIREBASE_PROJECT_ID: z.string().nonempty("Firebase project ID required."),
-  FIREBASE_PRIVATE_KEY: z.string().nonempty("Firebase private key required."),
-  FIREBASE_CLIENT_EMAIL: z.email().nonempty("Firebase client email required."),
+  // Admin email
+   ADMIN_EMAIL: z.email().nonempty("Admin email is required."),
 
   //  STRIPE CREDENTIALS
   STRIPE_SECRET_KEY: z.string().nonempty("Stripe secret key is required."),

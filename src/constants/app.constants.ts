@@ -15,7 +15,6 @@ export const ROLES = {
 export const ACCOUNT_STATUS = {
   PENDING: "pending",
   ACTIVE: "active",
-  SUSPENDED: "suspended",
   INACTIVE: "inactive",
 } as const;
 

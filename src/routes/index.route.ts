@@ -4,6 +4,7 @@ import faqRouter from "@/modules/faq/faq.route";
 import fileRouter from "@/modules/file/file.route";
 import grantAccessRouter from "@/modules/grant-access/grant-access.route";
 import noticeRouter from "@/modules/notice/notice.route";
+import notificationRouter from "@/modules/notification/notification.route";
 import preMarketRouter from "@/modules/pre-market/pre-market.route";
 import renterRouter from "@/modules/renter/renter.route";
 import userRouter from "@/modules/user/user.route";
@@ -48,6 +49,10 @@ const moduleRoutes = [
   {
     path: "/grant-access",
     route: grantAccessRouter,
+  },
+  {
+    path: "/notifications",
+    route: notificationRouter,
   },
 ];
 

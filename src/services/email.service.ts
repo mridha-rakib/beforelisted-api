@@ -54,43 +54,6 @@ export class EmailService {
     }
   }
 
-  // private normalizeUserType(
-  //   userType: string | undefined
-  // ): "Agent" | "Renter" | "Admin" | undefined {
-  //   if (!userType) return undefined;
-
-  //   const normalized = userType.trim();
-  //   if (
-  //     normalized === "Agent" ||
-  //     normalized === "Renter" ||
-  //     normalized === "Admin"
-  //   ) {
-  //     return normalized as "Agent" | "Renter" | "Admin";
-  //   }
-
-  //   logger.warn(
-  //     { userType, normalized },
-  //     "Unknown userType - defaulting to undefined"
-  //   );
-  //   return undefined;
-  // }
-
-  // private normalizeWelcomeUserType(
-  //   userType: string | undefined
-  // ): "Agent" | "Renter" {
-  //   if (!userType) return "Renter";
-
-  //   const normalized = userType.toUpperCase().trim();
-  //   if (normalized === "AGENT") return "Agent";
-  //   if (normalized === "RENTER") return "Renter";
-
-  //   logger.warn(
-  //     { userType, normalized },
-  //     "Unknown welcome userType - defaulting to Renter"
-  //   );
-  //   return "Renter";
-  // }
-
   async sendPasswordResetOTP(
     userName: string | undefined,
     email: string,
@@ -191,9 +154,6 @@ export class EmailService {
   /**
    * Send email verification code
    * Called during: User registration (Agent/Renter)
-   *
-   * @param payload - Email verification details
-   * @returns Promise<IEmailResult>
    */
   async sendEmailVerification(
     payload: IEmailVerificationPayload
@@ -252,9 +212,6 @@ export class EmailService {
   /**
    * Resend verification code
    * Called during: Resend verification request
-   *
-   * @param payload - Email verification details
-   * @returns Promise<IEmailResult>
    */
   async resendEmailVerification(
     payload: IEmailVerificationPayload
@@ -328,15 +285,15 @@ export class EmailService {
           payload.userName,
           payload.temporaryPassword || "",
           payload.loginLink,
-          payload.userType,
-          this.config.logoUrl,
+          payload.userType!,
+          this.config.logoUrl!,
           this.config.brandColor
         );
         subject = `Welcome to BeforeListed - Your Temporary Password`;
       } else {
         html = this.templates.welcome(
           payload.userName,
-          payload.userType,
+          payload.userType!,
           payload.loginLink,
           this.config.logoUrl,
           this.config.brandColor
@@ -472,14 +429,6 @@ export class EmailService {
     }
   }
 
-  /**
-   * Send pre-market notification email to agents
-   * Called when renter creates new pre-market request
-   * WITHOUT renter information
-   *
-   * @param payload - Agent notification details
-   * @returns Promise with send result
-   */
   async sendPreMarketNotificationToAgent(
     payload: IPreMarketAgentNotificationPayload
   ): Promise<IEmailResult> {
@@ -489,19 +438,16 @@ export class EmailService {
         "Sending pre-market notification to agent"
       );
 
-      // Render template (WITHOUT renter info)
       const html = preMarketAgentNotificationTemplate(
         payload.agentName,
         payload.listingTitle,
-        payload.listingDescription,
         payload.location,
         payload.serviceType,
         payload.listingUrl,
-        this.config.logoUrl,
+        this.config.logoUrl!,
         this.config.brandColor
       );
 
-      // Prepare email options
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.agentName },
         subject: `New Pre-Market Listing Opportunity - ${payload.listingTitle}`,
@@ -554,7 +500,6 @@ export class EmailService {
       // Render template (WITH renter info)
       const html = preMarketAdminNotificationTemplate(
         payload.listingTitle,
-        payload.listingDescription,
         payload.location,
         payload.serviceType,
         payload.renterName,
@@ -562,7 +507,7 @@ export class EmailService {
         payload.renterPhone,
         payload.listingUrl,
         payload.preMarketRequestId,
-        this.config.logoUrl,
+        this.config.logoUrl!,
         this.config.brandColor
       );
 
@@ -678,17 +623,10 @@ export class EmailService {
   /**
    * Send admin referral email with temporary password
    * Called during: Admin referral renter registration (passwordless flow)
-   *
-   * @param payload - Admin referral email details
-   * @returns Promise<IEmailResult>
    */
 
   /**
    * Core method to send email via transporter
-   * @param options - Email options
-   * @param templateType - Type of template being sent
-   * @param recipientEmail - Recipient email for logging
-   * @returns Promise<IEmailResult>
    */
   private async sendEmail(
     options: IEmailOptions,
@@ -988,16 +926,8 @@ export class EmailService {
 // SINGLETON EXPORT
 // ============================================
 
-/**
- * Export singleton instance for use throughout app
- * Usage: import { emailService } from "@/services/email.service"
- */
 export const emailService = new EmailService();
 
-/**
- * Initialize email service on app start
- * Call this in your main application file
- */
 export async function initializeEmailService(): Promise<void> {
   try {
     await emailService.closeConnection();
@@ -1009,14 +939,9 @@ export async function initializeEmailService(): Promise<void> {
       },
       "Failed to initialize email service"
     );
-    // Don't throw - app can still run without email
   }
 }
 
-/**
- * Cleanup email service on app shutdown
- * Call this in your app shutdown handler
- */
 export async function cleanupEmailService(): Promise<void> {
   try {
     await emailService.closeConnection();
@@ -1029,8 +954,4 @@ export async function cleanupEmailService(): Promise<void> {
       "Error during email service cleanup"
     );
   }
-
-  // ============================================
-  // GRANT ACCESS EMAIL METHODS
-  //============================================
 }

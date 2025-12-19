@@ -50,17 +50,8 @@ export class AuthService {
       throw new UnauthorizedException(MESSAGES.AUTH.INVALID_CREDENTIALS);
     }
 
-    // Check account status
-    if (user.accountStatus === "suspended") {
-      throw new UnauthorizedException(MESSAGES.AUTH.ACCOUNT_SUSPENDED);
-    }
     if (user.accountStatus === "inactive") {
       throw new UnauthorizedException(MESSAGES.AUTH.ACCOUNT_INACTIVE);
-    }
-
-    // Check email verification
-    if (!user.emailVerified) {
-      throw new UnauthorizedException(MESSAGES.AUTH.EMAIL_NOT_VERIFIED);
     }
 
     // Verify password
@@ -302,17 +293,12 @@ export class AuthService {
         throw new UnauthorizedException(MESSAGES.AUTH.REFRESH_TOKEN_INVALID);
       }
 
-      if (
-        user.accountStatus === "suspended" ||
-        user.accountStatus === "inactive"
-      ) {
-        throw new UnauthorizedException(MESSAGES.AUTH.ACCOUNT_SUSPENDED);
-      }
-
       const accessToken = AuthUtil.generateAccessToken({
         userId: user._id.toString(),
         email: user.email,
         role: user.role,
+        accountStatus: user.accountStatus,
+        emailVerified: user.emailVerified,
       });
 
       return { accessToken };
@@ -333,6 +319,8 @@ export class AuthService {
       userId: user._id.toString(),
       email: user.email,
       role: user.role,
+      accountStatus: user.accountStatus,
+      emailVerified: user.emailVerified,
     });
 
     const refreshToken = AuthUtil.generateRefreshToken(user._id.toString());

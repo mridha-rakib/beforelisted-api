@@ -64,9 +64,6 @@ export class PreMarketController {
    * Create pre-market request
    * POST /pre-market/create
    * Protected: Renters only
-   *
-   * @param req - Request with validated body
-   * @param res - Response
    */
   createRequest = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(createPreMarketRequestSchema, req);

@@ -17,7 +17,7 @@ export function preMarketAgentNotificationTemplate(
   serviceType: string,
   listingUrl: string,
   logoUrl?: string,
-  brandColor: string = "#208184"
+  brandColor: string = "#035a5aff"
 ): string {
   const currentYear = new Date().getFullYear();
 

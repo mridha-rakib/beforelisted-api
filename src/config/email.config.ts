@@ -4,9 +4,6 @@ import { env } from "@/env";
 import type { IEmailConfig, ISmtpConfig } from "@/services/email.types";
 import { z } from "zod";
 
-/**
- * Validate email configuration from environment
- */
 const emailConfigSchema = z.object({
   SMTP_HOST: z.string().min(1, "SMTP_HOST is required"),
   SMTP_PORT: z.coerce.number().int().min(1).max(65535),
@@ -34,7 +31,6 @@ const emailConfigSchema = z.object({
 type EmailConfigInput = z.infer<typeof emailConfigSchema>;
 
 export function createEmailConfig(): IEmailConfig {
-  // Validate environment variables
   const envVars = emailConfigSchema.parse(process.env);
 
   const config: IEmailConfig = {
@@ -65,10 +61,10 @@ function createSmtpConfig(envVars: EmailConfigInput): ISmtpConfig {
       pass: envVars.SMTP_PASS,
     },
     pool: {
-      maxConnections: isProduction ? 5 : 3,
-      maxMessages: isProduction ? 200 : 200,
+      maxConnections: isProduction ? 3 : 2,
+      maxMessages: isProduction ? 50 : 50,
       rateDelta: 1000,
-      rateLimit: isProduction ? 10 : 100,
+      rateLimit: isProduction ? 2 : 5,
     },
     logger: !isProduction,
     debug: !isProduction,

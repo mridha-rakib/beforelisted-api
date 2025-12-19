@@ -52,13 +52,6 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
   }
 
   /**
-   * Find suspended agents
-   */
-  async findSuspendedAgents(): Promise<IAgentProfile[]> {
-    return this.model.find({ isSuspended: true }).exec();
-  }
-
-  /**
    * Find pending approval agents
    */
   async findPendingApprovalAgents(): Promise<IAgentProfile[]> {
@@ -75,43 +68,6 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
       .findOneAndUpdate(
         { userId },
         { isVerified: true, verifiedAt: new Date() },
-        { new: true }
-      )
-      .exec();
-  }
-
-  /**
-   * Suspend agent (admin)
-   */
-  async suspendAgent(
-    userId: string,
-    suspensionReason: string
-  ): Promise<IAgentProfile | null> {
-    return this.model
-      .findOneAndUpdate(
-        { userId },
-        {
-          isSuspended: true,
-          suspendedAt: new Date(),
-          suspensionReason,
-        },
-        { new: true }
-      )
-      .exec();
-  }
-
-  /**
-   * Unsuspend agent (admin)
-   */
-  async unsuspendAgent(userId: string): Promise<IAgentProfile | null> {
-    return this.model
-      .findOneAndUpdate(
-        { userId },
-        {
-          isSuspended: false,
-          suspendedAt: null,
-          suspensionReason: null,
-        },
         { new: true }
       )
       .exec();
@@ -159,8 +115,6 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
       )
       .exec();
   }
-
-
 
   /**
    * Count agents by status
@@ -281,10 +235,6 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
       .lean();
   }
 
-  /**
-   * Toggle agent active/deactive status
-   * Automatically switches between active and inactive
-   */
   async toggleActive(
     userId: string,
     adminId: string,
@@ -321,9 +271,6 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
       .exec() as any;
   }
 
-  /**
-   * Get activation history for agent
-   */
   async getActivationHistory(userId: string): Promise<any[]> {
     const agent = await this.model
       .findOne({ userId })
@@ -332,14 +279,6 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
 
     return agent?.activationHistory || [];
   }
-
-  /**
-   * ✅ Get all agents with user data (for Excel export)
-   * Uses aggregation to reliably join user data
-   *
-   * Relationship:
-   * - AgentProfile.userId = User._id
-   */
 
   async findAll(): Promise<IAgentProfile[]> {
     return this.model
@@ -395,9 +334,9 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
   /**
    * Find all agents with grant access
    */
-  async findAllGrantAccessAgent(
-    filter: { hasGrantAccess: boolean }
-  ): Promise<IAgentProfile[]> {
+  async findAllGrantAccessAgent(filter: {
+    hasGrantAccess: boolean;
+  }): Promise<IAgentProfile[]> {
     return this.model
       .find({ hasGrantAccess: filter.hasGrantAccess })
       .populate({
@@ -406,5 +345,12 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
       })
       .lean()
       .exec() as any;
+  }
+
+  async findActiveAgents(): Promise<any[]> {
+    return this.model
+      .find({ isActive: true })
+      .select("_id email fullName hasGrantAccess lastAccessToggleAt")
+      .lean();
   }
 }

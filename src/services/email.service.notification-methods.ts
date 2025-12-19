@@ -21,7 +21,6 @@ export async function sendPreMarketNotificationToAgent(
     const html = this.templates.preMarketAgentNotification(
       payload.agentName,
       payload.listingTitle,
-      payload.listingDescription,
       payload.location,
       payload.serviceType,
       payload.listingUrl,
@@ -75,7 +74,6 @@ export async function sendPreMarketNotificationToAdmin(
     // Render template - WITH renter info
     const html = this.templates.preMarketAdminNotification(
       payload.listingTitle,
-      payload.listingDescription,
       payload.location,
       payload.serviceType,
       payload.renterName,

@@ -1,5 +1,6 @@
 // file: src/modules/pre-market/pre-market.repository.ts
 
+import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import { PaginationHelper } from "@/utils/pagination-helper";
@@ -508,5 +509,76 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       { _id: { $in: ids }, isDeleted: false, status: "active" },
       paginationOptions
     );
+  }
+
+  async countActiveByRenterId(renterId: string): Promise<number> {
+    return this.model.countDocuments({
+      renterId,
+      isDeleted: { $ne: true },
+      isActive: true,
+    });
+  }
+
+  async getActiveByRenterId(renterId: string): Promise<IPreMarketRequest[]> {
+    return this.model
+      .find({
+        renterId,
+        isDeleted: { $ne: true },
+        isActive: true,
+      })
+      .sort({ createdAt: 1 })
+      .exec();
+  }
+
+  async getAllActiveAgentIds(): Promise<string[]> {
+    try {
+      const agents = await this.model.db
+        .collection("agentprofiles")
+        .find(
+          {
+            isActive: true,
+          },
+          {
+            projection: { _id: 1 },
+          }
+        )
+        .toArray();
+
+      return agents.map((agent: any) => agent._id.toString());
+    } catch (error) {
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        "Failed to get active agent IDs"
+      );
+      return [];
+    }
+  }
+
+  async getAdminIdForNotification(): Promise<string | null> {
+    try {
+      const adminEmail = env.ADMIN_EMAIL;
+      if (!adminEmail) {
+        logger.warn("ADMIN_EMAIL not configured in environment");
+        return null;
+      }
+
+      const admin = await this.model.db.collection("users").findOne(
+        {
+          email: adminEmail,
+          role: "Admin",
+        },
+        {
+          projection: { _id: 1 },
+        }
+      );
+
+      return admin ? admin._id.toString() : null;
+    } catch (error) {
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        "Failed to get admin ID"
+      );
+      return null;
+    }
   }
 }

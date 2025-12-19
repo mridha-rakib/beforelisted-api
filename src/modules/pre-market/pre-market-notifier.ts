@@ -1,18 +1,18 @@
 // file: src/modules/pre-market/pre-market-notifier.ts
 
+import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
+import { NotificationService } from "@/modules/notification/notification.service";
 import { emailService } from "@/services/email.service";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { IGrantAccessRequest } from "../grant-access/grant-access.model";
-
-// ============================================
-// NOTIFICATION TYPES
-// ============================================
+import { IPreMarketNotificationCreateResponse } from "./pre-market-notification.types";
+import { IPreMarketRequest } from "./pre-market.model";
+import { PreMarketRepository } from "./pre-market.repository";
 
 interface IPreMarketNotificationPayload {
   preMarketRequestId: string;
   title: string;
-  description: string;
   location: string;
   serviceType: string;
   renterId: string;
@@ -30,141 +30,67 @@ interface INotificationResult {
   errors?: string[];
 }
 
-// ============================================
-// PRE-MARKET NOTIFIER SERVICE
-// ============================================
-
 export class PreMarketNotifier {
   private agentRepository = new AgentProfileRepository();
+  private notificationService: NotificationService;
+  private preMarketRepository = new PreMarketRepository();
+
+  constructor() {
+    this.notificationService = new NotificationService();
+  }
+
   /**
    * Notify agents and admin about new pre-market request
    * Called immediately after renter creates listing
-   *
-   * @param payload - Pre-market notification data
-   * @returns Promise with notification results
    */
   async notifyNewRequest(
-    payload: IPreMarketNotificationPayload
-  ): Promise<INotificationResult> {
-    const startTime = Date.now();
-    const errors: string[] = [];
-    let agentsNotified = 0;
-    let adminNotified = false;
-    let emailsSent = 0;
-
+    preMarketRequest: IPreMarketRequest,
+    renterData: {
+      renterId: string;
+      renterName: string;
+      renterEmail: string;
+      renterPhone: string;
+    }
+  ): Promise<void> {
     try {
-      logger.info(
-        { preMarketRequestId: payload.preMarketRequestId },
-        "🔔 Starting notification process for new pre-market request"
-      );
-
-      // ============================================
-      // 1. NOTIFY ALL AGENTS (Both types)
-      // ============================================
-      try {
-        const agentNotificationResult =
-          await this.notifyAgentsAboutNewRequest(payload);
-        agentsNotified = agentNotificationResult.agentsNotified;
-        emailsSent += agentNotificationResult.emailsSent;
-
-        if (agentNotificationResult.errors.length > 0) {
-          errors.push(...agentNotificationResult.errors);
-        }
-
-        logger.info(
-          {
-            preMarketRequestId: payload.preMarketRequestId,
-            agentsNotified,
-            emailsSent: agentNotificationResult.emailsSent,
-          },
-          "✅ Agents notified successfully"
-        );
-      } catch (error) {
-        const errorMsg = `Agent notification failed: ${error instanceof Error ? error.message : String(error)}`;
-        errors.push(errorMsg);
-        logger.error(
-          { error, preMarketRequestId: payload.preMarketRequestId },
-          "❌ Agent notification error"
-        );
-      }
-
-      // ============================================
-      // 2. NOTIFY ADMIN (With full renter info)
-      // ============================================
-      try {
-        const adminNotificationResult =
-          await this.notifyAdminAboutNewRequest(payload);
-        adminNotified = adminNotificationResult.adminNotified;
-        emailsSent += adminNotificationResult.emailsSent;
-
-        if (adminNotificationResult.errors.length > 0) {
-          errors.push(...adminNotificationResult.errors);
-        }
-
-        logger.info(
-          {
-            preMarketRequestId: payload.preMarketRequestId,
-            adminNotified,
-          },
-          "✅ Admin notified successfully"
-        );
-      } catch (error) {
-        const errorMsg = `Admin notification failed: ${error instanceof Error ? error.message : String(error)}`;
-        errors.push(errorMsg);
-        logger.error(
-          { error, preMarketRequestId: payload.preMarketRequestId },
-          "❌ Admin notification error"
-        );
-      }
-
-      const duration = Date.now() - startTime;
-
-      logger.info(
-        {
-          preMarketRequestId: payload.preMarketRequestId,
-          agentsNotified,
-          adminNotified,
-          emailsSent,
-          duration: `${duration}ms`,
-          errorCount: errors.length,
-        },
-        "📊 Notification process completed"
-      );
-
-      return {
-        success: errors.length === 0,
-        agentsNotified,
-        adminNotified,
-        emailsSent,
-        errors: errors.length > 0 ? errors : undefined,
+      const payload: IPreMarketNotificationPayload = {
+        preMarketRequestId: preMarketRequest._id?.toString() || "",
+        title: preMarketRequest.requestName || "New Pre-Market Listing",
+        location:
+          preMarketRequest.locations?.map((l) => l.borough).join(", ") ||
+          "Multiple Locations",
+        serviceType: "Pre-Market Rental",
+        renterId: renterData.renterId,
+        renterName: renterData.renterName,
+        renterEmail: renterData.renterEmail,
+        renterPhone: renterData.renterPhone,
+        listingUrl: `${env.CLIENT_URL}/listings/${preMarketRequest._id}`,
       };
+
+      // // EMAIL notifications
+      await this.notifyAgentsAboutNewRequest(payload);
+      await this.notifyAdminAboutNewRequest(payload);
+
+      // IN-APP notifications
+      await this.createInAppNotifications(preMarketRequest, renterData);
+
+      logger.info(
+        { preMarketRequestId: preMarketRequest._id },
+        "✅ All notifications sent"
+      );
     } catch (error) {
       logger.error(
         {
-          error,
-          preMarketRequestId: payload.preMarketRequestId,
+          error: error instanceof Error ? error.message : String(error),
+          preMarketRequestId: preMarketRequest._id,
         },
-        "❌ Critical error in notification process"
+        "Error in notifyNewRequest"
       );
 
-      return {
-        success: false,
-        agentsNotified: 0,
-        adminNotified: false,
-        emailsSent: 0,
-        errors: [error instanceof Error ? error.message : String(error)],
-      };
+      throw error;
     }
   }
 
-  // ============================================
-  // PRIVATE: NOTIFY AGENTS
-  // ============================================
-
-  /**
-   * Send notifications to all agents (both Grant Access + Normal)
-   * WITHOUT renter information
-   */
   private async notifyAgentsAboutNewRequest(
     payload: IPreMarketNotificationPayload
   ): Promise<{
@@ -177,7 +103,6 @@ export class PreMarketNotifier {
     let emailsSent = 0;
 
     try {
-      // Get all agents from database
       const agents = await this.getAllAgents();
       agentsNotified = agents.length;
 
@@ -198,7 +123,6 @@ export class PreMarketNotifier {
               agentName: agent.name,
               agentType: agent.hasGrantAccess ? "Grant Access" : "Normal",
               listingTitle: payload.title,
-              listingDescription: payload.description,
               location: payload.location,
               serviceType: payload.serviceType,
               listingUrl: payload.listingUrl,
@@ -238,13 +162,6 @@ export class PreMarketNotifier {
     }
   }
 
-  // ============================================
-  // PRIVATE: NOTIFY ADMIN
-  // ============================================
-
-  /**
-   * Send notification to admin with full renter information
-   */
   private async notifyAdminAboutNewRequest(
     payload: IPreMarketNotificationPayload
   ): Promise<{
@@ -268,7 +185,6 @@ export class PreMarketNotifier {
       const emailResult = await emailService.sendPreMarketNotificationToAdmin({
         to: adminEmail,
         listingTitle: payload.title,
-        listingDescription: payload.description,
         location: payload.location,
         serviceType: payload.serviceType,
         renterName: payload.renterName || "Unknown",
@@ -303,14 +219,6 @@ export class PreMarketNotifier {
     }
   }
 
-  // ============================================
-  // PRIVATE: DATABASE QUERIES
-  // ============================================
-
-  /**
-   * Get all agents from database
-   * Returns both Grant Access and Normal agents
-   */
   private async getAllAgents(): Promise<
     Array<{
       id: string;
@@ -320,10 +228,7 @@ export class PreMarketNotifier {
     }>
   > {
     try {
-      const agents = await this.agentRepository.find({
-        // Optional: filter for active agents
-        // status: "ACTIVE"
-      });
+      const agents = await this.agentRepository.findActiveAgents();
 
       return agents.map((agent) => ({
         id: agent._id.toString(),
@@ -337,20 +242,14 @@ export class PreMarketNotifier {
     }
   }
 
-  /**
-   * Get admin information
-   */
   private async getAdmin(): Promise<{
     id: string;
     name: string;
     email: string;
   } | null> {
     try {
-      // TODO: Implement actual admin retrieval
-      // For now, using environment variable
-
-      const adminEmail = process.env.ADMIN_EMAIL;
-      const adminName = process.env.ADMIN_NAME || "Administrator";
+      const adminEmail = env.ADMIN_EMAIL;
+      const adminName = "Tuval Mor";
 
       if (!adminEmail) {
         logger.warn("ADMIN_EMAIL not configured in environment");
@@ -579,6 +478,146 @@ export class PreMarketNotifier {
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  // =============================New methods can be added here============================
+  async createInAppNotifications(
+    preMarketRequest: IPreMarketRequest,
+    renterData: {
+      renterId: string;
+      renterName: string;
+      renterEmail: string;
+      renterPhone: string;
+    }
+  ): Promise<IPreMarketNotificationCreateResponse> {
+    try {
+      logger.info(
+        { preMarketRequestId: preMarketRequest._id },
+        "Creating in-app notifications for new pre-market listing"
+      );
+
+      const agentIds = await this.preMarketRepository.getAllActiveAgentIds();
+      logger.debug({ agentCount: agentIds.length }, "Retrieved active agents");
+
+      const adminId =
+        await this.preMarketRepository.getAdminIdForNotification();
+      if (!adminId) {
+        logger.warn(
+          { adminEmail: env.ADMIN_EMAIL },
+          "No admin found for notification"
+        );
+      }
+
+      let agentNotificationsCreated = 0;
+      let adminNotificationCreated = false;
+
+      // NOTIFY AGENTS
+      if (agentIds.length > 0) {
+        try {
+          const agentNotificationPromises = agentIds.map((agentId) =>
+            this.notificationService.createNotification({
+              recipientId: agentId,
+              recipientRole: "Agent",
+              title: "New Pre-Market Listing Available",
+              message: `A new listing "${preMarketRequest.requestName}" was posted in ${preMarketRequest.locations}`,
+              type: "info",
+              notificationType: "new_pre_market_listing",
+              relatedEntityType: "Request",
+              relatedEntityId: preMarketRequest._id?.toString(),
+              actionUrl: `/listings/${preMarketRequest._id}`,
+              actionData: {
+                preMarketRequestId: preMarketRequest._id,
+                requestId: preMarketRequest.requestId,
+                listingTitle: preMarketRequest.requestName,
+                location: preMarketRequest.locations,
+              },
+            })
+          );
+
+          await Promise.all(agentNotificationPromises);
+          agentNotificationsCreated = agentIds.length;
+
+          logger.info(
+            { agentCount: agentNotificationsCreated },
+            "✅ Agent notifications created"
+          );
+        } catch (error) {
+          logger.error(
+            {
+              error: error instanceof Error ? error.message : String(error),
+              preMarketRequestId: preMarketRequest._id,
+            },
+            "Failed to create agent notifications"
+          );
+        }
+      }
+
+      // NOTIFY ADMIN
+      if (adminId) {
+        try {
+          await this.notificationService.createNotification({
+            recipientId: adminId,
+            recipientRole: "Admin",
+            title: "New Pre-Market Listing Available",
+            message: `${renterData.renterName} posted "${preMarketRequest.requestName}" in ${preMarketRequest.locations}`,
+            type: "alert",
+            notificationType: "new_pre_market_listing_admin",
+            relatedEntityType: "Request",
+            relatedEntityId: preMarketRequest._id!.toString(),
+            actionUrl: `/admin/listings/${preMarketRequest._id}`,
+            actionData: {
+              preMarketRequestId: preMarketRequest._id,
+              requestId: preMarketRequest.requestId,
+              requestNumber: preMarketRequest.requestNumber,
+              listingTitle: preMarketRequest.requestName,
+              location: preMarketRequest.locations,
+              renterName: renterData.renterName,
+              renterEmail: renterData.renterEmail,
+              renterPhone: renterData.renterPhone,
+              renterId: renterData.renterId,
+            },
+          });
+
+          adminNotificationCreated = true;
+
+          logger.info({ adminId }, "✅ Admin notification created");
+        } catch (error) {
+          logger.error(
+            {
+              error: error instanceof Error ? error.message : String(error),
+              preMarketRequestId: preMarketRequest._id,
+              adminId,
+            },
+            "Failed to create admin notification"
+          );
+        }
+      }
+
+      return {
+        agentNotificationsCreated,
+        adminNotificationCreated,
+        success: agentNotificationsCreated > 0 || adminNotificationCreated,
+        message:
+          `Created ${agentNotificationsCreated} agent notifications` +
+          (adminNotificationCreated ? " and 1 admin notification" : ""),
+      };
+    } catch (error) {
+      console.log("Error creating in-app notifications:", error);
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          preMarketRequestId: preMarketRequest._id,
+        },
+        "❌ Error creating in-app notifications"
+      );
+
+      return {
+        agentNotificationsCreated: 0,
+        adminNotificationCreated: false,
+        success: false,
+        message: "Failed to create in-app notifications",
       };
     }
   }

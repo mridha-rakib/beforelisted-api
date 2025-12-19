@@ -38,11 +38,22 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
   /**
    * Find renter by user ID
    */
-  async findByUserId(
-    userId: string | Types.ObjectId
-  ): Promise<IRenterModel | null> {
-    return this.model.findOne({ userId, isDeleted: false });
-  }
+  // async findByUserId(
+  //   userId: string | Types.ObjectId
+  // ): Promise<IRenterModel | null> {
+  //   return this.model.findOne({ userId, isDeleted: false });
+  // }
+
+  async findByUserId(userId: string): Promise<IRenterModel | null> {
+      return this.model
+        .findOne({ userId })
+        .populate({
+          path: "userId",
+          select:
+            "fullName email role phoneNumber emailVerified accountStatus referralCode totalReferrals",
+        })
+        .exec();
+    }
 
   /**
    * Find renter by email
@@ -523,4 +534,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
       .select("referredByAgentId referredByAdminId registrationType")
       .lean() as Promise<any>;
   }
+
+
+   
 }

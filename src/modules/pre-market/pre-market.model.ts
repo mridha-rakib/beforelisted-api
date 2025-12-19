@@ -11,6 +11,7 @@ export interface IPreMarketRequest extends Document {
   requestId: string;
   renterId: Types.ObjectId | string;
   requestName: string;
+  description?: string;
 
   movingDateRange: {
     earliest: Date;
@@ -64,6 +65,8 @@ export interface IPreMarketRequest extends Document {
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+
+  requestNumber: number;
 }
 
 // ============================================
@@ -77,7 +80,12 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
     unique: true,
     index: true,
   },
-
+  requestNumber: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 3,
+  },
   renterId: {
     type: Types.ObjectId,
     ref: "Renter",

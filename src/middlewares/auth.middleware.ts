@@ -1,6 +1,6 @@
 // file: src/middlewares/auth.middleware.ts
 
-import { MESSAGES, ROLES } from "@/constants/app.constants";
+import { MESSAGES } from "@/constants/app.constants";
 import { ErrorCodeEnum } from "@/enums/error-code.enum";
 
 import { logger } from "@/middlewares/pino-logger";
@@ -21,6 +21,8 @@ declare global {
         userId: string;
         email: string;
         role: string;
+        accountStatus: string;
+        emailVerified?: boolean;
         iat?: number;
         exp?: number;
       };
@@ -54,14 +56,11 @@ export class AuthMiddleware {
         userId: payload.userId,
         email: payload.email,
         role: payload.role,
+        accountStatus: payload.accountStatus,
+        emailVerified: payload.emailVerified,
         iat: payload.iat,
         exp: payload.exp,
       };
-
-      logger.debug(
-        { userId: payload.userId, role: payload.role, requestId },
-        "Token verified successfully"
-      );
 
       next();
     } catch (error) {
@@ -94,11 +93,6 @@ export class AuthMiddleware {
           );
         }
 
-        logger.debug(
-          { userId: req.user.userId, role: req.user.role },
-          "User authorized"
-        );
-
         next();
       } catch (error) {
         next(error);
@@ -118,6 +112,8 @@ export class AuthMiddleware {
           userId: payload.userId,
           email: payload.email,
           role: payload.role,
+          accountStatus: payload.accountStatus,
+          emailVerified: payload.emailVerified,
           iat: payload.iat,
           exp: payload.exp,
         };
@@ -162,32 +158,6 @@ export class AuthMiddleware {
     }
   };
 
-  static verifyAgentAccess = (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
-    try {
-      if (!req.user) {
-        throw new UnauthorizedException(
-          MESSAGES.AUTH.UNAUTHORIZED_ACCESS,
-          ErrorCodeEnum.AUTH_UNAUTHORIZED_ACCESS
-        );
-      }
-
-      if (req.user.role !== ROLES.AGENT) {
-        throw new ForbiddenException(
-          "Only agents can access this resource",
-          ErrorCodeEnum.ACCESS_UNAUTHORIZED
-        );
-      }
-
-      next();
-    } catch (error) {
-      next(error);
-    }
-  };
-
   /**
    * Verify Email Verified
    * Check if user has verified their email
@@ -198,24 +168,11 @@ export class AuthMiddleware {
     next: NextFunction
   ) => {
     try {
-      if (!req.user) {
-        throw new UnauthorizedException(MESSAGES.AUTH.UNAUTHORIZED_ACCESS);
-      }
-
-      next();
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  static verifyAccountStatus = (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
-    try {
-      if (!req.user) {
-        throw new UnauthorizedException(MESSAGES.AUTH.UNAUTHORIZED_ACCESS);
+      if (!req.user?.emailVerified) {
+        throw new ForbiddenException(
+          "Please verify your email address before accessing this resource.",
+          ErrorCodeEnum.ACCESS_UNAUTHORIZED
+        );
       }
 
       next();
@@ -230,7 +187,5 @@ export const authMiddleware = {
   authorize: AuthMiddleware.authorize,
   optionalAuth: AuthMiddleware.optionalAuth,
   checkTokenExpiration: AuthMiddleware.checkTokenExpiration,
-  verifyAgentAccess: AuthMiddleware.verifyAgentAccess,
   verifyEmailVerified: AuthMiddleware.verifyEmailVerified,
-  verifyAccountStatus: AuthMiddleware.verifyAccountStatus,
 };

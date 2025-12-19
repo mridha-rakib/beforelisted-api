@@ -77,21 +77,30 @@ export class PreMarketService {
       );
     }
 
-    // Validate price range
     if (payload.priceRange.min > payload.priceRange.max) {
       throw new BadRequestException(
         "Invalid price range: min must be less than max"
       );
     }
 
-    const randomStr = Math.random().toString(36).substring(5, 10);
-    const requestId = `BeforeListed-${randomStr}`;
+    const activeListingCount =
+      await this.preMarketRepository.countActiveByRenterId(renterId);
+
+    if (activeListingCount >= 3) {
+      throw new BadRequestException(
+        "You can create a maximum of 3 pre-market listings. "
+      );
+    }
+
+    const requestNumber = activeListingCount + 1;
+    const requestId = `BeforeListed-${requestNumber}`;
     const requestName = requestId;
 
     // Create request
     const request = await this.preMarketRepository.create({
       requestId,
       requestName,
+      requestNumber,
       renterId,
       movingDateRange: payload.movingDateRange,
       priceRange: payload.priceRange,
@@ -103,6 +112,8 @@ export class PreMarketService {
       petPolicy: payload.petPolicy || {},
       preferences: payload.preferences || [],
       guarantorRequired: payload.guarantorRequired || {},
+      isActive: true,
+      isDeleted: false,
       status: "active",
       viewedBy: {
         grantAccessAgents: [],
@@ -116,7 +127,6 @@ export class PreMarketService {
         { error, requestId: request._id },
         "Failed to send notifications (non-blocking - request already created)"
       );
-      // Don't throw - notification failure should not break response
     });
 
     this.updateConsolidatedExcel().catch((error) => {
@@ -126,18 +136,13 @@ export class PreMarketService {
     return request;
   }
 
-  /**
-   * Send notifications to agents and admin
-   * Called asynchronously after request creation
-   * Failures here do NOT affect the main request
-   */
   private async sendNotifications(
     request: any,
     renterId: string
   ): Promise<void> {
-    // Get renter details for notification payload
-    const renter = await this.renterRepository.findById(renterId);
+    const renter = await this.renterRepository.findByUserId(renterId);
 
+    console.log("Renter found:", renter);
     if (!renter) {
       logger.warn(
         { renterId, requestId: request._id },
@@ -148,42 +153,19 @@ export class PreMarketService {
 
     const listingUrl = `${env.CLIENT_URL}/listings/${request._id}`;
 
-    const notificationPayload = {
-      preMarketRequestId: request._id.toString(),
-      title: request.title,
-      description: request.description,
-      location: request.location,
-      serviceType: request.serviceType,
+    const renterData = {
       renterId: renterId,
       renterName: renter.fullName,
       renterEmail: renter.email,
-      renterPhone: renter.phoneNumber,
-      listingUrl,
+      renterPhone: renter.phoneNumber || "",
     };
 
-    const result =
-      await preMarketNotifier.notifyNewRequest(notificationPayload);
+    await preMarketNotifier.notifyNewRequest(request, renterData);
 
-    if (result.success) {
-      logger.info(
-        {
-          requestId: request._id,
-          agentsNotified: result.agentsNotified,
-          adminNotified: result.adminNotified,
-          emailsSent: result.emailsSent,
-        },
-        "✅ All notifications sent successfully"
-      );
-    } else {
-      logger.warn(
-        {
-          requestId: request._id,
-          success: result.success,
-          errors: result.errors,
-        },
-        "⚠️ Some notifications failed"
-      );
-    }
+    logger.info(
+      { requestId: request._id },
+      "✅ All notifications sent successfully"
+    );
   }
 
   // ============================================
@@ -395,7 +377,7 @@ export class PreMarketService {
     // Manual pagination - counts ONLY your filtered results
     const page = (query.page as number) || 1;
     const limit = (query.limit as number) || 10;
-    const total = listings.length; 
+    const total = listings.length;
     const pages = Math.ceil(total / limit);
     const startIndex = (page - 1) * limit;
     const paginatedData = listings.slice(startIndex, startIndex + limit);

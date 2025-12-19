@@ -1,38 +1,22 @@
 // file: src/services/email-notification.types.ts
 
-/**
- * Pre-Market Notification Email Types
- * Separate from main email types for clarity
- */
-
-
-/**
- * Email sent to agents (both Grant Access + Normal)
- * WITHOUT renter information
- */
 export interface IPreMarketAgentNotificationPayload {
-  to: string; // Agent email
+  to: string;
   agentName: string;
   agentType: "Grant Access" | "Normal";
   listingTitle: string;
-  listingDescription: string;
   location: string;
   serviceType: string;
-  listingUrl: string; // Link to view listing
+  listingUrl: string;
 }
 
 // ============================================
 // ADMIN NOTIFICATION PAYLOAD
 // ============================================
 
-/**
- * Email sent to admin (single admin)
- * WITH full renter information
- */
 export interface IPreMarketAdminNotificationPayload {
-  to: string; // Admin email
+  to: string;
   listingTitle: string;
-  listingDescription: string;
   location: string;
   serviceType: string;
   renterName: string;

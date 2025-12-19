@@ -1,6 +1,7 @@
 // file: src/modules/agent/agent.route.ts
 
 import { ROLES } from "@/constants/app.constants";
+import { agentActivationMiddleware } from "@/middlewares/agent-activation.middleware";
 import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
 import { AgentController } from "./agent.controller";
@@ -20,9 +21,12 @@ router.post("/register", controller.registerAgent);
  * GET /agent/profile
  * Get own agent profile
  */
+
 router.get(
   "/profile",
   authMiddleware.verifyToken,
+  authMiddleware.verifyEmailVerified,
+  agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
   controller.getAgentProfile
 );
@@ -34,6 +38,8 @@ router.get(
 router.put(
   "/profile",
   authMiddleware.verifyToken,
+  authMiddleware.verifyEmailVerified,
+  agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
   controller.updateAgentProfile
 );
@@ -45,6 +51,8 @@ router.put(
 router.get(
   "/referral-link",
   authMiddleware.verifyToken,
+  authMiddleware.verifyEmailVerified,
+  agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
   controller.getReferralLink
 );

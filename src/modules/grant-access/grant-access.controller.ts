@@ -11,7 +11,6 @@ import { ApiResponse } from "@/utils/response.utils";
 import type { Request, Response } from "express";
 
 import { AgentProfileRepository } from "../agent/agent.repository";
-import { PaymentService } from "../payment/payment.service";
 import { PreMarketNotifier } from "../pre-market/pre-market-notifier";
 import { PreMarketRepository } from "../pre-market/pre-market.repository";
 import { GrantAccessRepository } from "./grant-access.repository";
@@ -25,7 +24,7 @@ export class GrantAccessController {
   private readonly grantAccessService: GrantAccessService;
   private readonly grantAccessRepository: GrantAccessRepository;
   private readonly preMarketRepository: PreMarketRepository;
-  private readonly paymentService: PaymentService;
+
   private readonly agentRepository: AgentProfileRepository;
   private readonly notifier: PreMarketNotifier;
 
@@ -33,10 +32,6 @@ export class GrantAccessController {
     this.grantAccessService = grantAccessService;
     this.grantAccessRepository = new GrantAccessRepository();
     this.preMarketRepository = new PreMarketRepository();
-    this.paymentService = new PaymentService(
-      this.grantAccessRepository,
-      this.preMarketRepository
-    );
     this.agentRepository = new AgentProfileRepository();
     this.notifier = new PreMarketNotifier();
   }
