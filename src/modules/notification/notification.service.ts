@@ -2,14 +2,17 @@
 
 import { logger } from "@/middlewares/pino-logger";
 import type { Types } from "mongoose";
+import { AgentProfileRepository } from "../agent/agent.repository";
 import type { INotification, NotificationType } from "./notification.interface";
 import { NotificationRepository } from "./notification.repository";
 
 export class NotificationService {
   private repository: NotificationRepository;
+  private agentRepository: AgentProfileRepository;
 
   constructor() {
     this.repository = new NotificationRepository();
+    this.agentRepository = new AgentProfileRepository();
   }
 
   async createNotification(data: {
@@ -218,6 +221,155 @@ export class NotificationService {
         "Failed to notify agent about access revoked"
       );
       throw error;
+    }
+  }
+
+  // ✅ NEW METHODS FOR GRANT ACCESS NOTIFICATIONS:
+
+  /**
+   * Notify admin when agent requests grant access
+   */
+  async notifyAdminAboutGrantAccessRequest(data: {
+    agentId: string | Types.ObjectId;
+    agentName: string;
+    agentEmail: string;
+    agentCompany?: string;
+    licenseNumber?: string;
+    preMarketRequestId: string;
+    propertyTitle: string;
+    location: string;
+    renterName?: string;
+    grantAccessId: string;
+  }): Promise<void> {
+    try {
+      const admins = await this.repository.getAllAdmins();
+      if (admins.length === 0) {
+        logger.warn("No admins found to notify about grant access request");
+        return;
+      }
+
+      const notificationPromises = admins.map((admin) =>
+        this.createNotification({
+          recipientId: admin._id,
+          recipientRole: "Admin",
+          title: `Grant Access Request from ${data.agentName}`,
+          message: `Agent ${data.agentName} requested access to view renter information for "${data.propertyTitle}" at ${data.location}`,
+          type: "alert",
+          notificationType: "grant_access_request",
+          relatedEntityType: "Request",
+          relatedEntityId: data.grantAccessId,
+          actionUrl: `/admin/grant-access-requests/${data.grantAccessId}`,
+          actionData: {
+            agentId: data.agentId,
+            agentName: data.agentName,
+            agentEmail: data.agentEmail,
+            agentCompany: data.agentCompany,
+            licenseNumber: data.licenseNumber,
+            preMarketRequestId: data.preMarketRequestId,
+            propertyTitle: data.propertyTitle,
+            location: data.location,
+            renterName: data.renterName,
+            grantAccessId: data.grantAccessId,
+          },
+        })
+      );
+
+      await Promise.all(notificationPromises);
+      logger.info(
+        { agentId: data.agentId, adminCount: admins.length },
+        "✅ Admins notified about grant access request"
+      );
+    } catch (error) {
+      logger.error(
+        { error, agentId: data.agentId },
+        "Failed to notify admins about grant access request"
+      );
+    }
+  }
+
+  /**
+   * Notify admin when grant access is approved
+   */
+  async notifyAdminAboutGrantAccessApproved(data: {
+    grantAccessId: string;
+    agentName: string;
+    propertyTitle: string;
+    approvedBy: string;
+  }): Promise<void> {
+    try {
+      const admins = await this.repository.getAllAdmins();
+      const notificationPromises = admins.map((admin) =>
+        this.createNotification({
+          recipientId: admin._id,
+          recipientRole: "Admin",
+          title: `Grant Access Approved - ${data.agentName}`,
+          message: `You approved grant access for ${data.agentName} to view "${data.propertyTitle}"`,
+          type: "success",
+          notificationType: "grant_access_approved",
+          relatedEntityType: "Request",
+          relatedEntityId: data.grantAccessId,
+          actionUrl: `/admin/grant-access-requests/${data.grantAccessId}`,
+          actionData: {
+            agentName: data.agentName,
+            propertyTitle: data.propertyTitle,
+            approvedBy: data.approvedBy,
+          },
+        })
+      );
+
+      await Promise.all(notificationPromises);
+      logger.info(
+        { grantAccessId: data.grantAccessId },
+        "✅ Admins notified about grant access approval"
+      );
+    } catch (error) {
+      logger.error({ error }, "Failed to notify admins about approval");
+      // Non-blocking
+    }
+  }
+
+  /**
+   * Notify admin when grant access is rejected
+   */
+  async notifyAdminAboutGrantAccessRejected(data: {
+    grantAccessId: string;
+    agentName: string;
+    propertyTitle: string;
+    rejectionReason?: string;
+    rejectedBy: string;
+  }): Promise<void> {
+    try {
+      const admins = await this.repository.getAllAdmins();
+      const notificationPromises = admins.map((admin) =>
+        this.createNotification({
+          recipientId: admin._id,
+          recipientRole: "Admin",
+          title: `Grant Access Rejected - ${data.agentName}`,
+          message: `You rejected grant access for ${data.agentName} to view "${data.propertyTitle}"${
+            data.rejectionReason ? `: ${data.rejectionReason}` : ""
+          }`,
+          type: "warning",
+          notificationType: "grant_access_rejected",
+          relatedEntityType: "Request",
+          relatedEntityId: data.grantAccessId,
+          actionUrl: `/admin/grant-access-requests/${data.grantAccessId}`,
+          actionData: {
+            agentName: data.agentName,
+            propertyTitle: data.propertyTitle,
+            rejectionReason: data.rejectionReason,
+            rejectedBy: data.rejectedBy,
+          },
+        })
+      );
+
+      await Promise.all(notificationPromises);
+      logger.info(
+        { grantAccessId: data.grantAccessId },
+        "✅ Admins notified about grant access rejection"
+      );
+    } catch (error) {
+      logger.error({ error }, "Failed to notify admins about rejection");
+      // Non-blocking
     }
   }
 

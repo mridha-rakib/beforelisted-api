@@ -33,7 +33,6 @@ export interface IInAppNotification extends Document {
     agentName?: string;
     agentEmail?: string;
     agentPhone?: string;
-    agentCompany?: string;
     agentLicense?: string;
     propertyTitle?: string;
     renterName?: string;
@@ -63,4 +62,7 @@ export type NotificationType =
   | "general_info"
   | "general_alert"
   | "new_pre_market_listing"
-  | "new_pre_market_listing_admin";
+  | "new_pre_market_listing_admin"
+  | "grant_access_request"
+  | "grant_access_approved"
+  | "grant_access_rejected";

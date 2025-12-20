@@ -71,11 +71,4 @@ function createSmtpConfig(envVars: EmailConfigInput): ISmtpConfig {
   };
 }
 
-export const GMAIL_CONFIG_TEMPLATE = {
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  note: "Use Gmail App Password (not your regular password)",
-};
-
 export const emailConfig = createEmailConfig();

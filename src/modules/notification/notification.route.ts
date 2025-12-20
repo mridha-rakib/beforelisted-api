@@ -6,6 +6,17 @@ const router = Router();
 const controller = new NotificationController();
 
 router.get("/", authMiddleware.verifyToken, controller.getNotifications);
+
+/**
+ * GET /notification/user
+ * Get user notifications with pagination
+ */
+router.get(
+  "/user",
+  authMiddleware.verifyToken,
+  controller.getUserNotifications.bind(controller)
+);
+
 router.get(
   "/unread-count",
   authMiddleware.verifyToken,

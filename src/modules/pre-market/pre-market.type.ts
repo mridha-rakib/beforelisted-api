@@ -9,7 +9,10 @@ import { IPreMarketRequest } from "./pre-market.model";
 // PRE-MARKET REQUEST TYPES
 // ============================================
 
-export type PreMarketLocation = (typeof PREMARKET_CONFIG.LOCATIONS)[number];
+export type PreMarketLocation = {
+  borough: string;
+  neighborhoods: string[];
+};
 export type PreMarketBedroom = (typeof PREMARKET_CONFIG.BEDROOMS)[number];
 export type PreMarketBathroom = (typeof PREMARKET_CONFIG.BATHROOMS)[number];
 export type PreMarketStatus =

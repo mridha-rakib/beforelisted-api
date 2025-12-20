@@ -282,9 +282,6 @@ export class PreMarketController {
    * Request access to pre-market request details
    * POST /pre-market/grant-access/request
    * Protected: Agents only
-   *
-   * @param req - Request with body
-   * @param res - Response
    */
   requestAccess = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(requestAccessSchema, req);

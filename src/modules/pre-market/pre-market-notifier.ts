@@ -4,6 +4,7 @@ import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import { NotificationService } from "@/modules/notification/notification.service";
 import { emailService } from "@/services/email.service";
+import { ObjectId } from "mongoose";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { IGrantAccessRequest } from "../grant-access/grant-access.model";
 import { IPreMarketNotificationCreateResponse } from "./pre-market-notification.types";
@@ -46,10 +47,10 @@ export class PreMarketNotifier {
   async notifyNewRequest(
     preMarketRequest: IPreMarketRequest,
     renterData: {
-      renterId: string;
+      renterId: string | ObjectId;
       renterName: string;
       renterEmail: string;
-      renterPhone: string;
+      renterPhone?: string;
     }
   ): Promise<void> {
     try {
@@ -60,7 +61,7 @@ export class PreMarketNotifier {
           preMarketRequest.locations?.map((l) => l.borough).join(", ") ||
           "Multiple Locations",
         serviceType: "Pre-Market Rental",
-        renterId: renterData.renterId,
+        renterId: renterData.renterId.toString(),
         renterName: renterData.renterName,
         renterEmail: renterData.renterEmail,
         renterPhone: renterData.renterPhone,
@@ -72,7 +73,10 @@ export class PreMarketNotifier {
       await this.notifyAdminAboutNewRequest(payload);
 
       // IN-APP notifications
-      await this.createInAppNotifications(preMarketRequest, renterData);
+      await this.createInAppNotifications(preMarketRequest, {
+        ...renterData,
+        renterId: renterData.renterId.toString(),
+      });
 
       logger.info(
         { preMarketRequestId: preMarketRequest._id },
@@ -271,7 +275,7 @@ export class PreMarketNotifier {
     grantAccess: IGrantAccessRequest
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const adminEmail = process.env.ADMIN_EMAIL || "admin@beforelisted.com";
+      const adminEmail = env.ADMIN_EMAIL || "admin@beforelisted.com";
 
       logger.info(
         { grantAccessId: grantAccess._id, adminEmail },
@@ -298,15 +302,12 @@ export class PreMarketNotifier {
       } else {
         logger.warn(
           { error: emailResult.error },
-          "❌ Failed to send grant access request notification"
+          "Failed to send grant access request notification"
         );
         return { success: false, error: emailResult.error };
       }
     } catch (error) {
-      logger.error(
-        { error },
-        "❌ Error notifying admin of grant access request"
-      );
+      logger.error({ error }, " Error notifying admin of grant access request");
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -489,7 +490,7 @@ export class PreMarketNotifier {
       renterId: string;
       renterName: string;
       renterEmail: string;
-      renterPhone: string;
+      renterPhone?: string;
     }
   ): Promise<IPreMarketNotificationCreateResponse> {
     try {
@@ -499,10 +500,15 @@ export class PreMarketNotifier {
       );
 
       const agentIds = await this.preMarketRepository.getAllActiveAgentIds();
+
+      console.log("+=====================================");
+      console.log(agentIds);
+      console.log("+=====================================");
       logger.debug({ agentCount: agentIds.length }, "Retrieved active agents");
 
       const adminId =
         await this.preMarketRepository.getAdminIdForNotification();
+
       if (!adminId) {
         logger.warn(
           { adminEmail: env.ADMIN_EMAIL },

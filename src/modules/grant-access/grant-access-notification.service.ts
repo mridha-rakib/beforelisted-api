@@ -37,14 +37,12 @@ export class GrantAccessNotificationService {
     grantAccessId: string
   ): Promise<void> {
     try {
-      // Get agent info
       const agent = await this.userRepository.findById(agentId);
       if (!agent) {
         logger.warn({ agentId }, "Agent user not found for notification");
         return;
       }
 
-      // Get agent profile
       const agentProfile = await this.agentRepository.findByUserId(agentId);
 
       // Get pre-market request info

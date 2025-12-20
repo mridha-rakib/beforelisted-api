@@ -26,7 +26,7 @@ const userSchema = BaseSchemaUtil.createSchema<IUser>({
       accountStatus: {
         type: String,
         enum: Object.values(ACCOUNT_STATUS),
-        default: ACCOUNT_STATUS.PENDING,
+        default: ACCOUNT_STATUS.INACTIVE,
         index: true,
       },
 
@@ -166,7 +166,10 @@ userSchema.virtual("referralLink").get(function (this: IUser) {
   if (!this.referralCode) return null;
 
   const baseUrl = env.CLIENT_URL || "https://app.rentersedge.com";
-  return `${baseUrl}/signup?ref=${this.referralCode}`;
+
+  return this.role === ROLES.ADMIN
+    ? `${baseUrl}/mor-team-form?ref=${this.referralCode}`
+    : `${baseUrl}/signup?ref=${this.referralCode}`;
 });
 
 userSchema.virtual("canRefer").get(function (this: IUser) {

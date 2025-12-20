@@ -382,8 +382,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     id: string
   ): Promise<IPreMarketRequest | null> {
     return this.model
-      .findById(id)
-      .select("isActive status requestId renterId")
+      .findOne({ _id: id, isActive: true })
       .lean() as Promise<IPreMarketRequest | null>;
   }
 
@@ -533,10 +532,11 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   async getAllActiveAgentIds(): Promise<string[]> {
     try {
       const agents = await this.model.db
-        .collection("agentprofiles")
+        .collection("users")
         .find(
           {
-            isActive: true,
+            accountStatus: "active",
+            role: "Agent",
           },
           {
             projection: { _id: 1 },

@@ -64,7 +64,7 @@ export class NotificationRepository extends BaseRepository<INotification> {
 
   async getAllAdmins(): Promise<any[]> {
     const User = this.model.db.collection("users");
-    return User.find({ role: "Admin" }).toArray();
+    return User.find({ role: "Admin", isActive: true }).toArray();
   }
 
   async cleanupOldReadNotifications(daysOld: number = 30): Promise<any> {
@@ -74,5 +74,19 @@ export class NotificationRepository extends BaseRepository<INotification> {
       isRead: true,
       readAt: { $lt: cutoffDate },
     });
+  }
+
+  async getUnreadGrantAccessRequests(
+    adminId: string
+  ): Promise<INotification[]> {
+    return this.model
+      .find({
+        recipientId: adminId,
+        type: "alert",
+        notificationType: "grant_access_request",
+        isRead: false,
+      })
+      .sort({ createdAt: -1 })
+      .exec();
   }
 }

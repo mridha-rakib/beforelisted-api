@@ -1,6 +1,5 @@
 // file: src/modules/pre-market/pre-market.service.ts
 
-import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 
 import { ExcelService } from "@/services/excel.service";
@@ -142,7 +141,8 @@ export class PreMarketService {
   ): Promise<void> {
     const renter = await this.renterRepository.findByUserId(renterId);
 
-    console.log("Renter found:", renter);
+    const agentIds = await this.preMarketRepository.getAllActiveAgentIds();
+
     if (!renter) {
       logger.warn(
         { renterId, requestId: request._id },
@@ -151,13 +151,13 @@ export class PreMarketService {
       return;
     }
 
-    const listingUrl = `${env.CLIENT_URL}/listings/${request._id}`;
+    // const listingUrl = `${env.CLIENT_URL}/listings/${request._id}`;
 
     const renterData = {
-      renterId: renterId,
+      renterId: renter.userId._id.toString(),
       renterName: renter.fullName,
       renterEmail: renter.email,
-      renterPhone: renter.phoneNumber || "",
+      renterPhone: renter.phoneNumber,
     };
 
     await preMarketNotifier.notifyNewRequest(request, renterData);
@@ -823,7 +823,7 @@ export class PreMarketService {
         { renterId: request.renterId, requestId: request.requestId },
         "Renter not found for request"
       );
-      return request;
+      return { ...request, renterInfo: null };
     }
 
     // Get referrer information if applicable

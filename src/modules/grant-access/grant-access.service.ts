@@ -7,9 +7,12 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@/utils/app-error.utils";
+import { AgentProfileRepository } from "../agent/agent.repository";
+import { NotificationService } from "../notification/notification.service";
 import { PaymentService } from "../payment/payment.service";
 import { PreMarketNotifier } from "../pre-market/pre-market-notifier";
 import { PreMarketRepository } from "../pre-market/pre-market.repository";
+import { UserRepository } from "../user/user.repository";
 import type { IGrantAccessRequest } from "./grant-access.model";
 import { GrantAccessRepository } from "./grant-access.repository";
 
@@ -18,7 +21,10 @@ export class GrantAccessService {
     private readonly grantAccessRepository: GrantAccessRepository,
     private readonly preMarketRepository: PreMarketRepository,
     private readonly paymentService: PaymentService,
-    private readonly notifier: PreMarketNotifier
+    private readonly notifier: PreMarketNotifier,
+    private readonly notificationService: NotificationService,
+    private readonly userRepository: UserRepository,
+    private readonly agentRepository: AgentProfileRepository
   ) {}
 
   // ============================================
@@ -43,7 +49,7 @@ export class GrantAccessService {
         "This listing is no longer accepting requests"
       );
     }
-    // Check if already requested
+
     const existing = await this.grantAccessRepository.findByAgentAndRequest(
       agentId,
       preMarketRequestId
@@ -68,16 +74,53 @@ export class GrantAccessService {
       preMarketRequestId,
       agentId,
       status: "pending",
-      payment: {
-        amount: 0,
-        currency: "USD",
-        paymentStatus: "pending",
-        failureCount: 0,
-        failedAt: [],
-      },
+      createdAt: new Date(),
     });
 
     logger.info({ agentId }, `Grant access requested: ${preMarketRequestId}`);
+
+     try {
+      const agent = await this.userRepository.findById(agentId);
+      const agentProfile = await this.agentRepository.findByUserId(agentId);
+
+      if (agent && agentProfile && listingActivationCheck) {
+        await this.notificationService.notifyAdminAboutGrantAccessRequest({
+          agentId,
+          agentName: agent.fullName,
+          agentEmail: agent.email,
+          agentCompany: agentProfile.brokerageName,
+          licenseNumber: agentProfile.licenseNumber,
+          preMarketRequestId,
+          propertyTitle: listingActivationCheck.requestName,
+          location:
+            listingActivationCheck.locations
+              ?.map((l) => l.borough)
+              .join(", ") || "Unknown Location",
+          renterName: listingActivationCheck.renterId
+            ? `Renter ${listingActivationCheck.renterId}`
+            : undefined,
+          grantAccessId: grantAccess._id.toString(),
+        });
+
+        logger.info(
+          {
+            agentId,
+            preMarketRequestId,
+            grantAccessId: grantAccess._id,
+          },
+          "✅ Admin notification created for grant access request"
+        );
+      }
+    } catch (notificationError) {
+      logger.error(
+        {
+          error: notificationError,
+          agentId,
+          preMarketRequestId,
+        },
+        "⚠️ Failed to create admin notification (non-blocking)"
+      );
+    }
 
     // Notify admin
     await this.notifier.notifyAdminOfGrantAccessRequest(grantAccess);
