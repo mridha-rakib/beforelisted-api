@@ -11,6 +11,7 @@ import {
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 import type { NextFunction, Request, Response } from "express";
+import { UserService } from "../user/user.service";
 import {
   agentRegisterSchema,
   agentToggleActiveSchema,
@@ -22,9 +23,11 @@ import { AgentService } from "./agent.service";
 
 export class AgentController {
   private service: AgentService;
+  private userService: UserService;
 
   constructor() {
     this.service = new AgentService();
+    this.userService = new UserService();
   }
 
   createAgentProfile = asyncHandler(
@@ -86,16 +89,6 @@ export class AgentController {
   );
 
   /**
-   * ADMIN: Get specific agent profile
-   * GET /agent/admin/:userId
-   */
-  adminGetAgent = asyncHandler(async (req: Request, res: Response) => {
-    const validated = await zParse(getAgentProfileSchema, req);
-    const result = await this.service.adminGetAgent(validated.params.userId);
-    ApiResponse.success(res, result, "Agent profile retrieved successfully");
-  });
-
-  /**
    * AGENT: Get own statistics
    * GET /agent/stats
    */
@@ -116,14 +109,41 @@ export class AgentController {
   /**
    * ADMIN: Get all agents
    * GET /agent/admin/all
+   * Query params: page, limit, sort, search, isActive, hasGrantAccess
    */
   adminGetAllAgents = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
-      const result = await this.service.adminGetAllAgents();
+      const { page, limit, sort, search, isActive, hasGrantAccess } = req.query;
 
-      ApiResponse.success(res, result, "Agents retrieved successfully");
+      const result = await this.service.adminGetAllAgents({
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+        sort: sort as string | undefined,
+        search: search as string | undefined,
+        isActive: isActive !== undefined ? isActive === "true" : undefined,
+        hasGrantAccess:
+          hasGrantAccess !== undefined ? hasGrantAccess === "true" : undefined,
+      });
+
+      ApiResponse.paginated(
+        res,
+        result.data,
+        result.pagination,
+        "Agents retrieved successfully"
+      );
     }
   );
+
+  /**
+   * ADMIN: Get specific agent profile
+   * GET /agent/admin/:userId
+   */
+  getSpecificAgent = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.params.userId;
+    const result = await this.service.adminGetSpecificAgent(userId);
+
+    ApiResponse.success(res, result, "Agents retrieved successfully");
+  });
 
   /**
    * ADMIN: Get pending approval agents
@@ -134,22 +154,6 @@ export class AgentController {
       const result = await this.service.adminGetPendingApprovalAgents();
 
       ApiResponse.success(res, result, "Pending agents retrieved successfully");
-    }
-  );
-
-  /**
-   * ADMIN: Get suspended agents
-   * GET /agent/admin/suspended
-   */
-  adminGetSuspendedAgents = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-      const result = await this.service.adminGetSuspendedAgents();
-
-      ApiResponse.success(
-        res,
-        result,
-        "Suspended agents retrieved successfully"
-      );
     }
   );
 
@@ -216,24 +220,28 @@ export class AgentController {
 
       const result = await this.service.toggleAccess(agentId, adminId, reason);
 
-      // ============ ADD THIS BLOCK ============
       const { NotificationService } = await import(
         "../notification/notification.service"
       );
       const notificationService = new NotificationService();
 
       try {
-        const user = await this.userService.getById(agentId);
+        const agent = await this.service.findAgentById(agentId);
+
+        // The userId is populated with user document, so we cast to access fullName
+        const populatedUser = agent?.userId as any;
+        const agentName = populatedUser?.fullName || "Agent";
+
         if (result.hasGrantAccess) {
           await notificationService.notifyAgentAccessGranted({
-            agentId: user._id.toString(),
-            agentName: user.fullName,
+            agentId: populatedUser?._id?.toString() || agentId,
+            agentName,
             grantedBy: adminId,
           });
         } else {
           await notificationService.notifyAgentAccessRevoked({
-            agentId: user._id.toString(),
-            agentName: user.fullName,
+            agentId: populatedUser?._id?.toString() || agentId,
+            agentName,
             reason,
           });
         }

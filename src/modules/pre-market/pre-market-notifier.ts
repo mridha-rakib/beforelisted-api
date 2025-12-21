@@ -7,6 +7,7 @@ import { emailService } from "@/services/email.service";
 import { ObjectId } from "mongoose";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { IGrantAccessRequest } from "../grant-access/grant-access.model";
+import { UserRepository } from "../user/user.repository";
 import { IPreMarketNotificationCreateResponse } from "./pre-market-notification.types";
 import { IPreMarketRequest } from "./pre-market.model";
 import { PreMarketRepository } from "./pre-market.repository";
@@ -35,6 +36,7 @@ export class PreMarketNotifier {
   private agentRepository = new AgentProfileRepository();
   private notificationService: NotificationService;
   private preMarketRepository = new PreMarketRepository();
+  private userRepository = new UserRepository();
 
   constructor() {
     this.notificationService = new NotificationService();
@@ -320,11 +322,14 @@ export class PreMarketNotifier {
     isFree: boolean
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const agent = await this.agentRepository.findById(
+      // const agent = await this.agentRepository.findById(
+      //   grantAccess.agentId.toString()
+      // );
+
+      const agentUser = await this.userRepository.findById(
         grantAccess.agentId.toString()
       );
-
-      if (!agent) {
+      if (!agentUser) {
         logger.warn(
           { agentId: grantAccess.agentId },
           "Agent not found for approval notification"
@@ -338,8 +343,8 @@ export class PreMarketNotifier {
       );
 
       const emailResult = await emailService.sendGrantAccessApprovalToAgent({
-        to: agent.email,
-        agentName: agent.fullName || agent.name || "Agent",
+        to: agentUser.email,
+        agentName: agentUser.fullName || "Agent",
         preMarketRequestId: grantAccess.preMarketRequestId.toString(),
         grantAccessId: grantAccess._id.toString(),
         isFree,

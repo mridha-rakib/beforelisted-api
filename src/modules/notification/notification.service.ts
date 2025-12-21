@@ -166,14 +166,14 @@ export class NotificationService {
   async notifyAgentAccessGranted(agentData: {
     agentId: string | Types.ObjectId;
     agentName: string;
-    grantedBy: string;
+    grantedBy: string | Types.ObjectId;
   }): Promise<void> {
     try {
       await this.createNotification({
         recipientId: agentData.agentId,
         recipientRole: "Agent",
         title: "Access Granted",
-        message: `You have been granted access by ${agentData.grantedBy}. You can now view pre-market requests.`,
+        message: `You have been granted access by admin. You can now view pre-market requests with renter information.`,
         type: "success",
         notificationType: "agent_access_granted",
         relatedEntityType: "Agent",
@@ -247,6 +247,11 @@ export class NotificationService {
         logger.warn("No admins found to notify about grant access request");
         return;
       }
+
+      console.log(
+        "Admins to notify:",
+        admins.map((a) => a._id.toString())
+      );
 
       const notificationPromises = admins.map((admin) =>
         this.createNotification({
@@ -370,6 +375,157 @@ export class NotificationService {
     } catch (error) {
       logger.error({ error }, "Failed to notify admins about rejection");
       // Non-blocking
+    }
+  }
+
+  async notifyAgentAboutGrantAccessApproved(data: {
+    grantAccessId: string;
+    agentId: string | Types.ObjectId;
+    agentName: string;
+    propertyTitle: string;
+    location: string;
+    approvedBy: string;
+    isFree: boolean;
+    notes?: string;
+  }): Promise<void> {
+    try {
+      await this.createNotification({
+        recipientId: data.agentId,
+        recipientRole: "Agent",
+        title: "Grant Access Approved! 🎉",
+        message: `Your request to access "${data.propertyTitle}" at ${data.location} has been approved by admin. ${
+          data.isFree
+            ? "You can now view renter information for FREE!"
+            : "Please complete the payment to view renter information."
+        }`,
+        type: "success",
+        notificationType: "grant_access_approved",
+        relatedEntityType: "Request",
+        relatedEntityId: data.grantAccessId,
+        actionUrl: `/agent/grant-access/${data.grantAccessId}`,
+        actionData: {
+          grantAccessId: data.grantAccessId,
+          propertyTitle: data.propertyTitle,
+          location: data.location,
+          isFree: data.isFree,
+          approvedBy: data.approvedBy,
+          notes: data.notes,
+        },
+      });
+
+      logger.info(
+        { agentId: data.agentId, grantAccessId: data.grantAccessId },
+        "✅ Agent notified about grant access approval"
+      );
+    } catch (error) {
+      logger.error(
+        { error, agentId: data.agentId, grantAccessId: data.grantAccessId },
+        "Failed to notify agent about grant access approval (non-blocking)"
+      );
+    }
+  }
+
+  /**
+   * ✅ NEW METHOD
+   * Notify agent when admin charges for grant access
+   */
+  async notifyAgentAboutGrantAccessCharged(data: {
+    grantAccessId: string;
+    agentId: string | Types.ObjectId;
+    agentName: string;
+    propertyTitle: string;
+    location: string;
+    chargeAmount: number;
+    currency: string;
+    chargedBy: string;
+    paymentLink?: string;
+    notes?: string;
+  }): Promise<void> {
+    try {
+      await this.createNotification({
+        recipientId: data.agentId,
+        recipientRole: "Agent",
+        title: "Payment Required for Grant Access",
+        message: `Your request to access "${data.propertyTitle}" at ${data.location} requires payment of ${data.currency} ${data.chargeAmount}. Click to proceed with payment.`,
+        type: "alert",
+        notificationType: "grant_access_request",
+        relatedEntityType: "Payment",
+        relatedEntityId: data.grantAccessId,
+        actionUrl:
+          data.paymentLink || `/agent/grant-access/${data.grantAccessId}/pay`,
+        actionData: {
+          grantAccessId: data.grantAccessId,
+          propertyTitle: data.propertyTitle,
+          location: data.location,
+          chargeAmount: data.chargeAmount,
+          currency: data.currency,
+          chargedBy: data.chargedBy,
+          notes: data.notes,
+        },
+      });
+
+      logger.info(
+        {
+          agentId: data.agentId,
+          grantAccessId: data.grantAccessId,
+          amount: data.chargeAmount,
+        },
+        "✅ Agent notified about grant access charge"
+      );
+    } catch (error) {
+      logger.error(
+        { error, agentId: data.agentId, grantAccessId: data.grantAccessId },
+        "Failed to notify agent about grant access charge (non-blocking)"
+      );
+    }
+  }
+
+  /**
+   * ✅ NEW METHOD
+   * Notify agent when admin rejects grant access
+   */
+  async notifyAgentAboutGrantAccessRejected(data: {
+    grantAccessId: string;
+    agentId: string | Types.ObjectId;
+    agentName: string;
+    propertyTitle: string;
+    location: string;
+    rejectionReason?: string;
+    rejectedBy: string;
+    notes?: string;
+  }): Promise<void> {
+    try {
+      await this.createNotification({
+        recipientId: data.agentId,
+        recipientRole: "Agent",
+        title: "Grant Access Request Rejected",
+        message: `Your request to access "${data.propertyTitle}" at ${data.location} has been rejected by admin.${
+          data.rejectionReason ? ` Reason: ${data.rejectionReason}` : ""
+        }`,
+        type: "warning",
+        notificationType: "grant_access_rejected",
+        relatedEntityType: "Request",
+        relatedEntityId: data.grantAccessId,
+        actionUrl: `/agent/grant-access/${data.grantAccessId}`,
+        actionData: {
+          grantAccessId: data.grantAccessId,
+          propertyTitle: data.propertyTitle,
+          location: data.location,
+          rejectionReason: data.rejectionReason,
+          rejectedBy: data.rejectedBy,
+          notes: data.notes,
+        },
+      });
+
+      logger.info(
+        { agentId: data.agentId, grantAccessId: data.grantAccessId },
+        "✅ Agent notified about grant access rejection"
+      );
+    } catch (error) {
+      logger.error(
+        { error, agentId: data.agentId, grantAccessId: data.grantAccessId },
+        "Failed to notify agent about grant access rejection (non-blocking)"
+      );
     }
   }
 

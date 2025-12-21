@@ -64,7 +64,7 @@ export class NotificationRepository extends BaseRepository<INotification> {
 
   async getAllAdmins(): Promise<any[]> {
     const User = this.model.db.collection("users");
-    return User.find({ role: "Admin", isActive: true }).toArray();
+    return User.find({ role: "Admin" }).toArray();
   }
 
   async cleanupOldReadNotifications(daysOld: number = 30): Promise<any> {

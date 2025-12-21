@@ -101,7 +101,9 @@ export class AgentService {
     const tokens = this.generateTokens(
       user._id.toString(),
       user.email,
-      user.role
+      user.role,
+      user.accountStatus,
+      user.emailVerified
     );
 
     this.updateAgentConsolidatedExcel().catch((error) => {
@@ -215,12 +217,52 @@ export class AgentService {
 
   // ADMIN OPERATIONS
 
-  async adminGetAllAgents(): Promise<AgentProfileResponse[]> {
-    const agents: IAgentProfile[] = await this.repository.find({});
-    return agents.map((agent: IAgentProfile) => this.toResponse(agent));
+  async adminGetAllAgents(
+    query: {
+      page?: number;
+      limit?: number;
+      sort?: string;
+      search?: string;
+      isActive?: boolean;
+      hasGrantAccess?: boolean;
+    } = {}
+  ): Promise<{
+    data: AgentProfileResponse[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      pages: number;
+    };
+  }> {
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 10));
+
+    let sort: Record<string, 1 | -1> = { createdAt: -1 };
+    if (query.sort) {
+      const sortField = query.sort.startsWith("-")
+        ? query.sort.substring(1)
+        : query.sort;
+      const sortOrder = query.sort.startsWith("-") ? -1 : 1;
+      sort = { [sortField]: sortOrder };
+    }
+
+    const result = await this.repository.findAllPaginated({
+      page,
+      limit,
+      sort,
+      search: query.search,
+      isActive: query.isActive,
+      hasGrantAccess: query.hasGrantAccess,
+    });
+
+    return {
+      data: result.data.map((agent: IAgentProfile) => this.toResponse(agent)),
+      pagination: result.pagination,
+    };
   }
 
-  async adminGetAgent(userId: string): Promise<AgentProfileResponse> {
+  async adminGetSpecificAgent(userId: string): Promise<AgentProfileResponse> {
     const profile = await this.repository.findByUserId(userId);
     if (!profile) {
       throw new NotFoundException("Agent profile not found");
@@ -232,11 +274,6 @@ export class AgentService {
   async adminGetPendingApprovalAgents(): Promise<AgentProfileResponse[]> {
     const agents: IAgentProfile[] =
       await this.repository.findPendingApprovalAgents();
-    return agents.map((agent: IAgentProfile) => this.toResponse(agent));
-  }
-
-  async adminGetSuspendedAgents(): Promise<AgentProfileResponse[]> {
-    const agents: IAgentProfile[] = await this.repository.findSuspendedAgents();
     return agents.map((agent: IAgentProfile) => this.toResponse(agent));
   }
 
@@ -305,7 +342,9 @@ export class AgentService {
   private generateTokens(
     userId: string,
     email: string,
-    role: string
+    role: string,
+    accountStatus: string,
+    emailVerified: boolean
   ): {
     accessToken: string;
     refreshToken: string;
@@ -315,6 +354,8 @@ export class AgentService {
       userId,
       email,
       role,
+      accountStatus,
+      emailVerified,
     });
 
     const refreshToken = AuthUtil.generateRefreshToken(userId);
@@ -518,13 +559,22 @@ export class AgentService {
     return metadata;
   }
 
+  async findAgentById(agentId: string): Promise<IAgentProfile | null> {
+    const agent = await this.repository.findById(agentId);
+
+    if (!agent) {
+      throw new NotFoundException("Agent not found");
+    }
+    return await this.repository.findByUserId(agent.userId?.toString());
+  }
+
   private toResponse(agent: IAgentProfile): AgentProfileResponse {
     return {
-      _id: agent._id.toString(),
+      _id: agent._id?.toString() ?? "",
       userId:
         agent.userId && (agent.userId as any)._id
           ? agent.userId
-          : agent.userId.toString(),
+          : (agent.userId?.toString() ?? ""),
       licenseNumber: agent.licenseNumber,
       brokerageName: agent.brokerageName,
       isActive: agent.isActive,

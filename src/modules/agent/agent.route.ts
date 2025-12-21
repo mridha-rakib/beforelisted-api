@@ -72,6 +72,13 @@ router.get(
   controller.adminGetAllAgents
 );
 
+router.get(
+  "/admin/:userId",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize(ROLES.ADMIN),
+  controller.getSpecificAgent
+);
+
 /**
  * GET /agent/admin/excel-download
  * Download agent Excel (admin only)
@@ -84,16 +91,16 @@ router.get(
   controller.downloadAgentConsolidatedExcel
 );
 
-/**
- * GET /agent/admin/:userId
- * Get specific agent profile (admin only)
- */
-router.get(
-  "/admin/:userId",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  controller.adminGetAgent
-);
+// /**
+//  * GET /agent/admin/:userId
+//  * Get specific agent profile (admin only)
+//  */
+// router.get(
+//   "/admin/:userId",
+//   authMiddleware.verifyToken,
+//   authMiddleware.authorize(ROLES.ADMIN),
+//   controller.adminGetAgent
+// );
 
 /**
  * Toggle agent access

@@ -79,11 +79,12 @@ export class GrantAccessService {
 
     logger.info({ agentId }, `Grant access requested: ${preMarketRequestId}`);
 
-     try {
+    try {
       const agent = await this.userRepository.findById(agentId);
       const agentProfile = await this.agentRepository.findByUserId(agentId);
 
       if (agent && agentProfile && listingActivationCheck) {
+        logger.info("Preparing to notify admins about grant access request");
         await this.notificationService.notifyAdminAboutGrantAccessRequest({
           agentId,
           agentName: agent.fullName,

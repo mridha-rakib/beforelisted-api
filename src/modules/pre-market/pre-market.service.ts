@@ -717,6 +717,10 @@ export class PreMarketService {
           req.agentId.toString()
         );
 
+        // const agentProfile = await this.agentRepository.findByUserId(
+        //   req.agentId.toString()
+        // );
+
         // Build agent object with proper types
         const agentInfo = agent
           ? {

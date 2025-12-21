@@ -49,7 +49,11 @@ export class FAQController {
    * Protected: Admin only
    */
   getAllFAQsForAdmin = asyncHandler(async (req: Request, res: Response) => {
-    const faqs = await this.faqService.getAllFAQs(false); // Get all, including inactive
+    const faqs = await this.faqService.getAllFAQs(false);
+
+    console.log("++++++++++++++++++++++++++++++++++++++++");
+    console.log("Admin accessed all FAQs", faqs);
+    console.log("++++++++++++++++++++++++++++++++++++++++");
 
     ApiResponse.success(res, faqs, "All FAQs retrieved for admin");
   });

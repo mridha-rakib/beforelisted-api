@@ -13,7 +13,9 @@ import type { Request, Response } from "express";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
 import { GrantAccessService } from "../grant-access/grant-access.service";
+import { NotificationService } from "../notification/notification.service";
 import { PaymentService } from "../payment/payment.service";
+import { UserRepository } from "../user/user.repository";
 import { PreMarketNotifier } from "./pre-market-notifier";
 import { PreMarketRepository } from "./pre-market.repository";
 import {
@@ -45,7 +47,10 @@ export class PreMarketController {
         new GrantAccessRepository(),
         new PreMarketRepository()
       ),
-      new PreMarketNotifier()
+      new PreMarketNotifier(),
+      new NotificationService(),
+      new UserRepository(),
+      new AgentProfileRepository()
     );
     this.paymentService = new PaymentService(
       new GrantAccessRepository(),

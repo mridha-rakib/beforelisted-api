@@ -57,11 +57,6 @@ export class RenterService {
 
   // REGISTRATION FLOWS (3 Types)
 
-  /**
-   * Register Renter (All Types)
-   * Detects registration type and routes to appropriate flow
-   * Supports: Normal, Agent Referral, Admin Referral
-   */
   async registerRenter(payload: any): Promise<RenterRegistrationResponse> {
     // Detect registration type
     if (payload.referralCode) {
@@ -566,16 +561,62 @@ export class RenterService {
       accountStatus
     );
 
-    const data = result.data.map((renter: any) => ({
-      _id: renter._id,
-      userId: renter.userId,
-      email: renter.email,
-      fullName: renter.fullName,
-      phoneNumber: renter.phoneNumber,
-      accountStatus: renter.accountStatus,
-      totalListings: renter.totalListings,
-      createdAt: renter.createdAt,
-    }));
+    console.log("+++++++++++++++++++++++++++++++");
+    logger.info(result, "All renters-----------");
+    console.log("+++++++++++++++++++++++++++++++");
+
+    const data = await Promise.all(
+      result.data.map(async (renter: any) => {
+        // Build referralInfo based on registration type
+        let referralInfo: any = {
+          registrationType: renter.registrationType,
+        };
+
+        if (renter.referredByAgentId) {
+          const agent = await new AgentProfileRepository().findByUserId(
+            renter.referredByAgentId.toString()
+          );
+          // referralInfo.referredByAgent = {
+          //   referredBy: "Agent",
+          //   referrerName: renter.referredByAgent.fullName,
+          //   referrerEmail: renter.referredByAgent.email,
+          // };
+          if (agent && agent.userId) {
+            // Cast to any since userId is populated with user document
+            const populatedUser = agent.userId as any;
+            referralInfo.referredByAgent = {
+              referredBy: populatedUser.role,
+              referrerName: populatedUser.fullName,
+              referrerEmail: populatedUser.email,
+            };
+          }
+        }
+
+        if (
+          renter.registrationType === "admin_referral" &&
+          renter.referredByAdmin
+        ) {
+          referralInfo.referredByAdmin = {
+            referredBy: "Admin",
+            referrerName: renter.referredByAdmin.fullName,
+            referrerEmail: renter.referredByAdmin.email,
+          };
+        }
+
+        return {
+          _id: renter._id,
+          userId: renter.userId,
+          email: renter.email,
+          fullName: renter.fullName,
+          phoneNumber: renter.phoneNumber,
+          accountStatus: renter.accountStatus,
+          totalListings: renter.totalListings,
+          registrationType: renter.registrationType,
+          referralInfo,
+          createdAt: renter.createdAt,
+        };
+      })
+    );
 
     return {
       success: true,
@@ -603,25 +644,18 @@ export class RenterService {
     };
 
     if (renter.referredByAgentId) {
-      const agent = await new AgentProfileRepository().findById(
+      const agent = await new AgentProfileRepository().findByUserId(
         renter.referredByAgentId.toString()
       );
 
-      if (agent) {
-        // Get agent's user details for email and fullName
-        const agentUser = await new UserRepository().findById(
-          agent.userId.toString()
-        );
-
-        referralInfo.referredByAgentId = renter.referredByAgentId;
-        referralInfo.referredByAgent = agentUser
-          ? {
-              _id: agent._id,
-              fullName: agentUser.fullName,
-              email: agentUser.email,
-              role: "Agent",
-            }
-          : null;
+      if (agent && agent.userId) {
+        // Cast to any since userId is populated with user document
+        const populatedUser = agent.userId as any;
+        referralInfo.referredByAgent = {
+          referredBy: populatedUser.role,
+          referrerName: populatedUser.fullName,
+          referrerEmail: populatedUser.email,
+        };
       }
     }
 
@@ -632,22 +666,18 @@ export class RenterService {
 
       referralInfo.referredByAdmin = admin
         ? {
-            _id: admin._id,
-            fullName: admin.fullName,
-            email: admin.email,
-            role: "Admin",
+            referredBy: "Admin",
+            referrerName: admin.fullName,
+            referrerEmail: admin.email,
           }
         : null;
     }
 
-    // Get renter's pre-market listings
-    // Note: Pre-market renterId references userId, not renter._id
     const listings = await new PreMarketRepository().findByRenterIdAll(
       renter.userId._id.toString(),
-      true // include inactive listings
+      true
     );
 
-    // Map listings for display
     const preMarketListings = listings.map((listing: any) => ({
       _id: listing._id,
       requestId: listing.requestId,

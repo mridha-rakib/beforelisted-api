@@ -17,7 +17,9 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
   /**
    * Find agent by user ID
    */
-  async findByUserId(userId: string): Promise<IAgentProfile | null> {
+  async findByUserId(
+    userId: string | Types.ObjectId
+  ): Promise<IAgentProfile | null> {
     return this.model
       .findOne({ userId })
       .populate({
@@ -302,6 +304,102 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
         { $sort: { createdAt: -1 } },
       ])
       .exec() as Promise<IAgentProfile[]>;
+  }
+
+  /**
+   * Find all agents with pagination
+   */
+  async findAllPaginated(options: {
+    page: number;
+    limit: number;
+    sort?: Record<string, 1 | -1>;
+    search?: string;
+    isActive?: boolean;
+    hasGrantAccess?: boolean;
+  }): Promise<{
+    data: IAgentProfile[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      pages: number;
+    };
+  }> {
+    const {
+      page = 1,
+      limit = 10,
+      sort = { createdAt: -1 },
+      search,
+      isActive,
+      hasGrantAccess,
+    } = options;
+    const skip = (page - 1) * limit;
+
+    // Build match filter
+    const matchFilter: Record<string, any> = {};
+
+    if (isActive !== undefined) {
+      matchFilter.isActive = isActive;
+    }
+
+    if (hasGrantAccess !== undefined) {
+      matchFilter.hasGrantAccess = hasGrantAccess;
+    }
+
+    // Build aggregation pipeline
+    const pipeline: any[] = [
+      { $match: matchFilter },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "userInfo",
+        },
+      },
+      {
+        $addFields: {
+          userId: { $arrayElemAt: ["$userInfo", 0] },
+        },
+      },
+      { $project: { userInfo: 0 } },
+    ];
+
+    // Add search filter if provided (search by user fullName or email)
+    if (search) {
+      pipeline.push({
+        $match: {
+          $or: [
+            { "userId.fullName": { $regex: search, $options: "i" } },
+            { "userId.email": { $regex: search, $options: "i" } },
+            { licenseNumber: { $regex: search, $options: "i" } },
+            { brokerageName: { $regex: search, $options: "i" } },
+          ],
+        },
+      });
+    }
+
+    // Get total count
+    const countPipeline = [...pipeline, { $count: "total" }];
+    const countResult = await this.model.aggregate(countPipeline).exec();
+    const total = countResult[0]?.total || 0;
+
+    // Add sort, skip, limit
+    pipeline.push({ $sort: sort });
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: limit });
+
+    const data = await this.model.aggregate(pipeline).exec();
+
+    return {
+      data: data as IAgentProfile[],
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async countAgents(): Promise<any> {

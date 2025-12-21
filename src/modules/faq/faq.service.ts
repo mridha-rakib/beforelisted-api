@@ -16,9 +16,10 @@ export class FAQService {
   }
 
   async getAllFAQs(isActive: boolean = true): Promise<IFAQ[]> {
-    const faqs = await this.faqRepository.getAllFAQs(isActive);
-
-    logger.debug({ count: faqs.length }, "All FAQs retrieved");
+    const faqs = await this.faqRepository.find();
+    console.log("++++++++++++++++++++++++++++++++++++++++");
+    logger.info(faqs, "All FAQs retrieved");
+    console.log("++++++++++++++++++++++++++++++++++++++++");
 
     return faqs;
   }

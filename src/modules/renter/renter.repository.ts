@@ -45,15 +45,15 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
   // }
 
   async findByUserId(userId: string): Promise<IRenterModel | null> {
-      return this.model
-        .findOne({ userId })
-        .populate({
-          path: "userId",
-          select:
-            "fullName email role phoneNumber emailVerified accountStatus referralCode totalReferrals",
-        })
-        .exec();
-    }
+    return this.model
+      .findOne({ userId })
+      .populate({
+        path: "userId",
+        select:
+          "fullName email role phoneNumber emailVerified accountStatus referralCode totalReferrals",
+      })
+      .exec();
+  }
 
   /**
    * Find renter by email
@@ -457,6 +457,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
 
     const pipeline = [
       { $match: matchFilter },
+      // Lookup pre-market listings count
       {
         $lookup: {
           from: "premarketrequests",
@@ -472,9 +473,62 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
           as: "preMarketListings",
         },
       },
+      // Lookup agent profile for agent referrals
+      {
+        $lookup: {
+          from: "agentprofiles",
+          localField: "referredByAgentId",
+          foreignField: "_id",
+          as: "agentProfile",
+        },
+      },
+      // Lookup user details for the agent (agent's user info)
+      {
+        $lookup: {
+          from: "users",
+          let: {
+            agentUserId: { $arrayElemAt: ["$agentProfile.userId", 0] },
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$_id", "$$agentUserId"] },
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                fullName: 1,
+                email: 1,
+              },
+            },
+          ],
+          as: "agentUser",
+        },
+      },
+      // Lookup admin user for admin referrals
+      {
+        $lookup: {
+          from: "users",
+          localField: "referredByAdminId",
+          foreignField: "_id",
+          pipeline: [
+            {
+              $project: {
+                _id: 1,
+                fullName: 1,
+                email: 1,
+              },
+            },
+          ],
+          as: "adminUser",
+        },
+      },
       {
         $addFields: {
           totalListings: { $size: "$preMarketListings" },
+          referredByAgent: { $arrayElemAt: ["$agentUser", 0] },
+          referredByAdmin: { $arrayElemAt: ["$adminUser", 0] },
         },
       },
       {
@@ -485,6 +539,11 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
           fullName: 1,
           phoneNumber: 1,
           accountStatus: 1,
+          registrationType: 1,
+          referredByAgentId: 1,
+          referredByAdminId: 1,
+          referredByAgent: 1,
+          referredByAdmin: 1,
           totalListings: 1,
           createdAt: 1,
         },
@@ -534,7 +593,4 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
       .select("referredByAgentId referredByAdminId registrationType")
       .lean() as Promise<any>;
   }
-
-
-   
 }
