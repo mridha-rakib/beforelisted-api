@@ -34,6 +34,7 @@ export class UserService {
       accountStatus: user.accountStatus,
       emailVerified: user.emailVerified,
       lastLoginAt: user.lastLoginAt,
+      profileImage: user.profileImageUrl || undefined,
 
       // Referral fields
       referralCode: user.referralCode || undefined,

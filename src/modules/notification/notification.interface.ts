@@ -58,11 +58,9 @@ export type NotificationType =
   | "agent_deactivated"
   | "agent_access_granted"
   | "agent_access_revoked"
-  | "admin_new_agent_registered"
-  | "general_info"
-  | "general_alert"
-  | "new_pre_market_listing"
-  | "new_pre_market_listing_admin"
   | "grant_access_request"
   | "grant_access_approved"
-  | "grant_access_rejected";
+  | "grant_access_rejected"
+  | "grant_access_agent_approved"
+  | "grant_access_agent_charged"
+  | "grant_access_agent_rejected";

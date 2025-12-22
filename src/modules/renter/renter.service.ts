@@ -3,6 +3,7 @@
 import { ROLES } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 import { EmailService } from "@/services/email.service";
+import { ExcelService } from "@/services/excel.service";
 import {
   BadRequestException,
   ConflictException,
@@ -45,6 +46,7 @@ export class RenterService {
   private emailService: EmailService;
   private passwordResetService: PasswordResetService;
   private referralService: ReferralService;
+  private excelService: ExcelService;
 
   constructor() {
     this.repository = new RenterRepository();
@@ -53,6 +55,7 @@ export class RenterService {
     this.emailService = new EmailService();
     this.passwordResetService = new PasswordResetService();
     this.referralService = new ReferralService();
+    this.excelService = new ExcelService();
   }
 
   // REGISTRATION FLOWS (3 Types)
@@ -61,11 +64,6 @@ export class RenterService {
     // Detect registration type
     if (payload.referralCode) {
       const parsed = ReferralParser.parse(payload.referralCode);
-
-      console.log("+++++++++++++++++++++++++++++");
-      console.log(parsed);
-      console.log("+++++++++++++++++++++++++++++");
-
       if (parsed.type === "agent_referral") {
         return this.registerAgentReferralRenter(
           payload as AgentReferralRenterRegisterPayload
@@ -89,16 +87,13 @@ export class RenterService {
   private async registerNormalRenter(
     payload: NormalRenterRegisterPayload
   ): Promise<RenterRegistrationResponse> {
-    // Step 1: Check if email already exists
     const existingUser = await this.userService.getUserByEmail(payload.email);
     if (existingUser) {
       throw new ConflictException("Email already registered");
     }
 
-    // Step 2: Hash password
     const hashedPassword = await hashPassword(payload.password);
 
-    // Step 3: Create User account
     const user = await this.userService.create({
       email: payload.email,
       password: hashedPassword,
@@ -109,7 +104,6 @@ export class RenterService {
       accountStatus: "pending",
     });
 
-    // Step 4: Create OTP for email verification
     await this.emailVerificationService.createOTP({
       userId: user._id.toString(),
       email: user.email,
@@ -117,7 +111,6 @@ export class RenterService {
       userName: user.fullName,
     });
 
-    // Step 5: Create Renter profile
     const renterProfile = await this.repository.createRenter({
       userId: user._id,
       email: user.email,
@@ -131,10 +124,14 @@ export class RenterService {
     const tokens = this.generateTokens(
       user._id.toString(),
       user.email,
-      user.role
+      user.role,
+      user.accountStatus
     );
 
-    void this.updateConsolidatedExcel();
+    //  this.updateConsolidatedExcel();
+    this.updateRenterConsolidatedExcel().catch((error) => {
+      logger.error(error, "Error updating renter consolidated Excel");
+    });
 
     return {
       user: this.userService.toUserResponse(user),
@@ -154,10 +151,6 @@ export class RenterService {
     // Step 1: Validate referral code format
     const parsed = ReferralParser.parse(payload.referralCode);
 
-    console.log("+++++++++++++++++++++++++++++");
-    console.log(parsed);
-    console.log("+++++++++++++++++++++++++++++");
-
     if (!parsed.isValid || parsed.type !== "agent_referral") {
       throw new BadRequestException("Invalid agent referral code");
     }
@@ -173,10 +166,6 @@ export class RenterService {
       payload.referralCode
     );
 
-    console.log("+++++++++++++++++++++++++++++");
-    console.log("Agent ID from referral code:", agentId);
-    console.log("+++++++++++++++++++++++++++++");
-
     // Step 4: Hash password
     const hashedPassword = await hashPassword(payload.password);
 
@@ -190,10 +179,6 @@ export class RenterService {
       emailVerified: false,
       accountStatus: "pending",
     });
-
-    console.log("+++++++++++++++++++++++++++++");
-    console.log("Agent ID from referral code:", user);
-    console.log("+++++++++++++++++++++++++++++");
 
     // Step 6: Create OTP for email verification
     await this.emailVerificationService.createOTP({
@@ -221,10 +206,14 @@ export class RenterService {
     const tokens = this.generateTokens(
       user._id.toString(),
       user.email,
-      user.role
+      user.role,
+      user.accountStatus
     );
 
-    void this.updateConsolidatedExcel();
+    this.updateRenterConsolidatedExcel().catch((error) => {
+      logger.error(error, "Error updating renter consolidated Excel");
+    });
+
     return {
       user: this.userService.toUserResponse(user),
       renter: this.toRenterResponse(renterProfile),
@@ -254,8 +243,8 @@ export class RenterService {
     }
 
     // Step 3: Generate random password
-    const temporaryPassword = RenterUtil.generateAutoPassword();
-    const hashedPassword = await hashPassword(temporaryPassword.password);
+    const temporaryPassword = RenterUtil.generateAutoPassword().password;
+    const hashedPassword = await hashPassword(temporaryPassword);
 
     // Step 4: Validate referral code in system and get admin ID
     const adminId = await this.validateAndGetAdminFromReferralCode(
@@ -347,10 +336,13 @@ export class RenterService {
     const tokens = this.generateTokens(
       user._id.toString(),
       user.email,
-      user.role
+      user.role,
+      user.accountStatus
     );
 
-    void this.updateConsolidatedExcel();
+    this.updateRenterConsolidatedExcel().catch((error) => {
+      logger.error(error, "Error updating renter consolidated Excel");
+    });
 
     return {
       user: this.userService.toUserResponse(user),
@@ -449,11 +441,7 @@ export class RenterService {
    */
   async getRenterProfile(userId: string): Promise<RenterResponse> {
     const renter = await this.repository.findByUserId(userId);
-    console.log(
-      "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-    );
-    console.log(renter);
-    console.log("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+
     if (!renter) {
       throw new NotFoundException("Renter profile not found");
     }
@@ -478,22 +466,20 @@ export class RenterService {
     return this.toRenterResponse(renter);
   }
 
-  // ============================================
-  // HELPER METHODS
-  // ============================================
-
   /**
    * Generate JWT tokens
    */
   private generateTokens(
     userId: string,
     email: string,
-    role: string
+    role: string,
+    accountStatus: string
   ): { accessToken: string; refreshToken: string; expiresIn: string } {
     const accessToken = AuthUtil.generateAccessToken({
       userId,
       email,
       role,
+      accountStatus,
     });
 
     const refreshToken = AuthUtil.generateRefreshToken(userId);
@@ -561,10 +547,6 @@ export class RenterService {
       accountStatus
     );
 
-    console.log("+++++++++++++++++++++++++++++++");
-    logger.info(result, "All renters-----------");
-    console.log("+++++++++++++++++++++++++++++++");
-
     const data = await Promise.all(
       result.data.map(async (renter: any) => {
         // Build referralInfo based on registration type
@@ -576,13 +558,8 @@ export class RenterService {
           const agent = await new AgentProfileRepository().findByUserId(
             renter.referredByAgentId.toString()
           );
-          // referralInfo.referredByAgent = {
-          //   referredBy: "Agent",
-          //   referrerName: renter.referredByAgent.fullName,
-          //   referrerEmail: renter.referredByAgent.email,
-          // };
+
           if (agent && agent.userId) {
-            // Cast to any since userId is populated with user document
             const populatedUser = agent.userId as any;
             referralInfo.referredByAgent = {
               referredBy: populatedUser.role,
@@ -702,7 +679,6 @@ export class RenterService {
       phoneNumber: renter.phoneNumber,
       accountStatus: renter.accountStatus,
       // emailVerified: renter.emailVerified,
-      // occupations: renter.occupations,
       moveInDate: renter.moveInDate,
       petFriendly: renter.petFriendly,
       referralInfo,
@@ -731,30 +707,27 @@ export class RenterService {
    * Called after every new renter registration
    * Non-blocking: User gets response before Excel is generated
    */
-  async updateConsolidatedExcel(): Promise<void> {
+  async updateRenterConsolidatedExcel(): Promise<void> {
     // Fire and forget - don't wait for completion
     setImmediate(async () => {
       try {
-        logger.info("Starting async Renter Excel update");
+        const buffer =
+          await this.excelService.generateConsolidatedRenterExcel();
 
-        // Step 1: Generate Excel
-        const excelBuffer =
-          await excelService.generateConsolidatedRenterExcel();
-
-        // Step 2: Upload to S3
         const { url, fileName } =
-          await excelService.uploadConsolidatedRenterExcel(excelBuffer);
+          await this.excelService.uploadConsolidatedRenterExcel(buffer);
 
-        // Step 3: Get current count
         const totalRenters = await this.repository.count();
 
-        // Step 4: Save metadata
+        const previousMetadata = await this.repository.getExcelMetadata();
+        const version = (previousMetadata?.version || 0) + 1;
+
         await this.repository.updateExcelMetadata({
           type: "renters",
           fileName,
           fileUrl: url,
           totalRenters,
-          version: totalRenters, // Version = total count
+          version: version,
           lastUpdated: new Date(),
         });
 

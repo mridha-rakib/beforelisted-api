@@ -95,6 +95,8 @@ export type RenterRegistrationResponse = {
   registrationType: "normal" | "agent_referral" | "admin_referral";
   temporaryPassword?: string; // For admin referral only
   mustChangePassword?: boolean; // For admin referral only
+  emailSent?: boolean;
+  emailError?: string | null;
 };
 
 /**

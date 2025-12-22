@@ -150,6 +150,13 @@ export class GrantAccessService {
       throw new NotFoundException("Grant access request not found");
     }
 
+    const agent = await this.userRepository.findById(
+      grantAccess.agentId.toString()
+    );
+    const preMarketRequest = await this.preMarketRepository.findById(
+      grantAccess.preMarketRequestId.toString()
+    );
+
     // REJECT
     if (decision.action === "reject") {
       grantAccess.status = "rejected";
@@ -162,6 +169,35 @@ export class GrantAccessService {
 
       await this.grantAccessRepository.updateById(grantAccessId, grantAccess);
       await this.notifier.notifyAgentOfRejection(grantAccess);
+
+      try {
+        if (agent && preMarketRequest) {
+          await this.notificationService.notifyAgentAboutGrantAccessRejected({
+            grantAccessId,
+            agentId: grantAccess.agentId,
+            agentName: agent.fullName || "Agent",
+            propertyTitle: preMarketRequest.requestName || "Pre-Market Request",
+            location:
+              preMarketRequest.locations
+                ?.map((loc) => loc?.borough)
+                .filter(Boolean)
+                .join(", ") || "Unknown Location",
+            rejectionReason: decision.notes,
+            rejectedBy: decision.adminId,
+            notes: decision.notes,
+          });
+
+          logger.info(
+            { grantAccessId, agentId: grantAccess.agentId },
+            "✅ Agent notification sent for rejection"
+          );
+        }
+      } catch (notificationError) {
+        logger.error(
+          { error: notificationError, grantAccessId },
+          "⚠️ Failed to send agent rejection notification (non-blocking)"
+        );
+      }
 
       logger.info(`Grant access rejected: ${grantAccessId}`);
 
@@ -187,6 +223,35 @@ export class GrantAccessService {
 
       await this.grantAccessRepository.updateById(grantAccessId, grantAccess);
       await this.notifier.notifyAgentOfApproval(grantAccess, true);
+
+      try {
+        if (agent && preMarketRequest) {
+          await this.notificationService.notifyAgentAboutGrantAccessApproved({
+            grantAccessId,
+            agentId: grantAccess.agentId,
+            agentName: agent.fullName || "Agent",
+            propertyTitle: preMarketRequest.requestName || "Pre-Market Request",
+            location:
+              preMarketRequest.locations
+                ?.map((loc) => loc?.borough)
+                .filter(Boolean)
+                .join(", ") || "Unknown Location",
+            approvedBy: decision.adminId,
+            isFree: true,
+            notes: decision.notes,
+          });
+
+          logger.info(
+            { grantAccessId, agentId: grantAccess.agentId },
+            "✅ Agent notification sent for free approval"
+          );
+        }
+      } catch (notificationError) {
+        logger.error(
+          { error: notificationError, grantAccessId },
+          "⚠️ Failed to send agent approval notification (non-blocking)"
+        );
+      }
 
       logger.info(`Grant access approved (free): ${grantAccessId}`);
 
@@ -219,6 +284,41 @@ export class GrantAccessService {
 
       await this.grantAccessRepository.updateById(grantAccessId, grantAccess);
       await this.notifier.sendPaymentLinkToAgent(grantAccess);
+
+      try {
+        if (agent && preMarketRequest) {
+          await this.notificationService.notifyAgentAboutGrantAccessCharged({
+            grantAccessId,
+            agentId: grantAccess.agentId,
+            agentName: agent.fullName || "Agent",
+            propertyTitle: preMarketRequest.requestName || "Pre-Market Request",
+            location:
+              preMarketRequest.locations
+                ?.map((loc) => loc?.borough)
+                .filter(Boolean)
+                .join(", ") || "Unknown Location",
+            chargeAmount: decision.chargeAmount,
+            currency: "USD",
+            chargedBy: decision.adminId,
+            paymentLink: `/agent/grant-access/${grantAccessId}/pay`,
+            notes: decision.notes,
+          });
+
+          logger.info(
+            {
+              grantAccessId,
+              agentId: grantAccess.agentId,
+              amount: decision.chargeAmount,
+            },
+            "✅ Agent notification sent for charge"
+          );
+        }
+      } catch (notificationError) {
+        logger.error(
+          { error: notificationError, grantAccessId },
+          "⚠️ Failed to send agent charge notification (non-blocking)"
+        );
+      }
 
       logger.info(
         `Grant access charged: ${grantAccessId} - $${decision.chargeAmount}`

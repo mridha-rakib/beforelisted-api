@@ -322,10 +322,7 @@ export class PreMarketNotifier {
     isFree: boolean
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // const agent = await this.agentRepository.findById(
-      //   grantAccess.agentId.toString()
-      // );
-
+      
       const agentUser = await this.userRepository.findById(
         grantAccess.agentId.toString()
       );

@@ -53,10 +53,7 @@ export class MonthlyReportService {
   /**
    * Create new report
    */
-  async createReport(
-    data: Partial<IMonthlyReport>,
-    adminId: string
-  ): Promise<IMonthlyReport> {
+  async createReport(data: any, adminId: string): Promise<IMonthlyReport> {
     // Check if report already exists for this month/year
     const exists = await this.reportRepository.reportExists(
       data.year!,

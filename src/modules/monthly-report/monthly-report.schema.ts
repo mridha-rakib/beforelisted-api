@@ -4,7 +4,7 @@ import { z } from "zod";
 
 export const createMonthlyReportSchema = z.object({
   body: z.object({
-    link: z.string().url("Invalid URL").min(1, "Link is required"),
+    link: z.string().min(1, "Link is required"),
     month: z
       .number()
       .int("Month must be an integer")
@@ -21,7 +21,7 @@ export const createMonthlyReportSchema = z.object({
 
 export const updateMonthlyReportSchema = z.object({
   body: z.object({
-    link: z.string().url("Invalid URL").min(1, "Link is required").optional(),
+    link: z.string().min(1, "Link is required").optional(),
     month: z
       .number()
       .int("Month must be an integer")

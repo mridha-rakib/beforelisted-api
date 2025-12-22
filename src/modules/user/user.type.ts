@@ -16,6 +16,7 @@ export type UserResponse = {
   accountStatus: (typeof ACCOUNT_STATUS)[keyof typeof ACCOUNT_STATUS];
   emailVerified: boolean;
   lastLoginAt?: Date;
+  profileImage?: string;
 
   // Referral fields
   referralCode?: string;

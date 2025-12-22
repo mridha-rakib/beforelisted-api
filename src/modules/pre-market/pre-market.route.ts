@@ -235,10 +235,4 @@ router.get(
   controller.getExcelStats
 );
 
-// ============================================
-// WEBHOOK (No auth required)
-// ============================================
-
-// router.post("/payment/webhook", controller.handleWebhook.bind(controller));
-
 export default router;

@@ -25,7 +25,7 @@ router.post("/register", controller.registerAgent);
 router.get(
   "/profile",
   authMiddleware.verifyToken,
-  authMiddleware.verifyEmailVerified,
+  // authMiddleware.verifyEmailVerified,
   agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
   controller.getAgentProfile
@@ -38,7 +38,7 @@ router.get(
 router.put(
   "/profile",
   authMiddleware.verifyToken,
-  authMiddleware.verifyEmailVerified,
+  // authMiddleware.verifyEmailVerified,
   agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
   controller.updateAgentProfile
@@ -72,13 +72,6 @@ router.get(
   controller.adminGetAllAgents
 );
 
-router.get(
-  "/admin/:userId",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize(ROLES.ADMIN),
-  controller.getSpecificAgent
-);
-
 /**
  * GET /agent/admin/excel-download
  * Download agent Excel (admin only)
@@ -89,6 +82,13 @@ router.get(
   authMiddleware.verifyToken,
   authMiddleware.authorize(ROLES.ADMIN),
   controller.downloadAgentConsolidatedExcel
+);
+
+router.get(
+  "/admin/:userId",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize(ROLES.ADMIN),
+  controller.getSpecificAgent
 );
 
 // /**
