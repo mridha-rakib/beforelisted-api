@@ -1012,4 +1012,29 @@ export class PreMarketController {
       "Excel statistics"
     );
   });
+
+  getAllListingsWithAllData = asyncHandler(
+    async (req: Request, res: Response) => {
+      const userId = req.user?.userId;
+      const userRole = req.user?.role;
+
+      logger.info(
+        { userId, userRole },
+        "User requesting all listings with data"
+      );
+
+      const listings = await this.preMarketService.getAllListingsWithAllData();
+
+      logger.info(
+        { userId, totalListings: listings.length },
+        "All listings retrieved successfully"
+      );
+
+      return ApiResponse.success(
+        res,
+        listings,
+        "All pre-market listings retrieved successfully"
+      );
+    }
+  );
 }

@@ -1491,4 +1491,23 @@ export class PreMarketService {
     }
     return metadata;
   }
+
+  public async getAllListingsWithAllData(): Promise<any> {
+    try {
+      logger.info({}, "Fetching all listings with complete data");
+
+      const listings =
+        await this.preMarketRepository.getAllListingsWithAllData();
+
+      logger.info(
+        { totalListings: listings.length },
+        "All listings with data retrieved successfully"
+      );
+
+      return listings;
+    } catch (error) {
+      logger.error({ error }, "Failed to get all listings with data");
+      throw error;
+    }
+  }
 }

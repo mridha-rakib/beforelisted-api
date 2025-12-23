@@ -2,36 +2,27 @@
 
 import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
-import { PaymentService } from "../payment/payment.service";
 import { PreMarketNotifier } from "../pre-market/pre-market-notifier";
-import { PreMarketRepository } from "../pre-market/pre-market.repository";
 import { GrantAccessController } from "./grant-access.controller";
-import { GrantAccessRepository } from "./grant-access.repository";
-import { GrantAccessService } from "./grant-access.service";
-
-// ========================================
-// ROUTER SETUP
-// ========================================
 
 const router = Router();
 
 // Initialize dependencies
-const grantAccessRepository = new GrantAccessRepository();
-const preMarketRepository = new PreMarketRepository();
-const paymentService = new PaymentService(
-  grantAccessRepository,
-  preMarketRepository
-);
+// const grantAccessRepository = new GrantAccessRepository();
+// const preMarketRepository = new PreMarketRepository();
+// const paymentService = new PaymentService(
+//   grantAccessRepository,
+//   preMarketRepository
+// );
 const notifier = new PreMarketNotifier();
 
-// ✅ FIX #2: Create service first, then pass to controller
-const grantAccessService = new GrantAccessService(
-  grantAccessRepository,
-  preMarketRepository,
-  paymentService,
-  notifier
-);
-const controller = new GrantAccessController(grantAccessService);
+// const grantAccessService = new GrantAccessService(
+//   grantAccessRepository,
+//   preMarketRepository,
+//   paymentService,
+//   notifier
+// );  grantAccessService
+const controller = new GrantAccessController();
 
 // ============================================
 // AGENT ROUTES
@@ -134,14 +125,21 @@ router.get(
 );
 
 /**
- * GET /admin/income/year/:year
+ * GET /admin/income/:year
  * Get yearly income breakdown
  */
 router.get(
-  "/admin/income/year/:year",
+  "/admin/income/:year",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
   controller.getYearlyIncome.bind(controller)
+);
+
+router.get(
+  "/admin/payments/:paymentId",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.getPaymentDetails.bind(controller)
 );
 
 export default router;

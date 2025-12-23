@@ -403,7 +403,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
     await db
       .collection("excel_metadata")
       .updateOne(
-        { type: "renters" },
+        { type: "renters_data" },
         { $set: { ...metadata, updatedAt: new Date() } },
         { upsert: true }
       );
@@ -414,7 +414,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
    */
   async getExcelMetadata(): Promise<any> {
     const db = this.model.db;
-    return await db.collection("excel_metadata").findOne({ type: "renters" });
+    return await db.collection("excel_metadata").findOne({ type: "renters_data" });
   }
 
   /**

@@ -524,4 +524,180 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       monthlyBreakdown: monthlyData,
     };
   }
+
+  /**
+   * Get single payment with full enriched data
+   * Includes: Payment info + PreMarketRequest + Agent + Renter
+   */
+  async getPaymentDetailsById(paymentId: string): Promise<any> {
+    try {
+      const payment = await this.model
+        .findById(paymentId)
+        .populate({
+          path: "preMarketRequestId",
+          select:
+            "requestId requestName description movingDateRange priceRange locations bedrooms bathrooms unitFeatures buildingFeatures petPolicy guarantorRequired preferences status isActive createdAt renterId",
+        })
+        .populate({
+          path: "agentId",
+          select: "fullName email phoneNumber",
+        })
+        .lean()
+        .exec();
+
+      if (!payment) {
+        return null;
+      }
+
+      // Fetch agent profile separately for additional details
+      const AgentProfileRepository =
+        require("../agent/agent.repository").AgentProfileRepository;
+      const agentProfileRepo = new AgentProfileRepository();
+
+      // Fetch renter with referrer info
+      const RenterRepository =
+        require("../renter/renter.repository").RenterRepository;
+      const renterRepo = new RenterRepository();
+
+      // Fetch user repository for additional details
+      const UserRepository = require("../user/user.repository").UserRepository;
+      const userRepo = new UserRepository();
+
+      // Get agent profile details
+      const agentId =
+        typeof payment.agentId === "string"
+          ? payment.agentId
+          : payment.agentId._id.toString();
+      const agentProfile = await agentProfileRepo.findByUserId(agentId);
+
+      // Get pre-market request details (with renter info)
+      const preMarketRequest = payment.preMarketRequestId;
+
+      let renterInfo = null;
+
+      if (
+        preMarketRequest &&
+        typeof preMarketRequest === "object" &&
+        preMarketRequest._id
+      ) {
+        const renterId = (preMarketRequest as any).renterId;
+        const renter = await renterRepo.findRenterWithReferrer(
+          renterId?.toString()
+        );
+
+        if (renter) {
+          // Get referrer info if applicable
+          let referrerInfo = null;
+
+          if (renter.referredByAgentId) {
+            const referrer = await userRepo.findOne(
+              renter.referredByAgentId.toString()
+            );
+            if (referrer) {
+              referrerInfo = {
+                referrerId: referrer._id?.toString(),
+                referrerName: referrer.fullName,
+                referrerRole: "Agent",
+                referralType: "agent_referral",
+              };
+            }
+          } else if (renter.referredByAdminId) {
+            const referrer = await userRepo.findById(
+              renter.referredByAdminId._id || renter.referredByAdminId
+            );
+            if (referrer) {
+              referrerInfo = {
+                referrerId: referrer._id?.toString(),
+                referrerName: referrer.fullName,
+                referrerRole: "Admin",
+                referralType: "admin_referral",
+              };
+            }
+          }
+
+          renterInfo = {
+            renterId: renter._id?.toString(),
+            userId: renter.userId?.toString(),
+            name: renter.fullName,
+            email: renter.email,
+            phone: renter.phoneNumber,
+            occupation: renter.occupation,
+            moveInDate: renter.moveInDate,
+            registrationType: renter.registrationType,
+            referrer: referrerInfo,
+            accountStatus: renter.accountStatus,
+          };
+        }
+      }
+
+      // Format and return enriched response
+      return {
+        // PAYMENT INFORMATION
+        id: payment._id.toString(),
+        paymentId: payment._id.toString(),
+        status: payment.status, // pending | approved | rejected | paid
+        payment: {
+          amount: payment.payment?.amount || 0,
+          currency: payment.payment?.currency || "USD",
+          paymentStatus: payment.payment?.paymentStatus || "pending", // pending | succeeded | failed
+          stripePaymentIntentId: payment.payment?.stripePaymentIntentId || null,
+          failureCount: payment.payment?.failureCount || 0,
+          failedAt: payment.payment?.failedAt || [],
+          succeededAt: payment.payment?.succeededAt || null,
+        },
+        adminDecision: payment.adminDecision
+          ? {
+              decidedBy: payment.adminDecision.decidedBy?.toString(),
+              decidedAt: payment.adminDecision.decidedAt,
+              chargeAmount: payment.adminDecision.chargeAmount,
+              isFree: payment.adminDecision.isFree,
+              notes: payment.adminDecision.notes,
+            }
+          : null,
+
+        // PRE-MARKET LISTING DATA
+        preMarketRequest: preMarketRequest
+          ? {
+              id: preMarketRequest._id?.toString(),
+              requestId: preMarketRequest.requestId,
+              requestName: preMarketRequest.requestName,
+              description: preMarketRequest.description,
+              movingDateRange: preMarketRequest.movingDateRange,
+              priceRange: preMarketRequest.priceRange,
+              locations: preMarketRequest.locations,
+              bedrooms: preMarketRequest.bedrooms,
+              bathrooms: preMarketRequest.bathrooms,
+              unitFeatures: preMarketRequest.unitFeatures,
+              buildingFeatures: preMarketRequest.buildingFeatures,
+              petPolicy: preMarketRequest.petPolicy,
+              guarantorRequired: preMarketRequest.guarantorRequired,
+              preferences: preMarketRequest.preferences,
+              status: preMarketRequest.status,
+              isActive: preMarketRequest.isActive,
+              createdAt: preMarketRequest.createdAt,
+            }
+          : null,
+
+        // AGENT INFORMATION (who requested access)
+        agent: {
+          userId: payment.agentId._id.toString(),
+          name: payment.agentId.fullName,
+          email: payment.agentId.email,
+          phone: payment.agentId.phoneNumber,
+          brokerageName: agentProfile?.brokerageName || null,
+          licenseNumber: agentProfile?.licenseNumber || null,
+          yearsOfExperience: agentProfile?.yearsOfExperience || null,
+          hasGrantAccess: agentProfile?.hasGrantAccess || false,
+          accountStatus: agentProfile?.accountStatus || "pending",
+          role: "Agent",
+        },
+        renter: renterInfo,
+
+        createdAt: payment.createdAt,
+        updatedAt: payment.updatedAt,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
 }

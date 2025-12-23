@@ -708,8 +708,7 @@ export class RenterService {
    * Non-blocking: User gets response before Excel is generated
    */
   async updateRenterConsolidatedExcel(): Promise<void> {
-    // Fire and forget - don't wait for completion
-    setImmediate(async () => {
+    
       try {
         const buffer =
           await this.excelService.generateConsolidatedRenterExcel();
@@ -723,7 +722,7 @@ export class RenterService {
         const version = (previousMetadata?.version || 0) + 1;
 
         await this.repository.updateExcelMetadata({
-          type: "renters",
+          type: "renters_data",
           fileName,
           fileUrl: url,
           totalRenters,
@@ -742,6 +741,17 @@ export class RenterService {
         );
         // Don't throw - this is background job, don't affect user registration
       }
-    });
+    ;
+  }
+
+
+  async getRentersConsolidatedExcel() : Promise<any> {
+     const metadata = await this.repository.getExcelMetadata();
+
+    if (!metadata) {
+      throw new NotFoundException("No consolidated Excel file found");
+    }
+
+    return metadata;
   }
 }

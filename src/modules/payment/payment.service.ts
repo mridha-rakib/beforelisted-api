@@ -14,13 +14,10 @@ export class PaymentService {
   private readonly preMarketRepository: PreMarketRepository;
   private readonly notifier: PreMarketNotifier;
 
-  constructor(
-    grantAccessRepository: GrantAccessRepository,
-    preMarketRepository: PreMarketRepository
-  ) {
+  constructor() {
     this.stripe = new Stripe(env.STRIPE_SECRET_KEY);
-    this.grantAccessRepository = grantAccessRepository;
-    this.preMarketRepository = preMarketRepository;
+    this.grantAccessRepository = new GrantAccessRepository();
+    this.preMarketRepository = new PreMarketRepository();
     this.notifier = new PreMarketNotifier();
   }
 

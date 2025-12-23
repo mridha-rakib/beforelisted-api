@@ -5,6 +5,7 @@ import { logger } from "@/middlewares/pino-logger";
 import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import { PaginationHelper } from "@/utils/pagination-helper";
 import { BaseRepository } from "../base/base.repository";
+import { GrantAccessRequestModel } from "../grant-access/grant-access.model";
 import {
   PreMarketRequestModel,
   type IPreMarketRequest,
@@ -579,6 +580,148 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
         "Failed to get admin ID"
       );
       return null;
+    }
+  }
+
+  async getAllListingsWithAllData(): Promise<any> {
+    try {
+      // Get all listings
+      const listings = await this.model
+        .find()
+        .populate(
+          "renterId",
+          "fullName email phoneNumber occupation moveInDate registrationType accountStatus"
+        )
+        .sort({ createdAt: -1 })
+        .lean()
+        .exec();
+
+      if (!listings || listings.length === 0) {
+        return [];
+      }
+
+      // Process each listing with all its data
+      const listingsWithData = await Promise.all(
+        listings.map(async (listing: any) => {
+          // Get all agents with confirmed access
+          const confirmedAccess = await GrantAccessRequestModel.find({
+            preMarketRequestId: listing._id.toString(),
+            $or: [
+              { status: "approved" },
+              { status: "paid", "payment.paymentStatus": "succeeded" },
+            ],
+          })
+            .populate("agentId", "fullName email phoneNumber")
+            .lean()
+            .exec();
+
+          // Get pending requests
+          const pending = await GrantAccessRequestModel.find({
+            preMarketRequestId: listing._id.toString(),
+            status: "pending",
+          })
+            .populate("agentId", "fullName email phoneNumber")
+            .lean()
+            .exec();
+
+          // Get rejected requests
+          const rejected = await GrantAccessRequestModel.find({
+            preMarketRequestId: listing._id.toString(),
+            status: "rejected",
+          })
+            .populate("agentId", "fullName email phoneNumber")
+            .lean()
+            .exec();
+
+          // Format confirmed access agents
+          const formattedConfirmed = confirmedAccess.map((item: any) => ({
+            agentId: item.agentId?._id?.toString(),
+            name: item.agentId?.fullName,
+            email: item.agentId?.email,
+            phone: item.agentId?.phoneNumber,
+            accessType: item.status === "approved" ? "free" : "paid",
+            paymentAmount: item.payment?.amount || null,
+            paymentStatus: item.payment?.paymentStatus || null,
+          }));
+
+          // Format pending requests
+          const formattedPending = pending.map((item: any) => ({
+            agentId: item.agentId?._id?.toString(),
+            name: item.agentId?.fullName,
+            email: item.agentId?.email,
+            status: "pending",
+            requestedAt: item.createdAt,
+          }));
+
+          // Format rejected requests
+          const formattedRejected = rejected.map((item: any) => ({
+            agentId: item.agentId?._id?.toString(),
+            name: item.agentId?.fullName,
+            email: item.agentId?.email,
+            status: "rejected",
+            rejectionReason: item.adminDecision?.notes || null,
+          }));
+
+          // Get access breakdown
+          const freeCount = confirmedAccess.filter(
+            (a: any) => a.status === "approved"
+          ).length;
+          const paidCount = confirmedAccess.filter(
+            (a: any) => a.status === "paid"
+          ).length;
+
+          return {
+            listing: {
+              id: listing._id.toString(),
+              requestId: listing.requestId,
+              requestName: listing.requestName,
+              description: listing.description,
+              status: listing.status,
+              isActive: listing.isActive,
+              movingDateRange: listing.movingDateRange,
+              priceRange: listing.priceRange,
+              locations: listing.locations,
+              bedrooms: listing.bedrooms,
+              bathrooms: listing.bathrooms,
+              unitFeatures: listing.unitFeatures,
+              buildingFeatures: listing.buildingFeatures,
+              petPolicy: listing.petPolicy,
+              guarantorRequired: listing.guarantorRequired,
+              preferences: listing.preferences,
+              createdAt: listing.createdAt,
+              updatedAt: listing.updatedAt,
+            },
+            renter: listing.renterId
+              ? {
+                  renterId: listing.renterId._id?.toString(),
+                  name: listing.renterId.fullName,
+                  email: listing.renterId.email,
+                  phone: listing.renterId.phoneNumber,
+                  occupation: listing.renterId.occupation,
+                  moveInDate: listing.renterId.moveInDate,
+                  registrationType: listing.renterId.registrationType,
+                  accountStatus: listing.renterId.accountStatus,
+                }
+              : null,
+            accessBreakdown: {
+              totalConfirmed: freeCount + paidCount,
+              freeAccess: freeCount,
+              paidAccess: paidCount,
+              pendingRequests: pending.length,
+              rejectedRequests: rejected.length,
+            },
+            agents: {
+              confirmed: formattedConfirmed,
+              pending: formattedPending,
+              rejected: formattedRejected,
+            },
+          };
+        })
+      );
+
+      return listingsWithData;
+    } catch (error) {
+      throw error;
     }
   }
 }

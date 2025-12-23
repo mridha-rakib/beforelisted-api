@@ -7,42 +7,14 @@ import { RenterController } from "./renter.controller";
 const router = Router();
 const controller = new RenterController();
 
-// ============================================
-// REGISTRATION ROUTES (Public)
-// ============================================
-
-/**
- * POST /renter/register
- * Auto-detects registration type: Normal, Agent Referral, Admin Referral
- */
 router.post("/register", controller.registerRenter);
 
-/**
- * POST /renter/register/normal
- * Explicit normal registration
- */
 router.post("/register/normal", controller.registerNormalRenter);
 
-/**
- * POST /renter/register/agent-referral
- * Explicit agent referral registration
- */
 router.post("/register/agent-referral", controller.registerAgentReferralRenter);
 
-/**
- * POST /renter/register/admin-referral
- * Explicit admin referral registration (passwordless)
- */
 router.post("/register/admin-referral", controller.registerAdminReferralRenter);
 
-// ============================================
-// PROFILE ROUTES (Authenticated)
-// ============================================
-
-/**
- * GET /renter/profile
- * Get authenticated renter's profile
- */
 router.get(
   "/profile",
   authMiddleware.verifyToken,
@@ -50,15 +22,18 @@ router.get(
   controller.getRenterProfile
 );
 
-/**
- * PUT /renter/profile
- * Update authenticated renter's profile
- */
 router.put(
   "/profile",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Renter"),
   controller.updateRenterProfile
+);
+
+router.get(
+  "/admin/excel-download",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.downloadRentersConsolidatedExcel
 );
 
 // ============================================
@@ -101,6 +76,5 @@ router.get(
   authMiddleware.authorize("Admin"),
   controller.adminGetRenterProfile.bind(controller)
 );
-
 
 export default router;

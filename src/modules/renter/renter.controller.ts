@@ -202,4 +202,24 @@ export class RenterController {
       ApiResponse.success(res, renter, "Renter details retrieved successfully");
     }
   );
+
+  downloadRentersConsolidatedExcel = asyncHandler(
+    async (req: Request, res: Response) => {
+      const adminId = req.user!.userId;
+      const metadata = await this.service.getRentersConsolidatedExcel();
+
+      ApiResponse.success(
+        res,
+        {
+          fileName: metadata.fileName,
+          fileUrl: metadata.fileUrl,
+          totalAgents: metadata.totalAgents,
+          version: metadata.version,
+          lastUpdated: metadata.lastUpdated,
+          downloadUrl: metadata.fileUrl,
+        },
+        "Consolidated Renter Excel file info retrieved"
+      );
+    }
+  );
 }

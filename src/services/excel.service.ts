@@ -3,6 +3,7 @@
 import { logger } from "@/middlewares/pino-logger";
 import { AgentProfileRepository } from "@/modules/agent/agent.repository";
 import { PreMarketRepository } from "@/modules/pre-market/pre-market.repository";
+import { RenterRepository } from "@/modules/renter/renter.repository";
 import ExcelJS from "exceljs";
 import { S3Service } from "./s3.service";
 
@@ -10,11 +11,13 @@ export class ExcelService {
   private s3Service: S3Service;
   private preMarketRepository: PreMarketRepository;
   private agentRepository: AgentProfileRepository;
+  private renterRepository: RenterRepository;
 
   constructor() {
     this.s3Service = new S3Service();
     this.preMarketRepository = new PreMarketRepository();
     this.agentRepository = new AgentProfileRepository();
+    this.renterRepository = new RenterRepository();
   }
 
   /**
@@ -456,7 +459,7 @@ export class ExcelService {
         },
       ];
 
-      const renters = await (this as any).renterRepository.findAll();
+      const renters = await this.renterRepository.findAll();
 
       logger.info(
         { totalRenters: renters.length },
@@ -487,20 +490,12 @@ export class ExcelService {
       }
 
       // Set column widths
-      const columnWidths = [
-        18, // Full Name
-        20, // Email
-        15, // Phone
-        18, // Registration Type
-        15, // Registered Date
-        15, // Account Status
-      ];
+      const columnWidths = [18, 20, 15, 18, 15, 15];
 
       worksheet.columns = columnWidths.map((width) => ({
         width,
       }));
 
-      // Set autoFilter
       if (renters.length > 0 && worksheet.autoFilter) {
         worksheet.autoFilter.from = "A1";
         worksheet.autoFilter.to = `I${renters.length + 1}`;

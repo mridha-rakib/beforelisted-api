@@ -16,10 +16,6 @@ import { PreMarketRepository } from "../pre-market/pre-market.repository";
 import { GrantAccessRepository } from "./grant-access.repository";
 import { GrantAccessService } from "./grant-access.service";
 
-/**
- * Grant Access Controller
- * Handles agent access requests and admin approval workflows
- */
 export class GrantAccessController {
   private readonly grantAccessService: GrantAccessService;
   private readonly grantAccessRepository: GrantAccessRepository;
@@ -28,8 +24,8 @@ export class GrantAccessController {
   private readonly agentRepository: AgentProfileRepository;
   private readonly notifier: PreMarketNotifier;
 
-  constructor(grantAccessService: GrantAccessService) {
-    this.grantAccessService = grantAccessService;
+  constructor() {
+    this.grantAccessService = new GrantAccessService();
     this.grantAccessRepository = new GrantAccessRepository();
     this.preMarketRepository = new PreMarketRepository();
     this.agentRepository = new AgentProfileRepository();
@@ -144,11 +140,6 @@ export class GrantAccessController {
       const agentId = req.user!.userId;
       const { requestId } = req.params;
 
-      logger.info({ agentId, requestId }, "Agent requesting request details");
-
-      // ============================================
-      // STEP 1: Get Agent Profile
-      // ============================================
       const agent = await this.agentRepository.findByUserId(agentId);
 
       if (!agent) {
@@ -161,9 +152,6 @@ export class GrantAccessController {
         "Agent profile retrieved"
       );
 
-      // ============================================
-      // STEP 2: Get the Request
-      // ============================================
       const request = await this.grantAccessService.getRequestById(requestId);
 
       if (!request) {
@@ -176,16 +164,12 @@ export class GrantAccessController {
         "Request retrieved from database"
       );
 
-      // ============================================
-      // GRANT ACCESS AGENTS: See ALL listings
-      // ============================================
       if (agent.hasGrantAccess === true) {
         logger.info(
           { agentId, type: "grant-access" },
           "✅ Grant access agent - can see ANY listing with full details"
         );
 
-        // ✅ Enrich with full renter info
         const enriched =
           await this.grantAccessService.enrichRequestWithFullRenterInfo(
             request,
@@ -197,7 +181,6 @@ export class GrantAccessController {
           "Request enriched with renter information"
         );
 
-        // ✅ Track as grant access agent
         try {
           await this.preMarketRepository.addAgentToViewedBy(
             requestId,
@@ -216,7 +199,6 @@ export class GrantAccessController {
           );
         }
 
-        // ✅ Return full response
         logger.info(
           {
             agentId,
@@ -560,6 +542,36 @@ export class GrantAccessController {
     logger.info({ adminId, year }, "Yearly income retrieved");
 
     return ApiResponse.success(res, data, `Income for ${year}`);
+  });
+
+  getPaymentDetails = asyncHandler(async (req: Request, res: Response) => {
+    const adminId = req.user!.userId;
+    const { paymentId } = req.params;
+
+    logger.info({ adminId, paymentId }, "Admin requesting payment details");
+
+    if (!paymentId || paymentId.length !== 24) {
+      throw new BadRequestException("Invalid payment ID format");
+    }
+
+    const paymentDetails =
+      await this.grantAccessService.getPaymentDetailsForAdmin(paymentId);
+
+    logger.info(
+      {
+        adminId,
+        paymentId,
+        agentName: paymentDetails.agent.name,
+        renterName: paymentDetails.renter?.name,
+      },
+      "Payment details retrieved successfully"
+    );
+
+    return ApiResponse.success(
+      res,
+      paymentDetails,
+      "Payment details retrieved successfully"
+    );
   });
 }
 

@@ -235,4 +235,10 @@ router.get(
   controller.getExcelStats
 );
 
+router.get(
+  "/listings/admin/all-with-data",
+  authMiddleware.verifyToken,
+  controller.getAllListingsWithAllData.bind(controller)
+);
+
 export default router;

@@ -11,25 +11,105 @@ import { AgentProfileRepository } from "../agent/agent.repository";
 import { NotificationService } from "../notification/notification.service";
 import { PaymentService } from "../payment/payment.service";
 import { PreMarketNotifier } from "../pre-market/pre-market-notifier";
+import type { IPreMarketRequest } from "../pre-market/pre-market.model";
 import { PreMarketRepository } from "../pre-market/pre-market.repository";
+import { RenterRepository } from "../renter/renter.repository";
 import { UserRepository } from "../user/user.repository";
 import type { IGrantAccessRequest } from "./grant-access.model";
 import { GrantAccessRepository } from "./grant-access.repository";
 
 export class GrantAccessService {
-  constructor(
-    private readonly grantAccessRepository: GrantAccessRepository,
-    private readonly preMarketRepository: PreMarketRepository,
-    private readonly paymentService: PaymentService,
-    private readonly notifier: PreMarketNotifier,
-    private readonly notificationService: NotificationService,
-    private readonly userRepository: UserRepository,
-    private readonly agentRepository: AgentProfileRepository
-  ) {}
+  private readonly grantAccessRepository: GrantAccessRepository;
+  private readonly preMarketRepository: PreMarketRepository;
+  private readonly paymentService: PaymentService;
+  private readonly notifier: PreMarketNotifier;
+  private readonly notificationService: NotificationService;
+  private readonly userRepository: UserRepository;
+  private readonly agentRepository: AgentProfileRepository;
+  private readonly renterRepository: RenterRepository;
+
+  constructor() {
+    this.grantAccessRepository = new GrantAccessRepository();
+    this.preMarketRepository = new PreMarketRepository();
+    this.paymentService = new PaymentService();
+    this.notifier = new PreMarketNotifier();
+    this.notificationService = new NotificationService();
+    this.userRepository = new UserRepository();
+    this.agentRepository = new AgentProfileRepository();
+    this.renterRepository = new RenterRepository();
+  }
 
   // ============================================
-  // AGENT REQUEST ACCESS
+  // GET REQUEST BY ID
   // ============================================
+  async getRequestById(requestId: string): Promise<IPreMarketRequest | null> {
+    return await this.preMarketRepository.getRequestById(requestId);
+  }
+
+  // ============================================
+  // ENRICH REQUEST WITH FULL RENTER INFO
+  // ============================================
+  public async enrichRequestWithFullRenterInfo(
+    request: IPreMarketRequest,
+    agentId: string
+  ) {
+    const renter = await this.renterRepository.findRenterWithReferrer(
+      request.renterId.toString()
+    );
+
+    if (!renter) {
+      logger.warn(
+        { renterId: request.renterId, requestId: request.requestId },
+        "Renter not found for request"
+      );
+      return { ...request, renterInfo: null };
+    }
+
+    // Get referrer information if applicable
+    let referrerInfo = null;
+
+    if (renter.referredByAgentId) {
+      const referrer = await this.userRepository.findById(
+        renter.referredByAgentId.toString()
+      );
+      if (referrer) {
+        referrerInfo = {
+          referrerId: referrer._id?.toString(),
+          referrerName: referrer.fullName,
+          referrerRole: "Agent",
+          referralType: "agent_referral",
+        };
+      }
+    } else if (renter.referredByAdminId) {
+      const referrer = await this.userRepository.findById(
+        renter.referredByAdminId._id
+      );
+      if (referrer) {
+        referrerInfo = {
+          referrerId: referrer._id?.toString(),
+          referrerName: referrer.fullName,
+          referrerRole: "Admin",
+          referralType: "admin_referral",
+        };
+      }
+    }
+
+    // Build full renter info
+    const renterInfo = {
+      renterId: renter._id?.toString(),
+      renterName: renter.fullName,
+      renterEmail: renter.email,
+      renterPhone: renter.phoneNumber,
+      registrationType: renter.registrationType,
+      referrer: referrerInfo,
+    };
+
+    // Return enriched request
+    return {
+      ...request,
+      renterInfo,
+    };
+  }
 
   async requestAccess(
     agentId: string,
@@ -542,5 +622,28 @@ export class GrantAccessService {
     logger.info({ year }, "Yearly income retrieved");
 
     return yearly;
+  }
+
+  /**
+   * Get specific payment details with all related data
+   * Admin can view payment info + pre-market listing + agent info + renter info
+   */
+  async getPaymentDetailsForAdmin(paymentId: string): Promise<any> {
+    logger.info({ paymentId }, "Admin fetching payment details");
+
+    const paymentDetails =
+      await this.grantAccessRepository.getPaymentDetailsById(paymentId);
+
+    if (!paymentDetails) {
+      logger.warn({ paymentId }, "Payment not found");
+      throw new NotFoundException("Payment details not found");
+    }
+
+    logger.info(
+      { paymentId, agentId: paymentDetails.agent.userId },
+      "Payment details retrieved successfully"
+    );
+
+    return paymentDetails;
   }
 }
