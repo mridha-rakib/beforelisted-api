@@ -779,4 +779,321 @@ export class ExcelService {
       [...grouped.entries()].sort((a, b) => b[0].localeCompare(a[0]))
     );
   }
+
+  async generatePreMarketListingsWithAgentsExcel(): Promise<Buffer> {
+    try {
+      logger.info("Starting Pre-Market Listings Excel generation with agents");
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("All Listings", {
+        pageSetup: {
+          paperSize: 9,
+          orientation: "landscape",
+        },
+      });
+
+      // Define headers
+      const headers = [
+        "Listing ID",
+        "Request ID",
+        "Request Name",
+        "Renter Name",
+        "Renter Email",
+        "Renter Phone",
+        "Price Min",
+        "Price Max",
+        "Bedrooms",
+        "Bathrooms",
+        "Locations",
+        "Status",
+        "Grant-Access Agents",
+        "Free-Access Agents",
+        "Paid-Access Agents",
+        "Pending Requests",
+        "Rejected Requests",
+        "Total Access Count",
+        "Created Date",
+      ];
+
+      // Add header row with styling
+      const headerRow = worksheet.addRow(headers);
+      headerRow.font = {
+        bold: true,
+        color: { argb: "FFFFFFFF" },
+        size: 11,
+      };
+      headerRow.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF208094" },
+      };
+      headerRow.alignment = {
+        horizontal: "center",
+        vertical: "middle",
+        wrapText: true,
+      };
+
+      // Freeze header row
+      worksheet.views = [
+        {
+          state: "frozen",
+          ySplit: 1,
+          activeCell: "A2",
+          showGridLines: true,
+        },
+      ];
+
+      // Fetch ALL listings with complete data including grant-access agents
+      const listingsData =
+        await this.preMarketRepository.getAllListingsWithAllData();
+
+      logger.info(
+        { totalListings: listingsData.length },
+        "Fetched listings with agent data for Excel"
+      );
+
+      // Add data rows
+      let rowCount = 1;
+      for (const listingData of listingsData) {
+        const listing = listingData.listing;
+        const renter = listingData.renter;
+        const breakdown = listingData.accessBreakdown;
+        const agents = listingData.agents;
+
+        const formatAgentDetails = (agentsList: any[]): string => {
+          if (!agentsList || agentsList.length === 0) return "None";
+          return agentsList
+            .map((a: any) => {
+              const parts = [];
+              if (a.name) parts.push(a.name);
+              if (a.email) parts.push(a.email);
+              if (a.phone) parts.push(a.phone);
+              if (a.licenseNumber) parts.push(`Lic: ${a.licenseNumber}`);
+              if (a.brokerageName) parts.push(`Brokerage: ${a.brokerageName}`);
+              return parts.join(" | ");
+            })
+            .join("\n");
+        };
+
+        const grantAccessAgents = agents.confirmed.filter(
+          (a: any) => a.accessType === "grant_access"
+        );
+        const freeAccessAgents = agents.confirmed.filter(
+          (a: any) => a.accessType === "free"
+        );
+        const paidAccessAgents = agents.confirmed.filter(
+          (a: any) => a.accessType === "paid"
+        );
+
+        const grantAccessDetails = formatAgentDetails(grantAccessAgents);
+        const freeAccessDetails = formatAgentDetails(freeAccessAgents);
+        const paidAccessDetails = formatAgentDetails(paidAccessAgents);
+        const pendingDetails = formatAgentDetails(agents.pending);
+        const rejectedDetails = formatAgentDetails(agents.rejected);
+
+        const dataRow = worksheet.addRow([
+          listing.id || "N/A",
+          listing.requestId || "N/A",
+          listing.requestName || "N/A",
+          renter?.name || "N/A",
+          renter?.email || "N/A",
+          renter?.phone || "N/A",
+          listing.priceRange?.min || 0,
+          listing.priceRange?.max || 0,
+          listing.bedrooms || "N/A",
+          listing.bathrooms || "N/A",
+          this.serializeLocations(listing.locations),
+          listing.status || "N/A",
+          grantAccessDetails, // ← Now with FULL details
+          freeAccessDetails, // ← Now with FULL details
+          paidAccessDetails, // ← Now with FULL details
+          pendingDetails, // ← Now with FULL details
+          rejectedDetails,
+          breakdown.totalConfirmed || 0,
+          this.formatDate(listing.createdAt),
+        ]);
+
+        // Alternate row colors
+        if (rowCount % 2 === 0) {
+          dataRow.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFF5F5F5" },
+          };
+        }
+
+        rowCount++;
+      }
+
+      // Set column widths
+      const columnWidths = [
+        12, // Listing ID
+        15, // Request ID
+        18, // Request Name
+        15, // Renter Name
+        18, // Renter Email
+        15, // Renter Phone
+        10, // Price Min
+        10, // Price Max
+        10, // Bedrooms
+        10, // Bathrooms
+        20, // Locations
+        12, // Status
+        20, // Grant-Access Agents
+        20, // Free-Access Agents
+        20, // Paid-Access Agents
+        18, // Pending Requests
+        18, // Rejected Requests
+        15, // Total Access Count
+        15, // Created Date
+      ];
+
+      worksheet.columns = columnWidths.map((width) => ({ width }));
+
+      // Add auto filter if data exists
+      if (listingsData.length > 0 && worksheet.autoFilter) {
+        worksheet.autoFilter.from = "A1";
+        worksheet.autoFilter.to = `U${listingsData.length + 1}`;
+      }
+
+      // Create Summary Sheet
+      const summarySheet = workbook.addWorksheet("Summary");
+
+      summarySheet.addRow(["PRE-MARKET LISTINGS SUMMARY"]);
+      summarySheet.addRow([]);
+
+      summarySheet.addRow(["Total Listings", listingsData.length]);
+
+      // Calculate totals
+      let totalGrantAccess = 0;
+      let totalFreeAccess = 0;
+      let totalPaidAccess = 0;
+      let totalPending = 0;
+      let totalRejected = 0;
+
+      for (const listing of listingsData) {
+        totalGrantAccess += listing.accessBreakdown.grantAccessAgents || 0;
+        totalFreeAccess += listing.accessBreakdown.freeAccess || 0;
+        totalPaidAccess += listing.accessBreakdown.paidAccess || 0;
+        totalPending += listing.accessBreakdown.pendingRequests || 0;
+        totalRejected += listing.accessBreakdown.rejectedRequests || 0;
+      }
+
+      summarySheet.addRow([]);
+      summarySheet.addRow(["AGENT ACCESS BREAKDOWN"]);
+      summarySheet.addRow(["Grant-Access Agents", totalGrantAccess]);
+      summarySheet.addRow(["Free-Access Agents", totalFreeAccess]);
+      summarySheet.addRow(["Paid-Access Agents", totalPaidAccess]);
+      summarySheet.addRow(["Pending Requests", totalPending]);
+      summarySheet.addRow(["Rejected Requests", totalRejected]);
+
+      summarySheet.addRow([]);
+      summarySheet.addRow(["Report Generated", new Date().toLocaleString()]);
+
+      // Set summary sheet column widths
+      summarySheet.columns = [{ width: 25 }, { width: 15 }];
+
+      // Format summary sheet header
+      const headerCell = summarySheet.getCell("A1");
+      headerCell.font = { bold: true, size: 14 };
+
+      // Generate buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+      const typedBuffer = buffer as unknown as Buffer;
+
+      logger.info(
+        { size: typedBuffer.length, listings: listingsData.length },
+        "Pre-Market Listings Excel buffer generated successfully"
+      );
+
+      return typedBuffer;
+    } catch (error) {
+      logger.error({ error }, "Failed to generate Pre-Market Listings Excel");
+      throw error;
+    }
+  }
+
+  /**
+   * Upload Pre-Market Listings Excel to S3
+   */
+  async uploadPreMarketListingsExcel(
+    buffer: Buffer
+  ): Promise<{ url: string; fileName: string }> {
+    try {
+      // Generate filename with date and timestamp
+      const date = new Date();
+      const dateStr = date.toISOString().split("T")[0];
+      const timestamp = Math.floor(date.getTime() / 1000);
+      const fileName = `pre_market_listings_${dateStr}_${timestamp}.xlsx`;
+      const folder = "uploads/pre-market/excel/listings";
+
+      logger.info(
+        { fileName, folder },
+        "Uploading Pre-Market Listings Excel to S3"
+      );
+
+      const url = await this.s3Service.uploadFile(
+        buffer,
+        fileName,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        folder
+      );
+
+      logger.info(
+        { url, fileName },
+        "Pre-Market Listings Excel uploaded successfully"
+      );
+
+      return { url, fileName } as any;
+    } catch (error) {
+      logger.error(
+        { error },
+        "Failed to upload Pre-Market Listings Excel to S3"
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Helper: Serialize array to string
+   */
+  private serializeArray(arr: any): string {
+    if (!arr) return "N/A";
+    if (Array.isArray(arr)) {
+      if (typeof arr[0] === "string") {
+        return arr.join(", ");
+      } else if (typeof arr[0] === "object" && arr[0].name) {
+        return arr.map((item: any) => item.name).join(", ");
+      }
+    }
+    return "N/A";
+  }
+
+  private serializeLocations(locations: any): string {
+    if (!locations || locations.length === 0) return "N/A";
+
+    return locations
+      .map((loc: any) => {
+        const parts: string[] = [];
+
+        // Add borough name
+        if (loc.borough) {
+          parts.push(loc.borough);
+        }
+
+        // Add neighborhoods in parentheses
+        if (
+          loc.neighborhoods &&
+          Array.isArray(loc.neighborhoods) &&
+          loc.neighborhoods.length > 0
+        ) {
+          const neighborhoods = loc.neighborhoods.join(", ");
+          parts.push(`(${neighborhoods})`);
+        }
+
+        return parts.join(" ");
+      })
+      .filter((item: string) => item.length > 0) // Remove empty entries
+      .join("; "); // Separate multiple locations with semicolon
+  }
 }

@@ -4,6 +4,7 @@ import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import { PaginationHelper } from "@/utils/pagination-helper";
+import { AgentProfile } from "../agent/agent.model";
 import { BaseRepository } from "../base/base.repository";
 import { GrantAccessRequestModel } from "../grant-access/grant-access.model";
 import {
@@ -585,25 +586,42 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
   async getAllListingsWithAllData(): Promise<any> {
     try {
-      // Get all listings
-      const listings = await this.model
-        .find()
-        .populate(
-          "renterId",
-          "fullName email phoneNumber occupation moveInDate registrationType accountStatus"
-        )
-        .sort({ createdAt: -1 })
-        .lean()
-        .exec();
+      const listings = await this.model.aggregate([
+        { $match: {} },
+        {
+          $lookup: {
+            from: "renters",
+            localField: "renterId",
+            foreignField: "userId",
+            as: "renterData",
+          },
+        },
+        {
+          $addFields: {
+            renterInfo: { $arrayElemAt: ["$renterData", 0] },
+          },
+        },
+        {
+          $project: {
+            renterData: 0,
+          },
+        },
+        { $sort: { createdAt: -1 } },
+      ]);
 
       if (!listings || listings.length === 0) {
         return [];
       }
 
-      // Process each listing with all its data
+      const grantAccessAgents = await AgentProfile.find({
+        hasGrantAccess: true,
+      })
+        .populate("userId", "fullName email phoneNumber")
+        .lean()
+        .exec();
+
       const listingsWithData = await Promise.all(
         listings.map(async (listing: any) => {
-          // Get all agents with confirmed access
           const confirmedAccess = await GrantAccessRequestModel.find({
             preMarketRequestId: listing._id.toString(),
             $or: [
@@ -615,7 +633,6 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
             .lean()
             .exec();
 
-          // Get pending requests
           const pending = await GrantAccessRequestModel.find({
             preMarketRequestId: listing._id.toString(),
             status: "pending",
@@ -643,6 +660,23 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
             paymentAmount: item.payment?.amount || null,
             paymentStatus: item.payment?.paymentStatus || null,
           }));
+
+          const grantAccessAgentsForListing = grantAccessAgents.map(
+            (agent: any) => ({
+              agentId: agent._id?.toString(),
+              name: agent.userId?.fullName,
+              email: agent.userId?.email,
+              phone: agent.userId?.phoneNumber,
+              accessType: "grant_access",
+              paymentAmount: null,
+              paymentStatus: null,
+            })
+          );
+
+          const allConfirmedAgents = [
+            ...formattedConfirmed,
+            ...grantAccessAgentsForListing,
+          ];
 
           // Format pending requests
           const formattedPending = pending.map((item: any) => ({
@@ -691,16 +725,17 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
               createdAt: listing.createdAt,
               updatedAt: listing.updatedAt,
             },
-            renter: listing.renterId
+            renter: listing.renterInfo
               ? {
-                  renterId: listing.renterId._id?.toString(),
-                  name: listing.renterId.fullName,
-                  email: listing.renterId.email,
-                  phone: listing.renterId.phoneNumber,
-                  occupation: listing.renterId.occupation,
-                  moveInDate: listing.renterId.moveInDate,
-                  registrationType: listing.renterId.registrationType,
-                  accountStatus: listing.renterId.accountStatus,
+                  renterId: listing.renterInfo._id?.toString(),
+                  userId: listing.renterInfo.userId?.toString(),
+                  name: listing.renterInfo.fullName,
+                  email: listing.renterInfo.email,
+                  phone: listing.renterInfo.phoneNumber,
+                  occupation: listing.renterInfo.occupation,
+                  moveInDate: listing.renterInfo.moveInDate,
+                  registrationType: listing.renterInfo.registrationType,
+                  accountStatus: listing.renterInfo.accountStatus,
                 }
               : null,
             accessBreakdown: {
@@ -711,7 +746,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
               rejectedRequests: rejected.length,
             },
             agents: {
-              confirmed: formattedConfirmed,
+              confirmed: allConfirmedAgents,
               pending: formattedPending,
               rejected: formattedRejected,
             },

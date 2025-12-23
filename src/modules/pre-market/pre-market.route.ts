@@ -229,14 +229,20 @@ router.get(
 );
 
 router.get(
+  "/admin/excel-renter-listings",
+  authMiddleware.verifyToken,
+  controller.downloadPreMarketListingsExcel.bind(controller)
+);
+
+router.get(
   "/admin/excel-stats",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
   controller.getExcelStats
 );
-
+// show all listings with all data
 router.get(
-  "/listings/admin/all-with-data",
+  "/",
   authMiddleware.verifyToken,
   controller.getAllListingsWithAllData.bind(controller)
 );

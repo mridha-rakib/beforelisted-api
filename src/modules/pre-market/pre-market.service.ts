@@ -1494,15 +1494,8 @@ export class PreMarketService {
 
   public async getAllListingsWithAllData(): Promise<any> {
     try {
-      logger.info({}, "Fetching all listings with complete data");
-
       const listings =
         await this.preMarketRepository.getAllListingsWithAllData();
-
-      logger.info(
-        { totalListings: listings.length },
-        "All listings with data retrieved successfully"
-      );
 
       return listings;
     } catch (error) {

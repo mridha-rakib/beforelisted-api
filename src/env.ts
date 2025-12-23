@@ -18,18 +18,13 @@ const envSchema = z.object({
   SALT_ROUNDS: z.coerce.number().default(12),
 
   // ============================================
-  // SMTP CONFIGURATION
-  // ============================================
-  // ============================================
   // EMAIL SETTINGS
   // ============================================
-  SMTP_HOST: z.string().nonempty("SMTP_HOST is required"),
-  SMTP_PORT: z.coerce.number().default(587),
-  SMTP_SECURE: z.coerce.boolean().default(false),
-  SMTP_USER: z.string().nonempty("SMTP_USERNAME is required"),
-  SMTP_PASS: z.string().nonempty("SMTP_PASSWORD is required"),
-  SMTP_FROM_EMAIL: z.string().nonempty("SMTP_FROM_EMAIL is required"),
-  SMTP_FROM_NAME: z.string().default("BeforeListed"),
+  POSTMARK_API_TOKEN: z.string().nonempty("POSTMARK_API_TOKEN is required"),
+  POSTMARK_MESSAGE_STREAM: z
+    .enum(["outbound", "broadcast"])
+    .default("outbound"),
+  POSTMARK_SANDBOX_MODE: z.coerce.boolean().default(false),
 
   // ============================================
   //  EMAIL DEFAULTS
@@ -51,8 +46,8 @@ const envSchema = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color")
     .default("#1890FF"),
 
-  EMAIL_MAX_RETRIES: z.coerce.number().int().min(0).max(150).default(100),
-  EMAIL_RETRY_DELAY_MS: z.coerce.number().int().min(1000).default(1000),
+  EMAIL_MAX_RETRIES: z.coerce.number().int(),
+  EMAIL_RETRY_DELAY_MS: z.coerce.number().int(),
 
   //  S3
   HETZNER_BUCKET_NAME: z.string().nonempty("Hetzner bucket name is required."),
@@ -94,7 +89,7 @@ const envSchema = z.object({
     }),
 
   // Admin email
-   ADMIN_EMAIL: z.email().nonempty("Admin email is required."),
+  ADMIN_EMAIL: z.email().nonempty("Admin email is required."),
 
   //  STRIPE CREDENTIALS
   STRIPE_SECRET_KEY: z.string().nonempty("Stripe secret key is required."),

@@ -2,6 +2,7 @@
 
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
+import { ExcelService } from "@/services/excel.service";
 import {
   BadRequestException,
   ForbiddenException,
@@ -37,6 +38,7 @@ export class PreMarketController {
   private readonly agentRepository: AgentProfileRepository;
   private readonly preMarketRepository: PreMarketRepository;
   private readonly grantAccessRepository: GrantAccessRepository;
+  private readonly excelService: ExcelService;
 
   constructor() {
     this.preMarketService = new PreMarketService();
@@ -59,6 +61,7 @@ export class PreMarketController {
     this.agentRepository = new AgentProfileRepository();
     this.preMarketRepository = new PreMarketRepository();
     this.grantAccessRepository = new GrantAccessRepository();
+    this.excelService = new ExcelService();
   }
 
   // ============================================
@@ -1035,6 +1038,51 @@ export class PreMarketController {
         listings,
         "All pre-market listings retrieved successfully"
       );
+    }
+  );
+
+  downloadPreMarketListingsExcel = asyncHandler(
+    async (req: Request, res: Response) => {
+      const userId = req.user?.userId;
+      const userRole = req.user?.role;
+
+      logger.info(
+        { userId, userRole },
+        "User requesting Pre-Market Listings Excel download"
+      );
+
+      try {
+        // Generate Excel buffer
+        const excelBuffer =
+          await this.excelService.generatePreMarketListingsWithAgentsExcel();
+
+        // Upload to S3 and get download link
+        const { url, fileName } =
+          await this.excelService.uploadPreMarketListingsExcel(excelBuffer);
+
+        logger.info(
+          { userId, fileName, url },
+          "Pre-Market Listings Excel generated and uploaded"
+        );
+
+        // Return download link in response
+        return ApiResponse.success(
+          res,
+          {
+            downloadUrl: url,
+            fileName: fileName,
+            generatedAt: new Date().toISOString(),
+          },
+          "Pre-Market Listings Excel exported successfully"
+        );
+      } catch (error) {
+        logger.error(
+          { error, userId },
+          "Failed to export Pre-Market Listings Excel"
+        );
+
+        throw new Error("Failed to export Pre-Market Listings Excel");
+      }
     }
   );
 }

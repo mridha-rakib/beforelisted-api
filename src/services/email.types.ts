@@ -44,19 +44,27 @@ export interface IEmailTransporter {
 /**
  * Email recipient
  */
-export interface IEmailRecipient {
-  email: string;
-  name?: string;
-}
+
+export type IEmailRecipient = string | { email: string; name?: string };
+
+/**
+ * Email recipients array
+ */
+export type IEmailRecipients = IEmailRecipient | IEmailRecipient[];
+
+/**
+ * Email priority levels
+ */
+export type IEmailPriority = "high" | "normal" | "low";
 
 /**
  * Email attachment
  */
 export interface IEmailAttachment {
   filename: string;
-  content?: Buffer | string;
-  path?: string;
+  content: Buffer | string;
   contentType?: string;
+  contentDisposition?: "attachment" | "inline";
 }
 
 /**
@@ -66,19 +74,18 @@ export interface IEmailOptions {
   to: IEmailRecipient | IEmailRecipient[];
   cc?: IEmailRecipient | IEmailRecipient[];
   bcc?: IEmailRecipient | IEmailRecipient[];
+  from?: { name: string; email: string };
+  replyTo?: string;
   subject: string;
   html: string;
   text?: string;
-  from?: {
-    name: string;
-    email: string;
-  };
-  replyTo?: string;
+  priority?: IEmailPriority;
   attachments?: IEmailAttachment[];
   headers?: Record<string, string>;
   inReplyTo?: string;
   references?: string[];
-  priority?: "high" | "normal" | "low";
+  tags?: string[];
+  metadata?: Record<string, string>;
 }
 
 /**
@@ -89,10 +96,9 @@ export interface IEmailResponse {
   response: string;
   accepted?: string[];
   rejected?: string[];
-  pending?: string[];
-  error?: Error | null;
   timestamp: Date;
   retries: number;
+  error?: Error | null;
 }
 
 /**
@@ -105,6 +111,34 @@ export interface IEmailResult {
   timestamp: Date;
   attempt: number;
   maxAttempts: number;
+}
+
+export interface IPostmarkConfig {
+  apiToken: string;
+  messageStream: "outbound" | "broadcast";
+  sandboxMode: boolean;
+  serverUrl: string;
+  timeout: number;
+}
+
+/**
+ * Email configuration interface
+ */
+export interface IEmailConfig {
+  postmark: IPostmarkConfig;
+  from: { name: string; email: string };
+  replyTo?: string;
+  logoUrl?: string;
+  brandColor?: string;
+  maxRetries: number;
+  retryDelayMs: number;
+}
+
+export interface IEmailTransporter {
+  send(options: IEmailOptions): Promise<IEmailResponse>;
+  verify(): Promise<boolean>;
+  close(): Promise<void>;
+  isConnectionActive(): boolean;
 }
 
 export enum EmailTemplate {
@@ -164,10 +198,31 @@ export type UserType = "Agent" | "Renter" | "Admin";
  */
 export interface IEmailVerificationPayload {
   to: string;
-  userName: string | undefined;
+  userName: string;
   userType: UserType | string;
   verificationCode: string;
-  expiresIn: string;
+  expiresIn: number;
+}
+
+export interface IPasswordResetPayload {
+  to: string;
+  userName: string;
+  resetLink: string;
+  expiresIn: number;
+}
+
+export interface IPasswordChangedPayload {
+  to: string;
+  userName: string;
+  timestamp: Date;
+}
+
+export interface IAdminReferralEmailPayload {
+  to: string;
+  referrerName: string;
+  refereeName: string;
+  refereeEmail: string;
+  bonusAmount: number;
 }
 
 /**
@@ -189,7 +244,7 @@ export interface IPasswordResetPayload {
   to: string;
   userName: string;
   resetLink: string;
-  expiresIn: string;
+  expiresIn: number;
 }
 
 /**

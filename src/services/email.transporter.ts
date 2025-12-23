@@ -1,61 +1,79 @@
 // file: src/services/email.transporter.ts
 
 import { logger } from "@/middlewares/pino-logger";
-import nodemailer, { type Transporter } from "nodemailer";
+import axios, { type AxiosInstance } from "axios";
 import type {
   IEmailConfig,
   IEmailOptions,
   IEmailResponse,
   IEmailTransporter,
+  IPostmarkConfig,
 } from "./email.types";
 
-export class NodeMailerSmtpTransporter implements IEmailTransporter {
-  private transporter: Transporter;
+export class PostmarkEmailTransporter implements IEmailTransporter {
+  private client: AxiosInstance;
   private config: IEmailConfig;
+  private postmarkConfig: IPostmarkConfig;
   private isConnected: boolean = false;
   private maxRetries: number;
   private retryDelayMs: number;
 
-  /**
-   * Constructor - Dependency injection
-   * @param config - Email configuration with SMTP details
-   */
   constructor(config: IEmailConfig) {
     this.config = config;
+    this.postmarkConfig = config.postmark;
     this.maxRetries = config.maxRetries || 100;
     this.retryDelayMs = config.retryDelayMs || 1000;
 
-    // Create transporter with connection pooling
-    this.transporter = nodemailer.createTransport(this.config.smtp);
+    this.client = axios.create({
+      baseURL: this.postmarkConfig.serverUrl,
+      headers: {
+        "X-Postmark-Server-Token": this.postmarkConfig.apiToken,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      timeout: this.postmarkConfig.timeout,
+    });
 
     logger.info(
       {
-        host: this.config.smtp.host,
-        port: this.config.smtp.port,
-        secure: this.config.smtp.secure,
-        from: this.config.from.email,
+        service: "Postmark",
+        messageStream: this.postmarkConfig.messageStream,
+        sandboxMode: this.postmarkConfig.sandboxMode,
       },
-      "NodeMailer SMTP Transporter initialized"
+      "📧 Postmark Email Transporter initialized"
     );
   }
 
-  /**
-   * Verify SMTP connection
-   * @returns Promise<boolean> - Connection status
-   */
   async verify(): Promise<boolean> {
     try {
-      await this.transporter.verify();
-      this.isConnected = true;
-      logger.info("✅ SMTP connection verified successfully");
-      return true;
+      const response = await this.client.get("/server", {
+        validateStatus: () => true,
+      });
+      if (response.status === 200) {
+        this.isConnected = true;
+        logger.info(
+          {
+            serverName: response.data.Name || "Unknown",
+            deliveryType: response.data.DeliveryType,
+          },
+          "✅ Postmark connection verified successfully"
+        );
+        return true;
+      } else {
+        throw new Error(
+          `Postmark API error: ${response.status} - ${response.data?.Message || "Unknown error"}`
+        );
+      }
     } catch (error) {
       this.isConnected = false;
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       logger.error(
         {
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMessage,
+          service: "Postmark",
         },
-        "❌ SMTP connection verification failed"
+        "❌ Postmark connection verification failed"
       );
       throw error;
     }
@@ -72,46 +90,55 @@ export class NodeMailerSmtpTransporter implements IEmailTransporter {
 
     while (attempt < this.maxRetries) {
       try {
-        // Prepare email options with defaults
-        const emailOptions = this.prepareEmailOptions(options);
+        // Prepare Postmark request payload
+        const payload = this.preparePostmarkPayload(options);
 
         logger.debug(
           {
-            to: Array.isArray(emailOptions.to)
-              ? emailOptions.to.map((r) => r.email)
-              : emailOptions.to.email,
-            subject: emailOptions.subject,
+            to: this.getRecipientEmails(options.to),
+            subject: options.subject,
             attempt: attempt + 1,
             maxAttempts: this.maxRetries,
+            messageStream: this.postmarkConfig.messageStream,
           },
-          "Sending email"
+          "Sending email via Postmark"
         );
 
-        // Send email
-        const info = await this.transporter.sendMail(emailOptions);
+        // Send email via Postmark API
+        const response = await this.client.post("/email", payload, {
+          validateStatus: () => true, // Don't throw on any status
+        });
 
-        logger.info(
-          {
-            messageId: info.messageId,
-            to: Array.isArray(emailOptions.to)
-              ? emailOptions.to.map((r) => r.email)
-              : emailOptions.to.email,
-            subject: emailOptions.subject,
-            attempt: attempt + 1,
-          },
-          "✅ Email sent successfully"
-        );
+        // Handle successful response
+        if (response.status === 200) {
+          const messageId = response.data.MessageID;
+          logger.info(
+            {
+              messageId,
+              to: this.getRecipientEmails(options.to),
+              subject: options.subject,
+              attempt: attempt + 1,
+            },
+            "✅ Email sent successfully via Postmark"
+          );
 
-        // Return successful response
-        return {
-          messageId: info.messageId || "",
-          response: info.response || "Email sent successfully",
-          accepted: info.accepted,
-          rejected: info.rejected,
-          timestamp: new Date(),
-          retries: attempt,
-          error: null,
-        };
+          return {
+            messageId: String(messageId),
+            response: `Email delivered successfully via Postmark (ID: ${messageId})`,
+            accepted: this.getRecipientEmails(options.to),
+            timestamp: new Date(),
+            retries: attempt,
+            error: null,
+          };
+        }
+
+        // Handle API errors
+        if (response.status >= 400) {
+          const errorData = response.data;
+          throw new Error(
+            `Postmark API error (${response.status}): ${errorData?.Message || errorData?.message || "Unknown error"}`
+          );
+        }
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         attempt++;
@@ -138,15 +165,13 @@ export class NodeMailerSmtpTransporter implements IEmailTransporter {
       {
         error: lastError?.message,
         attempts: attempt,
-        to: Array.isArray(options.to)
-          ? options.to.map((r) => r.email)
-          : options.to.email,
+        to: this.getRecipientEmails(options.to),
       },
       "❌ Email send failed after all retries"
     );
 
     return {
-      messageId: "",
+      messageId: "Email sent successfully via Postmark (ID: N/A)",
       response: "Email send failed after all retries",
       timestamp: new Date(),
       retries: attempt,
@@ -154,23 +179,9 @@ export class NodeMailerSmtpTransporter implements IEmailTransporter {
     };
   }
 
-  /**
-   * Close SMTP connection
-   * @returns Promise<void>
-   */
   async close(): Promise<void> {
-    try {
-      await this.transporter.close();
-      this.isConnected = false;
-      logger.info("SMTP connection closed");
-    } catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : String(error),
-        },
-        "Error closing SMTP connection"
-      );
-    }
+    this.isConnected = false;
+    logger.info("Postmark transporter closed");
   }
 
   /**
@@ -181,24 +192,27 @@ export class NodeMailerSmtpTransporter implements IEmailTransporter {
     return this.isConnected;
   }
 
-  private prepareEmailOptions(options: IEmailOptions): Record<string, any> {
-    const defaultFrom = this.config.from;
-    const from = options.from || defaultFrom;
+  private preparePostmarkPayload(options: IEmailOptions): Record<string, any> {
+    const from = options.from || this.config.from;
 
     return {
-      from: `${from.name} <${from.email}>`,
-      to: this.formatRecipients(options.to),
-      cc: options.cc ? this.formatRecipients(options.cc) : undefined,
-      bcc: options.bcc ? this.formatRecipients(options.bcc) : undefined,
-      subject: options.subject,
-      html: options.html,
-      text: options.text || this.stripHtmlTags(options.html),
-      replyTo: options.replyTo || this.config.replyTo,
-      attachments: options.attachments,
-      headers: options.headers,
-      inReplyTo: options.inReplyTo,
-      references: options.references,
-      priority: options.priority || "normal",
+      From: `${from.name} <${from.email}>`,
+      To: this.formatRecipients(options.to),
+      Cc: options.cc ? this.formatRecipients(options.cc) : undefined,
+      Bcc: options.bcc ? this.formatRecipients(options.bcc) : undefined,
+      Subject: options.subject,
+      HtmlBody: options.html,
+      TextBody: options.text || this.stripHtmlTags(options.html),
+      ReplyTo: options.replyTo || this.config.replyTo,
+      MessageStream: this.postmarkConfig.messageStream,
+      TrackOpens: true, // Enable open tracking
+      TrackLinks: "HtmlAndText", // Track all links
+      Tags: options.tags || [],
+      Metadata: options.metadata || {},
+      Headers: this.prepareHeaders(options.headers),
+      Attachments: this.prepareAttachments(options.attachments),
+      InReplyTo: options.inReplyTo,
+      References: options.references?.join(" "),
     };
   }
 
@@ -212,6 +226,37 @@ export class NodeMailerSmtpTransporter implements IEmailTransporter {
         return r.name ? `${r.name} <${r.email}>` : r.email;
       })
       .join(", ");
+  }
+
+  private getRecipientEmails(recipients: any): string[] {
+    const recArray = Array.isArray(recipients) ? recipients : [recipients];
+    return recArray.map((r) => (typeof r === "string" ? r : r.email));
+  }
+
+  private prepareHeaders(headers?: Record<string, string>): any[] {
+    if (!headers || Object.keys(headers).length === 0) {
+      return [];
+    }
+
+    return Object.entries(headers).map(([name, value]) => ({
+      Name: name,
+      Value: value,
+    }));
+  }
+
+  private prepareAttachments(attachments?: any[]): any[] {
+    if (!attachments || attachments.length === 0) {
+      return [];
+    }
+
+    return attachments.map((attachment) => ({
+      Name: attachment.filename,
+      Content: Buffer.isBuffer(attachment.content)
+        ? attachment.content.toString("base64")
+        : Buffer.from(attachment.content).toString("base64"),
+      ContentType: attachment.contentType || "application/octet-stream",
+      ContentDisposition: attachment.contentDisposition || "attachment",
+    }));
   }
 
   private stripHtmlTags(html: string): string {
@@ -235,23 +280,16 @@ export class NodeMailerSmtpTransporter implements IEmailTransporter {
 export function createEmailTransporter(
   config: IEmailConfig
 ): IEmailTransporter {
-  return new NodeMailerSmtpTransporter(config);
+  return new PostmarkEmailTransporter(config);
 }
 
-/**
- * Singleton instance holder
- */
 let transporterInstance: IEmailTransporter | null = null;
 
-/**
- * Get or create singleton transporter
- * @param config - Email configuration
- * @returns IEmailTransporter - Shared instance
- */
 export function getEmailTransporter(config: IEmailConfig): IEmailTransporter {
   if (!transporterInstance) {
     transporterInstance = createEmailTransporter(config);
   }
+
   return transporterInstance;
 }
 
@@ -260,7 +298,6 @@ export function getEmailTransporter(config: IEmailConfig): IEmailTransporter {
  */
 export function resetEmailTransporter(): void {
   if (transporterInstance) {
-    // Don't await close here - it's synchronous in this context
     transporterInstance.close().catch((err) => {
       logger.error(
         {
@@ -270,5 +307,6 @@ export function resetEmailTransporter(): void {
       );
     });
   }
+
   transporterInstance = null;
 }
