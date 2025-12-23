@@ -3,9 +3,6 @@
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 import { model, Types, type Document, type Query } from "mongoose";
 
-// ============================================
-// INTERFACE <unknown, any, any, Record<string, any>, object>
-// ============================================
 
 export interface IPreMarketRequest extends Document {
   requestId: string;
@@ -54,7 +51,7 @@ export interface IPreMarketRequest extends Document {
 
   preferences: string[];
 
-  status: "active" | "Available" | "match" | "matched" | "deleted";
+  status:  "Available" | "match" | "matched" | "deleted";
   isActive: boolean;
   viewedBy: {
     grantAccessAgents: Types.ObjectId[];
@@ -69,9 +66,6 @@ export interface IPreMarketRequest extends Document {
   requestNumber: number;
 }
 
-// ============================================
-// SCHEMA DEFINITION
-// ============================================
 
 const preMarketSchema = BaseSchemaUtil.createSchema({
   requestId: {
@@ -162,8 +156,8 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
 
   status: {
     type: String,
-    enum: ["active", "Available", "match", "matched", "deleted"],
-    default: "active",
+    enum: [ "Available", "match", "matched", "deleted"],
+    default: "Available",
     index: true,
   } as any,
 

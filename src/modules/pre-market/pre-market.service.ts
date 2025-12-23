@@ -1312,8 +1312,18 @@ export class PreMarketService {
           }
 
           for (const agent of grantAccessAgents) {
-            if (agent.userId) {
-              uniqueAgentIds.add(agent.userId.toString());
+            if (!agent.userId) {
+              continue;
+            }
+
+            const grantAccessUserId =
+              typeof agent.userId === "string"
+                ? agent.userId
+                : ((agent.userId as any)?._id?.toString() ??
+                  agent.userId.toString());
+
+            if (grantAccessUserId) {
+              uniqueAgentIds.add(grantAccessUserId);
             }
           }
 
@@ -1333,9 +1343,11 @@ export class PreMarketService {
               if (agentProfile && agentUser) {
                 const accessInfo = agentMap.get(agentId);
                 const hasGrantAccess = agentProfile.hasGrantAccess;
-                const isPaid = accessInfo?.status === "paid";
+                const accessStatus = accessInfo?.status;
+                const hasRequestAccess =
+                  accessStatus === "paid" || accessStatus === "approved";
 
-                if (hasGrantAccess || isPaid) {
+                if (hasGrantAccess || hasRequestAccess) {
                   agents.push({
                     _id: agentProfile._id?.toString(),
                     userId: agentUser._id?.toString(),
@@ -1344,7 +1356,7 @@ export class PreMarketService {
                     phoneNumber: agentUser.phoneNumber || null,
                     licenseNumber: agentProfile.licenseNumber,
                     profileImageUrl: agentUser.profileImageUrl || null,
-                    accessStatus: accessInfo?.status,
+                    accessStatus,
                     ...(agentProfile.hasGrantAccess && {
                       hasGrantAccess: agentProfile.hasGrantAccess,
                     }),

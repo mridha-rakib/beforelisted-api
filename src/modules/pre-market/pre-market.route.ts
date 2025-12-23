@@ -90,7 +90,6 @@ router.get(
 
 // ============================================
 // AGENT ROUTES - GENERIC (ALL AGENTS)
-// (Less specific routes AFTER specific ones)
 // ============================================
 
 /**
