@@ -12,7 +12,7 @@ export abstract class BaseEmailTemplate {
   protected brandColor: string;
   protected brandName: string = "BeforeListed";
 
-  constructor(logoUrl: string | undefined, brandColor: string = "#3B82F6") {
+  constructor(logoUrl: string | undefined, brandColor: string = "#1890FF") {
     this.logoUrl = logoUrl;
     this.brandColor = brandColor;
   }

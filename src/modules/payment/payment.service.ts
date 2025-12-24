@@ -4,21 +4,29 @@ import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import { NotFoundException } from "@/utils/app-error.utils";
 import Stripe from "stripe";
+import type { IGrantAccessRequest } from "../grant-access/grant-access.model";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
+import { RenterRepository } from "../renter/renter.repository";
+import { UserRepository } from "../user/user.repository";
 import { PreMarketNotifier } from "../pre-market/pre-market-notifier";
 import { PreMarketRepository } from "../pre-market/pre-market.repository";
+import { emailService } from "@/services/email.service";
 
 export class PaymentService {
   private stripe: Stripe;
   private readonly grantAccessRepository: GrantAccessRepository;
   private readonly preMarketRepository: PreMarketRepository;
   private readonly notifier: PreMarketNotifier;
+  private readonly renterRepository: RenterRepository;
+  private readonly userRepository: UserRepository;
 
   constructor() {
     this.stripe = new Stripe(env.STRIPE_SECRET_KEY);
     this.grantAccessRepository = new GrantAccessRepository();
     this.preMarketRepository = new PreMarketRepository();
     this.notifier = new PreMarketNotifier();
+    this.renterRepository = new RenterRepository();
+    this.userRepository = new UserRepository();
   }
 
   // ============================================
@@ -72,6 +80,8 @@ export class PaymentService {
       "normalAgents"
     );
 
+    await this.notifyRenterAccessGranted(grantAccess);
+
     // Notify agent
     // await this.notifier.notifyAgentOfPaymentSuccess(grantAccess);
 
@@ -119,6 +129,75 @@ export class PaymentService {
       },
       `Payment failed: ${stripePaymentIntentId}`
     );
+  }
+
+  private async notifyRenterAccessGranted(
+    grantAccess: IGrantAccessRequest
+  ): Promise<void> {
+    try {
+      const preMarketRequest = await this.preMarketRepository.findById(
+        grantAccess.preMarketRequestId.toString()
+      );
+
+      if (!preMarketRequest) {
+        return;
+      }
+
+      const renterId = preMarketRequest.renterId?.toString();
+      if (!renterId) {
+        return;
+      }
+
+      const renter = await this.renterRepository.findByUserId(renterId);
+      if (!renter) {
+        logger.warn(
+          { renterId, requestId: preMarketRequest._id },
+          "Renter not found for access grant email"
+        );
+        return;
+      }
+
+      if (renter.emailSubscriptionEnabled === false) {
+        logger.info(
+          { renterId, requestId: preMarketRequest._id },
+          "Renter email subscription disabled, skipping email"
+        );
+        return;
+      }
+
+      if (!renter.email) {
+        logger.warn(
+          { renterId, requestId: preMarketRequest._id },
+          "Renter email missing, skipping access grant email"
+        );
+        return;
+      }
+
+      const agent = await this.userRepository.findById(
+        grantAccess.agentId.toString()
+      );
+      if (!agent) {
+        return;
+      }
+
+      const listingUrl = `${env.CLIENT_URL}/listings/${preMarketRequest._id}`;
+      const location =
+        preMarketRequest.locations?.map((l) => l.borough).join(", ") ||
+        "Multiple Locations";
+
+      await emailService.sendRenterAccessGrantedNotification({
+        to: renter.email,
+        renterName: renter.fullName || "Renter",
+        agentName: agent.fullName || "Agent",
+        agentEmail: agent.email || env.EMAIL_REPLY_TO || "support@beforelisted.com",
+        listingTitle: preMarketRequest.requestName || "Pre-Market Listing",
+        location,
+        accessType: "paid",
+        listingUrl,
+      });
+    } catch (error) {
+      logger.error({ error, grantAccessId: grantAccess._id }, "Failed to send renter access granted email");
+    }
   }
 
   // ============================================

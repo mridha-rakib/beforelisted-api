@@ -19,7 +19,7 @@ export class PaymentLinkTemplate extends BaseEmailTemplate {
     paymentLink: string,
     paymentDeadline: string,
     logoUrl: string | undefined,
-    brandColor: string = "#3B82F6"
+    brandColor: string = "#1890FF"
   ) {
     super(logoUrl, brandColor);
     this.agentName = agentName;
@@ -45,7 +45,7 @@ export class PaymentLinkTemplate extends BaseEmailTemplate {
     );
 
     const priceBox = `
-      <div style="background: linear-gradient(135deg, ${this.brandColor}, rgba(59, 130, 246, 0.1)); padding: 25px; border-radius: 8px; text-align: center; margin: 20px 0; color: white;">
+      <div style="background: ${this.brandColor}; padding: 25px; border-radius: 8px; text-align: center; margin: 20px 0; color: white;">
         <p style="margin: 0; font-size: 14px; opacity: 0.9;">Amount Due</p>
         <div style="font-size: 48px; font-weight: bold; margin: 10px 0;">
           <span style="font-size: 24px; opacity: 0.9;">$</span>${this.chargeAmount.toFixed(2)}
@@ -73,7 +73,7 @@ export class PaymentLinkTemplate extends BaseEmailTemplate {
 
     const cta = `
       <div class="button-container">
-        <a href="${this.paymentLink}" class="button" style="background: #10B981;">Pay Now & Access Property →</a>
+        <a href="${this.paymentLink}" class="button" style="background: ${this.brandColor};">Pay Now & Access Property →</a>
         <div style="background: #ECFDF5; padding: 10px 15px; border-radius: 4px; color: #047857; font-size: 12px; display: inline-block; margin: 10px 0;">🔒 Secure payment powered by Stripe</div>
       </div>
     `;

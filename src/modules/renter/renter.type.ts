@@ -55,17 +55,11 @@ export type RenterRegisterPayload =
 export type RenterResponse = {
   _id: string;
   userId: Types.ObjectId | string;
-  email: string;
-  fullName: string;
-  phoneNumber?: string;
   registrationType: "normal" | "agent_referral" | "admin_referral";
   referredByAgentId?: string;
   referredByAdminId?: string;
-  emailVerified: boolean;
-  accountStatus: "active" | "suspended" | "pending";
-  occupation?: string;
-  moveInDate?: Date;
-  petFriendly: boolean;
+  emailSubscriptionEnabled: boolean;
+  profileImageUrl?: string;
   questionnaire?: {
     lookingToPurchase?: boolean;
     purchaseTimeline?: string;
@@ -144,10 +138,9 @@ export type ResetPasswordPayload = {
  * Update Renter Profile Payload
  */
 export type UpdateRenterProfilePayload = {
+  fullName?: string;
   phoneNumber?: string;
-  occupation?: string;
-  moveInDate?: Date;
-  petFriendly?: boolean;
+  emailSubscriptionEnabled?: boolean;
 };
 
 /**

@@ -36,6 +36,15 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       .lean() as Promise<IPreMarketRequest | null>;
   }
 
+  async findByRequestIdIncludingDeleted(
+    requestId: string
+  ): Promise<IPreMarketRequest | null> {
+    return this.model
+      .findOne({ requestId })
+      .setOptions({ includeDeleted: true })
+      .lean() as Promise<IPreMarketRequest | null>;
+  }
+
   async findByRenterId(
     renterId: string,
     query: PaginationQuery
@@ -111,10 +120,6 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return PaginationHelper.formatResponse<IPreMarketRequest>(result);
   }
 
-  // ============================================
-  // UPDATE
-  // ============================================
-
   async addAgentToViewedBy(
     requestId: string,
     agentId: string,
@@ -143,10 +148,6 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     );
   }
 
-  // ============================================
-  // DELETE
-  // ============================================
-
   async softDelete(id: string): Promise<IPreMarketRequest | null> {
     return this.model.findByIdAndUpdate(
       id,
@@ -170,10 +171,6 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       { new: true }
     );
   }
-
-  // ============================================
-  // STATISTICS
-  // ============================================
 
   async countByLocation(location: string): Promise<number> {
     return this.model.countDocuments({
@@ -251,10 +248,6 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return PaginationHelper.formatResponse<IPreMarketRequest>(result);
   }
 
-  /**
-   * Get all requests available for grant access agents
-   * Filter by status = "Match" and exclude requests already viewed by this agent
-   */
   async findForGrantAccessAgents(
     agentId: string,
     query: PaginationQuery
@@ -732,8 +725,6 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
                   name: listing.renterInfo.fullName,
                   email: listing.renterInfo.email,
                   phone: listing.renterInfo.phoneNumber,
-                  occupation: listing.renterInfo.occupation,
-                  moveInDate: listing.renterInfo.moveInDate,
                   registrationType: listing.renterInfo.registrationType,
                   accountStatus: listing.renterInfo.accountStatus,
                 }

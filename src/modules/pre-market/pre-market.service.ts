@@ -42,10 +42,7 @@ export class PreMarketService {
     this.preMarketRepository = new PreMarketRepository();
     this.grantAccessRepository = new GrantAccessRepository();
     this.agentRepository = new AgentProfileRepository();
-    this.paymentService = new PaymentService(
-      this.grantAccessRepository,
-      this.preMarketRepository
-    );
+    this.paymentService = new PaymentService();
     this.notifier = new PreMarketNotifier();
     this.renterRepository = new RenterRepository();
     this.userRepository = new UserRepository();
@@ -92,8 +89,8 @@ export class PreMarketService {
     }
 
     const requestNumber = activeListingCount + 1;
-    const requestId = `BeforeListed-${requestNumber}`;
-    const requestName = requestId;
+    const requestName = `BeforeListed-${requestNumber}`;
+    const requestId = await this.generateUniqueRequestId(requestName, renterId);
 
     // Create request
     const request = await this.preMarketRepository.create({
@@ -113,7 +110,7 @@ export class PreMarketService {
       guarantorRequired: payload.guarantorRequired || {},
       isActive: true,
       isDeleted: false,
-      status: "active",
+      status: "Available",
       viewedBy: {
         grantAccessAgents: [],
         normalAgents: [],
@@ -141,8 +138,6 @@ export class PreMarketService {
   ): Promise<void> {
     const renter = await this.renterRepository.findByUserId(renterId);
 
-    const agentIds = await this.preMarketRepository.getAllActiveAgentIds();
-
     if (!renter) {
       logger.warn(
         { renterId, requestId: request._id },
@@ -150,8 +145,6 @@ export class PreMarketService {
       );
       return;
     }
-
-    // const listingUrl = `${env.CLIENT_URL}/listings/${request._id}`;
 
     const renterData = {
       renterId: renter.userId._id.toString(),
@@ -168,9 +161,29 @@ export class PreMarketService {
     );
   }
 
-  // ============================================
-  // READ REQUESTS
-  // ============================================
+  private async generateUniqueRequestId(
+    baseRequestId: string,
+    renterId: string
+  ): Promise<string> {
+    let candidate = baseRequestId;
+    let attempt = 0;
+
+    while (
+      await this.preMarketRepository.findByRequestIdIncludingDeleted(candidate)
+    ) {
+      attempt += 1;
+      const timeSuffix = Date.now().toString(36);
+      const renterSuffix = renterId.slice(-4);
+      const randomSuffix = Math.random().toString(36).slice(2, 6);
+      candidate = `${baseRequestId}-${renterSuffix}-${timeSuffix}${randomSuffix}`;
+
+      if (attempt > 5) {
+        break;
+      }
+    }
+
+    return candidate;
+  }
 
   async getAllRequests(
     query: PaginationQuery
@@ -1417,12 +1430,29 @@ export class PreMarketService {
       return null;
     }
 
+    const resolveReferrerId = (value: any): string | null => {
+      if (!value) return null;
+      if (typeof value === "string") return value;
+      if (typeof value === "object" && value._id) return value._id.toString();
+      if (typeof value?.toString === "function") {
+        const str = value.toString();
+        return str === "[object Object]" ? null : str;
+      }
+      return null;
+    };
+
     let referrerInfo = null;
 
     if (renter.referredByAgentId) {
-      const referrer = await this.userRepository.findById(
-        renter.referredByAgentId.toString()
-      );
+      const referredAgent =
+        typeof renter.referredByAgentId === "object" &&
+        (renter.referredByAgentId as any)?._id
+          ? renter.referredByAgentId
+          : null;
+      const referrerId = resolveReferrerId(renter.referredByAgentId);
+      const referrer =
+        referredAgent ||
+        (referrerId ? await this.userRepository.findById(referrerId) : null);
       if (referrer) {
         referrerInfo = {
           referrerId: referrer._id?.toString(),
@@ -1431,11 +1461,15 @@ export class PreMarketService {
         };
       }
     } else if (renter.referredByAdminId) {
-      const referrer = await this.userRepository.findById(
-        typeof renter.referredByAdminId === "string"
+      const referredAdmin =
+        typeof renter.referredByAdminId === "object" &&
+        (renter.referredByAdminId as any)?._id
           ? renter.referredByAdminId
-          : renter.referredByAdminId._id
-      );
+          : null;
+      const referrerId = resolveReferrerId(renter.referredByAdminId);
+      const referrer =
+        referredAdmin ||
+        (referrerId ? await this.userRepository.findById(referrerId) : null);
       if (referrer) {
         referrerInfo = {
           referrerId: referrer._id?.toString(),

@@ -68,10 +68,6 @@ const userSchema = BaseSchemaUtil.createSchema<IUser>({
         min: 0,
       },
 
-      // ============================================
-      // EMAIL VERIFICATION
-      // ============================================
-
       emailVerified: {
         type: Boolean,
         default: false,
@@ -86,10 +82,6 @@ const userSchema = BaseSchemaUtil.createSchema<IUser>({
         select: false,
       },
 
-      // ============================================
-      // ACTIVITY TRACKING
-      // ============================================
-
       lastLoginAt: {
         type: Date,
         index: true,
@@ -101,10 +93,6 @@ const userSchema = BaseSchemaUtil.createSchema<IUser>({
         type: Boolean,
         default: false,
       },
-
-      // ============================================
-      // SOFT DELETE
-      // ============================================
 
       isDeleted: {
         type: Boolean,
@@ -128,18 +116,10 @@ userSchema.index({ email: 1, isDeleted: 1 });
 userSchema.index({ role: 1, accountStatus: 1, isDeleted: 1 });
 userSchema.index({ createdAt: -1, isDeleted: 1 });
 
-// New referral-related indexes
 userSchema.index({ referralCode: 1 }, { sparse: true });
 userSchema.index({ referredBy: 1, referredByRole: 1 });
-userSchema.index({ role: 1, totalReferrals: -1 }); // Leaderboard queries
+userSchema.index({ role: 1, totalReferrals: -1 });
 
-// ============================================
-// MIDDLEWARE
-// ============================================
-
-/**
- * Exclude soft-deleted users by default
- */
 userSchema.pre(/^find/, function (this: Query<any, IUser>) {
   if (!this.getOptions().includeDeleted) {
     this.where({ isDeleted: false });
@@ -157,10 +137,6 @@ userSchema.pre(/^find/, function (this: Query<any, IUser>) {
     });
   }
 });
-
-// ============================================
-// VIRTUAL FIELDS
-// ============================================
 
 userSchema.virtual("referralLink").get(function (this: IUser) {
   if (!this.referralCode) return null;

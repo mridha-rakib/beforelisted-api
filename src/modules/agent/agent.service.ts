@@ -176,20 +176,52 @@ export class AgentService {
       throw new NotFoundException("Agent profile not found");
     }
 
-    if (payload.licenseExpiryDate) {
-      if (new Date(payload.licenseExpiryDate) <= new Date()) {
-        throw new ConflictException(
-          "License expiry date cannot be in the past"
-        );
-      }
+    const agentPayload: Record<string, any> = {};
+    if (payload.licenseNumber) agentPayload.licenseNumber = payload.licenseNumber;
+    if (payload.brokerageName) agentPayload.brokerageName = payload.brokerageName;
+    if (payload.emailSubscriptionEnabled !== undefined) {
+      agentPayload.emailSubscriptionEnabled = payload.emailSubscriptionEnabled;
+    }
+   
+    if (Object.keys(agentPayload).length > 0) {
+      await this.repository.updateProfile(userId, agentPayload);
     }
 
-    const updated = await this.repository.updateByUserId(userId, payload);
-    if (!updated) {
+    const userPayload: Record<string, any> = {};
+    if (payload.fullName) userPayload.fullName = payload.fullName;
+    if (payload.phoneNumber) userPayload.phoneNumber = payload.phoneNumber;
+
+    if (Object.keys(userPayload).length > 0) {
+      const { UserRepository } = await import("../user/user.repository");
+      const userRepository = new UserRepository();
+      await userRepository.updateById(userId, userPayload);
+      logger.info({ userId }, "Agent profile synced to User model");
+    }
+
+    const updatedProfile = await this.repository.findByUserId(userId);
+    if (!updatedProfile) {
       throw new NotFoundException("Agent profile not found");
     }
 
-    return this.toResponse(updated);
+    return this.toResponse(updatedProfile);
+  }
+
+  async toggleEmailSubscription(userId: string): Promise<{
+    emailSubscriptionEnabled: boolean;
+  }> {
+    const profile = await this.repository.findByUserId(userId);
+    if (!profile) {
+      throw new NotFoundException("Agent profile not found");
+    }
+
+    const current = profile.emailSubscriptionEnabled !== false;
+    const nextValue = !current;
+
+    await this.repository.updateProfile(userId, {
+      emailSubscriptionEnabled: nextValue,
+    });
+
+    return { emailSubscriptionEnabled: nextValue };
   }
 
   async getAgentStats(userId: string): Promise<{
@@ -571,7 +603,7 @@ export class AgentService {
   private toResponse(agent: IAgentProfile): AgentProfileResponse {
     return {
       _id: agent._id?.toString() ?? "",
-      userId:
+      userInfo:
         agent.userId && (agent.userId as any)._id
           ? agent.userId
           : (agent.userId?.toString() ?? ""),
@@ -581,6 +613,7 @@ export class AgentService {
       activeAt: agent.activeAt,
       totalRentersReferred: agent.totalRentersReferred,
       activeReferrals: agent.activeReferrals,
+      emailSubscriptionEnabled: agent.emailSubscriptionEnabled !== false,
       hasGrantAccess: agent.hasGrantAccess,
       lastAccessToggleAt: agent.lastAccessToggleAt,
       grantAccessCount: agent.grantAccessCount,
@@ -589,5 +622,28 @@ export class AgentService {
       createdAt: agent.createdAt,
       updatedAt: agent.updatedAt,
     };
+  }
+
+  /**
+   * Delete agent profile (soft delete)
+   * Marks both Agent profile and User as deleted
+   */
+  async deleteAgentProfile(userId: string): Promise<{ message: string }> {
+    const profile = await this.repository.findByUserId(userId);
+    if (!profile) {
+      throw new NotFoundException("Agent profile not found");
+    }
+
+    // Remove agent profile
+    await this.repository.deleteById(profile._id.toString());
+
+    // Soft delete the user account
+    const { UserRepository } = await import("../user/user.repository");
+    const userRepository = new UserRepository();
+    await userRepository.softDeleteUser(userId);
+
+    logger.info({ userId }, "Agent profile and user account deleted");
+
+    return { message: "Agent profile deleted successfully" };
   }
 }

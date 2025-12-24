@@ -1,6 +1,5 @@
 // file: src/modules/agent/agent.type.ts
 
-
 export type AgentRegisterPayload = {
   // User fields
   email: string;
@@ -13,44 +12,39 @@ export type AgentRegisterPayload = {
   brokerageName: string;
 };
 
-
 export type CreateAgentProfilePayload = {
   licenseNumber: string;
   brokerageName: string;
 };
 
-
 export type UpdateAgentProfilePayload = {
+  fullName?: string;
+  phoneNumber?: string;
+  licenseNumber?: string;
   brokerageName?: string;
-  licenseExpiryDate?: Date;
+  emailSubscriptionEnabled?: boolean;
 };
-
 
 export type AgentProfileResponse = {
   _id: string;
-  userId: string | any; 
+  userInfo: string | any;
   licenseNumber: string;
   brokerageName: string;
-
+  profileImage: string | null;
 
   isActive: boolean;
   activeAt?: Date;
 
-
-
   totalRentersReferred: number;
   activeReferrals: number;
 
-
-
+  emailSubscriptionEnabled: boolean;
   hasGrantAccess: boolean;
   lastAccessToggleAt?: Date;
-
 
   grantAccessCount: number;
   totalMatches: number;
   successfulMatches: number;
-
 
   createdAt: Date;
   updatedAt: Date;
@@ -74,7 +68,6 @@ export type AgentRegistrationResponse = {
     expiresIn: string;
   };
 };
-
 
 export type AdminAgentMetricsResponse = {
   totalAgents: number;

@@ -25,7 +25,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
       .populate({
         path: "userId",
         select:
-          "fullName email role phoneNumber emailVerified accountStatus referralCode totalReferrals",
+          "fullName email role phoneNumber emailVerified profileImageUrl accountStatus referralCode totalReferrals",
       })
       .exec();
   }
@@ -167,11 +167,15 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
   /**
    * Update agent profile by userId
    */
-  async updateByUserId(
+  async updateProfile(
     userId: string | Types.ObjectId,
     data: Partial<IAgentProfile>
   ): Promise<IAgentProfile | null> {
-    return this.model.findOneAndUpdate({ userId }, data, { new: true }).exec();
+    return this.model.findOneAndUpdate(
+      { userId },
+      { $set: data },
+      { new: true }
+    );
   }
 
   /**
@@ -447,8 +451,33 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
 
   async findActiveAgents(): Promise<any[]> {
     return this.model
-      .find({ isActive: true })
-      .select("_id email fullName hasGrantAccess lastAccessToggleAt")
-      .lean();
+      .aggregate([
+        {
+          $match: {
+            isActive: true,
+            emailSubscriptionEnabled: { $ne: false },
+          },
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "userId",
+            foreignField: "_id",
+            as: "userInfo",
+          },
+        },
+        { $unwind: "$userInfo" },
+        { $match: { "userInfo.isDeleted": { $ne: true } } },
+        {
+          $project: {
+            _id: 1,
+            hasGrantAccess: 1,
+            lastAccessToggleAt: 1,
+            fullName: "$userInfo.fullName",
+            email: "$userInfo.email",
+          },
+        },
+      ])
+      .exec();
   }
 }

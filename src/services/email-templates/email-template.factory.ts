@@ -16,7 +16,7 @@ export class EmailTemplateFactory {
   private logoUrl: string | undefined;
   private brandColor: string;
 
-  constructor(logoUrl: string | undefined, brandColor: string = "#3B82F6") {
+  constructor(logoUrl: string | undefined, brandColor: string = "#1890FF") {
     this.logoUrl = logoUrl;
     this.brandColor = brandColor;
   }

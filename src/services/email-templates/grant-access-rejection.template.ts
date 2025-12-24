@@ -17,7 +17,7 @@ export class GrantAccessRejectionTemplate extends BaseEmailTemplate {
     rejectionReason: string | null,
     contactEmail: string,
     logoUrl: string | undefined,
-    brandColor: string = "#3B82F6"
+    brandColor: string = "#1890FF"
   ) {
     super(logoUrl, brandColor);
     this.agentName = agentName;

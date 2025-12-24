@@ -213,6 +213,7 @@ export interface IRenterProfile {
   referredByAdminId?: Types.ObjectId | string;
   emailVerified: boolean;
   accountStatus: string;
+  emailSubscriptionEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -221,9 +222,9 @@ export interface IRenterProfile {
  * Update Renter Profile
  */
 export interface IUpdateRenterProfileRequest {
+  fullName?: string;
   phoneNumber?: string;
-  occupation?: string;
-  moveInDate?: Date;
+  emailSubscriptionEnabled?: boolean;
 }
 
 // ============================================

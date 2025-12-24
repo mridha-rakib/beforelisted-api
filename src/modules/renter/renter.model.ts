@@ -3,28 +3,17 @@
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 import { model, Types, type Document, type Query } from "mongoose";
 
-// ============================================
-// INTERFACE
-// ============================================
-
 export interface IRenterModel extends Document {
-  // User reference
   userId: Types.ObjectId;
 
-  // Common fields (from User)
   email: string;
   fullName: string;
   phoneNumber?: string;
+  emailSubscriptionEnabled: boolean;
 
-  // Registration tracking
   registrationType: "normal" | "agent_referral" | "admin_referral";
   referredByAgentId?: Types.ObjectId | string;
   referredByAdminId?: Types.ObjectId | string;
-
-  // Profile data
-  occupation?: string;
-  moveInDate?: Date;
-  petFriendly?: boolean;
 
   // Questionnaire (for admin referral)
   questionnaire?: {
@@ -35,9 +24,8 @@ export interface IRenterModel extends Document {
     _id: false;
   };
 
-  accountStatus: "active" | "suspended" | "pending";
+  accountStatus: "active" | "inactive" | "pending";
 
-  // Soft delete
   isDeleted: boolean;
   deletedAt?: Date;
 
@@ -52,9 +40,6 @@ export interface IRenterModel extends Document {
 }
 
 const renterSchema = BaseSchemaUtil.createSchema({
-  // ============================================
-  // USER REFERENCE
-  // ============================================
   userId: {
     type: Types.ObjectId,
     ref: "User",
@@ -74,6 +59,12 @@ const renterSchema = BaseSchemaUtil.createSchema({
     trim: true,
   } as any,
 
+  emailSubscriptionEnabled: {
+    type: Boolean,
+    default: true,
+    index: true,
+  } as any,
+
   registrationType: {
     type: String,
     enum: ["normal", "agent_referral", "admin_referral"],
@@ -81,9 +72,6 @@ const renterSchema = BaseSchemaUtil.createSchema({
     index: true,
   } as any,
 
-  /**
-   * Sparse index: Only indexed if field exists
-   */
   referredByAgentId: {
     type: Types.ObjectId,
     ref: "User",
@@ -91,19 +79,12 @@ const renterSchema = BaseSchemaUtil.createSchema({
     index: true,
   } as any,
 
-  /**
-   * Sparse index: Only indexed if field exists
-   */
   referredByAdminId: {
     type: Types.ObjectId,
     ref: "User",
     sparse: true,
     index: true,
   } as any,
-
-  // ============================================
-  // QUESTIONNAIRE DATA (For Admin Referral Only)
-  // ============================================
 
   questionnaire: {
     type: {
@@ -131,33 +112,17 @@ const renterSchema = BaseSchemaUtil.createSchema({
   ...BaseSchemaUtil.mergeDefinitions(BaseSchemaUtil.softDeleteFields()),
 });
 
-// ============================================
-// INDEXES (Performance Optimization)
-// ============================================
-
 renterSchema.index({ registrationType: 1, createdAt: -1 });
 renterSchema.index({ referredByAgentId: 1 });
 renterSchema.index({ referredByAdminId: 1 });
 renterSchema.index({ accountStatus: 1 });
 
-// ============================================
-// MIDDLEWARE / HOOKS
-// ============================================
-
-/**
- * ✅ Auto-exclude soft-deleted renters in find queries
- * Unless explicitly requested with { includeDeleted: true }
- */
 renterSchema.pre(/^find/, function (this: Query<any, any>) {
   if (!this.getOptions().includeDeleted) {
     this.where({ isDeleted: false });
   }
 });
 
-/**
- * ✅ Auto-populate referrer details
- * If { populateReferrer: true } option provided
- */
 renterSchema.pre(/^find/, function (this: Query<any, any>) {
   if (this.getOptions().populateReferrer) {
     this.populate({
@@ -167,10 +132,6 @@ renterSchema.pre(/^find/, function (this: Query<any, any>) {
   }
 });
 
-/**
- * ✅ Auto-populate user details
- * If { populateUser: true } option provided
- */
 renterSchema.pre(/^find/, function (this: Query<any, any>) {
   if (this.getOptions().populateUser) {
     this.populate({
@@ -180,14 +141,6 @@ renterSchema.pre(/^find/, function (this: Query<any, any>) {
   }
 });
 
-// ============================================
-// VIRTUAL FIELDS
-// ============================================
-
-/**
- * ✅ Determine registration source label
- * Returns human-readable registration type
- */
 renterSchema.virtual("registrationSourceLabel").get(function (
   this: IRenterModel
 ) {
@@ -199,31 +152,17 @@ renterSchema.virtual("registrationSourceLabel").get(function (
   return labels[this.registrationType] || "Unknown";
 });
 
-/**
- * ✅ Check if renter was admin-referred (passwordless)
- */
 renterSchema.virtual("isAdminReferred").get(function (this: IRenterModel) {
   return this.registrationType === "admin_referral";
 });
 
-/**
- * ✅ Check if renter was agent-referred
- */
 renterSchema.virtual("isAgentReferred").get(function (this: IRenterModel) {
   return this.registrationType === "agent_referral";
 });
 
-// Ensure virtual fields are included in JSON
 renterSchema.set("toJSON", { virtuals: true });
 renterSchema.set("toObject", { virtuals: true });
 
-// ============================================
-// INSTANCE METHODS
-// ============================================
-
-/**
- * ✅ Mark renter as soft-deleted
- */
 renterSchema.methods.softDelete = async function (
   this: IRenterModel
 ): Promise<void> {
@@ -232,9 +171,6 @@ renterSchema.methods.softDelete = async function (
   await this.save();
 };
 
-/**
- * ✅ Restore soft-deleted renter
- */
 renterSchema.methods.restore = async function (
   this: IRenterModel
 ): Promise<void> {
@@ -243,9 +179,6 @@ renterSchema.methods.restore = async function (
   await this.save();
 };
 
-/**
- * ✅ Complete renter profile (after registration)
- */
 renterSchema.methods.completeProfile = async function (
   this: IRenterModel,
   data: Partial<IRenterModel>
@@ -254,13 +187,6 @@ renterSchema.methods.completeProfile = async function (
   await this.save();
 };
 
-// ============================================
-// STATIC METHODS
-// ============================================
-
-/**
- * ✅ Find renters by registration type
- */
 renterSchema.statics.findByRegistrationType = async function (
   this: any,
   type: "normal" | "agent_referral" | "admin_referral"
@@ -268,23 +194,14 @@ renterSchema.statics.findByRegistrationType = async function (
   return this.find({ registrationType: type });
 };
 
-/**
- * ✅ Find renters referred by specific agent
- */
 renterSchema.statics.findByAgent = async function (this: any, agentId: string) {
   return this.find({ referredByAgentId: agentId });
 };
 
-/**
- * ✅ Find renters referred by specific admin
- */
 renterSchema.statics.findByAdmin = async function (this: any, adminId: string) {
   return this.find({ referredByAdminId: adminId });
 };
 
-/**
- * ✅ Count renters by registration type
- */
 renterSchema.statics.countByType = async function (this: any) {
   return this.aggregate([
     { $group: { _id: "$registrationType", count: { $sum: 1 } } },

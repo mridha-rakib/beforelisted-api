@@ -1,7 +1,6 @@
 // file: src/modules/agent/agent.route.ts
 
 import { ROLES } from "@/constants/app.constants";
-import { agentActivationMiddleware } from "@/middlewares/agent-activation.middleware";
 import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
 import { AgentController } from "./agent.controller";
@@ -9,39 +8,49 @@ import { AgentController } from "./agent.controller";
 const router = Router();
 const controller = new AgentController();
 
-// PUBLIC ROUTES
-/**
- * POST /agent/register
- * Complete agent registration (user + profile)
- */
 router.post("/register", controller.registerAgent);
-
-// AUTHENTICATED ROUTES (Agent)
-/**
- * GET /agent/profile
- * Get own agent profile
- */
 
 router.get(
   "/profile",
   authMiddleware.verifyToken,
   // authMiddleware.verifyEmailVerified,
-  agentActivationMiddleware.verify,
+  // agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
   controller.getAgentProfile
 );
 
 /**
  * PUT /agent/profile
- * Update own agent profile
+ * Update own agent profile, // authMiddleware.verifyEmailVerified,
+  // agentActivationMiddleware.verify,
  */
 router.put(
   "/profile",
   authMiddleware.verifyToken,
-  // authMiddleware.verifyEmailVerified,
-  agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
   controller.updateAgentProfile
+);
+
+/**
+ * DELETE /agent/profile
+ * Delete own agent profile
+ */
+router.delete(
+  "/profile",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize(ROLES.AGENT),
+  controller.deleteProfile
+);
+
+/**
+ * POST /agent/email-subscription/toggle
+ * Toggle email subscription ON/OFF
+ */
+router.post(
+  "/email-subscription/toggle",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize(ROLES.AGENT),
+  controller.toggleEmailSubscription
 );
 
 /**
@@ -51,8 +60,8 @@ router.put(
 router.get(
   "/referral-link",
   authMiddleware.verifyToken,
-  authMiddleware.verifyEmailVerified,
-  agentActivationMiddleware.verify,
+  // authMiddleware.verifyEmailVerified,
+  // agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
   controller.getReferralLink
 );

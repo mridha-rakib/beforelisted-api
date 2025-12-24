@@ -43,6 +43,7 @@ export interface IAgentProfile extends Document {
   referralConversionRate: number;
 
   // Access Management
+  emailSubscriptionEnabled: boolean;
   hasGrantAccess: boolean;
   accessToggleHistory: IAccessToggleRecord[];
   lastAccessToggleAt?: Date;

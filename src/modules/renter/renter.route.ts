@@ -29,6 +29,28 @@ router.put(
   controller.updateRenterProfile
 );
 
+/**
+ * DELETE /renter/profile
+ * Delete own renter profile
+ */
+router.delete(
+  "/profile",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
+  controller.deleteRenterProfile
+);
+
+/**
+ * POST /renter/email-subscription/toggle
+ * Toggle email subscription ON/OFF
+ */
+router.post(
+  "/email-subscription/toggle",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
+  controller.toggleEmailSubscription
+);
+
 router.get(
   "/admin/excel-download",
   authMiddleware.verifyToken,

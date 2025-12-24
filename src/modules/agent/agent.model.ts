@@ -86,6 +86,12 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
   // ACCESS MANAGEMENT
   // ============================================
 
+  emailSubscriptionEnabled: {
+    type: Boolean,
+    default: true,
+    index: true,
+  },
+
   hasGrantAccess: {
     type: Boolean,
     default: false,

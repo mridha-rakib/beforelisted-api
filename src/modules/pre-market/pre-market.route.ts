@@ -27,34 +27,6 @@ router.get(
 );
 
 router.get(
-  "/renter/:requestId",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize("Renter"),
-  controller.getRenterRequestById.bind(controller)
-);
-
-router.put(
-  "/:requestId",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize("Renter"),
-  controller.updateRequest.bind(controller)
-);
-
-router.delete(
-  "/:requestId",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize("Renter"),
-  controller.deleteRequest.bind(controller)
-);
-
-router.put(
-  "/:requestId/toggle-status",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize("Renter"),
-  controller.toggleListingActivation.bind(controller)
-);
-
-router.get(
   "/renter/requests/with-agents",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Renter"),
@@ -62,13 +34,8 @@ router.get(
 );
 
 // ============================================
-// AGENT ROUTES - GRANT ACCESS AGENTS FIRST
-// (More specific routes BEFORE generic ones)
+// AGENT ROUTES - GRANT ACCESS AGENTS and normal agents
 // ============================================
-/**
- * GET /pre-market/agent/all-requests
- * Grant Access Agents: View ALL requests with FULL renter info
- */
 router.get(
   "/agent/all-requests",
   authMiddleware.verifyToken,
@@ -245,5 +212,35 @@ router.get(
   authMiddleware.verifyToken,
   controller.getAllListingsWithAllData.bind(controller)
 );
+
+// ===========================================RENTER ROUTES
+router.get(
+  "/renter/:requestId",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
+  controller.getRenterRequestById.bind(controller)
+);
+
+router.put(
+  "/:requestId",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
+  controller.updateRequest.bind(controller)
+);
+
+router.delete(
+  "/:requestId",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
+  controller.deleteRequest.bind(controller)
+);
+
+router.put(
+  "/:requestId/toggle-status",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
+  controller.toggleListingActivation.bind(controller)
+);
+// ===========================================RENTER ROUTES
 
 export default router;

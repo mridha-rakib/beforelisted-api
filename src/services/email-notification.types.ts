@@ -26,6 +26,17 @@ export interface IPreMarketAdminNotificationPayload {
   preMarketRequestId: string;
 }
 
+export interface IRenterAccessGrantedNotificationPayload {
+  to: string;
+  renterName: string;
+  agentName: string;
+  agentEmail: string;
+  listingTitle: string;
+  location: string;
+  accessType: "free" | "paid";
+  listingUrl: string;
+}
+
 // ============================================
 // IN-APP NOTIFICATION TYPES (Database)
 // ============================================

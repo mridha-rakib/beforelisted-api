@@ -145,6 +145,28 @@ export class RenterController {
   });
 
   /**
+   * AUTHENTICATED: Delete renter profile
+   * DELETE /renter/profile
+   */
+  deleteRenterProfile = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId;
+    const result = await this.service.deleteRenterProfile(userId);
+
+    ApiResponse.success(res, result, "Renter profile deleted successfully");
+  });
+
+  toggleEmailSubscription = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId;
+    const result = await this.service.toggleEmailSubscription(userId);
+
+    ApiResponse.success(
+      res,
+      result,
+      "Renter email subscription updated successfully"
+    );
+  });
+
+  /**
    * ADMIN: Get renter profile by ID
    * GET /renter/admin/:userId
    */

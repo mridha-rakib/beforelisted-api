@@ -202,6 +202,24 @@ export class UserRepository extends BaseRepository<IUser> {
       .exec();
   }
 
+  async softDeleteUser(
+    userId: string,
+    deletedBy?: string
+  ): Promise<IUser | null> {
+    return this.model
+      .findByIdAndUpdate(
+        userId,
+        {
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletedBy: deletedBy || undefined,
+          accountStatus: "inactive",
+        },
+        { new: true }
+      )
+      .exec();
+  }
+
   async findDeletedUsers(): Promise<IUser[]> {
     return this.model.find({ isDeleted: true }).exec();
   }

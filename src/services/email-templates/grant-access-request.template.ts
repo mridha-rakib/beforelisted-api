@@ -26,7 +26,7 @@ export class GrantAccessRequestTemplate extends BaseEmailTemplate {
     requestedAt: string,
     adminDashboardLink: string,
     logoUrl: string | undefined,
-    brandColor: string = "#3B82F6"
+    brandColor: string = "#1890FF"
   ) {
     super(logoUrl, brandColor);
     this.agentName = agentName;

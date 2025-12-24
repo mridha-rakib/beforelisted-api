@@ -44,13 +44,15 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
   //   return this.model.findOne({ userId, isDeleted: false });
   // }
 
-  async findByUserId(userId: string): Promise<IRenterModel | null> {
+  async findByUserId(
+    userId: string | Types.ObjectId
+  ): Promise<IRenterModel | null> {
     return this.model
       .findOne({ userId })
       .populate({
         path: "userId",
         select:
-          "fullName email role phoneNumber emailVerified accountStatus referralCode totalReferrals",
+          "fullName email role phoneNumber emailVerified profileImageUrl accountStatus",
       })
       .exec();
   }
@@ -414,7 +416,9 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
    */
   async getExcelMetadata(): Promise<any> {
     const db = this.model.db;
-    return await db.collection("excel_metadata").findOne({ type: "renters_data" });
+    return await db
+      .collection("excel_metadata")
+      .findOne({ type: "renters_data" });
   }
 
   /**
@@ -562,10 +566,6 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
     return PaginationHelper.buildResponse(data, total, page, limit);
   }
 
-  /**
-   * Get renter with full details including referral info
-   * @param renterId - Renter ID
-   */
   async findByIdWithReferralInfo(
     renterId: string
   ): Promise<IRenterModel | null> {
@@ -573,16 +573,8 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
       .findById(renterId)
       .populate("userId")
       .lean() as Promise<IRenterModel | null>;
-    // .select(
-    //   "_id email fullName phoneNumber accountStatus occupations moveInDate " +
-    //     "petFriendly emailVerified registrationType referredByAgentId referredByAdminId createdAt"
-    // )
   }
 
-  /**
-   * Get referrer information (agent or admin who referred this renter)
-   * @param renterId - Renter ID
-   */
   async getReferrerInfo(renterId: string): Promise<{
     referredByAgentId?: string;
     referredByAdminId?: string;

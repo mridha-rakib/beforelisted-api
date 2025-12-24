@@ -132,6 +132,7 @@ export class UserService {
 
   /**
    * Update user profile
+   * Also syncs fullName and phoneNumber to role-specific profile (Renter/Agent)
    */
   async updateUserProfile(
     userId: string,
@@ -145,6 +146,27 @@ export class UserService {
     const updatedUser = await this.userRepository.updateById(userId, payload);
     if (!updatedUser) {
       throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
+    }
+
+    // Sync fullName and phoneNumber to role-specific profile
+    const syncPayload: Record<string, any> = {};
+    if (payload.fullName) syncPayload.fullName = payload.fullName;
+    if (payload.phoneNumber) syncPayload.phoneNumber = payload.phoneNumber;
+
+    if (Object.keys(syncPayload).length > 0) {
+      if (user.role === "Renter") {
+        // Sync to Renter profile
+        const { RenterRepository } = await import("../renter/renter.repository");
+        const renterRepository = new RenterRepository();
+        await renterRepository.updateByUserId(userId, syncPayload);
+        logger.info({ userId, role: "Renter" }, "Profile synced to Renter model");
+      } else if (user.role === "Agent") {
+        // Sync to Agent profile
+        const { AgentProfileRepository } = await import("../agent/agent.repository");
+        const agentRepository = new AgentProfileRepository();
+        await agentRepository.updateByUserId(userId, syncPayload);
+        logger.info({ userId, role: "Agent" }, "Profile synced to Agent model");
+      }
     }
 
     logger.info({ userId }, "User profile updated");

@@ -3,7 +3,7 @@
 export class EmailTemplates {
   private logoUrl: string =
     "https://agi-prod-file-upload-public-main-use1.s3.amazonaws.com/d6a6bcf9-cea1-471c-a177-563559b38b29";
-  private brandColor: string = "#2180E1";
+  private brandColor: string = "#1890FF";
   private supportEmail: string = "support@beforelisted.com";
 
   private getLogoStyles(): string {
@@ -65,7 +65,7 @@ export class EmailTemplates {
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         .header {
-            background: linear-gradient(135deg, ${color} 0%, #1a5fa0 100%);
+            background: ${color};
             padding: 40px 20px;
             text-align: center;
         }
@@ -114,7 +114,7 @@ export class EmailTemplates {
             transition: background-color 0.3s;
         }
         .cta-button:hover {
-            background-color: #1a5fa0;
+            opacity: 0.9;
         }
         .features {
             margin: 30px 0;
@@ -263,7 +263,7 @@ export class EmailTemplates {
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         .header {
-            background: linear-gradient(135deg, ${color} 0%, #1a5fa0 100%);
+            background: ${color};
             padding: 40px 20px;
             text-align: center;
         }
@@ -335,7 +335,7 @@ export class EmailTemplates {
             transition: background-color 0.3s;
         }
         .cta-button:hover {
-            background-color: #1a5fa0;
+            opacity: 0.9;
         }
         .steps {
             margin: 30px 0;
@@ -496,7 +496,7 @@ export class EmailTemplates {
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         .header {
-            background: linear-gradient(135deg, ${color} 0%, #1a5fa0 100%);
+            background: ${color};
             padding: 40px 20px;
             text-align: center;
         }
@@ -654,7 +654,7 @@ export class EmailTemplates {
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         .header {
-            background: linear-gradient(135deg, ${color} 0%, #1a5fa0 100%);
+            background: ${color};
             padding: 40px 20px;
             text-align: center;
         }
@@ -703,7 +703,7 @@ export class EmailTemplates {
             transition: background-color 0.3s;
         }
         .cta-button:hover {
-            background-color: #1a5fa0;
+            opacity: 0.9;
         }
         .link-box {
             background-color: #f9f9f9;
@@ -812,7 +812,7 @@ export class EmailTemplates {
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         .header {
-            background: linear-gradient(135deg, ${color} 0%, #1a5fa0 100%);
+            background: ${color};
             padding: 40px 20px;
             text-align: center;
         }
@@ -840,7 +840,7 @@ export class EmailTemplates {
         }
         .success-box {
             background-color: #d4edda;
-            border-left: 4px solid #28a745;
+            border-left: 4px solid ${color};
             padding: 15px;
             margin: 20px 0;
             border-radius: 4px;
@@ -958,7 +958,7 @@ export class EmailTemplates {
     expiresIn: number,
     userType?: string,
     logoUrl?: string,
-    brandColor: string = "#208080"
+    brandColor: string = "#1890FF"
   ): string => {
     const displayName =
       userName && userName.trim() ? userName.split(" ")[0] : "there";
@@ -967,6 +967,7 @@ export class EmailTemplates {
       : "User"; //
 
     const logo = logoUrl || this.logoUrl;
+    const color = brandColor || this.brandColor;
 
     return `
 <!DOCTYPE html>
@@ -976,9 +977,9 @@ export class EmailTemplates {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Password Reset Code - BeforeListed</title>
   <style>
-    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif; background-color: #f5f5f5; }
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5; }
     .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); overflow: hidden; }
-    .header { background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}dd 100%); padding: 40px 20px; text-align: center; color: white; }
+    .header { background: linear-gradient(135deg, ${color} 0%, ${color}dd 100%); padding: 40px 20px; text-align: center; color: white; }
     .user-type-badge { display: inline-block; background-color: rgba(255, 255, 255, 0.3); color: white; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; } /* ✅ NEW */
     .logo { max-width: 150px;
             width: 100%;
@@ -989,18 +990,18 @@ export class EmailTemplates {
     .content { padding: 40px 30px; }
     .greeting { font-size: 16px; color: #333333; margin-bottom: 20px; line-height: 1.6; }
     .description { font-size: 14px; color: #666666; margin-bottom: 30px; line-height: 1.6; }
-    .otp-section { background-color: #f8f9fa; border-left: 4px solid ${brandColor}; padding: 20px; margin: 30px 0; border-radius: 4px; text-align: center; }
+    .otp-section { background-color: #f8f9fa; border-left: 4px solid ${color}; padding: 20px; margin: 30px 0; border-radius: 4px; text-align: center; }
     .otp-label { font-size: 12px; color: #999999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
-    .otp-code { font-size: 40px; font-weight: bold; color: ${brandColor}; letter-spacing: 6px; font-family: 'Courier New', monospace; margin: 15px 0; text-align: center; }
+    .otp-code { font-size: 40px; font-weight: bold; color: ${color}; letter-spacing: 6px; font-family: 'Courier New', monospace; margin: 15px 0; text-align: center; }
     .otp-expires { font-size: 13px; color: #666666; margin-top: 10px; }
     .important-note { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 25px 0; border-radius: 4px; }
     .important-note-title { font-weight: 600; color: #856404; margin-bottom: 5px; font-size: 14px; }
     .important-note-text { font-size: 13px; color: #856404; line-height: 1.5; }
-    .security-note { background-color: #e8f4f8; border-left: 4px solid ${brandColor}; padding: 15px; margin: 25px 0; border-radius: 4px; }
-    .security-note-title { font-weight: 600; color: ${brandColor}; margin-bottom: 5px; font-size: 14px; }
+    .security-note { background-color: #e8f4f8; border-left: 4px solid ${color}; padding: 15px; margin: 25px 0; border-radius: 4px; }
+    .security-note-title { font-weight: 600; color: ${color}; margin-bottom: 5px; font-size: 14px; }
     .security-note-text { font-size: 13px; color: #555555; line-height: 1.5; }
     .footer { background-color: #f8f9fa; padding: 20px 30px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #999999; text-align: center; line-height: 1.6; }
-    .footer-link { color: ${brandColor}; text-decoration: none; }
+    .footer-link { color: ${color}; text-decoration: none; }
     .divider { border: 0; border-top: 1px solid #e0e0e0; margin: 20px 0; }
     ol { color: #666666; line-height: 1.8; }
     ol li { margin-bottom: 8px; }
@@ -1092,7 +1093,7 @@ export class EmailTemplates {
     userName: string | undefined,
     userType?: string,
     logoUrl?: string,
-    brandColor: string = "#208080"
+    brandColor: string = "#1890FF"
   ): string => {
     const displayName =
       userName && userName.trim() ? userName.split(" ")[0] : "there";
@@ -1111,9 +1112,9 @@ export class EmailTemplates {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Password Reset Successful - BeforeListed</title>
   <style>
-    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif; background-color: #f5f5f5; }
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5; }
     .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); overflow: hidden; }
-    .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 40px 20px; text-align: center; color: white; }
+    .header { background: ${color}; padding: 40px 20px; text-align: center; color: white; }
     .user-type-badge { display: inline-block; background-color: rgba(255, 255, 255, 0.3); color: white; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; } /* ✅ NEW */
     .logo { max-width: 150px;
             width: 100%;
@@ -1124,11 +1125,11 @@ export class EmailTemplates {
     .success-icon { font-size: 48px; margin: 10px 0; }
     .content { padding: 40px 30px; }
     .greeting { font-size: 16px; color: #333333; margin-bottom: 20px; line-height: 1.6; }
-    .confirmation-message { background-color: #d4edda; border-left: 4px solid #28a745; padding: 20px; margin: 30px 0; border-radius: 4px; }
+    .confirmation-message { background-color: #d4edda; border-left: 4px solid ${color}; padding: 20px; margin: 30px 0; border-radius: 4px; }
     .confirmation-text { font-size: 15px; color: #155724; font-weight: 500; }
     .description { font-size: 14px; color: #666666; margin: 25px 0; line-height: 1.6; }
-    .next-steps { background-color: #e7f3ff; border-left: 4px solid #2196F3; padding: 20px; margin: 25px 0; border-radius: 4px; }
-    .next-steps-title { font-weight: 600; color: #1565c0; margin-bottom: 10px; font-size: 14px; }
+    .next-steps { background-color: #e7f3ff; border-left: 4px solid ${color}; padding: 20px; margin: 25px 0; border-radius: 4px; }
+    .next-steps-title { font-weight: 600; color: ${color}; margin-bottom: 10px; font-size: 14px; }
     .next-steps-list { font-size: 14px; color: #333333; line-height: 1.8; margin: 0; }
     .next-steps-list li { margin-bottom: 8px; }
     .security-actions { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 25px 0; border-radius: 4px; }
@@ -1136,7 +1137,7 @@ export class EmailTemplates {
     .security-actions-list { font-size: 13px; color: #666666; line-height: 1.7; margin: 0; }
     .security-actions-list li { margin-bottom: 8px; }
     .footer { background-color: #f8f9fa; padding: 20px 30px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #999999; text-align: center; line-height: 1.6; }
-    .footer-link { color: ${brandColor}; text-decoration: none; }
+    .footer-link { color: ${color}; text-decoration: none; }
     .divider { border: 0; border-top: 1px solid #e0e0e0; margin: 20px 0; }
   </style>
 </head>
@@ -1195,7 +1196,7 @@ export class EmailTemplates {
       <div style="font-size: 13px; color: #666666; line-height: 1.6;">
         <strong>⚠️ Didn't Make This Change?</strong>
         <br>
-        If you didn't reset your password, please <a href="https://beforelisted.com/help/security" style="color: #208080; text-decoration: none;">contact our support team immediately</a>. Your account security is our priority.
+        If you didn't reset your password, please <a href="https://beforelisted.com/help/security" style="color: ${color}; text-decoration: none;">contact our support team immediately</a>. Your account security is our priority.
       </div>
     </div>
 
@@ -1261,7 +1262,7 @@ export class EmailTemplates {
     }
 
     .header {
-      background: linear-gradient(135deg, #1890FF 0%, #0050B3 100%);
+      background: ${color};
       padding: 40px 30px;
       text-align: center;
       color: white;
@@ -1328,7 +1329,7 @@ export class EmailTemplates {
 
     .credentials-box {
       background-color: #F0F5FF;
-      border: 2px solid #1890FF;
+      border: 2px solid ${color};
       border-radius: 6px;
       padding: 15px;
       margin-bottom: 20px;
@@ -1387,7 +1388,7 @@ export class EmailTemplates {
 
     .cta-button {
       display: inline-block;
-      background-color: #1890FF;
+      background-color: ${color};
       color: white;
       padding: 12px 30px;
       border-radius: 6px;
@@ -1399,7 +1400,7 @@ export class EmailTemplates {
     }
 
     .cta-button:hover {
-      background-color: #0050B3;
+      opacity: 0.9;
     }
 
     .action-text {
@@ -1445,7 +1446,7 @@ export class EmailTemplates {
       content: "✓";
       position: absolute;
       left: 0;
-      color: #1890FF;
+      color: ${color};
       font-weight: 600;
       font-size: 15px;
     }
@@ -1470,7 +1471,7 @@ export class EmailTemplates {
     }
 
     .footer-links a {
-      color: #1890FF;
+      color: ${color};
       text-decoration: none;
       margin: 0 8px;
     }

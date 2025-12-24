@@ -66,6 +66,19 @@ export class AgentController {
     }
   );
 
+  toggleEmailSubscription = asyncHandler(
+    async (req: Request, res: Response) => {
+      const userId = req.user!.userId;
+      const result = await this.service.toggleEmailSubscription(userId);
+
+      ApiResponse.success(
+        res,
+        result,
+        "Agent email subscription updated successfully"
+      );
+    }
+  );
+
   getReferralLink = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
       const userId = req.user!.userId;
@@ -351,4 +364,15 @@ export class AgentController {
       );
     }
   );
+
+  /**
+   * DELETE /agent/profile
+   * Delete own agent profile (soft delete)
+   */
+  deleteProfile = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId;
+    const result = await this.service.deleteAgentProfile(userId);
+
+    ApiResponse.success(res, result, "Agent profile deleted successfully");
+  });
 }

@@ -21,7 +21,7 @@ export class GrantAccessApprovalTemplate extends BaseEmailTemplate {
     chargeAmount: number | null,
     accessLink: string,
     logoUrl: string | undefined,
-    brandColor: string = "#3B82F6"
+    brandColor: string = "#1890FF"
   ) {
     super(logoUrl, brandColor);
     this.agentName = agentName;
@@ -82,17 +82,16 @@ export class GrantAccessApprovalTemplate extends BaseEmailTemplate {
     const features = `
       <div class="section" style="background: #F8F9FA; padding: 20px; border-radius: 6px; margin: 20px 0;">
         <p style="margin: 0 0 15px 0; font-weight: 600; color: #1F2937;">You can now access:</p>
-        <div style="display: flex; margin: 10px 0;"><span style="color: #10B981; margin-right: 10px; font-weight: bold;">✓</span><span>Renter contact information (name, email, phone)</span></div>
-        <div style="display: flex; margin: 10px 0;"><span style="color: #10B981; margin-right: 10px; font-weight: bold;">✓</span><span>Full property details and specifications</span></div>
-        <div style="display: flex; margin: 10px 0;"><span style="color: #10B981; margin-right: 10px; font-weight: bold;">✓</span><span>Referrer information and agent notes</span></div>
-        <div style="display: flex; margin: 10px 0;"><span style="color: #10B981; margin-right: 10px; font-weight: bold;">✓</span><span>Direct contact with the renter</span></div>
+        <div style="display: flex; margin: 10px 0;"><span style="color: ${this.brandColor}; margin-right: 10px; font-weight: bold;">✓</span><span>Renter contact information (name, email, phone)</span></div>
+        <div style="display: flex; margin: 10px 0;"><span style="color: ${this.brandColor}; margin-right: 10px; font-weight: bold;">✓</span><span>Full property details and specifications</span></div>
+        <div style="display: flex; margin: 10px 0;"><span style="color: ${this.brandColor}; margin-right: 10px; font-weight: bold;">✓</span><span>Referrer information and agent notes</span></div>
+        <div style="display: flex; margin: 10px 0;"><span style="color: ${this.brandColor}; margin-right: 10px; font-weight: bold;">✓</span><span>Direct contact with the renter</span></div>
       </div>
     `;
 
     const cta = this.generateButton(
       "View Property Details",
-      this.accessLink,
-      "#10B981"
+      this.accessLink
     );
 
     const note = `

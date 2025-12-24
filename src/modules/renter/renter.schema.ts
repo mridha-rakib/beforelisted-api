@@ -218,9 +218,9 @@ export const resetPasswordSchema = z.object({
  */
 export const updateRenterProfileSchema = z.object({
   body: z.object({
+    fullName: z.string().optional(),
     phoneNumber: z.string().optional(),
-    occupation: z.string().optional(),
-    moveInDate: z.date().optional(),
+    emailSubscriptionEnabled: z.boolean().optional(),
   }),
 });
 

@@ -14,10 +14,7 @@ import type { Request, Response } from "express";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
 import { GrantAccessService } from "../grant-access/grant-access.service";
-import { NotificationService } from "../notification/notification.service";
 import { PaymentService } from "../payment/payment.service";
-import { UserRepository } from "../user/user.repository";
-import { PreMarketNotifier } from "./pre-market-notifier";
 import { PreMarketRepository } from "./pre-market.repository";
 import {
   adminApproveSchema,
@@ -42,31 +39,13 @@ export class PreMarketController {
 
   constructor() {
     this.preMarketService = new PreMarketService();
-    this.grantAccessService = new GrantAccessService(
-      new GrantAccessRepository(),
-      new PreMarketRepository(),
-      new PaymentService(
-        new GrantAccessRepository(),
-        new PreMarketRepository()
-      ),
-      new PreMarketNotifier(),
-      new NotificationService(),
-      new UserRepository(),
-      new AgentProfileRepository()
-    );
-    this.paymentService = new PaymentService(
-      new GrantAccessRepository(),
-      new PreMarketRepository()
-    );
+    this.grantAccessService = new GrantAccessService();
+    this.paymentService = new PaymentService();
     this.agentRepository = new AgentProfileRepository();
     this.preMarketRepository = new PreMarketRepository();
     this.grantAccessRepository = new GrantAccessRepository();
     this.excelService = new ExcelService();
   }
-
-  // ============================================
-  // RENTER: CREATE REQUEST
-  // ============================================
 
   /**
    * Create pre-market request
@@ -89,9 +68,6 @@ export class PreMarketController {
     );
   });
 
-  // ============================================
-  // RENTER: GET MY REQUESTS
-  // ============================================
   /**
    * Get renter's pre-market requests
    * GET /pre-market/my-requests
@@ -140,17 +116,10 @@ export class PreMarketController {
     ApiResponse.success(res, request, "Pre-market request updated");
   });
 
-  // ============================================
-  // RENTER: DELETE REQUEST
-  // ============================================
-
   /**
    * Delete pre-market request
    * DELETE /pre-market/:requestId
    * Protected: Renters only
-   *
-   * @param req - Request with params
-   * @param res - Response
    */
   deleteRequest = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.userId;
@@ -178,17 +147,10 @@ export class PreMarketController {
     );
   });
 
-  // ============================================
-  // AGENT: GET ALL REQUESTS
-  // ============================================
-
   /**
    * Get all pre-market requests (paginated)
    * GET /pre-market/all
    * Protected: Agents only
-   *
-   * @param req - Request with query parameters
-   * @param res - Response
    */
   getAllRequests = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(preMarketListSchema, req);
@@ -205,17 +167,10 @@ export class PreMarketController {
     );
   });
 
-  // ============================================
-  // AGENT: GET REQUEST DETAILS
-  // ============================================
-
   /**
    * Get pre-market request details
    * GET /pre-market/:requestId/details
    * Protected: Agents only
-   *
-   * @param req - Request with params
-   * @param res - Response
    */
   getRequestDetails = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.userId;
@@ -315,9 +270,6 @@ export class PreMarketController {
    * Create payment intent for grant access
    * POST /pre-market/payment/create-intent
    * Protected: Agents only
-   *
-   * @param req - Request with body
-   * @param res - Response
    */
   createPaymentIntent = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.userId;
@@ -358,17 +310,10 @@ export class PreMarketController {
     ApiResponse.success(res, result, "Access approved");
   });
 
-  // ============================================
-  // ADMIN: CHARGE
-  // ============================================
-
   /**
    * ADMIN: Charge for access
    * POST /pre-market/grant-access/admin/:requestId/charge
    * Protected: Admins only
-   *
-   * @param req - Request with params and body
-   * @param res - Response
    */
   adminCharge = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(adminChargeSchema, req);
@@ -390,17 +335,10 @@ export class PreMarketController {
     ApiResponse.success(res, result, "Access charged");
   });
 
-  // ============================================
-  // ADMIN: REJECT
-  // ============================================
-
   /**
    * ADMIN: Reject access request
    * POST /pre-market/grant-access/admin/:requestId/reject
    * Protected: Admins only
-   *
-   * @param req - Request with params and body
-   * @param res - Response
    */
   adminReject = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(adminRejectSchema, req);
@@ -422,12 +360,10 @@ export class PreMarketController {
   // ============================================
 
   /**
-   * Handle Stripe webhook events
+   * Handle Stripe webhook event
    * POST /pre-market/payment/webhook
    * Public: No authentication required
-   *
-   * @param req - Request with raw body
-   * @param res - Response
+
    */
   handleWebhook = asyncHandler(async (req: Request, res: Response) => {
     const signature = req.headers["stripe-signature"] as string;
@@ -444,9 +380,6 @@ export class PreMarketController {
     ApiResponse.success(res, { received: true });
   });
 
-  /**
-   * TASK 1: AGENT - GET ALL REQUESTS WITH VISIBILITY CONTROL
-   */
   getAllRequestsForAgent = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(preMarketListSchema, req);
     const agentId = req.user!.userId;
@@ -469,9 +402,6 @@ export class PreMarketController {
     );
   });
 
-  /**
-   * TASK 2: AGENT - GET SPECIFIC REQUEST WITH VISIBILITY CONTROL
-   */
   getRequestForAgent = asyncHandler(async (req: Request, res: Response) => {
     const agentId = req.user!.userId;
     const { requestId } = req.params;

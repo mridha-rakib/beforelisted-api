@@ -621,8 +621,6 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
             name: renter.fullName,
             email: renter.email,
             phone: renter.phoneNumber,
-            occupation: renter.occupation,
-            moveInDate: renter.moveInDate,
             registrationType: renter.registrationType,
             referrer: referrerInfo,
             accountStatus: renter.accountStatus,

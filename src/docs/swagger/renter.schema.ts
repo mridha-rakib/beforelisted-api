@@ -187,15 +187,6 @@ export const renterSchemas = {
         type: "string",
         example: "+1234567890",
       },
-      occupation: {
-        type: "string",
-        example: "Software Engineer",
-      },
-      moveInDate: {
-        type: "string",
-        format: "date",
-        example: "2024-06-01",
-      },
     },
   },
 
@@ -470,15 +461,6 @@ export const renterSchemas = {
         type: "string",
         enum: ["pending", "active", "suspended"],
         example: "active",
-      },
-      occupation: {
-        type: "string",
-        nullable: true,
-      },
-      moveInDate: {
-        type: "string",
-        format: "date",
-        nullable: true,
       },
       createdAt: {
         type: "string",

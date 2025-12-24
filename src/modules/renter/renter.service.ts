@@ -34,11 +34,6 @@ import { PreMarketRepository } from "../pre-market/pre-market.repository";
 import { ReferralService } from "../referral/referral.service";
 import { UserRepository } from "../user/user.repository";
 
-/**
- * Renter Service
- * Handles all renter-related business logic
- * Supports three registration flows: Normal, Agent Referral, Admin Referral
- */
 export class RenterService {
   private repository: RenterRepository;
   private userService: UserService;
@@ -57,8 +52,6 @@ export class RenterService {
     this.referralService = new ReferralService();
     this.excelService = new ExcelService();
   }
-
-  // REGISTRATION FLOWS (3 Types)
 
   async registerRenter(payload: any): Promise<RenterRegistrationResponse> {
     // Detect registration type
@@ -230,31 +223,24 @@ export class RenterService {
   private async registerAdminReferralRenter(
     payload: AdminReferralRenterRegisterPayload
   ): Promise<RenterRegistrationResponse> {
-    // Step 1: Validate referral code format
     const parsed = ReferralParser.parse(payload.referralCode);
     if (!parsed.isValid || parsed.type !== "admin_referral") {
       throw new BadRequestException("Invalid admin referral code");
     }
-
-    // Step 2: Check if email already exists
     const existingUser = await this.userService.getUserByEmail(payload.email);
     if (existingUser) {
       throw new ConflictException("Email already registered");
     }
 
-    // Step 3: Generate random password
     const temporaryPassword = RenterUtil.generateAutoPassword().password;
     const hashedPassword = await hashPassword(temporaryPassword);
 
-    // Step 4: Validate referral code in system and get admin ID
     const adminId = await this.validateAndGetAdminFromReferralCode(
       payload.referralCode
     );
 
-    // STEP 5: RECORD REFERRAL - INCREMENT ADMIN'S TOTAL REFERRALS
     await this.referralService.recordReferral(adminId);
 
-    // Step 5: Create User account with mustChangePassword flag
     const user = await this.userService.create({
       email: payload.email,
       password: hashedPassword,
@@ -449,21 +435,64 @@ export class RenterService {
     return this.toRenterResponse(renter);
   }
 
-  /**
-   * Update renter profile
-   */
   async updateRenterProfile(
     userId: string,
     payload: UpdateRenterProfilePayload
   ): Promise<RenterResponse> {
+    // Update Renter model
     const renter = await this.repository.updateProfile(userId, payload);
     if (!renter) {
       throw new NotFoundException("Renter profile not found");
     }
 
-    logger.info({ userId }, "Renter profile updated");
+    const syncPayload: Record<string, any> = {};
+    if (payload.fullName) syncPayload.fullName = payload.fullName;
+    if (payload.phoneNumber) syncPayload.phoneNumber = payload.phoneNumber;
 
-    return this.toRenterResponse(renter);
+    if (Object.keys(syncPayload).length > 0) {
+      const { UserRepository } = await import("../user/user.repository");
+      const userRepository = new UserRepository();
+      await userRepository.updateById(userId, syncPayload);
+      logger.info({ userId }, "Profile synced to User model");
+    }
+
+    const updatedRenter = await this.repository.findByUserId(userId);
+    return this.toRenterResponse(updatedRenter || renter);
+  }
+
+  async deleteRenterProfile(userId: string): Promise<{ message: string }> {
+    const renter = await this.repository.findByUserId(userId);
+    if (!renter) {
+      throw new NotFoundException("Renter profile not found");
+    }
+
+    await this.repository.softDeleteRenter(userId);
+
+    const { UserRepository } = await import("../user/user.repository");
+    const userRepository = new UserRepository();
+    await userRepository.softDeleteUser(userId);
+
+    logger.info({ userId }, "Renter profile and user account deleted");
+
+    return { message: "Renter profile deleted successfully" };
+  }
+
+  async toggleEmailSubscription(
+    userId: string
+  ): Promise<{ emailSubscriptionEnabled: boolean }> {
+    const renter = await this.repository.findByUserId(userId);
+    if (!renter) {
+      throw new NotFoundException("Renter profile not found");
+    }
+
+    const current = renter.emailSubscriptionEnabled !== false;
+    const nextValue = !current;
+
+    await this.repository.updateProfile(userId, {
+      emailSubscriptionEnabled: nextValue,
+    });
+
+    return { emailSubscriptionEnabled: nextValue };
   }
 
   /**
@@ -495,30 +524,39 @@ export class RenterService {
    * Convert renter model to response
    */
   private toRenterResponse(renter: any): RenterResponse {
+    // Handle populated userId - can be object or ObjectId
+    const isUserIdPopulated =
+      renter.userId && typeof renter.userId === "object" && renter.userId._id;
+    const userIdValue = isUserIdPopulated
+      ? renter.userId._id.toString()
+      : renter.userId?.toString();
+
+    // Build user info if userId is populated
+    const userInfo = isUserIdPopulated
+      ? {
+          fullName: renter.userId.fullName,
+          email: renter.userId.email,
+          phoneNumber: renter.userId.phoneNumber,
+          role: renter.userId.role,
+          emailVerified: renter.userId.emailVerified,
+          accountStatus: renter.userId.accountStatus,
+          profileImageUrl: renter.userId.profileImageUrl,
+        }
+      : null;
+
     return {
       _id: renter._id.toString(),
-      userId: renter.userId.toString(),
-      email: renter.email,
-      fullName: renter.fullName,
-      phoneNumber: renter.phoneNumber,
+      userId: userIdValue,
       registrationType: renter.registrationType,
-      referredByAgentId: renter.referredByAgentId?.toString(),
       referredByAdminId: renter.referredByAdminId?.toString(),
-      emailVerified: renter.emailVerified,
-      accountStatus: renter.accountStatus,
-      occupation: renter.occupation,
-      moveInDate: renter.moveInDate,
-      petFriendly: renter.petFriendly || false,
+      referredByAgentId: renter.referredByAgentId?.toString(),
+      emailSubscriptionEnabled: renter.emailSubscriptionEnabled !== false,
       questionnaire: renter.questionnaire,
       createdAt: renter.createdAt,
       updatedAt: renter.updatedAt,
+      ...(userInfo && { userInfo }),
     };
   }
-
-  /**
-   * Validate agent referral code and get agent ID
-   * Uses ReferralService instead of placeholder
-   */
 
   private async validateAndGetAgentFromReferralCode(
     code: string
@@ -527,10 +565,6 @@ export class RenterService {
     return referrer._id.toString();
   }
 
-  /**
-   * Validate admin referral code and get admin ID
-   * Uses ReferralService instead of placeholder
-   */
   private async validateAndGetAdminFromReferralCode(
     code: string
   ): Promise<string> {
@@ -549,7 +583,6 @@ export class RenterService {
 
     const data = await Promise.all(
       result.data.map(async (renter: any) => {
-        // Build referralInfo based on registration type
         let referralInfo: any = {
           registrationType: renter.registrationType,
         };
@@ -602,20 +635,13 @@ export class RenterService {
     };
   }
 
-  /**
-   * Get renter details with referral info and listings
-   * Admin view: Detailed renter profile
-   * @param renterId - Renter ID
-   */
   async getRenterDetailsForAdmin(renterId: string): Promise<any> {
-    // Get renter basic info
     const renter = await this.repository.findByIdWithReferralInfo(renterId);
 
     if (!renter) {
       throw new NotFoundException("Renter not found");
     }
 
-    // Get referrer details
     let referralInfo: any = {
       registrationType: renter.registrationType,
     };
@@ -679,19 +705,13 @@ export class RenterService {
       phoneNumber: renter.phoneNumber,
       accountStatus: renter.accountStatus,
       // emailVerified: renter.emailVerified,
-      moveInDate: renter.moveInDate,
-      petFriendly: renter.petFriendly,
+
       referralInfo,
       preMarketListings,
       createdAt: renter.createdAt,
     };
   }
 
-  /**
-   * Get renter's pre-market listings
-   * @param renterId - Renter ID
-   * @param includeInactive - Include deactivated listings
-   */
   async getRenterListings(
     renterId: string,
     includeInactive: boolean = true
@@ -702,51 +722,41 @@ export class RenterService {
     );
   }
 
-  /**
-   * ✅ Async background job to generate/update Renter Excel
-   * Called after every new renter registration
-   * Non-blocking: User gets response before Excel is generated
-   */
   async updateRenterConsolidatedExcel(): Promise<void> {
-    
-      try {
-        const buffer =
-          await this.excelService.generateConsolidatedRenterExcel();
+    try {
+      const buffer = await this.excelService.generateConsolidatedRenterExcel();
 
-        const { url, fileName } =
-          await this.excelService.uploadConsolidatedRenterExcel(buffer);
+      const { url, fileName } =
+        await this.excelService.uploadConsolidatedRenterExcel(buffer);
 
-        const totalRenters = await this.repository.count();
+      const totalRenters = await this.repository.count();
 
-        const previousMetadata = await this.repository.getExcelMetadata();
-        const version = (previousMetadata?.version || 0) + 1;
+      const previousMetadata = await this.repository.getExcelMetadata();
+      const version = (previousMetadata?.version || 0) + 1;
 
-        await this.repository.updateExcelMetadata({
-          type: "renters_data",
-          fileName,
-          fileUrl: url,
-          totalRenters,
-          version: version,
-          lastUpdated: new Date(),
-        });
+      await this.repository.updateExcelMetadata({
+        type: "renters_data",
+        fileName,
+        fileUrl: url,
+        totalRenters,
+        version: version,
+        lastUpdated: new Date(),
+      });
 
-        logger.info(
-          { fileName, totalRenters },
-          "Renter Excel updated successfully"
-        );
-      } catch (error) {
-        logger.error(
-          { error },
-          "Failed to update Renter Excel (non-blocking, continuing)"
-        );
-        // Don't throw - this is background job, don't affect user registration
-      }
-    ;
+      logger.info(
+        { fileName, totalRenters },
+        "Renter Excel updated successfully"
+      );
+    } catch (error) {
+      logger.error(
+        { error },
+        "Failed to update Renter Excel (non-blocking, continuing)"
+      );
+    }
   }
 
-
-  async getRentersConsolidatedExcel() : Promise<any> {
-     const metadata = await this.repository.getExcelMetadata();
+  async getRentersConsolidatedExcel(): Promise<any> {
+    const metadata = await this.repository.getExcelMetadata();
 
     if (!metadata) {
       throw new NotFoundException("No consolidated Excel file found");

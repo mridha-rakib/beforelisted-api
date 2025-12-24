@@ -29,8 +29,10 @@ export const createAgentProfileSchema = z.object({
 export const updateAgentProfileSchema = z.object({
   body: z.object({
     fullName: z.string().min(2).max(100).optional(),
-     licenseNumber: z.string().min(1, "License number is required").max(100),
+    phoneNumber: z.string().optional(),
+    licenseNumber: z.string().min(1).max(100).optional(),
     brokerageName: z.string().min(1).max(100).optional(),
+    emailSubscriptionEnabled: z.boolean().optional(),
   }),
 });
 
