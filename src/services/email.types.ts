@@ -217,14 +217,6 @@ export interface IPasswordChangedPayload {
   timestamp: Date;
 }
 
-export interface IAdminReferralEmailPayload {
-  to: string;
-  referrerName: string;
-  refereeName: string;
-  refereeEmail: string;
-  bonusAmount: number;
-}
-
 /**
  * Welcome email payload
  */
