@@ -1,7 +1,7 @@
 // file: src/config/email.config.ts
 
 import { env } from "@/env";
-import type { IEmailConfig } from "@/services/email.types";
+import type { IEmailConfig, IPostmarkConfig } from "@/services/email.types";
 import { z } from "zod";
 
 const emailConfigSchema = z.object({

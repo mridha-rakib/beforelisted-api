@@ -177,12 +177,14 @@ export class AgentService {
     }
 
     const agentPayload: Record<string, any> = {};
-    if (payload.licenseNumber) agentPayload.licenseNumber = payload.licenseNumber;
-    if (payload.brokerageName) agentPayload.brokerageName = payload.brokerageName;
+    if (payload.licenseNumber)
+      agentPayload.licenseNumber = payload.licenseNumber;
+    if (payload.brokerageName)
+      agentPayload.brokerageName = payload.brokerageName;
     if (payload.emailSubscriptionEnabled !== undefined) {
       agentPayload.emailSubscriptionEnabled = payload.emailSubscriptionEnabled;
     }
-   
+
     if (Object.keys(agentPayload).length > 0) {
       await this.repository.updateProfile(userId, agentPayload);
     }
@@ -619,6 +621,7 @@ export class AgentService {
       grantAccessCount: agent.grantAccessCount,
       totalMatches: agent.totalMatches,
       successfulMatches: agent.successfulMatches,
+      profileImageUrl: (agent as any).profileImageUrl ?? "",
       createdAt: agent.createdAt,
       updatedAt: agent.updatedAt,
     };

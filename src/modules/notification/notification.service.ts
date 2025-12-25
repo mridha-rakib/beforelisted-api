@@ -3,7 +3,11 @@
 import { logger } from "@/middlewares/pino-logger";
 import type { Types } from "mongoose";
 import { AgentProfileRepository } from "../agent/agent.repository";
-import type { INotification, NotificationType } from "./notification.interface";
+import type {
+  IInAppNotification,
+  INotification,
+  NotificationType,
+} from "./notification.interface";
 import { NotificationRepository } from "./notification.repository";
 
 export class NotificationService {
@@ -26,7 +30,7 @@ export class NotificationService {
     relatedEntityId?: string | Types.ObjectId;
     actionUrl?: string;
     actionData?: Record<string, any>;
-  }): Promise<INotification> {
+  }): Promise<IInAppNotification | INotification> {
     const notification = await this.repository.create({
       recipientId: data.recipientId,
       recipientRole: data.recipientRole,

@@ -165,10 +165,11 @@ export class ExcelService {
       }));
 
       // FIX #1: Check if requests exist before setting autoFilter
-      // Check worksheet properties exist
-      if (requests.length > 0 && worksheet.autoFilter) {
-        worksheet.autoFilter.from = "A1";
-        worksheet.autoFilter.to = `S${requests.length + 1}`;
+      if (requests.length > 0) {
+        worksheet.autoFilter = {
+          from: "A1",
+          to: `S${requests.length + 1}`,
+        };
       }
 
       // FIX #2: Proper Buffer conversion - assert type as unknown first
@@ -496,9 +497,11 @@ export class ExcelService {
         width,
       }));
 
-      if (renters.length > 0 && worksheet.autoFilter) {
-        worksheet.autoFilter.from = "A1";
-        worksheet.autoFilter.to = `I${renters.length + 1}`;
+      if (renters.length > 0) {
+        worksheet.autoFilter = {
+          from: "A1",
+          to: `I${renters.length + 1}`,
+        };
       }
 
       // Convert to buffer
@@ -951,9 +954,11 @@ export class ExcelService {
       worksheet.columns = columnWidths.map((width) => ({ width }));
 
       // Add auto filter if data exists
-      if (listingsData.length > 0 && worksheet.autoFilter) {
-        worksheet.autoFilter.from = "A1";
-        worksheet.autoFilter.to = `U${listingsData.length + 1}`;
+      if (listingsData.length > 0) {
+        worksheet.autoFilter = {
+          from: "A1",
+          to: `U${listingsData.length + 1}`,
+        };
       }
 
       // Create Summary Sheet

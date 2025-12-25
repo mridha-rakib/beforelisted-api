@@ -2,7 +2,7 @@
 
 import { logger } from "@/middlewares/pino-logger";
 import { AgentProfileRepository } from "@/modules/agent/agent.repository";
-import type { IInAppNotification } from "@/modules/notification/notification.interface";
+import type { INotification } from "@/modules/notification/notification.interface";
 import { NotificationRepository } from "@/modules/notification/notification.repository";
 import { PreMarketRepository } from "@/modules/pre-market/pre-market.repository";
 import { RenterRepository } from "@/modules/renter/renter.repository";
@@ -67,36 +67,47 @@ export class GrantAccessNotificationService {
       // Get location
       const location = preMarketRequest.locations?.[0]?.borough || "Unknown";
 
-      // Build notification payload
-      const notificationPayload: Partial<IInAppNotification> = {
-        recipientRole: "Admin",
+      const admins = await this.notificationRepository.getAllAdmins();
+      if (admins.length === 0) {
+        logger.warn("No admins found for grant access request notification");
+        return;
+      }
+
+      const notificationPayload = {
+        recipientRole: "Admin" as const,
         title: `Grant Access Request from ${agent.fullName}`,
-        description: `Agent ${agent.fullName} requested access to view renter information for "${preMarketRequest.requestName}" (${location})`,
-        type: "grant_access_request",
-        relatedUserId: agentId,
-        relatedPreMarketRequestId: preMarketRequestId,
-        relatedGrantAccessId: grantAccessId,
-        metadata: {
+        message: `Agent ${agent.fullName} requested access to view renter information for "${preMarketRequest.requestName}" (${location})`,
+        type: "alert" as const,
+        relatedEntityType: "Request" as const,
+        relatedEntityId: grantAccessId,
+        actionUrl: `/admin/grant-access-requests/${grantAccessId}`,
+        actionData: {
           agentId,
           agentName: agent.fullName,
           agentEmail: agent.email,
           agentPhone: agent.phoneNumber || "N/A",
-          agentCompany: agentProfile?.companyName || "N/A",
+          agentCompany: agentProfile?.brokerageName || "N/A",
           agentLicense: agentProfile?.licenseNumber || "N/A",
           propertyTitle: preMarketRequest.requestName,
           renterName,
           renterEmail,
           location,
           requestDate: new Date().toISOString(),
+          relatedUserId: agentId,
+          relatedPreMarketRequestId: preMarketRequestId,
+          relatedGrantAccessId: grantAccessId,
         },
-        actionUrl: `/admin/grant-access-requests/${grantAccessId}`,
-        priority: "high",
-        read: false,
-        createdAt: new Date(),
+        isRead: false,
       };
 
-      // Create in-app notification
-      await this.notificationRepository.create(notificationPayload);
+      await Promise.all(
+        admins.map((admin) =>
+          this.notificationRepository.create({
+            ...notificationPayload,
+            recipientId: admin._id,
+          } as Partial<INotification>)
+        )
+      );
 
       logger.info(
         { agentId, preMarketRequestId, grantAccessId },
@@ -124,23 +135,36 @@ export class GrantAccessNotificationService {
     propertyTitle: string
   ): Promise<void> {
     try {
-      const notification: Partial<IInAppNotification> = {
+      const admins = await this.notificationRepository.getAllAdmins();
+      if (admins.length === 0) {
+        logger.warn("No admins found for grant access approval notification");
+        return;
+      }
+
+      const notification: Partial<INotification> = {
         recipientRole: "Admin",
-        type: "grant_access_approved",
+        type: "success",
         title: `Grant Access Approved - ${agentName}`,
-        description: `You approved grant access for ${agentName} to view "${propertyTitle}"`,
-        metadata: {
+        message: `You approved grant access for ${agentName} to view "${propertyTitle}"`,
+        relatedEntityType: "Request",
+        relatedEntityId: grantAccessId,
+        actionUrl: `/admin/grant-access-requests/${grantAccessId}`,
+        actionData: {
           agentName,
           propertyTitle,
           approvedAt: new Date().toISOString(),
         },
-        actionUrl: `/admin/grant-access-requests/${grantAccessId}`,
-        priority: "normal",
-        read: false,
-        createdAt: new Date(),
+        isRead: false,
       };
 
-      await this.notificationRepository.create(notification);
+      await Promise.all(
+        admins.map((admin) =>
+          this.notificationRepository.create({
+            ...notification,
+            recipientId: admin._id,
+          })
+        )
+      );
 
       logger.info(
         { grantAccessId, agentName },
@@ -161,24 +185,39 @@ export class GrantAccessNotificationService {
     reason?: string
   ): Promise<void> {
     try {
-      const notification: Partial<IInAppNotification> = {
+      const admins = await this.notificationRepository.getAllAdmins();
+      if (admins.length === 0) {
+        logger.warn("No admins found for grant access rejection notification");
+        return;
+      }
+
+      const notification: Partial<INotification> = {
         recipientRole: "Admin",
-        type: "grant_access_rejected",
+        type: "warning",
         title: `Grant Access Rejected - ${agentName}`,
-        description: `You rejected grant access for ${agentName} to view "${propertyTitle}"${reason ? `: ${reason}` : ""}`,
-        metadata: {
+        message: `You rejected grant access for ${agentName} to view "${propertyTitle}"${
+          reason ? `: ${reason}` : ""
+        }`,
+        relatedEntityType: "Request",
+        relatedEntityId: grantAccessId,
+        actionUrl: `/admin/grant-access-requests/${grantAccessId}`,
+        actionData: {
           agentName,
           propertyTitle,
           reason,
           rejectedAt: new Date().toISOString(),
         },
-        actionUrl: `/admin/grant-access-requests/${grantAccessId}`,
-        priority: "normal",
-        read: false,
-        createdAt: new Date(),
+        isRead: false,
       };
 
-      await this.notificationRepository.create(notification);
+      await Promise.all(
+        admins.map((admin) =>
+          this.notificationRepository.create({
+            ...notification,
+            recipientId: admin._id,
+          })
+        )
+      );
 
       logger.info(
         { grantAccessId, agentName },

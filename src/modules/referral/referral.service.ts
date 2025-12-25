@@ -46,13 +46,6 @@ export class ReferralService {
       throw new BadRequestException("Referral code is no longer valid");
     }
 
-    if (
-      referrer.accountStatus === "suspended" ||
-      referrer.accountStatus === "inactive"
-    ) {
-      throw new BadRequestException("Referral code is inactive");
-    }
-
     // Verify referrer is admin or agent
     if (
       referrer.role !== RolesEnum.ADMIN &&

@@ -1,5 +1,5 @@
 // file: src/app.ts
-import type { Application } from "express";
+import type { Application, NextFunction, Request, Response } from "express";
 
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -7,7 +7,11 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 
-import { swaggerSpec, swaggerUi } from "@/config/swagger.config";
+import {
+  swaggerSpec,
+  swaggerUi,
+  swaggerUiOptions,
+} from "@/config/swagger.config";
 import { errorHandler } from "@/middlewares/error-handler.middleware";
 import { notFound } from "@/middlewares/not-found.middleware";
 import rootRouter from "@/routes/index.route.js";
@@ -60,14 +64,9 @@ app.get<object>("/", (req, res) => {
 app.use(
   "/api-docs",
   swaggerUi.serve,
-  swaggerUi.setup(swaggerSpec, {
-    explorer: true,
-    swaggerOptions: {
-      persistAuthorization: true,
-      displayOperationId: true,
-      tryItOutEnabled: true,
-    },
-  })
+  (req: Request, res: Response, next: NextFunction) => {
+    swaggerUi.setup(swaggerSpec, swaggerUiOptions)(req, res, next);
+  }
 );
 
 app.use(env.BASE_URL, rootRouter);

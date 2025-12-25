@@ -1,1 +1,11 @@
 node_modules
+dist
+.env
+.git
+.gitignore
+.vscode
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+*.tsbuildinfo

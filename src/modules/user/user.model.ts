@@ -126,9 +126,6 @@ userSchema.pre(/^find/, function (this: Query<any, IUser>) {
   }
 });
 
-/**
- * Auto-populate referredBy user details when queried
- */
 userSchema.pre(/^find/, function (this: Query<any, IUser>) {
   if (this.getOptions().populateReferrer) {
     this.populate({

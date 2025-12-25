@@ -72,8 +72,8 @@ export const JWT = {
 } as const;
 
 export const EMAIL = {
-  FROM: env.SMTP_FROM_EMAIL,
-  FROM_NAME: env.SMTP_FROM_NAME || "Renter-Agent Platform",
+  FROM: env.EMAIL_FROM_ADDRESS,
+  FROM_NAME: env.EMAIL_FROM_NAME || "Before-listed Platform",
   WELCOME: "welcome",
   PASSWORD_RESET_OTP: "password-reset-otp",
   AGENT_REFERRAL: "Agent-referral",

@@ -133,9 +133,10 @@ export class EmailTemplates {
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 14px;
+            line-height: 1;
             margin-right: 12px;
             flex-shrink: 0;
-            font-size: 14px;
             font-weight: bold;
         }
         .feature-text {
@@ -190,19 +191,11 @@ export class EmailTemplates {
             <div class="features">
                 <div class="feature-item">
                     <div class="feature-icon">✓</div>
-                    <div class="feature-text"><strong>Complete Your Profile</strong> - Add your professional details and preferences</div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">✓</div>
                     <div class="feature-text"><strong>Explore Listings</strong> - Browse and manage properties with advanced filters</div>
                 </div>
                 <div class="feature-item">
                     <div class="feature-icon">✓</div>
-                    <div class="feature-text"><strong>Connect & Collaborate</strong> - Build your network and grow your business</div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">✓</div>
-                    <div class="feature-text"><strong>Access Resources</strong> - Get guides, tips, and support materials</div>
+                    <div class="feature-text"><strong>Connect & Collaborate</strong> - Build your network. </div>
                 </div>
             </div>
 
@@ -232,7 +225,7 @@ export class EmailTemplates {
     userName: string,
     temporaryPassword: string,
     loginLink: string,
-    userType: "Renter",
+    userType: "Agent" | "Renter",
     logoUrl?: string,
     brandColor?: string
   ): string {
@@ -593,7 +586,7 @@ export class EmailTemplates {
             <div class="code-box">
                 <div class="code-label">Your Verification Code</div>
                 <div class="code-value">${verificationCode}</div>
-                <div class="code-expiry">Expires in ${expiresIn}</div>
+                <div class="code-expiry">Expires in ${expiresIn} minutes</div>
             </div>
 
             <div class="alert-info">
@@ -602,7 +595,7 @@ export class EmailTemplates {
 
             <p>Copy and paste the verification code above on our platform, or click the button if your email client supports it.</p>
 
-            <p style="color: #999999; font-size: 14px;">This code will expire in ${expiresIn}. If it expires, you can request a new verification code.</p>
+            <p style="color: #999999; font-size: 14px;">This code will expire in ${expiresIn} minutes. If it expires, you can request a new verification code.</p>
 
             <p><strong>The BeforeListed Team</strong></p>
         </div>

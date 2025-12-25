@@ -30,7 +30,7 @@ export type AgentProfileResponse = {
   userInfo: string | any;
   licenseNumber: string;
   brokerageName: string;
-  profileImage: string | null;
+  profileImageUrl: string | null;
 
   isActive: boolean;
   activeAt?: Date;

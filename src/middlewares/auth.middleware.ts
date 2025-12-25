@@ -5,6 +5,8 @@ import { ErrorCodeEnum } from "@/enums/error-code.enum";
 
 import { logger } from "@/middlewares/pino-logger";
 import { AuthUtil } from "@/modules/auth/auth.utils";
+import { AgentProfileRepository } from "@/modules/agent/agent.repository";
+import { UserRepository } from "@/modules/user/user.repository";
 import {
   ForbiddenException,
   UnauthorizedException,
@@ -32,7 +34,11 @@ declare global {
 }
 
 export class AuthMiddleware {
-  static verifyToken = (req: Request, res: Response, next: NextFunction) => {
+  static verifyToken = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
       const authHeader = req.get("Authorization") || req.get("authorization");
       const requestId = req.id || req.headers["x-request-id"];
@@ -52,12 +58,40 @@ export class AuthMiddleware {
 
       const payload = AuthUtil.verifyAccessToken(token);
 
+      const userRepository = new UserRepository();
+      const user = await userRepository.findById(payload.userId);
+
+      if (!user) {
+        throw new UnauthorizedException(
+          MESSAGES.AUTH.UNAUTHORIZED_ACCESS,
+          ErrorCodeEnum.AUTH_USER_NOT_FOUND
+        );
+      }
+
+      if (user.accountStatus !== "active") {
+        throw new UnauthorizedException(
+          MESSAGES.AUTH.ACCOUNT_INACTIVE,
+          ErrorCodeEnum.AUTH_UNAUTHORIZED_ACCESS
+        );
+      }
+
+      if (user.role === "Agent") {
+        const agentRepository = new AgentProfileRepository();
+        const agentProfile = await agentRepository.findByUserId(user._id);
+        if (!agentProfile || agentProfile.isActive === false) {
+          throw new UnauthorizedException(
+            MESSAGES.AUTH.ACCOUNT_INACTIVE,
+            ErrorCodeEnum.AUTH_UNAUTHORIZED_ACCESS
+          );
+        }
+      }
+
       req.user = {
-        userId: payload.userId,
-        email: payload.email,
-        role: payload.role,
-        accountStatus: payload.accountStatus,
-        emailVerified: payload.emailVerified,
+        userId: user._id.toString(),
+        email: user.email,
+        role: user.role,
+        accountStatus: user.accountStatus,
+        emailVerified: user.emailVerified,
         iat: payload.iat,
         exp: payload.exp,
       };
@@ -100,7 +134,11 @@ export class AuthMiddleware {
     };
   };
 
-  static optionalAuth = (req: Request, res: Response, next: NextFunction) => {
+  static optionalAuth = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
       const authHeader = req.get("Authorization") || req.get("authorization");
 
@@ -108,12 +146,27 @@ export class AuthMiddleware {
         const token = authHeader.substring(7);
         const payload = AuthUtil.verifyAccessToken(token);
 
+        const userRepository = new UserRepository();
+        const user = await userRepository.findById(payload.userId);
+
+        if (!user || user.accountStatus !== "active") {
+          return next();
+        }
+
+        if (user.role === "Agent") {
+          const agentRepository = new AgentProfileRepository();
+          const agentProfile = await agentRepository.findByUserId(user._id);
+          if (!agentProfile || agentProfile.isActive === false) {
+            return next();
+          }
+        }
+
         req.user = {
-          userId: payload.userId,
-          email: payload.email,
-          role: payload.role,
-          accountStatus: payload.accountStatus,
-          emailVerified: payload.emailVerified,
+          userId: user._id.toString(),
+          email: user.email,
+          role: user.role,
+          accountStatus: user.accountStatus,
+          emailVerified: user.emailVerified,
           iat: payload.iat,
           exp: payload.exp,
         };

@@ -25,10 +25,6 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
     required: true,
   },
 
-  // ============================================
-  // ACTIVATION STATUS
-  // ============================================
-
   isActive: {
     type: Boolean,
     default: false,

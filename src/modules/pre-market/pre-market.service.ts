@@ -27,6 +27,13 @@ import {
   AgentRequestDetail,
 } from "./pre-market.type";
 
+type NormalAgentListingResponse = Record<string, any> & {
+  renterInfo: Record<string, any> | null;
+  accessType: string;
+  canRequestAccess: boolean;
+  requestAccessMessage?: string;
+};
+
 export class PreMarketService {
   private readonly preMarketRepository: PreMarketRepository;
   private readonly grantAccessRepository: GrantAccessRepository;
@@ -895,7 +902,7 @@ export class PreMarketService {
   async getAvailableRequestsForNormalAgents(
     agentId: string,
     query: PaginationQuery
-  ): Promise<PaginatedResponse<IPreMarketRequest>> {
+  ): Promise<PaginatedResponse<NormalAgentListingResponse>> {
     const agent = await this.agentRepository.findByUserId(agentId);
     if (!agent) {
       throw new ForbiddenException("Agent profile not found");

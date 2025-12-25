@@ -1,26 +1,75 @@
 // file: src/modules/grant-access/grant-access.repository.ts
 
+import { GRANT_ACCESS_CONFIG } from "@/config/pre-market.config";
 import { BaseRepository } from "@/modules/base/base.repository";
-import { Types } from "mongoose";
+import { Types, type FilterQuery } from "mongoose";
 import {
   GrantAccessRequestModel,
   type IGrantAccessRequest,
 } from "./grant-access.model";
+
+type GrantAccessStatus = (typeof GRANT_ACCESS_CONFIG.STATUSES)[number];
+type GrantAccessPaymentStatus =
+  (typeof GRANT_ACCESS_CONFIG.PAYMENT_STATUSES)[number];
+
+type PaymentDeletionHistory = {
+  payment?: {
+    isDeleted?: boolean;
+    deletedAt?: Date | null;
+    deletedBy?: Types.ObjectId | string | null;
+  };
+};
+
+type PopulatedAgent = {
+  _id: Types.ObjectId;
+  fullName?: string;
+  email?: string;
+  phoneNumber?: string;
+};
+
+type PopulatedPreMarketRequest = {
+  _id: Types.ObjectId;
+  requestId?: string;
+  requestName?: string;
+  description?: string;
+  movingDateRange?: unknown;
+  priceRange?: unknown;
+  locations?: Array<{ borough?: string }>;
+  bedrooms?: unknown;
+  bathrooms?: unknown;
+  unitFeatures?: unknown;
+  buildingFeatures?: unknown;
+  petPolicy?: unknown;
+  guarantorRequired?: unknown;
+  preferences?: unknown;
+  status?: string;
+  isActive?: boolean;
+  createdAt?: Date;
+  renterId?: Types.ObjectId | string;
+};
+
+type GrantAccessPaymentDoc = Omit<
+  IGrantAccessRequest,
+  "agentId" | "preMarketRequestId"
+> & {
+  agentId: Types.ObjectId | string | PopulatedAgent;
+  preMarketRequestId: Types.ObjectId | string | PopulatedPreMarketRequest;
+};
 
 export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
   constructor() {
     super(GrantAccessRequestModel);
   }
 
-  // CREATE
   async create(
     data: Partial<IGrantAccessRequest>
   ): Promise<IGrantAccessRequest> {
     return this.model.create(data);
   }
 
-  // Read
-  async findOne(filter: any): Promise<IGrantAccessRequest | null> {
+  async findOne(
+    filter: FilterQuery<IGrantAccessRequest> = {}
+  ): Promise<IGrantAccessRequest | null> {
     return this.model
       .findOne(filter)
       .lean() as Promise<IGrantAccessRequest | null>;
@@ -39,7 +88,11 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
   }
 
   async findByAgentId(agentId: string): Promise<IGrantAccessRequest[]> {
-    return this.model.find({ agentId }).sort({ createdAt: -1 }).lean() as any;
+    return this.model
+      .find({ agentId })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec() as unknown as Promise<IGrantAccessRequest[]>;
   }
 
   async findByPreMarketRequestId(
@@ -48,19 +101,17 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
     return this.model
       .find({ preMarketRequestId })
       .sort({ createdAt: -1 })
-      .lean() as any;
+      .lean()
+      .exec() as unknown as Promise<IGrantAccessRequest[]>;
   }
 
   async findPending(): Promise<IGrantAccessRequest[]> {
     return this.model
       .find({ status: "pending" })
       .sort({ createdAt: 1 })
-      .lean() as any;
+      .lean()
+      .exec() as unknown as Promise<IGrantAccessRequest[]>;
   }
-
-  // ============================================
-  // UPDATE
-  // ============================================
 
   async updateById(
     id: string,
@@ -71,10 +122,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       .lean() as Promise<IGrantAccessRequest | null>;
   }
 
-  async updateStatus(
-    id: string,
-    status: "pending" | "approved" | "rejected" | "paid"
-  ): Promise<void> {
+  async updateStatus(id: string, status: GrantAccessStatus): Promise<void> {
     await this.model.findByIdAndUpdate(id, { status });
   }
 
@@ -94,15 +142,13 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
     });
   }
 
-  // ============================================
-  // STATISTICS
-  // ============================================
-
-  async countByStatus(status: string): Promise<number> {
+  async countByStatus(status: string | GrantAccessStatus): Promise<number> {
     return this.model.countDocuments({ status });
   }
 
-  async countByPaymentStatus(paymentStatus: string): Promise<number> {
+  async countByPaymentStatus(
+    paymentStatus: string | GrantAccessPaymentStatus
+  ): Promise<number> {
     return this.model.countDocuments({
       "payment.paymentStatus": paymentStatus,
     });
@@ -124,7 +170,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
 
   async getFailureStats(): Promise<
     {
-      agentId: string;
+      agentId: string | Types.ObjectId;
       failureCount: number;
     }[]
   > {
@@ -165,8 +211,8 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
   }
 
   async getAllWithPaymentInfo(filters?: {
-    paymentStatus?: "pending" | "succeeded" | "failed";
-    accessStatus?: "pending" | "approved" | "rejected" | "paid";
+    paymentStatus?: GrantAccessPaymentStatus;
+    accessStatus?: GrantAccessStatus;
     page?: number;
     limit?: number;
   }): Promise<{
@@ -182,14 +228,12 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
     const limit = filters?.limit || 10;
     const skip = (page - 1) * limit;
 
-    const query: any = {};
+    const query: FilterQuery<IGrantAccessRequest> = {};
 
-    // Filter by payment status
     if (filters?.paymentStatus) {
       query["payment.paymentStatus"] = filters.paymentStatus;
     }
 
-    // Filter by access status
     if (filters?.accessStatus) {
       query.status = filters.accessStatus;
     }
@@ -207,7 +251,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       .exec();
 
     return {
-      data: data as IGrantAccessRequest[],
+      data: data as unknown as IGrantAccessRequest[],
       pagination: {
         total,
         page,
@@ -229,7 +273,14 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
   }> {
     const totalRequests = await this.model.countDocuments();
 
-    const stats = await this.model.aggregate([
+    const stats = await this.model.aggregate<{
+      _id: null;
+      totalPaid: number;
+      totalPending: number;
+      totalFailed: number;
+      totalRevenue: number;
+      averagePayment: number;
+    }>([
       {
         $group: {
           _id: null,
@@ -270,7 +321,10 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       },
     ]);
 
-    const statusStats = await this.model.aggregate([
+    const statusStats = await this.model.aggregate<{
+      _id: GrantAccessPaymentStatus | null;
+      count: number;
+    }>([
       {
         $group: {
           _id: "$payment.paymentStatus",
@@ -279,7 +333,10 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       },
     ]);
 
-    const accessStatusStats = await this.model.aggregate([
+    const accessStatusStats = await this.model.aggregate<{
+      _id: GrantAccessStatus | null;
+      count: number;
+    }>([
       {
         $group: {
           _id: "$status",
@@ -298,7 +355,13 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       paymentsByAccessStatus[stat._id || "unknown"] = stat.count;
     });
 
-    const result = stats || {};
+    const result = stats[0] || {
+      totalPaid: 0,
+      totalPending: 0,
+      totalFailed: 0,
+      totalRevenue: 0,
+      averagePayment: 0,
+    };
 
     return {
       totalRequests,
@@ -317,17 +380,16 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
     return deleted as IGrantAccessRequest | null;
   }
 
-  async getPaymentDeletionHistory(paymentId: string): Promise<any> {
-    return await this.model
+  async getPaymentDeletionHistory(
+    paymentId: string
+  ): Promise<PaymentDeletionHistory | null> {
+    return (await this.model
       .findById(paymentId)
-      .select("isDeleted deletedAt deletedBy deleteReason")
+      .select("payment.isDeleted payment.deletedAt payment.deletedBy")
       .lean()
-      .exec();
+      .exec()) as unknown as Promise<PaymentDeletionHistory | null>;
   }
 
-  /**
-   * Get monthly income breakdown
-   */
   async getMonthlyIncome(year?: number): Promise<any[]> {
     const startYear = year || new Date().getFullYear();
     const startDate = new Date(`${startYear}-01-01`);
@@ -369,9 +431,6 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
     }));
   }
 
-  /**
-   * Get income for specific month with daily breakdown
-   */
   async getMonthlyIncomeDetail(year: number, month: number): Promise<any> {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
@@ -525,13 +584,9 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
     };
   }
 
-  /**
-   * Get single payment with full enriched data
-   * Includes: Payment info + PreMarketRequest + Agent + Renter
-   */
   async getPaymentDetailsById(paymentId: string): Promise<any> {
     try {
-      const payment = await this.model
+      const payment = (await this.model
         .findById(paymentId)
         .populate({
           path: "preMarketRequestId",
@@ -543,101 +598,114 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
           select: "fullName email phoneNumber",
         })
         .lean()
-        .exec();
+        .exec()) as GrantAccessPaymentDoc | null;
 
       if (!payment) {
         return null;
       }
 
-      // Fetch agent profile separately for additional details
       const AgentProfileRepository =
         require("../agent/agent.repository").AgentProfileRepository;
       const agentProfileRepo = new AgentProfileRepository();
 
-      // Fetch renter with referrer info
       const RenterRepository =
         require("../renter/renter.repository").RenterRepository;
       const renterRepo = new RenterRepository();
 
-      // Fetch user repository for additional details
       const UserRepository = require("../user/user.repository").UserRepository;
       const userRepo = new UserRepository();
 
-      // Get agent profile details
-      const agentId =
-        typeof payment.agentId === "string"
-          ? payment.agentId
-          : payment.agentId._id.toString();
-      const agentProfile = await agentProfileRepo.findByUserId(agentId);
+      const resolveObjectId = (value: unknown): string | null => {
+        if (!value) return null;
+        if (typeof value === "string") return value;
+        if (value instanceof Types.ObjectId) return value.toString();
+        if (typeof value === "object" && "_id" in value) {
+          const id = (value as { _id?: Types.ObjectId | string })._id;
+          return id ? id.toString() : null;
+        }
+        return null;
+      };
 
-      // Get pre-market request details (with renter info)
-      const preMarketRequest = payment.preMarketRequestId;
+      const isPopulatedAgent = (
+        value: GrantAccessPaymentDoc["agentId"]
+      ): value is PopulatedAgent =>
+        typeof value === "object" && value !== null && "_id" in value;
+
+      const isPopulatedRequest = (
+        value: GrantAccessPaymentDoc["preMarketRequestId"]
+      ): value is PopulatedPreMarketRequest =>
+        typeof value === "object" && value !== null && "_id" in value;
+
+      const agentUserId = resolveObjectId(payment.agentId);
+      const agentInfo = isPopulatedAgent(payment.agentId)
+        ? payment.agentId
+        : null;
+      const agentProfile = agentUserId
+        ? await agentProfileRepo.findByUserId(agentUserId)
+        : null;
+
+      const preMarketRequest = isPopulatedRequest(payment.preMarketRequestId)
+        ? payment.preMarketRequestId
+        : null;
 
       let renterInfo = null;
 
-      if (
-        preMarketRequest &&
-        typeof preMarketRequest === "object" &&
-        preMarketRequest._id
-      ) {
-        const renterId = (preMarketRequest as any).renterId;
-        const renter = await renterRepo.findRenterWithReferrer(
-          renterId?.toString()
-        );
+      if (preMarketRequest) {
+        const renterId = resolveObjectId(preMarketRequest.renterId);
+        if (renterId) {
+          const renter = await renterRepo.findRenterWithReferrer(renterId);
 
-        if (renter) {
-          // Get referrer info if applicable
-          let referrerInfo = null;
+          if (renter) {
+            let referrerInfo = null;
 
-          if (renter.referredByAgentId) {
-            const referrer = await userRepo.findOne(
-              renter.referredByAgentId.toString()
-            );
-            if (referrer) {
-              referrerInfo = {
-                referrerId: referrer._id?.toString(),
-                referrerName: referrer.fullName,
-                referrerRole: "Agent",
-                referralType: "agent_referral",
-              };
+            if (renter.referredByAgentId) {
+              const referrer = await userRepo.findOne(
+                renter.referredByAgentId.toString()
+              );
+              if (referrer) {
+                referrerInfo = {
+                  referrerId: referrer._id?.toString(),
+                  referrerName: referrer.fullName,
+                  referrerRole: "Agent",
+                  referralType: "agent_referral",
+                };
+              }
+            } else if (renter.referredByAdminId) {
+              const referrer = await userRepo.findById(
+                renter.referredByAdminId._id || renter.referredByAdminId
+              );
+              if (referrer) {
+                referrerInfo = {
+                  referrerId: referrer._id?.toString(),
+                  referrerName: referrer.fullName,
+                  referrerRole: "Admin",
+                  referralType: "admin_referral",
+                };
+              }
             }
-          } else if (renter.referredByAdminId) {
-            const referrer = await userRepo.findById(
-              renter.referredByAdminId._id || renter.referredByAdminId
-            );
-            if (referrer) {
-              referrerInfo = {
-                referrerId: referrer._id?.toString(),
-                referrerName: referrer.fullName,
-                referrerRole: "Admin",
-                referralType: "admin_referral",
-              };
-            }
+
+            renterInfo = {
+              renterId: renter._id?.toString(),
+              userId: renter.userId?.toString(),
+              name: renter.fullName,
+              email: renter.email,
+              phone: renter.phoneNumber,
+              registrationType: renter.registrationType,
+              referrer: referrerInfo,
+              accountStatus: renter.accountStatus,
+            };
           }
-
-          renterInfo = {
-            renterId: renter._id?.toString(),
-            userId: renter.userId?.toString(),
-            name: renter.fullName,
-            email: renter.email,
-            phone: renter.phoneNumber,
-            registrationType: renter.registrationType,
-            referrer: referrerInfo,
-            accountStatus: renter.accountStatus,
-          };
         }
       }
 
-      // Format and return enriched response
       return {
-        // PAYMENT INFORMATION
         id: payment._id.toString(),
         paymentId: payment._id.toString(),
-        status: payment.status, // pending | approved | rejected | paid
+        status: payment.status,
         payment: {
           amount: payment.payment?.amount || 0,
           currency: payment.payment?.currency || "USD",
-          paymentStatus: payment.payment?.paymentStatus || "pending", // pending | succeeded | failed
+          paymentStatus: payment.payment?.paymentStatus || "pending",
           stripePaymentIntentId: payment.payment?.stripePaymentIntentId || null,
           failureCount: payment.payment?.failureCount || 0,
           failedAt: payment.payment?.failedAt || [],
@@ -653,7 +721,6 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
             }
           : null,
 
-        // PRE-MARKET LISTING DATA
         preMarketRequest: preMarketRequest
           ? {
               id: preMarketRequest._id?.toString(),
@@ -676,12 +743,11 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
             }
           : null,
 
-        // AGENT INFORMATION (who requested access)
         agent: {
-          userId: payment.agentId._id.toString(),
-          name: payment.agentId.fullName,
-          email: payment.agentId.email,
-          phone: payment.agentId.phoneNumber,
+          userId: agentUserId || "",
+          name: agentInfo?.fullName || "Agent",
+          email: agentInfo?.email || "",
+          phone: agentInfo?.phoneNumber || "",
           brokerageName: agentProfile?.brokerageName || null,
           licenseNumber: agentProfile?.licenseNumber || null,
           yearsOfExperience: agentProfile?.yearsOfExperience || null,

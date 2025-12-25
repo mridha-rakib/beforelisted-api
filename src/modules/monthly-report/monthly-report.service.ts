@@ -90,7 +90,6 @@ export class MonthlyReportService {
       throw new NotFoundException("Report not found");
     }
 
-    // If updating month/year, check if combination exists elsewhere
     if (data.month || data.year) {
       const checkMonth = data.month ?? report.month;
       const checkYear = data.year ?? report.year;

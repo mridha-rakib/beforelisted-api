@@ -167,6 +167,18 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
   /**
    * Update agent profile by userId
    */
+  async updateByUserId(
+    userId: string | Types.ObjectId,
+    data: Partial<IAgentProfile>
+  ): Promise<IAgentProfile | null> {
+    return this.model
+      .findOneAndUpdate({ userId }, { $set: data }, { new: true })
+      .exec();
+  }
+
+  /**
+   * Update agent profile by userId
+   */
   async updateProfile(
     userId: string | Types.ObjectId,
     data: Partial<IAgentProfile>

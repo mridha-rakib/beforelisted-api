@@ -16,6 +16,7 @@ import {
   UserType,
 } from "../email-verification/email-verification.types";
 import { PasswordResetService } from "../password/password.service";
+import { AgentProfileRepository } from "../agent/agent.repository";
 import type { IUser } from "../user/user.interface";
 import { UserService } from "../user/user.service";
 import type {
@@ -52,6 +53,14 @@ export class AuthService {
 
     if (user.accountStatus === "inactive") {
       throw new UnauthorizedException(MESSAGES.AUTH.ACCOUNT_INACTIVE);
+    }
+
+    if (user.role === ROLES.AGENT) {
+      const agentRepository = new AgentProfileRepository();
+      const agentProfile = await agentRepository.findByUserId(user._id);
+      if (!agentProfile || agentProfile.isActive === false) {
+        throw new UnauthorizedException(MESSAGES.AUTH.ACCOUNT_INACTIVE);
+      }
     }
 
     // Verify password
@@ -291,6 +300,18 @@ export class AuthService {
 
       if (!user) {
         throw new UnauthorizedException(MESSAGES.AUTH.REFRESH_TOKEN_INVALID);
+      }
+
+      if (user.accountStatus !== "active") {
+        throw new UnauthorizedException(MESSAGES.AUTH.ACCOUNT_INACTIVE);
+      }
+
+      if (user.role === ROLES.AGENT) {
+        const agentRepository = new AgentProfileRepository();
+        const agentProfile = await agentRepository.findByUserId(user._id);
+        if (!agentProfile || agentProfile.isActive === false) {
+          throw new UnauthorizedException(MESSAGES.AUTH.ACCOUNT_INACTIVE);
+        }
       }
 
       const accessToken = AuthUtil.generateAccessToken({

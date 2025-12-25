@@ -5,7 +5,7 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IMonthlyReport extends Document {
   _id: mongoose.Types.ObjectId;
   link: string;
-  month: string;
+  month: number;
   year: number;
   isActive: boolean;
   createdBy: mongoose.Types.ObjectId;
@@ -22,7 +22,7 @@ const monthlyReportSchema = new Schema<IMonthlyReport>(
       trim: true,
     },
     month: {
-      type: String,
+      type: Number,
       required: true,
     },
     year: {

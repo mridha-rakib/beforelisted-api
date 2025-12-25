@@ -2,6 +2,7 @@
 
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
+import { BadRequestException } from "@/utils/app-error.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 import type { Request, Response } from "express";
@@ -146,7 +147,7 @@ export class MonthlyReportController {
     const yearNum = parseInt(year);
 
     if (isNaN(yearNum) || yearNum < 2000 || yearNum > 2100) {
-      return ApiResponse.error(res, 400, "Invalid year");
+      throw new BadRequestException("Invalid year");
     }
 
     const reports = await this.reportService.getReportsByYear(yearNum);
