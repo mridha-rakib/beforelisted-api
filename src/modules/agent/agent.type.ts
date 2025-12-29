@@ -72,7 +72,6 @@ export type AgentRegistrationResponse = {
 export type AdminAgentMetricsResponse = {
   totalAgents: number;
   verifiedAgents: number;
-  suspendedAgents: number;
   approvedAgents: number;
   pendingApprovalAgents: number;
   totalMatches: number;

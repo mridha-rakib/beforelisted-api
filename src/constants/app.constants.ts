@@ -34,7 +34,7 @@ export const REQUEST_STATUS = {
 
 export const MATCH_REQUEST_STATUS = {
   PENDING: "pending",
-  APPROVED: "approved",
+  FREE: "FREE",
   REJECTED: "rejected",
   CANCELLED: "cancelled",
   COMPLETED: "completed",

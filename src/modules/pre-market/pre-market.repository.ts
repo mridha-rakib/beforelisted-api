@@ -4,6 +4,7 @@ import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import { PaginationHelper } from "@/utils/pagination-helper";
+import type { PopulateOptions, ProjectionType, SortOrder } from "mongoose";
 import { AgentProfile } from "../agent/agent.model";
 import { BaseRepository } from "../base/base.repository";
 import { GrantAccessRequestModel } from "../grant-access/grant-access.model";
@@ -30,6 +31,22 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return PaginationHelper.formatResponse(result);
   }
 
+  async findAllWithPaginationExcludingIds(
+    query: PaginationQuery,
+    excludedIds: string[]
+  ): Promise<PaginatedResponse<IPreMarketRequest>> {
+    const paginateOptions = PaginationHelper.parsePaginationParams(query);
+    const filter: Record<string, any> = { isDeleted: false };
+
+    if (excludedIds && excludedIds.length > 0) {
+      filter._id = { $nin: excludedIds };
+    }
+
+    const result = await (this.model as any).paginate(filter, paginateOptions);
+
+    return PaginationHelper.formatResponse(result);
+  }
+
   async findByRequestId(requestId: string): Promise<IPreMarketRequest | null> {
     return this.model
       .findOne({ requestId })
@@ -50,13 +67,37 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     query: PaginationQuery
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
+    const page = paginateOptions.page ?? 1;
+    const limit = paginateOptions.limit ?? 10;
+    const sort = (paginateOptions.sort ?? { createdAt: -1 }) as
+      | string
+      | [string, SortOrder][]
+      | Record<string, SortOrder | { $meta: any }>;
+    const select = paginateOptions.select as
+      | ProjectionType<IPreMarketRequest>
+      | undefined;
+    const populate = paginateOptions.populate as PopulateOptions[] | undefined;
+    const skip = (page - 1) * limit;
+    const filter = { renterId, isDeleted: false };
 
-    const result = await (this.model as any).paginate(
-      { renterId, status: "active" },
-      paginateOptions
-    );
+    let queryBuilder = this.model
+      .find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
 
-    return PaginationHelper.formatResponse<IPreMarketRequest>(result);
+    if (select) {
+      queryBuilder = queryBuilder.select(select);
+    }
+
+    if (populate?.length) {
+      queryBuilder = queryBuilder.populate(populate);
+    }
+
+    const data = await queryBuilder.lean<IPreMarketRequest[]>().exec();
+    const total = await this.model.countDocuments(filter);
+
+    return PaginationHelper.buildResponse(data, total, page, limit);
   }
 
   async findByLocations(
@@ -489,7 +530,6 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       .find({
         _id: { $in: ids },
         isDeleted: false,
-        status: "active",
       })
       .lean()
       .exec() as unknown as Promise<IPreMarketRequest[]>;
@@ -500,7 +540,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   findByIdsWithPagination(ids: any[], query: PaginationQuery) {
     const paginationOptions = PaginationHelper.parsePaginationParams(query);
     return (this.model as any).paginate(
-      { _id: { $in: ids }, isDeleted: false, status: "active" },
+      { _id: { $in: ids }, isDeleted: false },
       paginationOptions
     );
   }
@@ -618,7 +658,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
           const confirmedAccess = await GrantAccessRequestModel.find({
             preMarketRequestId: listing._id.toString(),
             $or: [
-              { status: "approved" },
+              { status: "free" },
               { status: "paid", "payment.paymentStatus": "succeeded" },
             ],
           })
@@ -649,7 +689,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
             name: item.agentId?.fullName,
             email: item.agentId?.email,
             phone: item.agentId?.phoneNumber,
-            accessType: item.status === "approved" ? "free" : "paid",
+            accessType: item.status === "free" ? "free" : "paid",
             paymentAmount: item.payment?.amount || null,
             paymentStatus: item.payment?.paymentStatus || null,
           }));
@@ -691,7 +731,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
           // Get access breakdown
           const freeCount = confirmedAccess.filter(
-            (a: any) => a.status === "approved"
+            (a: any) => a.status === "free"
           ).length;
           const paidCount = confirmedAccess.filter(
             (a: any) => a.status === "paid"

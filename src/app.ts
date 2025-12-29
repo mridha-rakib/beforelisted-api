@@ -30,13 +30,20 @@ const captureRawBody = (
   encoding: string | undefined
 ) => {
   if (buf && buf.length) {
-    req.rawBody = buf.toString((encoding as BufferEncoding) || "utf8");
+    req.rawBody = buf;
   }
 };
 
+const normalizedBaseUrl = env.BASE_URL.startsWith("/")
+  ? env.BASE_URL
+  : `/${env.BASE_URL}`;
+const basePath =
+  normalizedBaseUrl === "/" ? "" : normalizedBaseUrl.replace(/\/$/, "");
+const stripeWebhookPath = `${basePath}/pre-market/payment/webhook`;
+
 // POST webhook with raw body middleware
 app.post(
-  "/api/v1/pre-market/payment/webhook",
+  stripeWebhookPath,
   express.raw({ type: "application/json", verify: captureRawBody }),
   controller.handleWebhook.bind(controller)
 );

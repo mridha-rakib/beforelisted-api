@@ -39,7 +39,7 @@ export const PREMARKET_CONFIG = {
 
 export const GRANT_ACCESS_CONFIG = {
   // Statuses
-  STATUSES: ["pending", "approved", "rejected", "paid"] as const,
+  STATUSES: ["pending", "approved", "free", "rejected", "paid"] as const,
 
   // Payment statuses
   PAYMENT_STATUSES: ["pending", "succeeded", "failed"] as const,

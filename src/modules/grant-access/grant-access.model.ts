@@ -4,12 +4,17 @@ import { GRANT_ACCESS_CONFIG } from "@/config/pre-market.config";
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 import { model, Schema, Types, type Document } from "mongoose";
 
-export interface IGrantAccessRequest
-  extends Document<unknown, any, any, Record<string, any>, object> {
+export interface IGrantAccessRequest extends Document<
+  unknown,
+  any,
+  any,
+  Record<string, any>,
+  object
+> {
   _id: Types.ObjectId;
   preMarketRequestId: Types.ObjectId | string;
   agentId: Types.ObjectId | string;
-  status: "pending" | "approved" | "rejected" | "paid";
+  status: "pending" | "approved" | "free" | "rejected" | "paid";
 
   payment?: {
     amount: number;

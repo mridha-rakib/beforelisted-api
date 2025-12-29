@@ -13,11 +13,13 @@ import {
   type IWelcomeEmailPayload,
 } from "@/services/email.types";
 import {
+  adminContactRequestTemplate,
   preMarketAdminNotificationTemplate,
   preMarketAgentNotificationTemplate,
   renterAccessGrantedNotificationTemplate,
 } from "./email-notification.templates";
 import {
+  IAdminContactRequestPayload,
   IPreMarketAdminNotificationPayload,
   IPreMarketAgentNotificationPayload,
   IRenterAccessGrantedNotificationPayload,
@@ -504,6 +506,7 @@ export class EmailService {
       // Render template (WITH renter info)
       const html = preMarketAdminNotificationTemplate(
         payload.listingTitle,
+        payload.listingDescription,
         payload.location,
         payload.serviceType,
         payload.renterName,
@@ -511,6 +514,7 @@ export class EmailService {
         payload.renterPhone,
         payload.listingUrl,
         payload.preMarketRequestId,
+        payload.requestId,
         this.config.logoUrl!,
         this.config.brandColor
       );
@@ -536,6 +540,69 @@ export class EmailService {
           email: payload.to,
         },
         "Failed to send pre-market admin notification"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send public contact request to admin
+   */
+  async sendAdminContactRequest(
+    payload: IAdminContactRequestPayload
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, senderEmail: payload.senderEmail },
+        "Sending public contact request to admin"
+      );
+
+      const subjectLine =
+        payload.subject.replace(/[\r\n]+/g, " ").trim() ||
+        "New contact message from public user";
+
+      const html = adminContactRequestTemplate(
+        payload.senderEmail,
+        subjectLine,
+        payload.message,
+        payload.receivedAt,
+        payload.ipAddress!,
+        payload.userAgent,
+        this.config.logoUrl,
+        this.config.brandColor
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: "Administrator" },
+        subject: `[CONTACT] ${subjectLine}`,
+        html,
+        replyTo: payload.senderEmail,
+        tags: ["contact", "public"],
+        metadata: {
+          senderEmail: payload.senderEmail,
+        },
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "ADMIN_CONTACT_REQUEST",
+        payload.to
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+          senderEmail: payload.senderEmail,
+        },
+        "Failed to send admin contact request"
       );
 
       return {

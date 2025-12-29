@@ -18,6 +18,8 @@ import preMarketSchemas from "@/docs/swagger/pre-market.schemas";
 import preMarketPaths from "@/docs/swagger/pre-market.swagger";
 import renterSchemas from "@/docs/swagger/renter.schema";
 import renterPaths from "@/docs/swagger/renter.swagger";
+import supportSchemas from "@/docs/swagger/support.schemas";
+import supportPaths from "@/docs/swagger/support.swagger";
 import userSchemas from "@/docs/swagger/user.schemas";
 import userPaths from "@/docs/swagger/user.swagger";
 import { env } from "@/env";
@@ -108,6 +110,7 @@ const options = {
         ...fileSchemas,
         ...monthlyReportSchemas,
         ...faqSchemas,
+        ...supportSchemas,
       },
     },
     security: [
@@ -131,6 +134,7 @@ swaggerSpec.paths = {
   ...filePaths,
   ...monthlyReportPaths,
   ...faqPaths,
+  ...supportPaths,
 };
 
 const customCss = `

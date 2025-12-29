@@ -8,6 +8,7 @@ import noticeRouter from "@/modules/notice/notice.route";
 import notificationRouter from "@/modules/notification/notification.route";
 import preMarketRouter from "@/modules/pre-market/pre-market.route";
 import renterRouter from "@/modules/renter/renter.route";
+import supportRouter from "@/modules/support/support.route";
 import userRouter from "@/modules/user/user.route";
 
 import { Router } from "express";
@@ -58,6 +59,10 @@ const moduleRoutes = [
   {
     path: "/monthly-reports",
     route: monthlyReportRouter,
+  },
+  {
+    path: "/support",
+    route: supportRouter,
   },
 ];
 

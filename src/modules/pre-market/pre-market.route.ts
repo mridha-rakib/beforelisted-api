@@ -8,9 +8,6 @@ import { PreMarketController } from "./pre-market.controller";
 const router = Router();
 
 const controller = new PreMarketController();
-// ============================================
-// RENTER ROUTES
-// ============================================
 
 router.post(
   "/create",

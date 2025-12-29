@@ -9,7 +9,7 @@ import { BaseEmailTemplate } from "./base-email-template";
 export class GrantAccessRequestTemplate extends BaseEmailTemplate {
   private agentName: string;
   private agentEmail: string;
-  private agentCompany: string | null;
+  private agentBrokarage: string | null;
   private preMarketRequestId: string;
   private propertyTitle: string;
   private location: string;
@@ -19,7 +19,7 @@ export class GrantAccessRequestTemplate extends BaseEmailTemplate {
   constructor(
     agentName: string,
     agentEmail: string,
-    agentCompany: string | null,
+    agentBrokarage: string | null,
     preMarketRequestId: string,
     propertyTitle: string,
     location: string,
@@ -31,7 +31,7 @@ export class GrantAccessRequestTemplate extends BaseEmailTemplate {
     super(logoUrl, brandColor);
     this.agentName = agentName;
     this.agentEmail = agentEmail;
-    this.agentCompany = agentCompany;
+    this.agentBrokarage = agentBrokarage;
     this.preMarketRequestId = preMarketRequestId;
     this.propertyTitle = propertyTitle;
     this.location = location;
@@ -86,8 +86,8 @@ export class GrantAccessRequestTemplate extends BaseEmailTemplate {
             label: "Email:",
             value: `<a href="mailto:${this.agentEmail}" style="color: ${this.brandColor};">${this.agentEmail}</a>`,
           },
-          ...(this.agentCompany
-            ? [{ label: "Company:", value: this.agentCompany }]
+          ...(this.agentBrokarage
+            ? [{ label: "Company:", value: this.agentBrokarage }]
             : []),
         ])}
       </div>

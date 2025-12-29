@@ -345,8 +345,7 @@ export class AgentService {
     return {
       totalAgents: statuses.total,
       verifiedAgents: statuses.verified,
-      suspendedAgents: statuses.suspended,
-      approvedAgents: statuses.approved,
+      approvedAgents: statuses.free,
       pendingApprovalAgents: statuses.pending,
       totalMatches,
       totalGrantAccess,
@@ -510,9 +509,8 @@ export class AgentService {
       await this.userService.updateAccountStatus(userId, "inactive");
     }
 
-    const { NotificationService } = await import(
-      "../notification/notification.service"
-    );
+    const { NotificationService } =
+      await import("../notification/notification.service");
     const notificationService = new NotificationService();
 
     try {

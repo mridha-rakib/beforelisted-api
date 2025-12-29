@@ -206,13 +206,13 @@ export const agentSchemas = {
         properties: {
           referralCode: {
             type: "string",
-            example: "AGT-A1B2C3D4E5F6G7H8",
+            example: "AGT-ILTFDRTU",
             description: "Unique agent referral code",
           },
           referralLink: {
             type: "string",
             format: "uri",
-            example: "https://beforelisted.com/join?ref=AGT-A1B2C3D4E5F6G7H8",
+            example: "https://beforelisted.com/join?ref=AGT-ILTFDRTU",
           },
           totalReferrals: {
             type: "integer",

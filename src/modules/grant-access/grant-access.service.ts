@@ -1,7 +1,7 @@
 // file: src/modules/grant-access/grant-access.service.ts
 
-import { logger } from "@/middlewares/pino-logger";
 import { env } from "@/env";
+import { logger } from "@/middlewares/pino-logger";
 import { emailService } from "@/services/email.service";
 import {
   BadRequestException,
@@ -40,17 +40,10 @@ export class GrantAccessService {
     this.agentRepository = new AgentProfileRepository();
     this.renterRepository = new RenterRepository();
   }
-
-  // ============================================
-  // GET REQUEST BY ID
-  // ============================================
   async getRequestById(requestId: string): Promise<IPreMarketRequest | null> {
     return await this.preMarketRepository.getRequestById(requestId);
   }
 
-  // ============================================
-  // ENRICH REQUEST WITH FULL RENTER INFO
-  // ============================================
   public async enrichRequestWithFullRenterInfo(
     request: IPreMarketRequest,
     agentId: string
@@ -138,7 +131,7 @@ export class GrantAccessService {
     );
 
     if (existing) {
-      if (existing.status === "approved" || existing.status === "paid") {
+      if (existing.status === "free" || existing.status === "paid") {
         throw new ConflictException(
           "You already have access to this pre-market request"
         );
@@ -211,14 +204,10 @@ export class GrantAccessService {
     return grantAccess;
   }
 
-  // ============================================
-  // ADMIN DECISION
-  // ============================================
-
   async adminDecideAccess(
     grantAccessId: string,
     decision: {
-      action: "approve" | "reject" | "charge";
+      action: "free" | "reject" | "charge";
       adminId: string;
       isFree?: boolean;
       chargeAmount?: number;
@@ -287,8 +276,8 @@ export class GrantAccessService {
     }
 
     // APPROVE (FREE)
-    if (decision.action === "approve" && decision.isFree) {
-      grantAccess.status = "approved";
+    if (decision.action === "free" && decision.isFree) {
+      grantAccess.status = "free";
       grantAccess.adminDecision = {
         decidedBy: decision.adminId as any,
         decidedAt: new Date(),
@@ -363,7 +352,7 @@ export class GrantAccessService {
         notes: decision.notes,
       };
 
-      grantAccess.status = "pending";
+      grantAccess.status = "approved";
 
       await this.grantAccessRepository.updateById(grantAccessId, grantAccess);
       await this.notifier.sendPaymentLinkToAgent(grantAccess);
@@ -462,7 +451,8 @@ export class GrantAccessService {
         to: renter.email,
         renterName: renter.fullName || "Renter",
         agentName: agent.fullName || "Agent",
-        agentEmail: agent.email || env.EMAIL_REPLY_TO || "support@beforelisted.com",
+        agentEmail:
+          agent.email || env.EMAIL_REPLY_TO || "support@beforelisted.com",
         listingTitle: preMarketRequest.requestName || "Pre-Market Listing",
         location,
         accessType,
@@ -490,7 +480,10 @@ export class GrantAccessService {
       throw new NotFoundException("Grant access request not found");
     }
 
-    if (grantAccess.status !== "pending" || !grantAccess.payment) {
+    if (
+      (grantAccess.status !== "approved" && grantAccess.status !== "pending") ||
+      !grantAccess.payment
+    ) {
       throw new BadRequestException("Invalid payment status");
     }
 
@@ -505,6 +498,7 @@ export class GrantAccessService {
 
     // Store payment intent ID
     grantAccess.payment.stripePaymentIntentId = paymentIntent.id;
+    grantAccess.payment.paymentStatus = "pending";
     await this.grantAccessRepository.updateById(grantAccessId, grantAccess);
 
     return {
@@ -515,7 +509,7 @@ export class GrantAccessService {
 
   async getAdminPayments(filters?: {
     paymentStatus?: "pending" | "succeeded" | "failed";
-    accessStatus?: "pending" | "approved" | "rejected" | "paid";
+    accessStatus?: "pending" | "free" | "rejected" | "paid";
     page?: number;
     limit?: number;
   }): Promise<{
@@ -542,7 +536,7 @@ export class GrantAccessService {
       preMarketRequestId:
         item.preMarketRequestId?.id || item.preMarketRequestId,
       listingRequestId: item.preMarketRequestId?.requestId || "N/A",
-      status: item.status, // pending, approved, rejected, paid
+      status: item.status, // pending, free, rejected, paid
       paymentStatus: item.payment?.paymentStatus || "N/A", // pending, succeeded, failed
       amount: item.payment?.amount || 0,
       currency: item.payment?.currency || "USD",

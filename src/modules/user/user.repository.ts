@@ -60,7 +60,7 @@ export class UserRepository extends BaseRepository<IUser> {
         .randomBytes(6)
         .toString("base64")
         .replace(/[^a-zA-Z0-9]/g, "")
-        .substring(0, 10)
+        .substring(0, 8)
         .toUpperCase();
 
       referralCode = `${prefix}-${randomPart}`;

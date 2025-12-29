@@ -37,7 +37,7 @@ export const renterSchemas = {
       },
       referralCode: {
         type: "string",
-        example: "AGT-A1B2C3D4E5F6G7H8",
+        example: "AGT-ILTFDRTU",
         nullable: true,
         description: "Agent (AGT-) or Admin (ADM-) referral code",
       },
@@ -124,8 +124,8 @@ export const renterSchemas = {
       },
       referralCode: {
         type: "string",
-        pattern: "^AGT-[A-Z0-9]{16}$",
-        example: "AGT-A1B2C3D4E5F6G7H8",
+        pattern: "^AGT-[A-Z0-9]{8}$",
+        example: "AGT-ILTFDRTU",
         description: "Agent referral code (must start with AGT-)",
       },
     },
@@ -153,8 +153,8 @@ export const renterSchemas = {
       },
       referralCode: {
         type: "string",
-        pattern: "^ADM-[A-Z0-9]{16}$",
-        example: "ADM-A1B2C3D4E5F6G7H8",
+        pattern: "^ADM-[A-Z0-9]{8}$",
+        example: "ADM-ILTFDRTU",
         description:
           "Admin referral code (must start with ADM-). Password will be auto-generated.",
       },

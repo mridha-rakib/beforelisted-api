@@ -4,8 +4,8 @@ import { MESSAGES } from "@/constants/app.constants";
 import { ErrorCodeEnum } from "@/enums/error-code.enum";
 
 import { logger } from "@/middlewares/pino-logger";
-import { AuthUtil } from "@/modules/auth/auth.utils";
 import { AgentProfileRepository } from "@/modules/agent/agent.repository";
+import { AuthUtil } from "@/modules/auth/auth.utils";
 import { UserRepository } from "@/modules/user/user.repository";
 import {
   ForbiddenException,

@@ -95,6 +95,23 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       .exec() as unknown as Promise<IGrantAccessRequest[]>;
   }
 
+  async findByAgentIdAndRequestIds(
+    agentId: string,
+    requestIds: Array<string | Types.ObjectId>
+  ): Promise<IGrantAccessRequest[]> {
+    if (!requestIds || requestIds.length === 0) {
+      return [];
+    }
+
+    return this.model
+      .find({
+        agentId,
+        preMarketRequestId: { $in: requestIds },
+      })
+      .lean()
+      .exec() as unknown as Promise<IGrantAccessRequest[]>;
+  }
+
   async findByPreMarketRequestId(
     preMarketRequestId: string | Types.ObjectId
   ): Promise<IGrantAccessRequest[]> {
@@ -198,12 +215,30 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
 
   async findByAgentIdAndStatus(
     agentId: string,
-    status: "pending" | "approved" | "rejected" | "paid"
+    status: "pending" | "approved" | "free" | "rejected" | "paid"
   ): Promise<IGrantAccessRequest[]> {
     return this.model
       .find({
         agentId,
         status,
+      })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec() as unknown as Promise<IGrantAccessRequest[]>;
+  }
+
+  async findByAgentIdAndStatuses(
+    agentId: string,
+    statuses: Array<"pending" | "approved" | "free" | "rejected" | "paid">
+  ): Promise<IGrantAccessRequest[]> {
+    if (!statuses || statuses.length === 0) {
+      return [];
+    }
+
+    return this.model
+      .find({
+        agentId,
+        status: { $in: statuses },
       })
       .sort({ createdAt: -1 })
       .lean()
@@ -659,9 +694,10 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
             let referrerInfo = null;
 
             if (renter.referredByAgentId) {
-              const referrer = await userRepo.findOne(
-                renter.referredByAgentId.toString()
-              );
+              const referrerId = resolveObjectId(renter.referredByAgentId);
+              const referrer = referrerId
+                ? await userRepo.findById(referrerId)
+                : null;
               if (referrer) {
                 referrerInfo = {
                   referrerId: referrer._id?.toString(),

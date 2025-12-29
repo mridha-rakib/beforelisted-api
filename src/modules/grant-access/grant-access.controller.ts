@@ -228,7 +228,7 @@ export class GrantAccessController {
       const paidAccess = await this.grantAccessRepository.findOne({
         agentId: agentId,
         preMarketRequestId: requestId,
-        status: { $in: ["approved", "paid"] },
+        status: { $in: ["free", "paid"] },
       });
 
       if (!paidAccess) {
@@ -348,7 +348,7 @@ export class GrantAccessController {
     logger.info({ adminId, requestId }, "Admin approving free access");
 
     const result = await this.grantAccessService.adminDecideAccess(requestId, {
-      action: "approve",
+      action: "free",
       adminId,
       isFree: true,
       notes,

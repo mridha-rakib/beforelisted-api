@@ -436,7 +436,7 @@ export const preMarketSchemas = {
       agentId: { type: "string" },
       status: {
         type: "string",
-        enum: ["pending", "approved", "rejected", "paid"],
+        enum: ["pending", "free", "rejected", "paid"],
         example: "pending",
       },
       payment: {
@@ -490,7 +490,7 @@ export const preMarketSchemas = {
       requestedAt: { type: "string", format: "date-time" },
       status: {
         type: "string",
-        enum: ["pending", "approved", "rejected", "paid"],
+        enum: ["pending", "free", "rejected", "paid"],
       },
     },
   },

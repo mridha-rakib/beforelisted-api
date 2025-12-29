@@ -89,10 +89,7 @@ export class GrantAccessApprovalTemplate extends BaseEmailTemplate {
       </div>
     `;
 
-    const cta = this.generateButton(
-      "View Property Details",
-      this.accessLink
-    );
+    const cta = this.generateButton("View Property Details", this.accessLink);
 
     const note = `
       <div class="section">

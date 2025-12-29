@@ -152,8 +152,8 @@ export class RenterUtil {
 
   /**
    * Check if referral code is valid format
-   * Agent: AGT-xxxxxxxxxxxxxxxx (AGT- prefix + 16 chars)
-   * Admin: ADM-xxxxxxxxxxxxxxxx (ADM- prefix + 16 chars)
+   * Agent: AGT-XXXXXXXX (AGT- prefix + 8 chars)
+   * Admin: ADM-XXXXXXXX (ADM- prefix + 8 chars)
    *
    * @param code - Referral code to validate
    * @param type - Type of referral code (agent or admin)
@@ -170,7 +170,7 @@ export class RenterUtil {
     const trimmedCode = code.trim().toUpperCase();
 
     if (trimmedCode.startsWith("AGT-")) {
-      const isValidFormat = /^AGT-[A-Z0-9]{16}$/.test(trimmedCode);
+      const isValidFormat = /^AGT-[A-Z0-9]{8}$/.test(trimmedCode);
       if (type && type !== "agent") {
         return { isValid: false };
       }
@@ -182,7 +182,7 @@ export class RenterUtil {
     }
 
     if (trimmedCode.startsWith("ADM-")) {
-      const isValidFormat = /^ADM-[A-Z0-9]{16}$/.test(trimmedCode);
+      const isValidFormat = /^ADM-[A-Z0-9]{8}$/.test(trimmedCode);
       if (type && type !== "admin") {
         return { isValid: false };
       }

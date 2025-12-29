@@ -228,6 +228,7 @@ export function preMarketAdminNotificationTemplate(
   renterPhone: string,
   listingUrl: string,
   preMarketRequestId: string,
+  requestId: string,
   logoUrl?: string,
   brandColor: string = "#1890FF"
 ): string {
@@ -394,7 +395,7 @@ export function preMarketAdminNotificationTemplate(
             <!-- Request ID -->
             <div>
                 <strong>Request ID:</strong>
-                <div class="request-id">${preMarketRequestId}</div>
+                <div class="request-id">${requestId}</div>
             </div>
 
             <!-- Listing Details Section -->
@@ -469,10 +470,6 @@ export function preMarketAdminNotificationTemplate(
 </html>
   `;
 }
-
-// ============================================
-// RENTER ACCESS GRANTED EMAIL TEMPLATE
-// ============================================
 
 /**
  * Email template for renter when an agent gains access
@@ -647,4 +644,177 @@ export function renterAccessGrantedNotificationTemplate(
 </body>
 </html>
   `;
+}
+
+export function adminContactRequestTemplate(
+  senderEmail: string,
+  subject: string,
+  message: string,
+  receivedAt: string,
+  ipAddress?: string,
+  userAgent?: string,
+  logoUrl?: string,
+  brandColor: string = "#1890FF"
+): string {
+  const currentYear = new Date().getFullYear();
+  const safeEmail = escapeHtml(senderEmail);
+  const safeSubject = escapeHtml(subject);
+  const safeMessage = escapeHtml(message).replace(/\r?\n/g, "<br>");
+  const safeIp = ipAddress ? escapeHtml(ipAddress) : "";
+  const safeUserAgent = userAgent ? escapeHtml(userAgent) : "";
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Contact Message</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 700px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: ${brandColor};
+            color: #ffffff;
+            padding: 24px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 12px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 24px 20px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            font-size: 16px;
+            color: ${brandColor};
+            margin: 0 0 10px 0;
+            border-bottom: 2px solid ${brandColor};
+            padding-bottom: 8px;
+        }
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .details-table tr {
+            border-bottom: 1px solid #eee;
+        }
+        .details-table td {
+            padding: 10px 0;
+            vertical-align: top;
+        }
+        .details-table td:first-child {
+            width: 140px;
+            font-weight: 600;
+            color: ${brandColor};
+        }
+        .message-box {
+            background-color: #fafafa;
+            padding: 16px;
+            border-radius: 6px;
+            border: 1px solid #eee;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 16px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            <h1>New Contact Message</h1>
+        </div>
+        <div class="content">
+            <div class="section">
+                <h2>Sender Details</h2>
+                <table class="details-table">
+                    <tr>
+                        <td>Email</td>
+                        <td><a href="mailto:${safeEmail}">${safeEmail}</a></td>
+                    </tr>
+                    <tr>
+                        <td>Subject</td>
+                        <td>${safeSubject}</td>
+                    </tr>
+                    <tr>
+                        <td>Received</td>
+                        <td>${escapeHtml(receivedAt)}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="section">
+                <h2>Message</h2>
+                <div class="message-box">${safeMessage}</div>
+            </div>
+
+            <div class="section">
+                <h2>Request Metadata</h2>
+                <table class="details-table">
+                    <tr>
+                        <td>IP Address</td>
+                        <td>${safeIp || "N/A"}</td>
+                    </tr>
+                    <tr>
+                        <td>User Agent</td>
+                        <td>${safeUserAgent || "N/A"}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="footer">
+            <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case '"':
+        return "&quot;";
+      case "'":
+        return "&#39;";
+      default:
+        return char;
+    }
+  });
 }

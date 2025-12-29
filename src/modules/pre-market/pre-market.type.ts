@@ -58,7 +58,12 @@ export type UpdatePreMarketRequestPayload =
 // GRANT ACCESS TYPES
 // ============================================
 
-export type GrantAccessStatus = "pending" | "approved" | "rejected" | "paid";
+export type GrantAccessStatus =
+  | "pending"
+  | "approved"
+  | "free"
+  | "rejected"
+  | "paid";
 export type PaymentStatus = "pending" | "succeeded" | "failed";
 
 export type RequestAccessPayload = {
@@ -66,7 +71,7 @@ export type RequestAccessPayload = {
 };
 
 export type AdminDecisionPayload = {
-  action: "approve" | "charge" | "reject";
+  action: "approved" | "charge" | "reject";
   adminId: string;
   isFree?: boolean;
   chargeAmount?: number;
@@ -84,6 +89,7 @@ export interface AdminRenterInfo {
   fullName: string;
   email: string;
   phoneNumber?: string;
+  profileImageUrl?: string | null;
   registrationType: "normal" | "agent_referral" | "admin_referral";
   referralInfo?: AdminReferrerInfo;
 }
@@ -93,6 +99,7 @@ export type AdminPreMarketRenterInfo = {
   fullName: string;
   email: string;
   phoneNumber?: string;
+  profileImageUrl?: string | null;
   registrationType: "normal" | "agent_referral" | "admin_referral";
   referrerName?: string;
   referrerType?: "AGENT" | "ADMIN" | "NORMAL";
@@ -100,7 +107,7 @@ export type AdminPreMarketRenterInfo = {
 
 export type AdminAgentRequestSummary = {
   total: number;
-  approved: number;
+  free: number;
   pending: number;
 };
 
@@ -124,7 +131,7 @@ export interface AgentRequestDetail {
     role: string;
     profileImageUrl?: string;
   };
-  status: "pending" | "approved" | "rejected" | "paid";
+  status: "pending" | "approved" | "free" | "rejected" | "paid";
   requestedAt: Date;
   payment?: {
     amount: number;

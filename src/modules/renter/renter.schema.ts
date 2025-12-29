@@ -33,7 +33,7 @@ export const agentReferralRenterRegisterSchema = z.object({
       referralCode: z
         .string()
         .regex(
-          /^AGT-[A-Z0-9]{16}$/,
+          /^AGT-[A-Z0-9]{8}$/,
           "Invalid agent referral code format (must start with AGT-)"
         ),
     })
@@ -60,7 +60,7 @@ export const adminReferralRenterRegisterSchema = z.object({
       referralCode: z
         .string()
         .regex(
-          /^ADM-[A-Z0-9]{16}$/,
+          /^ADM-[A-Z0-9]{8}$/,
           "Invalid admin referral code format (must start with ADM-)"
         ),
       questionnaire: z

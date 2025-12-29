@@ -124,20 +124,18 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
   async countByStatus(): Promise<{
     total: number;
     verified: number;
-    approved: number;
-    suspended: number;
+    free: number;
     pending: number;
   }> {
-    const [total, verified, approved, suspended] = await Promise.all([
+    const [total, verified, free] = await Promise.all([
       this.model.countDocuments({}),
       this.model.countDocuments({ isVerified: true }),
       this.model.countDocuments({ isApprovedByAdmin: true }),
-      this.model.countDocuments({ isSuspended: true }),
     ]);
 
-    const pending = total - approved;
+    const pending = total - free;
 
-    return { total, verified, approved, suspended, pending };
+    return { total, verified, free, pending };
   }
 
   /**

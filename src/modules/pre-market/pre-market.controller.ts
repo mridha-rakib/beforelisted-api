@@ -11,6 +11,7 @@ import {
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 import type { Request, Response } from "express";
+import type Stripe from "stripe";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
 import { GrantAccessService } from "../grant-access/grant-access.service";
@@ -154,9 +155,11 @@ export class PreMarketController {
    */
   getAllRequests = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(preMarketListSchema, req);
+    const agentId = req.user!.userId;
 
     const requests = await this.preMarketService.getAllRequests(
-      validated.query
+      validated.query,
+      agentId
     );
 
     ApiResponse.paginated(
@@ -187,10 +190,12 @@ export class PreMarketController {
       throw new NotFoundException("Pre-market request not found");
     }
 
-    const accessCheck = await this.preMarketService.canAgentSeeRenterInfo(
+    const accessSummary = await this.preMarketService.getAgentAccessSummary(
       userId,
       requestId
     );
+    const listingStatus =
+      accessSummary.accessType === "none" ? request.status : "matched";
 
     await this.preMarketRepository.addAgentToViewedBy(
       requestId,
@@ -200,11 +205,18 @@ export class PreMarketController {
 
     let response: any = {
       ...request,
-      canRequestAccess: !accessCheck.canSee,
+      status: accessSummary.grantAccessStatus,
+      listingStatus,
+      grantAccessStatus: accessSummary.grantAccessStatus,
+      grantAccessId: accessSummary.grantAccessId,
+      accessType: accessSummary.accessType,
+      canRequestAccess: accessSummary.canRequestAccess,
+      chargeAmount: accessSummary.chargeAmount ?? null,
+      payment: accessSummary.payment ?? null,
     };
 
     // Include renter info if agent has access
-    if (accessCheck.canSee) {
+    if (accessSummary.canSeeRenterInfo) {
       const enriched =
         await this.preMarketService.enrichRequestWithFullRenterInfo(
           request,
@@ -213,18 +225,16 @@ export class PreMarketController {
       response = {
         ...response,
         renterInfo: enriched.renterInfo,
-        accessType: accessCheck.accessType,
       };
 
       logger.info(
-        { userId, requestId, accessType: accessCheck.accessType },
-        `Request accessed with ${accessCheck.accessType} renter info access`
+        { userId, requestId, accessType: accessSummary.accessType },
+        `Request accessed with ${accessSummary.accessType} renter info access`
       );
     } else {
       response = {
         ...response,
         renterInfo: null,
-        accessType: "none",
         message: "Request grant access to see renter information",
       };
 
@@ -300,14 +310,14 @@ export class PreMarketController {
     const { requestId } = validated.params;
 
     const result = await this.grantAccessService.adminDecideAccess(requestId, {
-      action: "approve",
+      action: "free",
       adminId,
       isFree: true,
       notes: validated.body.notes,
     });
 
     logger.info({ adminId, requestId }, "Access approved (free)");
-    ApiResponse.success(res, result, "Access approved");
+    ApiResponse.success(res, result, "Access approved (free)");
   });
 
   /**
@@ -366,13 +376,38 @@ export class PreMarketController {
 
    */
   handleWebhook = asyncHandler(async (req: Request, res: Response) => {
-    const signature = req.headers["stripe-signature"] as string;
-    const rawBody = (req as any).rawBody;
+    const signature = req.headers["stripe-signature"];
+    if (typeof signature !== "string" || !signature.trim()) {
+      logger.warn("Missing Stripe signature header");
+      throw new BadRequestException("Missing Stripe signature");
+    }
 
-    const stripeEvent = await this.paymentService.constructWebhookEvent(
-      rawBody,
-      signature
-    );
+    const rawBody = (req as any).rawBody ?? req.body;
+    const isBuffer = Buffer.isBuffer(rawBody);
+    if (
+      !rawBody ||
+      (typeof rawBody === "string" && rawBody.length === 0) ||
+      (isBuffer && rawBody.length === 0)
+    ) {
+      logger.warn("Stripe webhook received empty body");
+      throw new BadRequestException("Empty Stripe webhook payload");
+    }
+
+    if (!isBuffer && typeof rawBody !== "string") {
+      logger.warn("Stripe webhook payload is not raw");
+      throw new BadRequestException("Invalid Stripe webhook payload");
+    }
+
+    let stripeEvent: Stripe.Event;
+    try {
+      stripeEvent = await this.paymentService.constructWebhookEvent(
+        rawBody,
+        signature
+      );
+    } catch (error) {
+      logger.warn({ error }, "Stripe webhook signature verification failed");
+      throw new BadRequestException("Invalid Stripe signature");
+    }
 
     await this.paymentService.handleWebhook(stripeEvent);
 
@@ -607,19 +642,18 @@ export class PreMarketController {
       // ============================================
       logger.info(
         { agentId, type: "normal" },
-        "🔒 Normal agent - checking if they have PAID access for this request"
+        "?? Normal agent - checking if they have PAID access for this request"
       );
 
-      const paidAccess = await this.grantAccessRepository.findOne({
-        agentId: agentId,
-        preMarketRequestId: requestId,
-        status: { $in: ["approved", "paid"] },
-      });
+      const accessCheck = await this.preMarketService.checkAgentAccessToRequest(
+        agentId,
+        requestId
+      );
 
-      if (!paidAccess) {
+      if (!accessCheck.hasAccess || !accessCheck.grantAccessRecord) {
         logger.warn(
           { agentId, requestId },
-          "❌ Normal agent does NOT have paid access to this request"
+          "? Normal agent does NOT have paid access to this request"
         );
 
         throw new ForbiddenException(
@@ -627,12 +661,14 @@ export class PreMarketController {
         );
       }
 
+      const paidAccess = accessCheck.grantAccessRecord;
+
       logger.info(
         { agentId, requestId, accessStatus: paidAccess.status },
-        `✅ Normal agent has ${paidAccess.status} access to this request`
+        `? Normal agent has ${paidAccess.status} access to this request`
       );
 
-      // ✅ Enrich with full renter info (since they paid)
+      // ? Enrich with full renter info (since they paid)
       const enriched =
         await this.preMarketService.enrichRequestWithFullRenterInfo(
           request,
@@ -644,7 +680,7 @@ export class PreMarketController {
         "Request enriched with renter information"
       );
 
-      // ✅ Track as normal agent
+      // ? Track as normal agent
       try {
         await this.preMarketRepository.addAgentToViewedBy(
           requestId,
@@ -654,7 +690,7 @@ export class PreMarketController {
 
         logger.info(
           { agentId, requestId },
-          "✅ Marked as viewed by normal agent"
+          "? Marked as viewed by normal agent"
         );
       } catch (error) {
         logger.warn(
@@ -663,7 +699,7 @@ export class PreMarketController {
         );
       }
 
-      // ✅ Return full response
+      // ? Return full response
       logger.info(
         {
           agentId,
@@ -671,7 +707,7 @@ export class PreMarketController {
           accessType: paidAccess.status,
           renterName: enriched.renterInfo?.renterName,
         },
-        "✅ Returning full request details to normal agent (paid access)"
+        "? Returning full request details to normal agent (paid access)"
       );
 
       return ApiResponse.success(
@@ -679,6 +715,8 @@ export class PreMarketController {
         {
           ...enriched,
           accessType: paidAccess.status,
+          status: "matched",
+          listingStatus: "matched",
         },
         "Pre-market request details retrieved"
       );

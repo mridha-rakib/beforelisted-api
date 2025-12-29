@@ -12,6 +12,7 @@ import {
 import { PaginationHelper } from "@/utils/pagination-helper";
 import { Types } from "mongoose";
 import { AgentProfileRepository } from "../agent/agent.repository";
+import type { IGrantAccessRequest } from "../grant-access/grant-access.model";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
 import { PaymentService } from "../payment/payment.service";
 import { RenterRepository } from "../renter/renter.repository";
@@ -34,6 +35,14 @@ type NormalAgentListingResponse = Record<string, any> & {
   requestAccessMessage?: string;
 };
 
+type AgentGrantAccessStatus =
+  | "Available"
+  | "approved"
+  | "pending"
+  | "paid"
+  | "free"
+  | "rejected";
+
 export class PreMarketService {
   private readonly preMarketRepository: PreMarketRepository;
   private readonly grantAccessRepository: GrantAccessRepository;
@@ -54,6 +63,119 @@ export class PreMarketService {
     this.renterRepository = new RenterRepository();
     this.userRepository = new UserRepository();
     this.excelService = new ExcelService();
+  }
+
+  private resolveGrantAccessStatus(
+    grantAccess: IGrantAccessRequest | null,
+    hasGrantAccess: boolean
+  ): AgentGrantAccessStatus {
+    if (hasGrantAccess) {
+      return "free";
+    }
+
+    if (!grantAccess) {
+      return "Available";
+    }
+
+    if (grantAccess.status === "free") {
+      return "free";
+    }
+
+    if (grantAccess.status === "approved") {
+      return "approved";
+    }
+
+    if (
+      grantAccess.status === "pending" &&
+      grantAccess.adminDecision?.isFree === false &&
+      (grantAccess.payment?.paymentStatus ||
+        (grantAccess.payment as any)?.status) === "pending"
+    ) {
+      return "approved";
+    }
+
+    return grantAccess.status as AgentGrantAccessStatus;
+  }
+
+  private resolveAccessType(
+    grantAccess: IGrantAccessRequest | null,
+    hasGrantAccess: boolean
+  ): "admin-granted" | "payment-based" | "none" {
+    if (hasGrantAccess) {
+      return "admin-granted";
+    }
+
+    if (grantAccess?.status === "free" || grantAccess?.status === "paid") {
+      return "payment-based";
+    }
+
+    return "none";
+  }
+
+  private buildAgentAccessSummary(
+    grantAccess: IGrantAccessRequest | null,
+    hasGrantAccess: boolean
+  ) {
+    const grantAccessStatus = this.resolveGrantAccessStatus(
+      grantAccess,
+      hasGrantAccess
+    );
+    const accessType = this.resolveAccessType(grantAccess, hasGrantAccess);
+    const isCharged = grantAccess?.adminDecision?.isFree === false;
+    const paymentInfo = grantAccess?.payment
+      ? {
+          amount: grantAccess.payment.amount ?? 0,
+          currency: grantAccess.payment.currency ?? "USD",
+          status: grantAccess.payment.paymentStatus ?? "pending",
+        }
+      : null;
+    const chargeAmount =
+      isCharged && grantAccess
+        ? grantAccess.payment?.amount ??
+          grantAccess.adminDecision?.chargeAmount ??
+          null
+        : null;
+
+    return {
+      grantAccessStatus,
+      accessType,
+      canRequestAccess: grantAccessStatus === "Available",
+      canSeeRenterInfo: accessType !== "none",
+      grantAccessId: grantAccess?._id?.toString(),
+      chargeAmount,
+      payment: paymentInfo,
+    };
+  }
+
+  async getAgentAccessSummary(agentId: string, requestId: string) {
+    const agent = await this.agentRepository.findByUserId(agentId);
+    const hasGrantAccess = agent?.hasGrantAccess === true;
+    let grantAccess = await this.grantAccessRepository.findByAgentAndRequest(
+      agentId,
+      requestId
+    );
+
+    if (
+      grantAccess?.payment?.paymentStatus === "pending" &&
+      grantAccess.payment.stripePaymentIntentId
+    ) {
+      try {
+        await this.paymentService.reconcilePaymentIntent(
+          grantAccess.payment.stripePaymentIntentId
+        );
+        grantAccess = await this.grantAccessRepository.findByAgentAndRequest(
+          agentId,
+          requestId
+        );
+      } catch (error) {
+        logger.warn(
+          { error, grantAccessId: grantAccess._id },
+          "Failed to refresh payment status"
+        );
+      }
+    }
+
+    return this.buildAgentAccessSummary(grantAccess, hasGrantAccess);
   }
 
   async createRequest(
@@ -193,16 +315,82 @@ export class PreMarketService {
   }
 
   async getAllRequests(
-    query: PaginationQuery
+    query: PaginationQuery,
+    agentId: string
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
-    return this.preMarketRepository.findAllWithPagination(query) as any;
+    const agent = await this.agentRepository.findByUserId(agentId);
+    const hasGrantAccess = agent?.hasGrantAccess === true;
+
+    let paginated: PaginatedResponse<IPreMarketRequest>;
+    if (!hasGrantAccess) {
+      const accessRecords =
+        await this.grantAccessRepository.findByAgentIdAndStatuses(agentId, [
+          "free",
+          "paid",
+        ]);
+      const excludedIds = accessRecords.map((record) =>
+        record.preMarketRequestId.toString()
+      );
+
+      paginated =
+        await this.preMarketRepository.findAllWithPaginationExcludingIds(
+          query,
+          excludedIds
+        );
+    } else {
+      paginated = await this.preMarketRepository.findAllWithPagination(query);
+    }
+
+    const requestIds = paginated.data
+      .map((request) => request._id?.toString())
+      .filter(Boolean);
+
+    const grantAccessRecords =
+      await this.grantAccessRepository.findByAgentIdAndRequestIds(
+        agentId,
+        requestIds as string[]
+      );
+
+    const grantAccessByRequestId = new Map(
+      grantAccessRecords.map((record) => [
+        record.preMarketRequestId.toString(),
+        record,
+      ])
+    );
+
+    const enrichedData = paginated.data.map((request) => {
+      const grantAccess = request._id
+        ? grantAccessByRequestId.get(request._id.toString()) || null
+        : null;
+      const accessSummary = this.buildAgentAccessSummary(
+        grantAccess,
+        hasGrantAccess
+      );
+      const listingStatus =
+        accessSummary.accessType === "none" ? request.status : "matched";
+      return {
+        ...request,
+        status: accessSummary.grantAccessStatus,
+        listingStatus,
+        grantAccessStatus: accessSummary.grantAccessStatus,
+        grantAccessId: accessSummary.grantAccessId,
+        accessType: accessSummary.accessType,
+        canRequestAccess: accessSummary.canRequestAccess,
+      };
+    });
+
+    return {
+      ...paginated,
+      data: enrichedData,
+    } as any;
   }
 
   async getRenterRequests(
     renterId: string,
     query: PaginationQuery
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
-    return this.preMarketRepository.findByRenterId(renterId, query);
+    const result = this.preMarketRepository.findByRenterId(renterId, query);
+    return result;
   }
 
   async getRequestById(requestId: string): Promise<IPreMarketRequest> {
@@ -331,6 +519,7 @@ export class PreMarketService {
             ...request,
             renterInfo,
             status: "matched",
+            listingStatus: "matched",
           };
         })
       );
@@ -355,21 +544,22 @@ export class PreMarketService {
     }
 
     // ============================================
-    // NORMAL AGENTS: See ONLY paid listings
+    // NORMAL AGENTS: See ONLY free or paid listings
     // ============================================
     logger.info(
       { agentId, type: "normal" },
-      "Normal agent fetching their paid pre-market listings"
+      "Normal agent fetching their accessible pre-market listings"
     );
 
-    // Step 1: Get all GrantAccess records for this agent with status = "paid"
-    const paidAccess = await this.grantAccessRepository.findByAgentIdAndStatus(
-      agentId,
-      "paid"
-    );
+    // Step 1: Get all GrantAccess records for this agent with access
+    const accessRecords =
+      await this.grantAccessRepository.findByAgentIdAndStatuses(agentId, [
+        "free",
+        "paid",
+      ]);
 
-    if (!Array.isArray(paidAccess) || paidAccess.length === 0) {
-      logger.info({ agentId }, "Normal agent has no paid access yet");
+    if (!Array.isArray(accessRecords) || accessRecords.length === 0) {
+      logger.info({ agentId }, "Normal agent has no access yet");
       return PaginationHelper.buildResponse(
         [],
         0,
@@ -378,7 +568,7 @@ export class PreMarketService {
       ) as any;
     }
 
-    const preMarketRequestIds = paidAccess.map((access) =>
+    const preMarketRequestIds = accessRecords.map((access) =>
       access.preMarketRequestId.toString()
     );
 
@@ -412,6 +602,7 @@ export class PreMarketService {
           ...request,
           renterInfo,
           status: "matched",
+          listingStatus: "matched",
         };
       })
     );
@@ -632,23 +823,23 @@ export class PreMarketService {
       );
 
     if (!allRequests || allRequests.length === 0) {
-      return { total: 0, approved: 0, pending: 0 };
+      return { total: 0, free: 0, pending: 0 };
     }
 
-    let approved = 0;
+    let free = 0;
     let pending = 0;
 
     for (const req of allRequests) {
-      if (req.status === "approved" || req.status === "paid") {
-        approved += 1;
-      } else if (req.status === "pending") {
+      if (req.status === "free" || req.status === "paid") {
+        free += 1;
+      } else if (req.status === "pending" || req.status === "approved") {
         pending += 1;
       }
     }
 
     return {
       total: allRequests.length,
-      approved,
+      free,
       pending,
     };
   }
@@ -668,11 +859,17 @@ export class PreMarketService {
       };
     }
 
+    const profileImageUrl =
+      typeof renter.userId === "object" && renter.userId
+        ? renter.userId.profileImageUrl || null
+        : null;
+
     const renterInfo: AdminRenterInfo = {
       renterId: renter._id?.toString() || renter.renterId?.toString() || "",
       fullName: renter.fullName || "",
       email: renter.email || "",
       phoneNumber: renter.phoneNumber,
+      profileImageUrl,
       registrationType: renter.registrationType || "normal",
     };
 
@@ -737,10 +934,6 @@ export class PreMarketService {
           req.agentId.toString()
         );
 
-        // const agentProfile = await this.agentRepository.findByUserId(
-        //   req.agentId.toString()
-        // );
-
         // Build agent object with proper types
         const agentInfo = agent
           ? {
@@ -762,21 +955,54 @@ export class PreMarketService {
               profileImageUrl: undefined,
             };
 
+        const baseStatus =
+          (req.status as
+            | "pending"
+            | "approved"
+            | "free"
+            | "rejected"
+            | "paid") || "pending";
+
+        const isChargePending =
+          baseStatus === "pending" &&
+          req.adminDecision?.isFree === false &&
+          (req.payment?.paymentStatus || (req.payment as any)?.status) ===
+            "pending";
+
+        const isChargeApplied =
+          baseStatus === "pending" &&
+          req.adminDecision?.isFree === false &&
+          (req.payment?.amount > 0 || (req.payment as any)?.status) ===
+            "pending";
+
+        const normalizedStatus =
+          baseStatus === "approved" ? "approved" : baseStatus;
+
+        const displayStatus =
+          isChargePending && isChargeApplied ? "approved" : normalizedStatus;
+
+        const paymentInfo =
+          baseStatus === "free"
+            ? {
+                amount: req.payment?.amount || 0,
+                currency: req.payment?.currency || "USD",
+                status: "free",
+              }
+            : req.payment
+              ? {
+                  amount: req.payment.amount || 0,
+                  currency: req.payment.currency || "USD",
+                  status: req.payment.paymentStatus || "pending",
+                }
+              : undefined;
+
         const agentRequestDetail: AgentRequestDetail = {
           _id: req._id?.toString() || "",
           agentId: req.agentId?.toString() || "",
           agent: agentInfo,
-          status:
-            (req.status as "pending" | "approved" | "rejected" | "paid") ||
-            "pending",
+          status: displayStatus,
           requestedAt: req.createdAt || new Date(),
-          payment: req.payment
-            ? {
-                amount: req.payment.amount || 0,
-                currency: req.payment.currency || "USD",
-                status: req.payment.status || "pending",
-              }
-            : undefined,
+          payment: paymentInfo,
         };
 
         return agentRequestDetail;
@@ -851,12 +1077,19 @@ export class PreMarketService {
     }
 
     // Get referrer information if applicable
+    // Note: findRenterWithReferrer already populates referredByAgentId/referredByAdminId as full User objects
     let referrerInfo = null;
 
     if (renter.referredByAgentId) {
-      const referrer = await this.userRepository.findById(
-        renter.referredByAgentId.toString()
-      );
+      // Check if it's a populated object or just an ObjectId
+      const referrer =
+        typeof renter.referredByAgentId === "object" &&
+        renter.referredByAgentId._id
+          ? renter.referredByAgentId // Already populated
+          : await this.userRepository.findById(
+              renter.referredByAgentId.toString()
+            );
+
       if (referrer) {
         referrerInfo = {
           referrerId: referrer._id?.toString(),
@@ -866,9 +1099,15 @@ export class PreMarketService {
         };
       }
     } else if (renter.referredByAdminId) {
-      const referrer = await this.userRepository.findById(
+      // Check if it's a populated object or just an ObjectId
+      const referrer =
+        typeof renter.referredByAdminId === "object" &&
         renter.referredByAdminId._id
-      );
+          ? renter.referredByAdminId // Already populated
+          : await this.userRepository.findById(
+              renter.referredByAdminId.toString()
+            );
+
       if (referrer) {
         referrerInfo = {
           referrerId: referrer._id?.toString(),
@@ -1009,8 +1248,14 @@ export class PreMarketService {
       );
     }
 
-    // Access approved or paid - show full info
-    if (grantAccess.status === "approved" || grantAccess.status === "paid") {
+    if (grantAccess.status === "approved") {
+      throw new ForbiddenException(
+        "Your access request was approved. Complete payment to proceed"
+      );
+    }
+
+    // Access free or paid - show full info
+    if (grantAccess.status === "free" || grantAccess.status === "paid") {
       return this.enrichRequestWithFullRenterInfo(request, agentId);
     }
 
@@ -1035,13 +1280,32 @@ export class PreMarketService {
     }
 
     // Check if agent paid for this specific request
-    const grantAccess = await this.grantAccessRepository.findOne({
+    let grantAccess = await this.grantAccessRepository.findByAgentAndRequest(
       agentId,
-      preMarketRequestId: requestId,
-      status: { $in: ["approved", "paid"] },
-    });
+      requestId
+    );
 
-    if (grantAccess) {
+    if (
+      grantAccess?.payment?.paymentStatus === "pending" &&
+      grantAccess.payment.stripePaymentIntentId
+    ) {
+      try {
+        await this.paymentService.reconcilePaymentIntent(
+          grantAccess.payment.stripePaymentIntentId
+        );
+        grantAccess = await this.grantAccessRepository.findByAgentAndRequest(
+          agentId,
+          requestId
+        );
+      } catch (error) {
+        logger.warn(
+          { error, grantAccessId: grantAccess._id },
+          "Failed to refresh payment status"
+        );
+      }
+    }
+
+    if (grantAccess && (grantAccess.status === "free" || grantAccess.status === "paid")) {
       return {
         hasAccess: true,
         accessType: "payment-based",
@@ -1059,7 +1323,7 @@ export class PreMarketService {
    * Check if agent has access to view RENTER INFO for a request
    * Returns true if:
    * 1. Agent has admin-granted access (hasGrantAccess = true), OR
-   * 2. Agent paid for this specific request (status = "approved" or "paid")
+   * 2. Agent paid for this specific request (status = "free" or "paid")
    */
   async canAgentSeeRenterInfo(
     agentId: string,
@@ -1081,7 +1345,7 @@ export class PreMarketService {
     const grantAccess = await this.grantAccessRepository.findOne({
       agentId,
       preMarketRequestId: requestId,
-      status: { $in: ["approved", "paid"] },
+      status: { $in: ["free", "paid"] },
     });
 
     if (grantAccess) {
@@ -1363,9 +1627,14 @@ export class PreMarketService {
               if (agentProfile && agentUser) {
                 const accessInfo = agentMap.get(agentId);
                 const hasGrantAccess = agentProfile.hasGrantAccess;
-                const accessStatus = accessInfo?.status;
+                const accessStatus = accessInfo?.status as
+                  | "pending"
+                  | "free"
+                  | "rejected"
+                  | "paid"
+                  | undefined;
                 const hasRequestAccess =
-                  accessStatus === "paid" || accessStatus === "approved";
+                  accessStatus === "paid" || accessStatus === "free";
 
                 if (hasGrantAccess || hasRequestAccess) {
                   agents.push({

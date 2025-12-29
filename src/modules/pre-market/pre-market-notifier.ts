@@ -14,7 +14,9 @@ import { PreMarketRepository } from "./pre-market.repository";
 
 interface IPreMarketNotificationPayload {
   preMarketRequestId: string;
+  requestId: string;
   title: string;
+  listingDescription: string;
   location: string;
   serviceType: string;
   renterId: string;
@@ -52,13 +54,64 @@ export class PreMarketNotifier {
     }
   ): Promise<void> {
     try {
+      // Build comprehensive description from request details
+      const buildDescription = (request: IPreMarketRequest): string => {
+        const parts: string[] = [];
+
+        // Price range
+        if (request.priceRange) {
+          parts.push(
+            `Price: $${request.priceRange.min} - $${request.priceRange.max}`
+          );
+        }
+
+        // Moving dates
+        if (request.movingDateRange) {
+          const earliest = new Date(
+            request.movingDateRange.earliest
+          ).toLocaleDateString();
+          const latest = new Date(
+            request.movingDateRange.latest
+          ).toLocaleDateString();
+          parts.push(`Move Date: ${earliest} - ${latest}`);
+        }
+
+        // Bedrooms
+        if (request.bedrooms && request.bedrooms.length > 0) {
+          parts.push(`Bedrooms: ${request.bedrooms.join(", ")}`);
+        }
+
+        // Bathrooms
+        if (request.bathrooms && request.bathrooms.length > 0) {
+          parts.push(`Bathrooms: ${request.bathrooms.join(", ")}`);
+        }
+
+        // Locations with neighborhoods
+        if (request.locations && request.locations.length > 0) {
+          const locParts = request.locations.map(
+            (l) =>
+              `${l.borough}${l.neighborhoods && l.neighborhoods.length > 0 ? ` (${l.neighborhoods.join(", ")})` : ""}`
+          );
+          parts.push(`Location: ${locParts.join(", ")}`);
+        }
+
+        // Preferences
+        if (request.preferences && request.preferences.length > 0) {
+          parts.push(`Preferences: ${request.preferences.join(", ")}`);
+        }
+
+        return parts.length > 0 ? parts.join(" | ") : "No description provided";
+      };
+
       const payload: IPreMarketNotificationPayload = {
         preMarketRequestId: preMarketRequest._id?.toString() || "",
+        requestId: preMarketRequest.requestId || "Unknown",
         title: preMarketRequest.requestName || "New Pre-Market Listing",
+        listingDescription: buildDescription(preMarketRequest),
         location:
           preMarketRequest.locations?.map((l) => l.borough).join(", ") ||
           "Multiple Locations",
-        serviceType: "Pre-Market Rental",
+        serviceType: "Pre-Market Rental Request",
         renterId: renterData.renterId.toString(),
         renterName: renterData.renterName,
         renterEmail: renterData.renterEmail,
@@ -182,6 +235,7 @@ export class PreMarketNotifier {
       const emailResult = await emailService.sendPreMarketNotificationToAdmin({
         to: adminEmail,
         listingTitle: payload.title,
+        listingDescription: payload.listingDescription,
         location: payload.location,
         serviceType: payload.serviceType,
         renterName: payload.renterName || "Unknown",
@@ -189,6 +243,7 @@ export class PreMarketNotifier {
         renterPhone: payload.renterPhone || "N/A",
         listingUrl: payload.listingUrl,
         preMarketRequestId: payload.preMarketRequestId,
+        requestId: payload.requestId,
       });
 
       if (emailResult.success) {
@@ -472,7 +527,7 @@ export class PreMarketNotifier {
         agentName: agentUser.fullName || "Agent",
         propertyTitle,
         rejectionReason:
-          grantAccess.adminDecision?.notes || "Request was not approved",
+          grantAccess.adminDecision?.notes || "Request was not free",
         contactEmail: process.env.ADMIN_EMAIL || "admin@beforelisted.com",
       });
 

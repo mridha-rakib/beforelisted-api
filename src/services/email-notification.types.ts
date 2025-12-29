@@ -17,6 +17,7 @@ export interface IPreMarketAgentNotificationPayload {
 export interface IPreMarketAdminNotificationPayload {
   to: string;
   listingTitle: string;
+  listingDescription: string;
   location: string;
   serviceType: string;
   renterName: string;
@@ -24,6 +25,7 @@ export interface IPreMarketAdminNotificationPayload {
   renterPhone: string;
   listingUrl: string;
   preMarketRequestId: string;
+  requestId: string;
 }
 
 export interface IRenterAccessGrantedNotificationPayload {
@@ -35,6 +37,16 @@ export interface IRenterAccessGrantedNotificationPayload {
   location: string;
   accessType: "free" | "paid";
   listingUrl: string;
+}
+
+export interface IAdminContactRequestPayload {
+  to: string;
+  senderEmail: string;
+  subject: string;
+  message: string;
+  receivedAt: string;
+  ipAddress?: string;
+  userAgent?: string;
 }
 
 // ============================================
