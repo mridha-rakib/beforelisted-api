@@ -6,5 +6,5 @@ services:
     env_file:
       - .env
     ports:
-      - "${PORT:-7071}:${PORT:-7070}"
+      - "${PORT:-7070}:${PORT:-7070}"
     restart: unless-stopped

@@ -22,7 +22,7 @@ import { PreMarketController } from "./modules/pre-market/pre-market.controller.
 
 const app: Application = express();
 const controller = new PreMarketController();
-// Capture raw body for Stripe signature verification
+
 const captureRawBody = (
   req: any,
   res: any,
@@ -41,7 +41,6 @@ const basePath =
   normalizedBaseUrl === "/" ? "" : normalizedBaseUrl.replace(/\/$/, "");
 const stripeWebhookPath = `${basePath}/pre-market/payment/webhook`;
 
-// POST webhook with raw body middleware
 app.post(
   stripeWebhookPath,
   express.raw({ type: "application/json", verify: captureRawBody }),

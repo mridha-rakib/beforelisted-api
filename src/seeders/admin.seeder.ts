@@ -6,27 +6,18 @@ import { User } from "@/modules/user/user.model";
 import { hashPassword } from "@/utils/password.utils";
 import { ReferralUtil } from "@/utils/referral.utils";
 
-/**
- * Admin Seeder
- * Creates default admin user with permanent referral link
- */
 export class AdminSeeder {
   private static readonly DEFAULT_ADMIN = {
-    email: "admin@rentalpennymore.com",
+    email: "admin@beforelisted.com",
     password: "Admin@12345",
-    fullName: "Admin User",
-    phone: "+1234567890", // Add phone
+    fullName: "Tuval Mor",
+    phone: "+1646-342-1757",
     role: ROLES.ADMIN,
   };
 
-  /**
-   * Run seeder - creates admin if not exists
-   */
   static async run(): Promise<void> {
     try {
       logger.info("Starting admin seeder...");
-
-      // Check if admin already exists
       const existingAdmin = await User.findOne({
         email: this.DEFAULT_ADMIN.email,
         role: ROLES.ADMIN,

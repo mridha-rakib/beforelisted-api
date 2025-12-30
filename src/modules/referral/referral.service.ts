@@ -86,6 +86,7 @@ export class ReferralService {
    */
   async getReferralStats(userId: string): Promise<{
     totalReferrals: number;
+    fullName: string | null;
     referredUsers: IUser[];
     referralCode: string | null;
     referralLink: string | null;
@@ -100,6 +101,7 @@ export class ReferralService {
 
     return {
       totalReferrals: user.totalReferrals,
+      fullName: user.fullName || null,
       referredUsers,
       referralCode: user.referralCode || null,
       referralLink: user.referralLink || null,

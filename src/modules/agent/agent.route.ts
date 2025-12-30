@@ -60,7 +60,7 @@ router.post(
 router.get(
   "/referral-link",
   authMiddleware.verifyToken,
-  // authMiddleware.verifyEmailVerified,
+  authMiddleware.verifyEmailVerified,
   // agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
   controller.getReferralLink

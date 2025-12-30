@@ -17,12 +17,13 @@ export class ReferralUtil {
     role: typeof ROLES.ADMIN | typeof ROLES.AGENT
   ): string {
     const prefix = this.PREFIX[role as keyof typeof this.PREFIX];
-    const randomPart = crypto
-      .randomBytes(this.CODE_LENGTH)
-      .toString("base64")
-      .replace(/[^a-zA-Z0-9]/g, "")
-      .substring(0, this.CODE_LENGTH)
-      .toUpperCase();
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const bytes = crypto.randomBytes(this.CODE_LENGTH);
+    let randomPart = "";
+
+    for (let i = 0; i < this.CODE_LENGTH; i += 1) {
+      randomPart += alphabet[bytes[i] % alphabet.length];
+    }
     return `${prefix}-${randomPart}`;
   }
 

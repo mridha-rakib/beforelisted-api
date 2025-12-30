@@ -131,9 +131,9 @@ export class PreMarketService {
       : null;
     const chargeAmount =
       isCharged && grantAccess
-        ? grantAccess.payment?.amount ??
+        ? (grantAccess.payment?.amount ??
           grantAccess.adminDecision?.chargeAmount ??
-          null
+          null)
         : null;
 
     return {
@@ -155,8 +155,10 @@ export class PreMarketService {
       requestId
     );
 
+    const grantAccessId = grantAccess?._id;
     if (
-      grantAccess?.payment?.paymentStatus === "pending" &&
+      grantAccess &&
+      grantAccess.payment?.paymentStatus === "pending" &&
       grantAccess.payment.stripePaymentIntentId
     ) {
       try {
@@ -169,7 +171,7 @@ export class PreMarketService {
         );
       } catch (error) {
         logger.warn(
-          { error, grantAccessId: grantAccess._id },
+          { error, grantAccessId },
           "Failed to refresh payment status"
         );
       }
@@ -1285,8 +1287,10 @@ export class PreMarketService {
       requestId
     );
 
+    const grantAccessId = grantAccess?._id;
     if (
-      grantAccess?.payment?.paymentStatus === "pending" &&
+      grantAccess &&
+      grantAccess.payment?.paymentStatus === "pending" &&
       grantAccess.payment.stripePaymentIntentId
     ) {
       try {
@@ -1299,13 +1303,16 @@ export class PreMarketService {
         );
       } catch (error) {
         logger.warn(
-          { error, grantAccessId: grantAccess._id },
+          { error, grantAccessId },
           "Failed to refresh payment status"
         );
       }
     }
 
-    if (grantAccess && (grantAccess.status === "free" || grantAccess.status === "paid")) {
+    if (
+      grantAccess &&
+      (grantAccess.status === "free" || grantAccess.status === "paid")
+    ) {
       return {
         hasAccess: true,
         accessType: "payment-based",

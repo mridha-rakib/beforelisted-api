@@ -35,20 +35,7 @@ export class ReferralParser {
   private static readonly CODE_PATTERN = /^(AGT|ADM)-[A-Z0-9]{8}$/;
   private static readonly PREFIX_PATTERN = /^([A-Z]{3})-/;
 
-  // ============================================
-  // PUBLIC STATIC METHODS
-  // ============================================
-
-  /**
-   * Parse referral code from query parameter
-   * Returns typed ParsedReferral
-   * Handles: undefined, invalid, valid codes
-   *
-   * @param referralCode - Query param value (undefined or string)
-   * @returns ParsedReferral with type and validation status
-   */
   static parse(referralCode?: string): ParsedReferral {
-    // Case 1: No referral code provided
     if (!referralCode) {
       return {
         type: "normal",
@@ -94,43 +81,21 @@ export class ReferralParser {
     };
   }
 
-  /**
-   * Extract prefix from code (no validation)
-   * @param code - Referral code
-   * @returns Prefix or null
-   */
   static extractPrefix(code: string): ReferralPrefix | null {
     const match = code.match(this.PREFIX_PATTERN);
     return (match?.[1] as ReferralPrefix) || null;
   }
 
-  /**
-   * Check if code is agent referral
-   * @param referralCode - Code to check
-   * @returns boolean
-   */
   static isAgentReferral(referralCode?: string): boolean {
     if (!referralCode) return false;
     return this.parse(referralCode).type === "agent_referral";
   }
 
-  /**
-   * Check if code is admin referral (passwordless)
-   * @param referralCode - Code to check
-   * @returns boolean
-   */
   static isAdminReferral(referralCode?: string): boolean {
     if (!referralCode) return false;
     return this.parse(referralCode).type === "admin_referral";
   }
 
-  /**
-   * Validate referral code format
-   * ✅ Returns validation result with error details
-   *
-   * @param code - Code to validate
-   * @returns ReferralValidationResult
-   */
   static validate(code?: string): ReferralValidationResult {
     const parsed = this.parse(code);
 

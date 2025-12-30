@@ -5,7 +5,6 @@ import mongoosePaginate from "mongoose-paginate-v2";
 
 import type { CustomLabels } from "@/ts/pagination.types";
 
-// Custom labels configuration
 const customLabels: CustomLabels = {
   totalDocs: "totalItems",
   docs: "data",

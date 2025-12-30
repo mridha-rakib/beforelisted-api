@@ -91,7 +91,7 @@ export class AgentController {
         res,
         {
           referralCode: stats.referralCode,
-          referralLink: stats.referralLink,
+          referralLink: `${stats.referralLink}`,
           totalReferrals: stats.totalReferrals,
           referredUsersCount: stats.referredUsers?.length || 0,
           referredUsers: stats.referredUsers,
@@ -233,9 +233,8 @@ export class AgentController {
 
       const result = await this.service.toggleAccess(agentId, adminId, reason);
 
-      const { NotificationService } = await import(
-        "../notification/notification.service"
-      );
+      const { NotificationService } =
+        await import("../notification/notification.service");
       const notificationService = new NotificationService();
 
       try {

@@ -31,12 +31,8 @@ export class AgentActivationMiddleware {
       }
 
       const userId = req.user!.userId;
-
       const agent = await this.agentRepository.findByUserId(userId);
 
-      console.log("++++++++++++++++++++++++++++++++++++++++++++++++++++");
-      console.log("Agent Activation Middleware - Agent Profile:", agent);
-      console.log("++++++++++++++++++++++++++++++++++++++++++++++++++++");
       if (!agent) {
         throw new ForbiddenException(
           "Agent profile not found. Please contact support.",
@@ -73,5 +69,4 @@ export class AgentActivationMiddleware {
   };
 }
 
-// Export instance for use in routes
 export const agentActivationMiddleware = new AgentActivationMiddleware();

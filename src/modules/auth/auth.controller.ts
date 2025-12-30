@@ -45,6 +45,7 @@ export class AuthController {
         accessToken: result.tokens.accessToken,
         expiresIn: result.tokens.expiresIn,
         mustChangePassword: result.mustChangePassword,
+        ...(result.referralInfo ? { referralInfo: result.referralInfo } : {}),
       };
 
       ApiResponse.success(res, response, MESSAGES.AUTH.LOGIN_SUCCESS);
@@ -112,7 +113,7 @@ export class AuthController {
   refreshToken = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
       const refreshToken = req.cookies[COOKIE_CONFIG.REFRESH_TOKEN.name];
-      if (!refreshToken) { 
+      if (!refreshToken) {
         throw new Error("Refresh token not found");
       }
 

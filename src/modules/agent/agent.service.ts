@@ -242,6 +242,7 @@ export class AgentService {
 
   async getReferralStats(userId: string): Promise<{
     referralCode: string | null;
+    fullName: string | null;
     referralLink: string | null;
     totalReferrals: number;
     referredUsers: any[];
@@ -485,47 +486,58 @@ export class AgentService {
   ): Promise<{
     isActive: boolean;
     previousStatus: boolean;
+    accountStatus: "active" | "inactive";
     message: string;
   }> {
     if (!userId || userId.trim() === "") {
       throw new BadRequestException("User ID is required");
     }
 
-    const agent = await this.repository.findByUserId(userId);
+    let agent = await this.repository.findByUserId(userId);
+    let resolvedUserId = userId;
+
+    if (!agent) {
+      const byProfileId = await this.repository.findById(userId);
+      if (byProfileId) {
+        agent = byProfileId;
+        resolvedUserId = byProfileId.userId.toString();
+      }
+    }
 
     if (!agent) {
       throw new NotFoundException("Agent not found");
     }
 
+    const user = await this.userService.getById(resolvedUserId);
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
     const previousStatus = agent.isActive;
     const newStatus = !previousStatus;
+    const accountStatus = newStatus ? "active" : "inactive";
 
-    const updated = await this.repository.toggleActive(userId, adminId, reason);
-
-    // ============ ADD THIS BLOCK ============
-    if (newStatus) {
-      await this.userService.updateAccountStatus(userId, "active");
-    } else {
-      await this.userService.updateAccountStatus(userId, "inactive");
-    }
+    const [updated] = await Promise.all([
+      this.repository.toggleActive(resolvedUserId, adminId, reason),
+      this.userService.updateAccountStatus(resolvedUserId, accountStatus),
+    ]);
 
     const { NotificationService } =
       await import("../notification/notification.service");
     const notificationService = new NotificationService();
 
     try {
-      const user = await this.userService.getById(userId);
       if (newStatus) {
         await notificationService.notifyAgentActivated({
-          agentId: user!._id.toString(),
-          agentEmail: user!.email,
-          agentName: user!.fullName,
+          agentId: user._id.toString(),
+          agentEmail: user.email,
+          agentName: user.fullName,
           activatedBy: adminId,
         });
       } else {
         await notificationService.notifyAgentDeactivated({
-          agentId: user!._id.toString(),
-          agentName: user!.fullName,
+          agentId: user._id.toString(),
+          agentName: user.fullName,
           reason,
         });
       }
@@ -535,14 +547,14 @@ export class AgentService {
         "Failed to send agent status notification"
       );
     }
-    // ============ END ADD ============
 
     const message = newStatus
       ? `Agent activated successfully`
       : `Agent deactivated successfully`;
     return {
-      isActive: updated.isActive,
-      previousStatus,
+      isActive: Boolean(updated.isActive),
+      previousStatus: Boolean(previousStatus),
+      accountStatus,
       message,
     };
   }

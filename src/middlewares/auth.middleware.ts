@@ -13,9 +13,6 @@ import {
 } from "@/utils/app-error.utils";
 import type { NextFunction, Request, Response } from "express";
 
-/**
- * Extended Express Request with user info
- */
 declare global {
   namespace Express {
     interface Request {
@@ -211,10 +208,6 @@ export class AuthMiddleware {
     }
   };
 
-  /**
-   * Verify Email Verified
-   * Check if user has verified their email
-   */
   static verifyEmailVerified = (
     req: Request,
     res: Response,

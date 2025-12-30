@@ -4,7 +4,6 @@ import multer from "multer";
 
 const storage = multer.memoryStorage();
 
-// File filter
 const fileFilter = (
   req: Express.Request,
   file: Express.Multer.File,
@@ -13,7 +12,6 @@ const fileFilter = (
   cb(null, true);
 };
 
-// Multer config
 const upload = multer({
   storage,
   fileFilter,

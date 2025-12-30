@@ -22,8 +22,10 @@ import { UserService } from "../user/user.service";
 import type {
   AuthServiceResponse,
   LoginPayload,
+  ReferralInfo,
   VerifyEmailPayload,
 } from "./auth.type";
+import { RenterRepository } from "../renter/renter.repository";
 import { AuthUtil } from "./auth.utils";
 
 export class AuthService {
@@ -31,12 +33,14 @@ export class AuthService {
   private passwordResetService: PasswordResetService;
   private emailVerificationService: EmailVerificationService;
   private emailService: EmailService;
+  private renterRepository: RenterRepository;
 
   constructor() {
     this.userService = new UserService();
     this.passwordResetService = new PasswordResetService();
     this.emailService = new EmailService();
     this.emailVerificationService = new EmailVerificationService();
+    this.renterRepository = new RenterRepository();
   }
 
   /**
@@ -83,10 +87,51 @@ export class AuthService {
     // Generate tokens
     const tokens = this.generateTokens(user);
 
+    let referralInfo: ReferralInfo | undefined;
+
+    if (user.role === ROLES.RENTER) {
+      const renter = await this.renterRepository.findRenterWithReferrer(
+        user._id.toString()
+      );
+
+      if (renter?.registrationType === "agent_referral") {
+        const referrer = renter.referredByAgentId as any;
+        if (referrer) {
+          referralInfo = {
+            registrationType: "agent_referral",
+            referrer: {
+              id: referrer._id?.toString() ?? String(referrer),
+              role: "Agent",
+              fullName: referrer.fullName ?? null,
+              email: referrer.email ?? null,
+              phoneNumber: referrer.phoneNumber ?? null,
+              referralCode: referrer.referralCode ?? null,
+            },
+          };
+        }
+      } else if (renter?.registrationType === "admin_referral") {
+        const referrer = renter.referredByAdminId as any;
+        if (referrer) {
+          referralInfo = {
+            registrationType: "admin_referral",
+            referrer: {
+              id: referrer._id?.toString() ?? String(referrer),
+              role: "Admin",
+              fullName: referrer.fullName ?? null,
+              email: referrer.email ?? null,
+              phoneNumber: referrer.phoneNumber ?? null,
+              referralCode: referrer.referralCode ?? null,
+            },
+          };
+        }
+      }
+    }
+
     return {
       user: this.userService.toUserResponse(user),
       tokens,
       mustChangePassword: user.mustChangePassword || false,
+      ...(referralInfo ? { referralInfo } : {}),
     };
   }
 

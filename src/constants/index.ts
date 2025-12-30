@@ -1,7 +1,7 @@
 // file: src/constants/index.ts
 export const REFERRAL_CODE_PREFIX = {
   AGENT: "AGT",
-  ADMIN: "ADMIN",
+  ADMIN: "ADM",
 } as const;
 
 export const USER_ROLES = {

@@ -61,7 +61,7 @@ export const PRICING_OPTION = {
 
 export const REFERRAL_CODE = {
   PREFIX_AGENT: "AGT",
-  PREFIX_ADMIN: "ADMIN",
+  PREFIX_ADMIN: "ADM",
   LENGTH: 8,
   EXPIRY_DAYS: 30,
 } as const;
@@ -93,25 +93,20 @@ export const PAGINATION = {
 } as const;
 
 export const AUTH = {
-  // Token expiry
   ACCESS_TOKEN_EXPIRY: "7d",
   REFRESH_TOKEN_EXPIRY: "30d",
   EMAIL_VERIFICATION_EXPIRY_HOURS: 24,
 
-  // Password reset
   OTP_LENGTH: 4,
   OTP_EXPIRY_MINUTES: 10,
   OTP_MAX_ATTEMPTS: 3,
 
-  // Rate limiting
   MAX_LOGIN_ATTEMPTS: 5,
   LOGIN_LOCKOUT_MINUTES: 15,
   PASSWORD_RESET_COOLDOWN_SECONDS: 60,
 
-  // Password requirements
   MIN_PASSWORD_LENGTH: 8,
   AUTO_GENERATED_PASSWORD_LENGTH: 12,
-  // Email verification OTP expiry in minutes
   EMAIL_VERIFICATION_OTP_EXPIRY_MINUTES: 10,
 } as const;
 
@@ -167,7 +162,7 @@ export const ERRORS = {
 
 export const REFERRAL_CODE_PREFIX = {
   AGENT: "AGT",
-  ADMIN: "ADMIN",
+  ADMIN: "ADM",
 } as const;
 
 export const USER_ROLES = {

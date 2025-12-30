@@ -33,9 +33,8 @@ function formatZodError(res: Response, error: z.ZodError, requestId?: string) {
     timestamp: new Date().toISOString(),
   });
 }
-// MongoDB error handler
+
 function handleMongoDBError(error: any, requestId?: string) {
-  // Mongoose Validation Error
   if (error.name === "ValidationError") {
     const errors = Object.values(error.errors).map((err: any) => ({
       field: err.path,

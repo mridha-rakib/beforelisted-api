@@ -52,16 +52,23 @@ export class UserRepository extends BaseRepository<IUser> {
 
   async generateUniqueReferralCode(prefix: string): Promise<string> {
     const crypto = require("crypto");
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const codeLength = 8;
+    const buildRandomPart = () => {
+      const bytes = crypto.randomBytes(codeLength);
+      let part = "";
+
+      for (let i = 0; i < codeLength; i += 1) {
+        part += alphabet[bytes[i] % alphabet.length];
+      }
+
+      return part;
+    };
     let isUnique = false;
     let referralCode = "";
 
     while (!isUnique) {
-      const randomPart = crypto
-        .randomBytes(6)
-        .toString("base64")
-        .replace(/[^a-zA-Z0-9]/g, "")
-        .substring(0, 8)
-        .toUpperCase();
+      const randomPart = buildRandomPart();
 
       referralCode = `${prefix}-${randomPart}`;
 
