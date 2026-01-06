@@ -1,19 +1,21 @@
-FROM node:20-bookworm-slim AS deps
+FROM node:20-alpine AS deps
 WORKDIR /app
+RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci && npm cache clean --force
 
 FROM deps AS build
 COPY tsconfig.json tsconfig-paths-bootstrap.js ./
 COPY src ./src
 RUN npm run build
 
-FROM node:20-bookworm-slim AS prod-deps
+FROM node:20-alpine AS prod-deps
 WORKDIR /app
+RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev && npm cache clean --force
 
-FROM node:20-bookworm-slim AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=prod-deps /app/node_modules ./node_modules

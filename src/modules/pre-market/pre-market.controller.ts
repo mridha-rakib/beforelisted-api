@@ -192,10 +192,12 @@ export class PreMarketController {
     }
 
     if (agent.hasGrantAccess) {
-      const matchRecord =
-        await this.preMarketService.getMatchedAccessRecord(userId, requestId);
+      const matchRecord = await this.preMarketService.getMatchedAccessRecord(
+        userId,
+        requestId
+      );
       const listingStatus = matchRecord ? "matched" : request.status;
-      const grantAccessStatus = matchRecord ? "free" : "pending";
+      const grantAccessStatus = "free";
 
       await this.preMarketRepository.addAgentToViewedBy(
         requestId,
@@ -670,16 +672,13 @@ export class PreMarketController {
       }
 
       if (agent.hasGrantAccess === true) {
-        const matchRecord =
-          await this.preMarketService.getMatchedAccessRecord(
-            agentId,
-            requestId
-          );
+        const matchRecord = await this.preMarketService.getMatchedAccessRecord(
+          agentId,
+          requestId
+        );
 
         if (!matchRecord) {
-          throw new ForbiddenException(
-            "You have not matched this request yet"
-          );
+          throw new ForbiddenException("You have not matched this request yet");
         }
 
         const enriched =
@@ -803,11 +802,7 @@ export class PreMarketController {
 
     logger.info({ agentId, requestId }, "Agent matched pre-market request");
 
-    ApiResponse.success(
-      res,
-      matchRecord,
-      "Pre-market request matched"
-    );
+    ApiResponse.success(res, matchRecord, "Pre-market request matched");
   });
 
   getRequestDetailsForAgent = asyncHandler(

@@ -307,7 +307,6 @@ export class PreMarketNotifier {
 
       const emailResult = await emailService.sendPreMarketNotificationToAdmin({
         to: adminEmail,
-        adminName,
         listingTitle: payload.title,
         listingDescription: payload.listingDescription,
         location: payload.location,
@@ -358,9 +357,7 @@ export class PreMarketNotifier {
       const agentEmail =
         renterData.referringAgentEmail || DEFAULT_REFERRAL_AGENT_EMAIL;
 
-      const normalizedRenterEmail = renterData.renterEmail
-        .trim()
-        .toLowerCase();
+      const normalizedRenterEmail = renterData.renterEmail.trim().toLowerCase();
       const ccEmails = [agentEmail]
         .map((email) => email.trim())
         .filter((email) => email.length > 0)
@@ -398,7 +395,8 @@ export class PreMarketNotifier {
 
       return { success: false, error: errorMessage };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       logger.error(
         { error: errorMessage, email: renterData.renterEmail },
         "? Failed to send renter confirmation email"
@@ -542,9 +540,7 @@ export class PreMarketNotifier {
     });
   }
 
-  private formatBorough(
-    locations?: Array<{ borough?: string }>
-  ): string {
+  private formatBorough(locations?: Array<{ borough?: string }>): string {
     if (!locations || locations.length === 0) {
       return "Not specified";
     }
@@ -628,7 +624,7 @@ export class PreMarketNotifier {
     grantAccess: IGrantAccessRequest
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const adminInfo = await this.getAdminInfo();
+      const adminInfo = await this.getAdmin();
       const adminEmail =
         adminInfo?.email || env.ADMIN_EMAIL || "admin@beforelisted.com";
       const adminName = adminInfo?.name || "Admin";

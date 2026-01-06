@@ -899,6 +899,7 @@ export class EmailService {
 
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: "Admin" },
+        cc: undefined,
         subject: "BeforeListed™ - Agent Registration Verified",
         html,
       };
@@ -951,6 +952,7 @@ export class EmailService {
 
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: "Admin" },
+        cc: undefined,
         subject: "BeforeListed™ - Renter Registration Verified",
         html,
       };
@@ -1282,6 +1284,7 @@ export class EmailService {
 
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: "Administrator" },
+        cc: undefined,
         subject: template.getSubject(),
         html: template.render(),
         priority: template.getEmailPriority(),
