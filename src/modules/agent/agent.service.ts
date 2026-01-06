@@ -638,8 +638,8 @@ export class AgentService {
   }
 
   /**
-   * Delete agent profile (soft delete)
-   * Marks both Agent profile and User as deleted
+   * Delete agent profile (hard delete)
+   * Permanently removes Agent profile and User
    */
   async deleteAgentProfile(userId: string): Promise<{ message: string }> {
     const profile = await this.repository.findByUserId(userId);
@@ -650,10 +650,10 @@ export class AgentService {
     // Remove agent profile
     await this.repository.deleteById(profile._id.toString());
 
-    // Soft delete the user account
+    // Permanently delete the user account
     const { UserRepository } = await import("../user/user.repository");
     const userRepository = new UserRepository();
-    await userRepository.softDeleteUser(userId);
+    await userRepository.permanentlyDeleteUser(userId);
 
     logger.info({ userId }, "Agent profile and user account deleted");
 

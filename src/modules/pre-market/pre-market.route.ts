@@ -52,6 +52,13 @@ router.get(
   controller.getRequestDetailsForGrantAccessAgent.bind(controller)
 );
 
+router.post(
+  "/agent/:requestId/match",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.matchRequestForAgent.bind(controller)
+);
+
 // ============================================
 // AGENT ROUTES - GENERIC (ALL AGENTS)
 // ============================================

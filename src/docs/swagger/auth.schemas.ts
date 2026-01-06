@@ -2,10 +2,6 @@
 // OpenAPI schema definitions for Authentication module
 
 export const authSchemas = {
-  // ==========================================
-  // REQUEST SCHEMAS
-  // ==========================================
-
   LoginRequest: {
     type: "object",
     required: ["email", "password"],
@@ -161,10 +157,6 @@ export const authSchemas = {
     },
   },
 
-  // ==========================================
-  // RESPONSE SCHEMAS
-  // ==========================================
-
   LoginResponse: {
     type: "object",
     properties: {
@@ -188,8 +180,7 @@ export const authSchemas = {
           },
           accessToken: {
             type: "string",
-            example:
-              "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
             description: "JWT access token",
           },
           expiresIn: {
@@ -303,8 +294,7 @@ export const authSchemas = {
         properties: {
           accessToken: {
             type: "string",
-            example:
-              "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
           },
           expiresIn: {
             type: "integer",
@@ -447,10 +437,6 @@ export const authSchemas = {
       },
     },
   },
-
-  // ==========================================
-  // COMMON SCHEMAS
-  // ==========================================
 
   UserObject: {
     type: "object",

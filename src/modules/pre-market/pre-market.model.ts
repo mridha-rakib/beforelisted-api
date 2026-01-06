@@ -26,24 +26,24 @@ export interface IPreMarketRequest extends Document {
   bedrooms: string[];
   bathrooms: string[];
 
-  unitFeatures: {
+  unitFeatures?: {
     laundryInUnit: boolean;
     privateOutdoorSpace: boolean;
     dishwasher: boolean;
   };
 
-  buildingFeatures: {
+  buildingFeatures?: {
     doorman: boolean;
     elevator: boolean;
     laundryInBuilding: boolean;
   };
 
-  petPolicy: {
+  petPolicy?: {
     catsAllowed: boolean;
     dogsAllowed: boolean;
   };
 
-  guarantorRequired: {
+  guarantorRequired?: {
     personalGuarantor: boolean;
     thirdPartyGuarantor: boolean;
   };
@@ -131,9 +131,9 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
   ],
 
   unitFeatures: {
-    laundryInUnit: { type: Boolean, default: false },
-    privateOutdoorSpace: { type: Boolean, default: false },
-    dishwasher: { type: Boolean, default: false },
+    laundryInUnit: { type: Boolean, default: false, required: false },
+    privateOutdoorSpace: { type: Boolean, default: false, required: false },
+    dishwasher: { type: Boolean, default: false, required: false },
   },
 
   buildingFeatures: {
@@ -202,7 +202,6 @@ preMarketSchema.pre(/^find/, function (this: Query<any, any>) {
   }
 });
 
-// MODEL
 export const PreMarketRequestModel = model<IPreMarketRequest>(
   "PreMarketRequest",
   preMarketSchema as any

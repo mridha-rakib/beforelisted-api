@@ -439,11 +439,10 @@ export class RenterService {
       throw new NotFoundException("Renter profile not found");
     }
 
-    await this.repository.softDeleteRenter(userId);
-
     const { UserRepository } = await import("../user/user.repository");
     const userRepository = new UserRepository();
-    await userRepository.softDeleteUser(userId);
+    await this.repository.permanentlyDeleteRenter(userId);
+    await userRepository.permanentlyDeleteUser(userId);
 
     logger.info({ userId }, "Renter profile and user account deleted");
 
@@ -662,7 +661,10 @@ export class RenterService {
       status: listing.status,
       priceRange: listing.priceRange,
       locations: listing.locations,
+      bedrooms: listing.bedrooms,
+      bathrooms: listing.bathrooms,
       movingDateRange: listing.movingDateRange,
+      preferences: listing.preferences,
       viewedBy: {
         grantAccessAgents: listing.viewedBy?.grantAccessAgents?.length || 0,
         normalAgents: listing.viewedBy?.normalAgents?.length || 0,

@@ -40,6 +40,4 @@ const noticeSchema = new Schema<INotice>(
   }
 );
 
-noticeSchema.index({ _id: 1 }, { unique: true });
-
 export const Notice = mongoose.model<INotice>("Notice", noticeSchema);

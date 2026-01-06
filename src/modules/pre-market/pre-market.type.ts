@@ -107,7 +107,7 @@ export type AdminPreMarketRenterInfo = {
 
 export type AdminAgentRequestSummary = {
   total: number;
-  free: number;
+  approve: number;
   pending: number;
 };
 

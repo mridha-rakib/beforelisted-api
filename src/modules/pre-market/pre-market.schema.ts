@@ -160,6 +160,12 @@ export const requestAccessSchema = z.object({
   }),
 });
 
+export const agentMatchRequestSchema = z.object({
+  params: z.object({
+    requestId: z.string().min(24, "Invalid request ID"),
+  }),
+});
+
 
 export const adminApproveSchema = z.object({
   params: z.object({

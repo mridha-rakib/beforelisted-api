@@ -59,6 +59,13 @@ export class AuthService {
       throw new UnauthorizedException(MESSAGES.AUTH.ACCOUNT_INACTIVE);
     }
 
+    if (
+      (user.role === ROLES.AGENT || user.role === ROLES.RENTER) &&
+      !user.emailVerified
+    ) {
+      throw new UnauthorizedException(MESSAGES.AUTH.EMAIL_NOT_VERIFIED);
+    }
+
     if (user.role === ROLES.AGENT) {
       const agentRepository = new AgentProfileRepository();
       const agentProfile = await agentRepository.findByUserId(user._id);
@@ -174,6 +181,88 @@ export class AuthService {
           { error, userId: user._id },
           "Failed to send agent approval notification"
         );
+      }
+
+      const adminEmail = env.ADMIN_EMAIL;
+      if (!adminEmail) {
+        logger.warn("ADMIN_EMAIL not configured in environment");
+      } else {
+        const nameParts = user.fullName?.trim().split(/\s+/).filter(Boolean);
+        const agentFirstName = nameParts?.[0] || user.fullName || "Agent";
+        const agentLastName = nameParts?.slice(1).join(" ") || "";
+        const registrationDate = this.formatEasternTime(
+          user.createdAt ? new Date(user.createdAt) : new Date()
+        );
+
+        try {
+          await this.emailService.sendAgentRegistrationVerifiedAdminNotification(
+            {
+              to: adminEmail,
+              agentFirstName,
+              agentLastName,
+              agentEmail: user.email,
+              registrationDate,
+            }
+          );
+        } catch (error) {
+          logger.error(
+            { error, userId: user._id },
+            "Failed to send agent registration verified email to admin"
+          );
+        }
+      }
+    }
+
+    if (result.userType === ROLES.RENTER) {
+      const adminEmail = env.ADMIN_EMAIL;
+      if (!adminEmail) {
+        logger.warn("ADMIN_EMAIL not configured in environment");
+      } else {
+        let referralTag = "None";
+        try {
+          const renter = await this.renterRepository.findRenterWithReferrer(
+            user._id.toString()
+          );
+          if (renter?.registrationType === "agent_referral") {
+            referralTag =
+              (renter.referredByAgentId as any)?.referralCode ||
+              "Agent Referral";
+          } else if (renter?.registrationType === "admin_referral") {
+            referralTag =
+              (renter.referredByAdminId as any)?.referralCode ||
+              "Admin Referral";
+          }
+        } catch (error) {
+          logger.warn(
+            { error, userId: user._id },
+            "Failed to resolve renter referral tag"
+          );
+        }
+
+        const nameParts = user.fullName?.trim().split(/\s+/).filter(Boolean);
+        const renterFirstName = nameParts?.[0] || user.fullName || "Renter";
+        const renterLastName = nameParts?.slice(1).join(" ") || "";
+        const registrationDate = this.formatEasternTime(
+          user.createdAt ? new Date(user.createdAt) : new Date()
+        );
+
+        try {
+          await this.emailService.sendRenterRegistrationVerifiedAdminNotification(
+            {
+              to: adminEmail,
+              renterFirstName,
+              renterLastName,
+              renterEmail: user.email,
+              registrationDate,
+              referralTag,
+            }
+          );
+        } catch (error) {
+          logger.error(
+            { error, userId: user._id },
+            "Failed to send renter registration verified email to admin"
+          );
+        }
       }
     }
 
@@ -514,5 +603,16 @@ export class AuthService {
       message:
         "Password changed successfully. Please login again with your new password.",
     };
+  }
+
+  private formatEasternTime(date: Date): string {
+    return date.toLocaleString("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
   }
 }

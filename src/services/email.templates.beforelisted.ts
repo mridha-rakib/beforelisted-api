@@ -40,7 +40,61 @@ export class EmailTemplates {
   ): string {
     const logo = logoUrl || this.logoUrl;
     const color = brandColor || this.brandColor;
-    const role = userType === "Agent" ? "Agent" : "Renter";
+    const isRenter = userType === "Renter";
+    const contentHtml = isRenter
+      ? `
+            <h2>Hi ${userName},</h2>
+            <p>Welcome to BeforeListed. Your account has been successfully created and verified.</p>
+
+            <p>BeforeListed is designed to help renters submit rental requests and work with licensed real estate agents to attempt to explore potential upcoming rental opportunities that are not publicly advertised.</p>
+
+            <p><strong>You can now:</strong></p>
+            <ul class="features-list">
+                <li>Submit your first rental request (you can have up to three active requests at a time)</li>
+                <li>Submit and manage additional rental requests</li>
+                <li>Track updates related to your requests from your registered agent</li>
+                <li>View matches if an agent identifies an opportunity that aligns with your request</li>
+            </ul>
+
+            <p>To get started, you can access your dashboard below:</p>
+
+            <div style="text-align: center;">
+                <a href="${loginLink}" class="cta-button">Go to Dashboard</a>
+            </div>
+
+            <p>If you have any questions or need assistance, you can reply to this email or contact us at <a href="mailto:${this.supportEmail}">${this.supportEmail}</a>.</p>
+
+            <p>We're glad to have you here.</p>
+            <p><strong>Best regards,<br>The BeforeListed Team</strong></p>
+        `
+      : `
+            <h2>Hi ${userName},</h2>
+            <p>Welcome to BeforeListed. Your agent account has been successfully created and verified.</p>
+
+            <p>BeforeListed is a renter-initiated platform designed to support proactive rental outreach beyond publicly advertised listings. Renters submit requests based on their search criteria, and agents may identify potential upcoming not publicly advertised opportunities that align with those requests.</p>
+
+            <p>Please note that your account may require admin activation and/or Grant Access before you can view renter requests or submit matches.</p>
+
+            <p><strong>As an agent, you can now:</strong></p>
+            <ul class="features-list">
+                <li>View renter requests associated with your referral link</li>
+                <li>Review request criteria and determine whether you may be able to assist</li>
+                <li>When you identify a potential opportunity that matches a renter request, you may submit a match request, subject to applicable approvals and disclosures.</li>
+            </ul>
+
+            <p>If you do not see renter requests immediately, your account may still be pending admin activation or Grant Access.</p>
+
+            <p>You can access your agent dashboard below:</p>
+
+            <div style="text-align: center;">
+                <a href="${loginLink}" class="cta-button">Go to Agent Dashboard</a>
+            </div>
+
+            <p>If you have any questions or need assistance, please reply to this email.</p>
+
+            <p><strong>Best regards,<br>The BeforeListed Team</strong></p>
+
+        `;
 
     return `
 <!DOCTYPE html>
@@ -144,6 +198,16 @@ export class EmailTemplates {
             color: #666666;
             font-size: 15px;
         }
+        .features-list {
+            margin: 10px 0 20px 20px;
+            padding: 0;
+            color: #666666;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+        .features-list li {
+            margin: 8px 0;
+        }
         .footer {
             background-color: #f9f9f9;
             padding: 30px;
@@ -176,35 +240,7 @@ export class EmailTemplates {
 
         <!-- Content -->
         <div class="content">
-            <h2>Hi ${userName},</h2>
-            <p>Welcome aboard! We're excited to have you join our community of ${role}s who are transforming the real estate experience.</p>
-
-            <div class="highlight">
-                <p><strong>Your account is ready to use!</strong> Start exploring and managing your real estate activities with ease.</p>
-            </div>
-
-            <div style="text-align: center;">
-                <a href="${loginLink}" class="cta-button">Go to Dashboard</a>
-            </div>
-
-            <h2 style="margin-top: 30px;">What You Can Do Now:</h2>
-            <div class="features">
-                <div class="feature-item">
-                    <div class="feature-icon">✓</div>
-                    <div class="feature-text"><strong>Explore Listings</strong> - Browse and manage properties with advanced filters</div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">✓</div>
-                    <div class="feature-text"><strong>Connect & Collaborate</strong> - Build your network. </div>
-                </div>
-            </div>
-
-            <div class="divider"></div>
-
-            <p>If you have any questions or need assistance, our support team is here to help. Just reply to this email or visit our help center.</p>
-
-            <p>Happy to have you with us!</p>
-            <p><strong>The BeforeListed Team</strong></p>
+            ${contentHtml}
         </div>
 
         <!-- Footer -->
@@ -472,7 +508,7 @@ export class EmailTemplates {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify Your Email - BeforeListed</title>
+    <title>Confirm your email address – BeforeListed™</title>
     <style>
         body {
             margin: 0;
@@ -575,29 +611,29 @@ export class EmailTemplates {
         <!-- Header -->
         <div class="header">
             <img src="${logo}" alt="BeforeListed Logo" class="logo">
-            <h1>Verify Your Email</h1>
+            <h1>Confirm your email address</h1>
         </div>
 
         <!-- Content -->
         <div class="content">
             <h2>Hi ${userName},</h2>
-            <p>Thank you for registering with BeforeListed! To complete your registration, please verify your email address using the code below:</p>
+            <p>To complete your registration on BeforeListed™, please confirm your email address.</p>
+            <p>Your verification code is:</p>
 
             <div class="code-box">
-                <div class="code-label">Your Verification Code</div>
+                <div class="code-label">Verification Code</div>
                 <div class="code-value">${verificationCode}</div>
-                <div class="code-expiry">Expires in ${expiresIn} minutes</div>
             </div>
+
+            <p>Enter this code on the confirmation screen to verify your email and continue.</p>
+
+            <p>This step helps ensure account security and enables important platform communications.</p>
 
             <div class="alert-info">
-                <p><strong>Tip:</strong> If you didn't request this code, you can safely ignore this email. Your account won't be created without verification.</p>
+                <p>If you did not initiate this request, you can safely ignore this email.</p>
             </div>
 
-            <p>Copy and paste the verification code above on our platform, or click the button if your email client supports it.</p>
-
-            <p style="color: #999999; font-size: 14px;">This code will expire in ${expiresIn} minutes. If it expires, you can request a new verification code.</p>
-
-            <p><strong>The BeforeListed Team</strong></p>
+            <p>Thank you,<br><strong>BeforeListed™ Support</strong></p>
         </div>
 
         <!-- Footer -->

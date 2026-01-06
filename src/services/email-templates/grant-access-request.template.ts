@@ -7,6 +7,7 @@ import { BaseEmailTemplate } from "./base-email-template";
  * Extends BaseEmailTemplate - follows inheritance pattern
  */
 export class GrantAccessRequestTemplate extends BaseEmailTemplate {
+  private adminName: string;
   private agentName: string;
   private agentEmail: string;
   private agentBrokarage: string | null;
@@ -17,6 +18,7 @@ export class GrantAccessRequestTemplate extends BaseEmailTemplate {
   private adminDashboardLink: string;
 
   constructor(
+    adminName: string,
     agentName: string,
     agentEmail: string,
     agentBrokarage: string | null,
@@ -29,6 +31,7 @@ export class GrantAccessRequestTemplate extends BaseEmailTemplate {
     brandColor: string = "#1890FF"
   ) {
     super(logoUrl, brandColor);
+    this.adminName = adminName;
     this.agentName = agentName;
     this.agentEmail = agentEmail;
     this.agentBrokarage = agentBrokarage;
@@ -40,7 +43,7 @@ export class GrantAccessRequestTemplate extends BaseEmailTemplate {
   }
 
   getSubject(): string {
-    return `[ADMIN] New Grant Access Request - ${this.propertyTitle}`;
+    return `BeforeListed™ - Match Approval Request`;
   }
 
   getEmailPriority(): "high" | "normal" | "low" {
@@ -51,72 +54,63 @@ export class GrantAccessRequestTemplate extends BaseEmailTemplate {
     this.logRender("GrantAccessRequest");
 
     const header = this.generateHeader(
-      "🔐 New Grant Access Request",
-      "Action Required - Review & Approve/Reject"
+      "BeforeListed™ - Match Approval Needed",
+      "Action Required"
     );
 
     const introduction = `
       <div class="section">
-        <p>Hello Administrator,</p>
-        <p>An agent has requested access to view renter contact information for a pre-market property. Please review the details below and take action.</p>
+        <p>Hi ${this.adminName},</p>
+        <p>An agent has requested approval to match with a renter request but does not currently have Grant Access enabled.</p>
       </div>
     `;
 
     const requestDetails = `
       <div class="section">
-        <div class="section-title">📋 Request Details</div>
+        <div class="section-title">Details</div>
         ${this.generateInfoBox([
           {
-            label: "Request ID:",
+            label: "Renter Request ID:",
             value: `<code style="background: #F3F4F6; padding: 2px 6px; border-radius: 3px;">${this.preMarketRequestId}</code>`,
           },
-          { label: "Requested At:", value: this.requestedAt },
-          { label: "Property:", value: this.propertyTitle },
-          { label: "Location:", value: this.location },
+          { label: "Request Location:", value: this.location },
+          { label: "Date & Time:", value: this.requestedAt },
         ])}
       </div>
     `;
 
     const agentInfo = `
       <div class="section">
-        <div class="section-title">👤 Agent Information</div>
+        <div class="section-title">Agent</div>
         ${this.generateInfoBox([
-          { label: "Agent Name:", value: this.agentName },
+          { label: "Agent:", value: this.agentName },
           {
-            label: "Email:",
+            label: "Agent Email:",
             value: `<a href="mailto:${this.agentEmail}" style="color: ${this.brandColor};">${this.agentEmail}</a>`,
           },
-          ...(this.agentBrokarage
-            ? [{ label: "Company:", value: this.agentBrokarage }]
-            : []),
         ])}
       </div>
     `;
 
     const actionRequired = `
       <div class="section">
-        ${this.generateAlert(
-          `<strong>⚠️ You have 3 options:</strong>
-           <ul style="margin: 10px 0 0 0; padding-left: 20px;">
-             <li><strong>Approve (Free):</strong> Grant immediate access at no cost</li>
-             <li><strong>Charge:</strong> Set a price and send payment link to agent</li>
-             <li><strong>Reject:</strong> Deny access request</li>
-           </ul>`,
-          "warning"
-        )}
+        <p>To proceed, please review the request in the Admin Dashboard and either:</p>
+        <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+          <li>Approve access for this specific request, or</li>
+          <li>Enable Grant Access for the agent (if appropriate)</li>
+        </ul>
       </div>
     `;
 
     const cta = this.generateButton(
-      "Review in Admin Dashboard",
+      "Go to Admin Dashboard",
       this.adminDashboardLink
     );
 
     const note = `
       <div class="section">
-        <p style="font-size: 13px; color: #6B7280;">
-          <strong>Note:</strong> If approved, the agent will immediately be able to see renter contact information for this property.
-        </p>
+        <p>Until approval is granted, the match will remain pending and the renter will not be notified.</p>
+        <p>Thank you,<br><strong>BeforeListed™ System</strong></p>
       </div>
     `;
 

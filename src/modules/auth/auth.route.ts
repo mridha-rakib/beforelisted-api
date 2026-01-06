@@ -2,14 +2,13 @@
 
 import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
-import { PasswordResetController } from "../password/password.controller";
 import passwordResetRoutes from "../password/password.route";
 import { AuthController } from "./auth.controller";
 
 const router = Router();
 const authController = new AuthController();
-const passwordResetController = new PasswordResetController();
 
+router.post("/admin/login", authController.login);
 router.post("/login", authController.login);
 
 router.post("/verify-email", authController.verifyEmail);

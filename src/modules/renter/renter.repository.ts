@@ -273,6 +273,15 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
     );
   }
 
+  /**
+   * Permanently delete renter by user ID
+   */
+  async permanentlyDeleteRenter(
+    userId: string | Types.ObjectId
+  ): Promise<void> {
+    await this.model.deleteOne({ userId }).exec();
+  }
+
   // ============================================
   // STATISTICS OPERATIONS
   // ============================================

@@ -7,10 +7,14 @@ import { emailService } from "@/services/email.service";
 import { ObjectId } from "mongoose";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { IGrantAccessRequest } from "../grant-access/grant-access.model";
+import { GrantAccessRepository } from "../grant-access/grant-access.repository";
 import { UserRepository } from "../user/user.repository";
 import { IPreMarketNotificationCreateResponse } from "./pre-market-notification.types";
 import { IPreMarketRequest } from "./pre-market.model";
 import { PreMarketRepository } from "./pre-market.repository";
+
+const DEFAULT_REFERRAL_AGENT_EMAIL = "tmor@corcoran.com";
+const DEFAULT_REFERRAL_AGENT_NAME = "Tuval";
 
 interface IPreMarketNotificationPayload {
   preMarketRequestId: string;
@@ -36,6 +40,7 @@ interface INotificationResult {
 
 export class PreMarketNotifier {
   private agentRepository = new AgentProfileRepository();
+  private grantAccessRepository = new GrantAccessRepository();
   private notificationService: NotificationService;
   private preMarketRepository = new PreMarketRepository();
   private userRepository = new UserRepository();
@@ -51,6 +56,8 @@ export class PreMarketNotifier {
       renterName: string;
       renterEmail: string;
       renterPhone?: string;
+      referringAgentEmail?: string;
+      referringAgentName?: string;
     }
   ): Promise<void> {
     try {
@@ -121,6 +128,11 @@ export class PreMarketNotifier {
 
       await this.notifyAgentsAboutNewRequest(payload);
       await this.notifyAdminAboutNewRequest(payload);
+      await this.notifyRenterAboutNewRequest(payload, renterData);
+      await this.notifyReferringAgentAboutNewRequest(
+        preMarketRequest,
+        renterData
+      );
 
       await this.createInAppNotifications(preMarketRequest, {
         ...renterData,
@@ -141,6 +153,67 @@ export class PreMarketNotifier {
       );
 
       throw error;
+    }
+  }
+
+  async notifyAgentsAboutUpdatedRequest(
+    preMarketRequest: IPreMarketRequest,
+    changedFields: string[],
+    updatedAt: Date
+  ): Promise<void> {
+    try {
+      const recipients = await this.getAgentsWithRenterAccess(
+        preMarketRequest._id?.toString() || ""
+      );
+
+      if (recipients.length === 0) {
+        logger.info(
+          { preMarketRequestId: preMarketRequest._id },
+          "No agents with renter access to notify about request update"
+        );
+        return;
+      }
+
+      const formattedUpdatedAt = this.formatEasternTime(updatedAt);
+      const requestId =
+        preMarketRequest.requestId || preMarketRequest._id?.toString() || "";
+      const normalizedFields =
+        changedFields.length > 0 ? changedFields : ["Request details updated"];
+
+      for (const recipient of recipients) {
+        const emailResult =
+          await emailService.sendPreMarketRequestUpdatedNotificationToAgent({
+            to: recipient.email,
+            agentName: recipient.name,
+            requestId,
+            updatedFields: normalizedFields,
+            updatedAt: formattedUpdatedAt,
+          });
+
+        if (emailResult.success) {
+          logger.debug(
+            { email: recipient.email, requestId },
+            "? Agent update notification sent"
+          );
+        } else {
+          const errorMessage =
+            emailResult.error instanceof Error
+              ? emailResult.error.message
+              : String(emailResult.error);
+          logger.warn(
+            { email: recipient.email, error: errorMessage },
+            "? Agent update notification failed"
+          );
+        }
+      }
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          preMarketRequestId: preMarketRequest._id,
+        },
+        "Failed to notify agents about request update"
+      );
     }
   }
 
@@ -234,6 +307,7 @@ export class PreMarketNotifier {
 
       const emailResult = await emailService.sendPreMarketNotificationToAdmin({
         to: adminEmail,
+        adminName,
         listingTitle: payload.title,
         listingDescription: payload.listingDescription,
         location: payload.location,
@@ -269,6 +343,237 @@ export class PreMarketNotifier {
 
       return { adminNotified: false, emailsSent: 0, errors };
     }
+  }
+
+  private async notifyRenterAboutNewRequest(
+    payload: IPreMarketNotificationPayload,
+    renterData: {
+      renterName: string;
+      renterEmail: string;
+      referringAgentEmail?: string;
+      referringAgentName?: string;
+    }
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const agentEmail =
+        renterData.referringAgentEmail || DEFAULT_REFERRAL_AGENT_EMAIL;
+
+      const normalizedRenterEmail = renterData.renterEmail
+        .trim()
+        .toLowerCase();
+      const ccEmails = [agentEmail]
+        .map((email) => email.trim())
+        .filter((email) => email.length > 0)
+        .filter(
+          (email, index, items) =>
+            items.findIndex(
+              (item) => item.toLowerCase() === email.toLowerCase()
+            ) === index
+        )
+        .filter((email) => email.toLowerCase() !== normalizedRenterEmail);
+
+      const emailResult =
+        await emailService.sendPreMarketRequestConfirmationToRenter({
+          to: renterData.renterEmail,
+          renterName: renterData.renterName,
+          cc: ccEmails,
+        });
+
+      if (emailResult.success) {
+        logger.debug(
+          { email: renterData.renterEmail, requestId: payload.requestId },
+          "? Renter confirmation email sent"
+        );
+        return { success: true };
+      }
+
+      const errorMessage =
+        emailResult.error instanceof Error
+          ? emailResult.error.message
+          : String(emailResult.error);
+      logger.warn(
+        { email: renterData.renterEmail, error: errorMessage },
+        "? Renter confirmation email failed"
+      );
+
+      return { success: false, error: errorMessage };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error(
+        { error: errorMessage, email: renterData.renterEmail },
+        "? Failed to send renter confirmation email"
+      );
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  private async notifyReferringAgentAboutNewRequest(
+    preMarketRequest: IPreMarketRequest,
+    renterData: {
+      renterName: string;
+      renterEmail: string;
+      referringAgentEmail?: string;
+      referringAgentName?: string;
+    }
+  ): Promise<void> {
+    try {
+      const agentEmail =
+        renterData.referringAgentEmail || DEFAULT_REFERRAL_AGENT_EMAIL;
+      const agentName =
+        renterData.referringAgentName || DEFAULT_REFERRAL_AGENT_NAME;
+      const requestId =
+        preMarketRequest.requestId || preMarketRequest._id?.toString() || "";
+      const borough = this.formatBorough(preMarketRequest.locations);
+      const bedrooms = this.formatBedrooms(preMarketRequest.bedrooms);
+      const maxRent = this.formatMaxRent(preMarketRequest.priceRange?.max);
+      const submittedAt = this.formatEasternTime(
+        new Date(preMarketRequest.createdAt ?? Date.now())
+      );
+
+      const emailResult =
+        await emailService.sendRenterRequestConfirmationToAgent({
+          to: agentEmail,
+          agentName,
+          requestId,
+          borough,
+          bedrooms,
+          maxRent,
+          submittedAt,
+        });
+
+      if (emailResult.success) {
+        logger.debug(
+          { email: agentEmail, requestId },
+          "? Referring agent request confirmation sent"
+        );
+        return;
+      }
+
+      const errorMessage =
+        emailResult.error instanceof Error
+          ? emailResult.error.message
+          : String(emailResult.error);
+      logger.warn(
+        { email: agentEmail, error: errorMessage },
+        "? Referring agent request confirmation failed"
+      );
+    } catch (error) {
+      logger.error(
+        { error, preMarketRequestId: preMarketRequest._id },
+        "? Failed to notify referring agent about new request"
+      );
+    }
+  }
+
+  private async getAgentsWithRenterAccess(
+    preMarketRequestId: string
+  ): Promise<Array<{ name: string; email: string }>> {
+    const recipients = new Map<string, { name: string; email: string }>();
+
+    const grantAccessAgents = await this.agentRepository.findActiveAgents();
+    for (const agent of grantAccessAgents) {
+      if (!agent.hasGrantAccess || !agent.email) {
+        continue;
+      }
+      const name = agent.fullName || agent.email;
+      recipients.set(agent.email.toLowerCase(), {
+        name,
+        email: agent.email,
+      });
+    }
+
+    const accessRecords =
+      await this.grantAccessRepository.findByPreMarketRequestId(
+        preMarketRequestId
+      );
+    const eligibleAgentIds = Array.from(
+      new Set(
+        accessRecords
+          .filter(
+            (record) => record.status === "free" || record.status === "paid"
+          )
+          .map((record) => record.agentId.toString())
+      )
+    );
+
+    for (const agentId of eligibleAgentIds) {
+      const agentProfile = await this.agentRepository.findByUserId(agentId);
+      if (!agentProfile) {
+        continue;
+      }
+
+      if (agentProfile.isActive === false) {
+        continue;
+      }
+
+      if (agentProfile.emailSubscriptionEnabled === false) {
+        continue;
+      }
+
+      const userInfo = agentProfile.userId as {
+        fullName?: string;
+        email?: string;
+      };
+      const email = userInfo?.email;
+      if (!email) {
+        continue;
+      }
+
+      const name = userInfo?.fullName || email;
+      const key = email.toLowerCase();
+      if (!recipients.has(key)) {
+        recipients.set(key, { name, email });
+      }
+    }
+
+    return Array.from(recipients.values());
+  }
+
+  private formatEasternTime(value: Date): string {
+    return value.toLocaleString("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZoneName: "short",
+    });
+  }
+
+  private formatBorough(
+    locations?: Array<{ borough?: string }>
+  ): string {
+    if (!locations || locations.length === 0) {
+      return "Not specified";
+    }
+
+    const boroughs = Array.from(
+      new Set(
+        locations
+          .map((location) => location.borough?.trim())
+          .filter((borough): borough is string => Boolean(borough))
+      )
+    );
+
+    return boroughs.length > 0 ? boroughs.join(", ") : "Not specified";
+  }
+
+  private formatBedrooms(bedrooms?: string[]): string {
+    if (!bedrooms || bedrooms.length === 0) {
+      return "Any";
+    }
+
+    return bedrooms.join(", ");
+  }
+
+  private formatMaxRent(maxRent?: number): string {
+    if (!maxRent && maxRent !== 0) {
+      return "Not specified";
+    }
+
+    return `$${Number(maxRent).toLocaleString("en-US")}`;
   }
 
   private async getAllAgents(): Promise<
@@ -323,7 +628,10 @@ export class PreMarketNotifier {
     grantAccess: IGrantAccessRequest
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const adminEmail = env.ADMIN_EMAIL || "admin@beforelisted.com";
+      const adminInfo = await this.getAdminInfo();
+      const adminEmail =
+        adminInfo?.email || env.ADMIN_EMAIL || "admin@beforelisted.com";
+      const adminName = adminInfo?.name || "Admin";
       const agentUser = await this.userRepository.findById(
         grantAccess.agentId.toString()
       );
@@ -366,15 +674,16 @@ export class PreMarketNotifier {
 
       const emailResult = await emailService.sendGrantAccessRequestToAdmin({
         to: adminEmail,
+        adminName,
         agentName: agentUser.fullName || "Agent",
         agentEmail: agentUser.email,
         agentCompany: agentProfile?.brokerageName || null,
         preMarketRequestId: grantAccess.preMarketRequestId.toString(),
         propertyTitle,
         location,
-        requestedAt: new Date(
-          grantAccess.createdAt || Date.now()
-        ).toLocaleString(),
+        requestedAt: this.formatEasternTime(
+          new Date(grantAccess.createdAt || Date.now())
+        ),
         adminDashboardLink: `${env.CLIENT_URL}/admin/pre-market/${preMarketRequest._id}?grantAccessId=${grantAccess._id}`,
       });
 
@@ -645,6 +954,8 @@ export class PreMarketNotifier {
       renterName: string;
       renterEmail: string;
       renterPhone?: string;
+      referringAgentEmail?: string;
+      referringAgentName?: string;
     }
   ): Promise<IPreMarketNotificationCreateResponse> {
     try {

@@ -21,6 +21,7 @@ import {
   adminApproveSchema,
   adminChargeSchema,
   adminRejectSchema,
+  agentMatchRequestSchema,
   createPreMarketRequestSchema,
   preMarketListSchema,
   requestAccessSchema,
@@ -188,6 +189,56 @@ export class PreMarketController {
     const request = await this.preMarketService.getRequestById(requestId);
     if (!request) {
       throw new NotFoundException("Pre-market request not found");
+    }
+
+    if (agent.hasGrantAccess) {
+      const matchRecord =
+        await this.preMarketService.getMatchedAccessRecord(userId, requestId);
+      const listingStatus = matchRecord ? "matched" : request.status;
+      const grantAccessStatus = matchRecord ? "free" : "pending";
+
+      await this.preMarketRepository.addAgentToViewedBy(
+        requestId,
+        userId,
+        "grantAccessAgents"
+      );
+
+      if (matchRecord) {
+        const enriched =
+          await this.preMarketService.enrichRequestWithFullRenterInfo(
+            request,
+            userId
+          );
+
+        return ApiResponse.success(
+          res,
+          {
+            ...enriched,
+            status: grantAccessStatus,
+            listingStatus,
+            grantAccessStatus,
+            grantAccessId: matchRecord._id?.toString(),
+            accessType: "admin-granted",
+            canRequestAccess: false,
+          },
+          "Pre-market request details"
+        );
+      }
+
+      return ApiResponse.success(
+        res,
+        {
+          ...request,
+          renterInfo: null,
+          status: grantAccessStatus,
+          listingStatus,
+          grantAccessStatus,
+          accessType: "none",
+          canRequestAccess: false,
+          message: "Match this request to view renter information",
+        },
+        "Pre-market request details"
+      );
     }
 
     const accessSummary = await this.preMarketService.getAgentAccessSummary(
@@ -619,6 +670,18 @@ export class PreMarketController {
       }
 
       if (agent.hasGrantAccess === true) {
+        const matchRecord =
+          await this.preMarketService.getMatchedAccessRecord(
+            agentId,
+            requestId
+          );
+
+        if (!matchRecord) {
+          throw new ForbiddenException(
+            "You have not matched this request yet"
+          );
+        }
+
         const enriched =
           await this.preMarketService.enrichRequestWithFullRenterInfo(
             request,
@@ -630,9 +693,14 @@ export class PreMarketController {
           agentId,
           "grantAccessAgents"
         );
-        ApiResponse.success(
+        return ApiResponse.success(
           res,
-          enriched,
+          {
+            ...enriched,
+            accessType: "admin-granted",
+            status: "matched",
+            listingStatus: "matched",
+          },
           "Pre-market request details retrieved"
         );
       }
@@ -722,6 +790,25 @@ export class PreMarketController {
       );
     }
   );
+
+  matchRequestForAgent = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(agentMatchRequestSchema, req);
+    const agentId = req.user!.userId;
+    const { requestId } = validated.params;
+
+    const matchRecord = await this.preMarketService.matchRequestForAgent(
+      agentId,
+      requestId
+    );
+
+    logger.info({ agentId, requestId }, "Agent matched pre-market request");
+
+    ApiResponse.success(
+      res,
+      matchRecord,
+      "Pre-market request matched"
+    );
+  });
 
   getRequestDetailsForAgent = asyncHandler(
     async (req: Request, res: Response) => {

@@ -25,6 +25,7 @@ export class EmailTemplateFactory {
    * Create grant access request template (Admin notification)
    */
   createGrantAccessRequest(
+    adminName: string,
     agentName: string,
     agentEmail: string,
     agentCompany: string | null,
@@ -35,6 +36,7 @@ export class EmailTemplateFactory {
     adminDashboardLink: string
   ): BaseEmailTemplate {
     return new GrantAccessRequestTemplate(
+      adminName,
       agentName,
       agentEmail,
       agentCompany,

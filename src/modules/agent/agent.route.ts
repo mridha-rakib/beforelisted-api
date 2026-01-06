@@ -1,6 +1,7 @@
 // file: src/modules/agent/agent.route.ts
 
 import { ROLES } from "@/constants/app.constants";
+import { agentActivationMiddleware } from "@/middlewares/agent-activation.middleware";
 import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
 import { AgentController } from "./agent.controller";
@@ -13,8 +14,8 @@ router.post("/register", controller.registerAgent);
 router.get(
   "/profile",
   authMiddleware.verifyToken,
-  // authMiddleware.verifyEmailVerified,
-  // agentActivationMiddleware.verify,
+  authMiddleware.verifyEmailVerified,
+  agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
   controller.getAgentProfile
 );
@@ -27,6 +28,8 @@ router.get(
 router.put(
   "/profile",
   authMiddleware.verifyToken,
+  authMiddleware.verifyEmailVerified,
+  agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
   controller.updateAgentProfile
 );
@@ -38,6 +41,8 @@ router.put(
 router.delete(
   "/profile",
   authMiddleware.verifyToken,
+  authMiddleware.verifyEmailVerified,
+  agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
   controller.deleteProfile
 );
@@ -49,6 +54,8 @@ router.delete(
 router.post(
   "/email-subscription/toggle",
   authMiddleware.verifyToken,
+  authMiddleware.verifyEmailVerified,
+  agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
   controller.toggleEmailSubscription
 );
@@ -61,7 +68,7 @@ router.get(
   "/referral-link",
   authMiddleware.verifyToken,
   authMiddleware.verifyEmailVerified,
-  // agentActivationMiddleware.verify,
+  agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
   controller.getReferralLink
 );

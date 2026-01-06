@@ -18,6 +18,7 @@ router.post("/register/admin-referral", controller.registerAdminReferralRenter);
 router.get(
   "/profile",
   authMiddleware.verifyToken,
+  authMiddleware.verifyEmailVerified,
   authMiddleware.authorize("Renter"),
   controller.getRenterProfile
 );
@@ -25,6 +26,7 @@ router.get(
 router.put(
   "/profile",
   authMiddleware.verifyToken,
+  authMiddleware.verifyEmailVerified,
   authMiddleware.authorize("Renter"),
   controller.updateRenterProfile
 );
@@ -36,6 +38,7 @@ router.put(
 router.delete(
   "/profile",
   authMiddleware.verifyToken,
+  authMiddleware.verifyEmailVerified,
   authMiddleware.authorize("Renter"),
   controller.deleteRenterProfile
 );
@@ -47,6 +50,7 @@ router.delete(
 router.post(
   "/email-subscription/toggle",
   authMiddleware.verifyToken,
+  authMiddleware.verifyEmailVerified,
   authMiddleware.authorize("Renter"),
   controller.toggleEmailSubscription
 );

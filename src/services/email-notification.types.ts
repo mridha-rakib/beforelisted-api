@@ -28,6 +28,53 @@ export interface IPreMarketAdminNotificationPayload {
   requestId: string;
 }
 
+export interface IRenterRequestConfirmationPayload {
+  to: string;
+  renterName: string;
+  cc?: string[];
+}
+
+export interface IRenterRequestUpdatedNotificationPayload {
+  to: string;
+  agentName: string;
+  requestId: string;
+  updatedFields: string[];
+  updatedAt: string;
+  cc?: string[];
+}
+
+export interface IAgentRequestConfirmationPayload {
+  to: string;
+  agentName: string;
+  requestId: string;
+  borough: string;
+  bedrooms: string;
+  maxRent: string;
+  submittedAt: string;
+  cc?: string[];
+}
+
+export interface IRenterOpportunityFoundRegisteredAgentPayload {
+  to: string;
+  renterName: string;
+  cc?: string[];
+}
+
+export interface IRenterOpportunityFoundOtherAgentPayload {
+  to: string;
+  renterName: string;
+  cc?: string[];
+}
+
+export interface IRenterRequestClosedAgentAlertPayload {
+  to: string;
+  agentName: string;
+  requestId: string;
+  reason: string;
+  closedAt: string;
+  cc?: string[];
+}
+
 export interface IRenterAccessGrantedNotificationPayload {
   to: string;
   renterName: string;
@@ -47,6 +94,23 @@ export interface IAdminContactRequestPayload {
   receivedAt: string;
   ipAddress?: string;
   userAgent?: string;
+}
+
+export interface IAgentRegistrationVerifiedAdminPayload {
+  to: string;
+  agentFirstName: string;
+  agentLastName: string;
+  agentEmail: string;
+  registrationDate: string;
+}
+
+export interface IRenterRegistrationVerifiedAdminPayload {
+  to: string;
+  renterFirstName: string;
+  renterLastName: string;
+  renterEmail: string;
+  registrationDate: string;
+  referralTag: string;
 }
 
 // ============================================

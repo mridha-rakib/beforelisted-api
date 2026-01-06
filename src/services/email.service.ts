@@ -14,14 +14,30 @@ import {
 } from "@/services/email.types";
 import {
   adminContactRequestTemplate,
+  agentRegistrationVerifiedAdminTemplate,
+  renterRegistrationVerifiedAdminTemplate,
+  agentRenterRequestConfirmationTemplate,
   preMarketAdminNotificationTemplate,
   preMarketAgentNotificationTemplate,
+  renterRequestConfirmationTemplate,
+  renterOpportunityFoundRegisteredAgentTemplate,
+  renterOpportunityFoundOtherAgentTemplate,
+  renterRequestClosedAgentAlertTemplate,
+  renterRequestUpdatedNotificationTemplate,
   renterAccessGrantedNotificationTemplate,
 } from "./email-notification.templates";
 import {
   IAdminContactRequestPayload,
+  IAgentRegistrationVerifiedAdminPayload,
+  IRenterRegistrationVerifiedAdminPayload,
+  IAgentRequestConfirmationPayload,
   IPreMarketAdminNotificationPayload,
   IPreMarketAgentNotificationPayload,
+  IRenterRequestConfirmationPayload,
+  IRenterOpportunityFoundRegisteredAgentPayload,
+  IRenterOpportunityFoundOtherAgentPayload,
+  IRenterRequestClosedAgentAlertPayload,
+  IRenterRequestUpdatedNotificationPayload,
   IRenterAccessGrantedNotificationPayload,
 } from "./email-notification.types";
 import { EmailTemplateFactory } from "./email-templates/email-template.factory";
@@ -184,7 +200,7 @@ export class EmailService {
       // Prepare email options
       const emailOptions: IEmailOptions = {
         to: { email: payload.to },
-        subject: `Verify Your Email - BeforeListed`,
+        subject: `Confirm your email address – BeforeListed™`,
         html,
       };
 
@@ -304,7 +320,10 @@ export class EmailService {
           this.config.logoUrl,
           this.config.brandColor
         );
-        subject = `Welcome to BeforeListed!`;
+        subject =
+          resolvedUserType === "Agent"
+            ? "Welcome to BeforeListed - Agent Access Confirmed"
+            : "Welcome to BeforeListed";
       }
 
       // Prepare email options
@@ -540,6 +559,414 @@ export class EmailService {
           email: payload.to,
         },
         "Failed to send pre-market admin notification"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send renter confirmation after submitting pre-market request
+   */
+  async sendPreMarketRequestConfirmationToRenter(
+    payload: IRenterRequestConfirmationPayload
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to },
+        "Sending pre-market request confirmation to renter"
+      );
+
+      const html = renterRequestConfirmationTemplate(
+        payload.renterName,
+        this.config.logoUrl,
+        this.config.brandColor
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.renterName },
+        cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
+        subject: `We received your BeforeListed™ request`,
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "PRE_MARKET_RENTER_CONFIRMATION",
+        payload.to
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send pre-market request confirmation to renter"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send agent notification when renter updates a pre-market request
+   */
+  async sendPreMarketRequestUpdatedNotificationToAgent(
+    payload: IRenterRequestUpdatedNotificationPayload
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, requestId: payload.requestId },
+        "Sending pre-market request update notification to agent"
+      );
+
+      const html = renterRequestUpdatedNotificationTemplate(
+        payload.agentName,
+        payload.requestId,
+        payload.updatedFields,
+        payload.updatedAt,
+        this.config.logoUrl,
+        this.config.brandColor
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.agentName },
+        cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
+        subject: `Request Updated`,
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "PRE_MARKET_REQUEST_UPDATED",
+        payload.to
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send pre-market request update notification to agent"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send associated agent confirmation when renter submits a request
+   */
+  async sendRenterRequestConfirmationToAgent(
+    payload: IAgentRequestConfirmationPayload
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, requestId: payload.requestId },
+        "Sending renter request confirmation to agent"
+      );
+
+      const html = agentRenterRequestConfirmationTemplate(
+        payload.agentName,
+        payload.requestId,
+        payload.borough,
+        payload.bedrooms,
+        payload.maxRent,
+        payload.submittedAt,
+        this.config.logoUrl,
+        this.config.brandColor
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.agentName },
+        cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
+        subject: `Renter Request Confirmation – BeforeListed™`,
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "PRE_MARKET_REQUEST_CONFIRMATION_AGENT",
+        payload.to
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send renter request confirmation to agent"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send renter notification when registered agent finds an opportunity
+   */
+  async sendRenterOpportunityFoundByRegisteredAgent(
+    payload: IRenterOpportunityFoundRegisteredAgentPayload
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to },
+        "Sending registered agent opportunity notification to renter"
+      );
+
+      const html = renterOpportunityFoundRegisteredAgentTemplate(
+        payload.renterName,
+        this.config.logoUrl,
+        this.config.brandColor
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.renterName },
+        cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
+        subject: `An opportunity matching your request has been identified`,
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "RENTER_OPPORTUNITY_FOUND_REGISTERED_AGENT",
+        payload.to
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send registered agent opportunity notification to renter"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send renter notification when another agent finds an opportunity
+   */
+  async sendRenterOpportunityFoundByOtherAgent(
+    payload: IRenterOpportunityFoundOtherAgentPayload
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to },
+        "Sending other agent opportunity notification to renter"
+      );
+
+      const html = renterOpportunityFoundOtherAgentTemplate(
+        payload.renterName,
+        this.config.logoUrl,
+        this.config.brandColor
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.renterName },
+        cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
+        subject: `An opportunity matching your request has been identified`,
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "RENTER_OPPORTUNITY_FOUND_OTHER_AGENT",
+        payload.to
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send other agent opportunity notification to renter"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send agent alert when renter request is closed
+   */
+  async sendRenterRequestClosedAgentAlert(
+    payload: IRenterRequestClosedAgentAlertPayload
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, requestId: payload.requestId },
+        "Sending renter request closed alert to agent"
+      );
+
+      const html = renterRequestClosedAgentAlertTemplate(
+        payload.agentName,
+        payload.requestId,
+        payload.reason,
+        payload.closedAt,
+        this.config.logoUrl,
+        this.config.brandColor
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.agentName },
+        cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
+        subject: `BeforeListed™ – Renter Request Closed`,
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "RENTER_REQUEST_CLOSED_AGENT_ALERT",
+        payload.to
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send renter request closed alert to agent"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send admin notification when agent completes registration and verification
+   */
+  async sendAgentRegistrationVerifiedAdminNotification(
+    payload: IAgentRegistrationVerifiedAdminPayload
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, agentEmail: payload.agentEmail },
+        "Sending agent registration verified notification to admin"
+      );
+
+      const html = agentRegistrationVerifiedAdminTemplate(
+        payload.agentFirstName,
+        payload.agentLastName,
+        payload.agentEmail,
+        payload.registrationDate,
+        this.config.logoUrl,
+        this.config.brandColor
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: "Admin" },
+        subject: "BeforeListed™ - Agent Registration Verified",
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "AGENT_REGISTRATION_VERIFIED_ADMIN",
+        payload.to
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send agent registration verified admin email"
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send admin notification when renter completes registration and verification
+   */
+  async sendRenterRegistrationVerifiedAdminNotification(
+    payload: IRenterRegistrationVerifiedAdminPayload
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, renterEmail: payload.renterEmail },
+        "Sending renter registration verified notification to admin"
+      );
+
+      const html = renterRegistrationVerifiedAdminTemplate(
+        payload.renterFirstName,
+        payload.renterLastName,
+        payload.renterEmail,
+        payload.registrationDate,
+        payload.referralTag,
+        this.config.logoUrl,
+        this.config.brandColor
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: "Admin" },
+        subject: "BeforeListed™ - Renter Registration Verified",
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "RENTER_REGISTRATION_VERIFIED_ADMIN",
+        payload.to
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send renter registration verified admin email"
       );
 
       return {
@@ -830,6 +1257,7 @@ export class EmailService {
    */
   async sendGrantAccessRequestToAdmin(payload: {
     to: string;
+    adminName: string;
     agentName: string;
     agentEmail: string;
     agentCompany: string | null;
@@ -841,6 +1269,7 @@ export class EmailService {
   }): Promise<IEmailResult> {
     try {
       const template = this.templateFactory.createGrantAccessRequest(
+        payload.adminName,
         payload.agentName,
         payload.agentEmail,
         payload.agentCompany,

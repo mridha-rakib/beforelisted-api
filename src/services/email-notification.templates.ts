@@ -472,6 +472,946 @@ export function preMarketAdminNotificationTemplate(
 }
 
 /**
+ * Email template for renter after submitting a pre-market request
+ */
+export function renterRequestConfirmationTemplate(
+  renterName: string,
+  logoUrl?: string,
+  brandColor: string = "#1890FF"
+): string {
+  const currentYear = new Date().getFullYear();
+  const firstName = renterName?.trim().split(" ")[0] || renterName;
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>We received your BeforeListed™ request</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: ${brandColor};
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .greeting {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .notification-box {
+            background-color: #f0f8fa;
+            border-left: 4px solid ${brandColor};
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .notification-box h2 {
+            margin: 0 0 10px 0;
+            color: ${brandColor};
+            font-size: 18px;
+        }
+        .note-title {
+            font-weight: 600;
+            margin: 20px 0 10px 0;
+            color: ${brandColor};
+        }
+        .notes-list {
+            margin: 0 0 20px 18px;
+            padding: 0;
+            color: #555;
+        }
+        .notes-list li {
+            margin: 8px 0;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+        .footer a {
+            color: ${brandColor};
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            <h1>We received your BeforeListed™ request</h1>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                Hi ${firstName},
+            </div>
+
+            <p>Thanks for submitting your request on BeforeListed™.</p>
+
+            <div class="notification-box">
+                <h2>Request received</h2>
+                <p>Your request has been received and is under review. Based on the information provided, and assuming the required agent registration and disclosures have been signed, your registered, licensed New York real estate agent may begin proactive outreach regarding upcoming rental opportunities that match your criteria.</p>
+            </div>
+
+            <div class="note-title">Please note:</div>
+            <ul class="notes-list">
+                <li>BeforeListed™ is a renter-initiated platform</li>
+                <li>Your registered agent will focus on identifying apartments that are not publicly advertised</li>
+                <li>Because your agent focuses on opportunities that are not actively marketed, this process may take longer than a traditional on-market rental search.</li>
+                <li>You will be notified if and when a relevant opportunity is identified</li>
+                <li>You only pay a broker fee if you successfully rent an apartment presented by your agent, pursuant to the applicable agency and fee agreements</li>
+                <li>If additional expertise would benefit your search, your agent may collaborate with another experienced agent. If so, any required disclosures will be provided to you for review and signature before proceeding.</li>
+            </ul>
+
+            <p>If you have any questions, simply reply to this email.</p>
+
+            <p>Thank you,<br><strong>BeforeListed™ Support</strong></p>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 5px 0 0 0;">
+                <a href="#">Privacy Policy</a> | 
+                <a href="#">Contact Us</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Email template for associated agent when renter submits a request
+ */
+export function agentRenterRequestConfirmationTemplate(
+  agentName: string,
+  requestId: string,
+  borough: string,
+  bedrooms: string,
+  maxRent: string,
+  submittedAt: string,
+  logoUrl?: string,
+  brandColor: string = "#1890FF"
+): string {
+  const currentYear = new Date().getFullYear();
+  const firstName = agentName?.trim().split(" ")[0] || agentName;
+  const safeRequestId = escapeHtml(requestId);
+  const safeBorough = escapeHtml(borough);
+  const safeBedrooms = escapeHtml(bedrooms);
+  const safeMaxRent = escapeHtml(maxRent);
+  const safeSubmittedAt = escapeHtml(submittedAt);
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Renter Request Confirmation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: ${brandColor};
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .greeting {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .notification-box {
+            background-color: #f0f8fa;
+            border-left: 4px solid ${brandColor};
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .notification-box h2 {
+            margin: 0 0 10px 0;
+            color: ${brandColor};
+            font-size: 18px;
+        }
+        .details {
+            background-color: #fafafa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .details p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        .details strong {
+            color: ${brandColor};
+            display: inline-block;
+            min-width: 140px;
+        }
+        .note-title {
+            font-weight: 600;
+            margin: 20px 0 10px 0;
+            color: ${brandColor};
+        }
+        .notes-list {
+            margin: 0 0 20px 18px;
+            padding: 0;
+            color: #555;
+        }
+        .notes-list li {
+            margin: 8px 0;
+        }
+        .footer-note {
+            font-size: 12px;
+            color: #777;
+            margin-top: 20px;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+        .footer a {
+            color: ${brandColor};
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            <h1>New Renter Request</h1>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                Hi ${firstName},
+            </div>
+
+            <div class="notification-box">
+                <h2>New request submitted</h2>
+                <p>A renter who registered with you on BeforeListed™ has submitted a new request.</p>
+            </div>
+
+            <div class="details">
+                <p>
+                    <strong>Request ID:</strong><br>
+                    ${safeRequestId}
+                </p>
+                <p>
+                    <strong>Borough:</strong><br>
+                    ${safeBorough}
+                </p>
+                <p>
+                    <strong>Bedrooms Requested:</strong><br>
+                    ${safeBedrooms}
+                </p>
+                <p>
+                    <strong>Max Rent:</strong><br>
+                    ${safeMaxRent}
+                </p>
+                <p>
+                    <strong>Submitted:</strong><br>
+                    ${safeSubmittedAt}
+                </p>
+            </div>
+
+            <p>You can review the renter's full request details by logging into the BeforeListed™ admin panel.</p>
+
+            <div class="note-title">Please note:</div>
+            <ul class="notes-list">
+                <li>The request was renter-initiated through the platform</li>
+                <li>Outreach may begin only after required agent registration and disclosures have been completed</li>
+                <li>Any collaboration with another agent requires providing the appropriate disclosures to the renter before proceeding</li>
+            </ul>
+
+            <p>If you have any questions or encounter an issue with the request, please contact support.</p>
+
+            <p>Thank you,<br><strong>BeforeListed™ Admin</strong></p>
+
+            <p class="footer-note">
+                You can manage or disable email notifications at any time in your BeforeListed™ dashboard settings.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 5px 0 0 0;">
+                <a href="#">Privacy Policy</a> | 
+                <a href="#">Contact Us</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Email template for renter when registered agent finds an opportunity
+ */
+export function renterOpportunityFoundRegisteredAgentTemplate(
+  renterName: string,
+  logoUrl?: string,
+  brandColor: string = "#1890FF"
+): string {
+  const currentYear = new Date().getFullYear();
+  const firstName = renterName?.trim().split(" ")[0] || renterName;
+  const safeFirstName = escapeHtml(firstName);
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Opportunity Found</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: ${brandColor};
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .greeting {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .notification-box {
+            background-color: #f0f8fa;
+            border-left: 4px solid ${brandColor};
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .notification-box h2 {
+            margin: 0 0 10px 0;
+            color: ${brandColor};
+            font-size: 18px;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+        .footer a {
+            color: ${brandColor};
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            <h1>Opportunity Found</h1>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                Hi ${safeFirstName},
+            </div>
+
+            <div class="notification-box">
+                <h2>Great news</h2>
+                <p>An opportunity matching your request on BeforeListed™ has been identified by your registered, licensed New York real estate agent.</p>
+            </div>
+
+            <p>This opportunity is based on the criteria you submitted and may not be publicly advertised.</p>
+
+            <p>Your agent will follow up with additional details and next steps. No action is required from you at this time unless requested by your agent.</p>
+
+            <p>As a reminder, you only pay a broker fee if you successfully rent an apartment presented to you by your agent, pursuant to the applicable agency and fee agreements.</p>
+
+            <p>If you have any questions, you may reply to this email.</p>
+
+            <p>Thank you,<br><strong>BeforeListed™ Support</strong></p>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 5px 0 0 0;">
+                <a href="#">Privacy Policy</a> | 
+                <a href="#">Contact Us</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Email template for renter when a non-registered agent finds an opportunity
+ */
+export function renterOpportunityFoundOtherAgentTemplate(
+  renterName: string,
+  logoUrl?: string,
+  brandColor: string = "#1890FF"
+): string {
+  const currentYear = new Date().getFullYear();
+  const firstName = renterName?.trim().split(" ")[0] || renterName;
+  const safeFirstName = escapeHtml(firstName);
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Opportunity Found</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: ${brandColor};
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .greeting {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .notification-box {
+            background-color: #f0f8fa;
+            border-left: 4px solid ${brandColor};
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .notification-box h2 {
+            margin: 0 0 10px 0;
+            color: ${brandColor};
+            font-size: 18px;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+        .footer a {
+            color: ${brandColor};
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            <h1>Opportunity Found</h1>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                Hi ${safeFirstName},
+            </div>
+
+            <div class="notification-box">
+                <h2>Great news</h2>
+                <p>An opportunity matching your request on BeforeListed™ has been identified based on the criteria you submitted.</p>
+            </div>
+
+            <p>In this case, another licensed New York real estate agent has become aware of a possible upcoming rental opportunity through independent brokerage outreach or while working on behalf of a different renter. That agent is not representing the owner and is not acting on your behalf unless and until the appropriate agent disclosure is completed.</p>
+
+            <p>If participation by this additional agent is required to proceed, the agent copied on this email will provide the required disclosure for your review and signature. Once any required disclosures are completed, your registered agent will follow up with additional details and next steps.</p>
+
+            <p>As a reminder, you only pay a broker fee if you successfully rent an apartment presented to you by your agent, pursuant to the applicable agency and fee agreements.</p>
+
+            <p>If you have any questions, you may reply to this email.</p>
+
+            <p>Thank you,<br><strong>BeforeListed™ Support</strong></p>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 5px 0 0 0;">
+                <a href="#">Privacy Policy</a> | 
+                <a href="#">Contact Us</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Email template for agent when a renter request is closed
+ */
+export function renterRequestClosedAgentAlertTemplate(
+  agentName: string,
+  requestId: string,
+  reason: string,
+  closedAt: string,
+  logoUrl?: string,
+  brandColor: string = "#1890FF"
+): string {
+  const currentYear = new Date().getFullYear();
+  const firstName = agentName?.trim().split(" ")[0] || agentName;
+  const safeFirstName = escapeHtml(firstName);
+  const safeRequestId = escapeHtml(requestId);
+  const safeReason = escapeHtml(reason);
+  const safeClosedAt = escapeHtml(closedAt);
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Renter Request Closed</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: ${brandColor};
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .greeting {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .notification-box {
+            background-color: #f0f8fa;
+            border-left: 4px solid ${brandColor};
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .notification-box h2 {
+            margin: 0 0 10px 0;
+            color: ${brandColor};
+            font-size: 18px;
+        }
+        .details {
+            background-color: #fafafa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .details p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        .details strong {
+            color: ${brandColor};
+            display: inline-block;
+            min-width: 120px;
+        }
+        .footer-note {
+            font-size: 12px;
+            color: #777;
+            margin-top: 20px;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+        .footer a {
+            color: ${brandColor};
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            <h1>Renter Request Closed</h1>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                Hi ${safeFirstName},
+            </div>
+
+            <div class="notification-box">
+                <h2>Request closed</h2>
+                <p>This is a notification that a renter request registered under you on BeforeListed™ has been closed.</p>
+            </div>
+
+            <div class="details">
+                <p>
+                    <strong>Request ID:</strong><br>
+                    ${safeRequestId}
+                </p>
+                <p>
+                    <strong>Reason:</strong><br>
+                    ${safeReason}
+                </p>
+                <p>
+                    <strong>Date Closed:</strong><br>
+                    ${safeClosedAt}
+                </p>
+            </div>
+
+            <p>No further outreach is required for this request.</p>
+
+            <p>If the renter submits a new request in the future, you will be notified automatically.</p>
+
+            <p>If you believe this request was closed in error or have any questions, please contact support.</p>
+
+            <p>Thank you,<br><strong>BeforeListed™ Admin</strong></p>
+
+            <p class="footer-note">
+                You can manage or disable email notifications at any time in your BeforeListed™ dashboard settings.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 5px 0 0 0;">
+                <a href="#">Privacy Policy</a> | 
+                <a href="#">Contact Us</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Email template for agents when a renter updates a request
+ */
+export function renterRequestUpdatedNotificationTemplate(
+  agentName: string,
+  requestId: string,
+  updatedFields: string[],
+  updatedAt: string,
+  logoUrl?: string,
+  brandColor: string = "#1890FF"
+): string {
+  const currentYear = new Date().getFullYear();
+  const firstName = agentName?.trim().split(" ")[0] || agentName;
+  const safeRequestId = escapeHtml(requestId);
+  const safeUpdatedAt = escapeHtml(updatedAt);
+  const safeFields = updatedFields.map((field) => escapeHtml(field));
+  const fieldsHtml =
+    safeFields.length > 0
+      ? `<ul class="update-list">${safeFields
+          .map((field) => `<li>${field}</li>`)
+          .join("")}</ul>`
+      : `<p class="empty-text">Not specified</p>`;
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request Updated</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: ${brandColor};
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .greeting {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .notification-box {
+            background-color: #f0f8fa;
+            border-left: 4px solid ${brandColor};
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .notification-box h2 {
+            margin: 0 0 10px 0;
+            color: ${brandColor};
+            font-size: 18px;
+        }
+        .details {
+            background-color: #fafafa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .details p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        .details strong {
+            color: ${brandColor};
+            display: inline-block;
+            min-width: 120px;
+        }
+        .update-list {
+            margin: 8px 0 0 18px;
+            padding: 0;
+            color: #555;
+        }
+        .update-list li {
+            margin: 6px 0;
+        }
+        .empty-text {
+            margin: 8px 0 0 0;
+            color: #777;
+            font-size: 14px;
+        }
+        .footer-note {
+            font-size: 12px;
+            color: #777;
+            margin-top: 20px;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+        .footer a {
+            color: ${brandColor};
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            <h1>Request Updated</h1>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                Hi ${firstName},
+            </div>
+
+            <div class="notification-box">
+                <h2>Request updated</h2>
+                <p>A renter has updated an existing request registered under you on BeforeListed™.</p>
+            </div>
+
+            <div class="details">
+                <p>
+                    <strong>Request ID:</strong><br>
+                    ${safeRequestId}
+                </p>
+                <p>
+                    <strong>Updated fields:</strong><br>
+                    ${fieldsHtml}
+                </p>
+                <p>
+                    <strong>Updated:</strong><br>
+                    ${safeUpdatedAt}
+                </p>
+            </div>
+
+            <p>Please review the updated request details in the BeforeListed™ admin panel before continuing outreach.</p>
+
+            <p>Thank you,<br><strong>BeforeListed™ Admin</strong></p>
+
+            <p class="footer-note">
+                You can manage or disable email notifications at any time in your BeforeListed™ dashboard settings.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 5px 0 0 0;">
+                <a href="#">Privacy Policy</a> | 
+                <a href="#">Contact Us</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
+/**
  * Email template for renter when an agent gains access
  */
 export function renterAccessGrantedNotificationTemplate(
@@ -639,6 +1579,312 @@ export function renterAccessGrantedNotificationTemplate(
                 <a href="#">Privacy Policy</a> | 
                 <a href="#">Contact Us</a>
             </p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
+export function agentRegistrationVerifiedAdminTemplate(
+  agentFirstName: string,
+  agentLastName: string,
+  agentEmail: string,
+  registrationDate: string,
+  logoUrl?: string,
+  brandColor: string = "#1890FF"
+): string {
+  const currentYear = new Date().getFullYear();
+  const displayName = [agentFirstName, agentLastName].filter(Boolean).join(" ");
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Registration Verified - Admin Notification</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 700px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: ${brandColor};
+            color: #ffffff;
+            padding: 24px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 12px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 24px 20px;
+        }
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            font-size: 16px;
+            color: ${brandColor};
+            margin: 0 0 10px 0;
+            border-bottom: 2px solid ${brandColor};
+            padding-bottom: 8px;
+        }
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .details-table tr {
+            border-bottom: 1px solid #eee;
+        }
+        .details-table td {
+            padding: 10px 0;
+            vertical-align: top;
+        }
+        .details-table td:first-child {
+            width: 160px;
+            font-weight: 600;
+            color: ${brandColor};
+        }
+        .action-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .action-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .info-list {
+            margin: 10px 0 0 18px;
+            padding: 0;
+            color: #555;
+        }
+        .info-list li {
+            margin: 8px 0;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 16px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            <h1>BeforeListed™ - Agent Verification</h1>
+        </div>
+        <div class="content">
+            <div class="greeting">Hi,</div>
+            <p>A new agent has successfully completed registration and email verification on BeforeListed™.</p>
+
+            <div class="section">
+                <h2>Agent Details</h2>
+                <table class="details-table">
+                    <tr>
+                        <td>Name</td>
+                        <td>${displayName || "N/A"}</td>
+                    </tr>
+                    <tr>
+                        <td>Email</td>
+                        <td><a href="mailto:${agentEmail}">${agentEmail}</a></td>
+                    </tr>
+                    <tr>
+                        <td>Registration Date</td>
+                        <td>${registrationDate}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="action-box">
+                <div class="action-title">Action required:</div>
+                <div>Please review and activate the agent profile in the admin dashboard.</div>
+            </div>
+
+            <ul class="info-list">
+                <li>Once activated, the agent will be able to log in to the agent dashboard.</li>
+                <li>Once Grant Access is enabled by the admin, the agent will be able to freely match with renter requests where they have identified an opportunity that aligns with the renter's criteria.</li>
+                <li>Until activation and Grant Access are completed, the agent will not have access to renter requests or matching functionality.</li>
+            </ul>
+
+            <p>If you have any questions or need assistance, please review the admin dashboard or reply to this email.</p>
+
+            <p>Thank you,<br><strong>The BeforeListed Team</strong></p>
+        </div>
+        <div class="footer">
+            <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
+export function renterRegistrationVerifiedAdminTemplate(
+  renterFirstName: string,
+  renterLastName: string,
+  renterEmail: string,
+  registrationDate: string,
+  referralTag: string,
+  logoUrl?: string,
+  brandColor: string = "#1890FF"
+): string {
+  const currentYear = new Date().getFullYear();
+  const displayName = [renterFirstName, renterLastName]
+    .filter(Boolean)
+    .join(" ");
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Renter Registration Verified - Admin Notification</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 700px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: ${brandColor};
+            color: #ffffff;
+            padding: 24px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 12px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 24px 20px;
+        }
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            font-size: 16px;
+            color: ${brandColor};
+            margin: 0 0 10px 0;
+            border-bottom: 2px solid ${brandColor};
+            padding-bottom: 8px;
+        }
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .details-table tr {
+            border-bottom: 1px solid #eee;
+        }
+        .details-table td {
+            padding: 10px 0;
+            vertical-align: top;
+        }
+        .details-table td:first-child {
+            width: 160px;
+            font-weight: 600;
+            color: ${brandColor};
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 16px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            <h1>BeforeListed™ - Renter Verification</h1>
+        </div>
+        <div class="content">
+            <div class="greeting">Hi,</div>
+            <p>A new renter has successfully completed registration and email verification on BeforeListed™.</p>
+
+            <div class="section">
+                <h2>Renter Details</h2>
+                <table class="details-table">
+                    <tr>
+                        <td>Name</td>
+                        <td>${displayName || "N/A"}</td>
+                    </tr>
+                    <tr>
+                        <td>Email</td>
+                        <td><a href="mailto:${renterEmail}">${renterEmail}</a></td>
+                    </tr>
+                    <tr>
+                        <td>Registration Date</td>
+                        <td>${registrationDate}</td>
+                    </tr>
+                    <tr>
+                        <td>Referral Tag</td>
+                        <td>${referralTag}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <p>The renter can now submit and manage rental requests through the platform.</p>
+            <p>If you have any questions or would like to review this registration, please visit the admin dashboard.</p>
+
+            <p>Thank you,<br><strong>The BeforeListed Team</strong></p>
+        </div>
+        <div class="footer">
+            <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
         </div>
     </div>
 </body>

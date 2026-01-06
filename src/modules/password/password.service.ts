@@ -1,19 +1,11 @@
 // file: src/modules/password-reset/password-reset.service.ts
 
-/**
- * Password Reset Service
- * ✅ Complete OTP lifecycle management
- * ✅ Integration with OTPService for generation
- * ✅ Rate limiting and security checks
- * ✅ Full error handling
- */
-
 import { logger } from "@/middlewares/pino-logger";
 import { EmailService } from "@/services/email.service";
 import { OTPService } from "@/services/otp.service";
 import { BadRequestException } from "@/utils/app-error.utils";
-import { PasswordResetOTPRepository } from "./password.repository";
 import type { IPasswordResetOTP } from "./password.interface";
+import { PasswordResetOTPRepository } from "./password.repository";
 
 /**
  * Password Reset Service
@@ -43,22 +35,11 @@ export class PasswordResetService {
     });
   }
 
-  // ============================================
-  // REQUEST PASSWORD RESET (Generate OTP)
-  // ============================================
-
-  /**
-   * Request password reset OTP
-   *
-   * @param userId - User ID
-   * @returns Success message and OTP expiration
-   */
   async requestPasswordReset(
     userId: string,
     email: string,
     userName: string | undefined
   ): Promise<{ message: string; expiresAt: Date; expiresInMinutes: number }> {
-    // Step 1: Check rate limiting (max 10 requests per hour)
     const attemptCount =
       await this.repository.countPasswordResetAttemptsLastHour(userId);
 
@@ -68,20 +49,16 @@ export class PasswordResetService {
       );
     }
 
-    // Step 2: Invalidate any previous active OTPs
     await this.repository.invalidatePreviousOTPs(userId);
 
-    // Step 3: Generate new OTP
     const otpGenerated = this.otpService.generate("PASSWORD_RESET");
 
-    // Step 4: Save OTP to database
     await this.repository.createOTP(
       userId,
       String(otpGenerated.code),
       otpGenerated.expiresAt
     );
 
-    // Step 5: Send email with OTP
     const expiresInMinutes = Math.ceil(otpGenerated.expiresInSeconds / 60);
 
     await this.emailService.sendPasswordResetOTP(
@@ -107,20 +84,7 @@ export class PasswordResetService {
     };
   }
 
-  // ============================================
-  // VERIFY PASSWORD RESET OTP
-  // ============================================
-
-  /**
-   * Verify password reset OTP
-   * ✅ ENHANCED: Complete verification logic
-   *
-   * @param userId - User ID
-   * @param otp - OTP code provided by user
-   * @returns Success message if OTP is valid
-   */
   async verifyOTP(userId: string, otp: string): Promise<{ message: string }> {
-    // Step 1: Find active OTP
     const passwordReset = await this.repository.findActiveOTP(userId);
 
     if (!passwordReset) {
@@ -129,7 +93,6 @@ export class PasswordResetService {
       );
     }
 
-    // Step 2: Check if max attempts exceeded
     if (passwordReset.attempts >= this.config.MAX_OTP_ATTEMPTS) {
       logger.warn(
         { userId, attempts: passwordReset.attempts },
@@ -141,9 +104,7 @@ export class PasswordResetService {
       );
     }
 
-    // Step 3: Check if OTP matches
     if (passwordReset.otp !== otp) {
-      // Increment attempts
       await this.repository.incrementAttempts(passwordReset._id!.toString());
 
       logger.warn(
@@ -162,17 +123,6 @@ export class PasswordResetService {
     return { message: "OTP verified successfully" };
   }
 
-  // ============================================
-  // HELPER METHODS
-  // ============================================
-
-  /**
-   * Mark OTP as used after successful password reset
-   * ✅ NEW: Separate method for clarity
-   *
-   * @param userId - User ID
-   * @returns OTP ID that was marked as used
-   */
   async markOTPAsUsed(userId: string): Promise<string | null> {
     const activeOTP = await this.repository.findActiveOTP(userId);
 
@@ -190,44 +140,20 @@ export class PasswordResetService {
     return null;
   }
 
-  /**
-   * Get active OTP for user
-   *
-   * @param userId - User ID
-   * @returns Active OTP or null
-   */
   async findActiveOTP(userId: string): Promise<IPasswordResetOTP | null> {
     return this.repository.findActiveOTP(userId);
   }
 
-  /**
-   * Delete all OTPs for user
-   * (after successful password reset)
-   *
-   * @param userId - User ID
-   */
   async deleteUserOTPs(userId: string): Promise<void> {
     await this.repository.deleteUserOTPs(userId);
     logger.info({ userId }, "User password reset OTPs deleted");
   }
 
-  /**
-   * Check if user has active OTP
-   *
-   * @param userId - User ID
-   * @returns True if active OTP exists
-   */
   async hasActiveOTP(userId: string): Promise<boolean> {
     const count = await this.repository.countActiveOTPs(userId);
     return count > 0;
   }
 
-  /**
-   * Get OTP time remaining
-   *
-   * @param userId - User ID
-   * @returns Seconds remaining or null if no active OTP
-   */
   async getOTPTimeRemaining(userId: string): Promise<number | null> {
     const otp = await this.repository.findActiveOTP(userId);
 
@@ -242,12 +168,6 @@ export class PasswordResetService {
     return timeRemaining > 0 ? Math.ceil(timeRemaining / 1000) : 0; // seconds
   }
 
-  /**
-   * Cleanup expired OTPs
-   * (can be called by cron job)
-   *
-   * @returns Deleted count
-   */
   async cleanupExpiredOTPs(): Promise<number> {
     const count = await this.repository.deleteExpiredOTPs();
     logger.info({ count }, "Expired password reset OTPs cleaned up");

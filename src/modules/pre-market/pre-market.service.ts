@@ -1,7 +1,9 @@
 // file: src/modules/pre-market/pre-market.service.ts
 
+import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 
+import { emailService } from "@/services/email.service";
 import { ExcelService } from "@/services/excel.service";
 import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import {
@@ -42,6 +44,9 @@ type AgentGrantAccessStatus =
   | "paid"
   | "free"
   | "rejected";
+
+const DEFAULT_REGISTERED_AGENT_EMAIL = "tmor@corcoran.com";
+const DEFAULT_REGISTERED_AGENT_NAME = "Tuval";
 
 export class PreMarketService {
   private readonly preMarketRepository: PreMarketRepository;
@@ -267,7 +272,7 @@ export class PreMarketService {
     request: any,
     renterId: string
   ): Promise<void> {
-    const renter = await this.renterRepository.findByUserId(renterId);
+    const renter = await this.renterRepository.findRenterWithReferrer(renterId);
 
     if (!renter) {
       logger.warn(
@@ -277,11 +282,31 @@ export class PreMarketService {
       return;
     }
 
+    const resolvedRenterId = renter.userId?._id
+      ? renter.userId._id.toString()
+      : renter.userId.toString();
+
+    let referringAgentEmail: string | undefined;
+    let referringAgentName: string | undefined;
+    if (renter.registrationType === "agent_referral") {
+      const referredAgent = renter.referredByAgentId;
+      referringAgentEmail =
+        typeof referredAgent === "object" && referredAgent?.email
+          ? referredAgent.email
+          : undefined;
+      referringAgentName =
+        typeof referredAgent === "object" && referredAgent?.fullName
+          ? referredAgent.fullName
+          : undefined;
+    }
+
     const renterData = {
-      renterId: renter.userId._id.toString(),
+      renterId: resolvedRenterId,
       renterName: renter.fullName,
       renterEmail: renter.email,
       renterPhone: renter.phoneNumber,
+      referringAgentEmail,
+      referringAgentName,
     };
 
     await preMarketNotifier.notifyNewRequest(request, renterData);
@@ -368,8 +393,10 @@ export class PreMarketService {
         grantAccess,
         hasGrantAccess
       );
-      const listingStatus =
-        accessSummary.accessType === "none" ? request.status : "matched";
+      const isMatched =
+        grantAccess &&
+        (grantAccess.status === "free" || grantAccess.status === "paid");
+      const listingStatus = isMatched ? "matched" : request.status;
       return {
         ...request,
         status: accessSummary.grantAccessStatus,
@@ -448,6 +475,8 @@ export class PreMarketService {
       }
     }
 
+    const changedFields = this.buildChangedFieldsSummary(request, payload);
+
     // Update
     const updated = await this.preMarketRepository.updateById(
       requestId,
@@ -456,7 +485,164 @@ export class PreMarketService {
 
     logger.info({ renterId }, `Pre-market request updated: ${requestId}`);
 
+    const updatedAt = updated?.updatedAt ?? new Date();
+    this.notifier
+      .notifyAgentsAboutUpdatedRequest(
+        updated || request,
+        changedFields,
+        updatedAt
+      )
+      .catch((error) => {
+        logger.error(
+          { error, requestId: request._id },
+          "Failed to send update notifications (non-blocking)"
+        );
+      });
+
     return updated!;
+  }
+
+  private async notifyRegisteredAgentRequestClosed(
+    request: IPreMarketRequest,
+    reason: string,
+    closedAt: Date
+  ): Promise<void> {
+    const renter = await this.renterRepository.findRenterWithReferrer(
+      request.renterId.toString()
+    );
+
+    if (!renter) {
+      logger.warn(
+        { requestId: request._id },
+        "Renter not found for request closed alert"
+      );
+      return;
+    }
+
+    let agentEmail = DEFAULT_REGISTERED_AGENT_EMAIL;
+    let agentName = DEFAULT_REGISTERED_AGENT_NAME;
+
+    if (
+      renter.registrationType === "agent_referral" &&
+      renter.referredByAgentId
+    ) {
+      const referredAgent = renter.referredByAgentId;
+      if (typeof referredAgent === "object") {
+        if (referredAgent.email) {
+          agentEmail = referredAgent.email;
+        }
+        if (referredAgent.fullName) {
+          agentName = referredAgent.fullName;
+        }
+      }
+    }
+
+    const adminEmail = env.ADMIN_EMAIL;
+    const ccEmails = [adminEmail]
+      .filter((email): email is string => Boolean(email))
+      .map((email) => email.trim())
+      .filter(
+        (email, index, items) =>
+          items.findIndex(
+            (item) => item.toLowerCase() === email.toLowerCase()
+          ) === index
+      )
+      .filter((email) => email.toLowerCase() !== agentEmail.toLowerCase());
+
+    const requestId = request.requestId || request._id?.toString() || "";
+
+    await emailService.sendRenterRequestClosedAgentAlert({
+      to: agentEmail,
+      agentName,
+      requestId,
+      reason,
+      closedAt: this.formatEasternTime(closedAt),
+      cc: ccEmails.length > 0 ? ccEmails : undefined,
+    });
+  }
+
+  private buildChangedFieldsSummary(
+    request: IPreMarketRequest,
+    payload: Record<string, unknown>
+  ): string[] {
+    const fieldLabels: Record<string, string> = {
+      movingDateRange: "Move date range",
+      priceRange: "Price range",
+      locations: "Locations",
+      bedrooms: "Bedrooms",
+      bathrooms: "Bathrooms",
+      unitFeatures: "Unit features",
+      buildingFeatures: "Building features",
+      petPolicy: "Pet policy",
+      guarantorRequired: "Guarantor requirement",
+      preferences: "Preferences",
+      description: "Description",
+    };
+
+    const changedFields = Object.keys(payload).reduce<string[]>(
+      (accumulator, key) => {
+        const originalValue = (request as unknown as Record<string, unknown>)[
+          key
+        ];
+        const nextValue = payload[key];
+        if (!this.areValuesEqual(originalValue, nextValue)) {
+          accumulator.push(fieldLabels[key] || this.humanizeFieldName(key));
+        }
+        return accumulator;
+      },
+      []
+    );
+
+    return Array.from(new Set(changedFields));
+  }
+
+  private areValuesEqual(valueA: unknown, valueB: unknown): boolean {
+    return (
+      JSON.stringify(this.normalizeValue(valueA)) ===
+      JSON.stringify(this.normalizeValue(valueB))
+    );
+  }
+
+  private normalizeValue(value: unknown): unknown {
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.normalizeValue(item));
+    }
+
+    if (value && typeof value === "object") {
+      return Object.keys(value as Record<string, unknown>)
+        .sort()
+        .reduce<Record<string, unknown>>((accumulator, key) => {
+          accumulator[key] = this.normalizeValue(
+            (value as Record<string, unknown>)[key]
+          );
+          return accumulator;
+        }, {});
+    }
+
+    return value;
+  }
+
+  private humanizeFieldName(field: string): string {
+    return field
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/^./, (match) => match.toUpperCase());
+  }
+
+  private formatEasternTime(value: Date): string {
+    return value.toLocaleString("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZoneName: "short",
+    });
   }
 
   // ============================================
@@ -473,6 +659,17 @@ export class PreMarketService {
     await this.preMarketRepository.softDelete(requestId);
 
     logger.info({ renterId }, `Pre-market request deleted: ${requestId}`);
+
+    this.notifyRegisteredAgentRequestClosed(
+      request,
+      "Deleted by Renter",
+      new Date()
+    ).catch((error) => {
+      logger.error(
+        { error, requestId: request._id },
+        "Failed to send request closed alert (non-blocking)"
+      );
+    });
   }
 
   // ============================================
@@ -501,56 +698,11 @@ export class PreMarketService {
     }
 
     // ============================================
-    // GRANT ACCESS AGENTS: See ALL listings
-    // ============================================
-    if (agent.hasGrantAccess) {
-      logger.info(
-        { agentId, type: "grant-access" },
-        "Grant access agent fetching all pre-market listings"
-      );
-
-      const paginated =
-        await this.preMarketRepository.findAllWithPagination(query);
-
-      const enrichedData = await Promise.all(
-        paginated.data.map(async (request) => {
-          const renterInfo = await this.getRenterInfoForRequest(
-            request.renterId.toString()
-          );
-          return {
-            ...request,
-            renterInfo,
-            status: "matched",
-            listingStatus: "matched",
-          };
-        })
-      );
-
-      // Track agent views
-      await Promise.all(
-        paginated.data.map((request) =>
-          this.preMarketRepository.addAgentToViewedBy(
-            request._id!.toString(),
-            agentId,
-            "grantAccessAgents"
-          )
-        )
-      );
-
-      return {
-        data: enrichedData,
-        pagination: {
-          ...paginated.pagination,
-        },
-      } as any;
-    }
-
-    // ============================================
-    // NORMAL AGENTS: See ONLY free or paid listings
+    // AGENTS: See ONLY matched (free/paid) listings
     // ============================================
     logger.info(
-      { agentId, type: "normal" },
-      "Normal agent fetching their accessible pre-market listings"
+      { agentId, type: agent.hasGrantAccess ? "grant-access" : "normal" },
+      "Agent fetching matched pre-market listings"
     );
 
     // Step 1: Get all GrantAccess records for this agent with access
@@ -610,12 +762,15 @@ export class PreMarketService {
     );
 
     // Track views
+    const viewType = agent.hasGrantAccess
+      ? "grantAccessAgents"
+      : "normalAgents";
     await Promise.all(
       paginatedData.map((request: any) =>
         this.preMarketRepository.addAgentToViewedBy(
           request._id!.toString(),
           agentId,
-          "normalAgents"
+          viewType
         )
       )
     );
@@ -652,6 +807,74 @@ export class PreMarketService {
     return enrichedRequest;
   }
 
+  async matchRequestForAgent(
+    agentId: string,
+    requestId: string
+  ): Promise<IGrantAccessRequest> {
+    const agent = await this.agentRepository.findByUserId(agentId);
+    if (!agent || !agent.hasGrantAccess) {
+      throw new ForbiddenException(
+        "You do not have permission to match requests"
+      );
+    }
+
+    const listingActivationCheck =
+      await this.preMarketRepository.findByIdWithActivationStatus(requestId);
+
+    if (!listingActivationCheck) {
+      throw new NotFoundException("Pre-market request not found");
+    }
+
+    if (!listingActivationCheck.isActive) {
+      throw new ForbiddenException(
+        "This listing is no longer accepting requests"
+      );
+    }
+
+    const existing = await this.grantAccessRepository.findByAgentAndRequest(
+      agentId,
+      requestId
+    );
+
+    const shouldNotify =
+      !existing || (existing.status !== "free" && existing.status !== "paid");
+
+    let matchRecord: IGrantAccessRequest;
+    if (existing) {
+      if (existing.status === "free" || existing.status === "paid") {
+        return existing;
+      }
+
+      const updated = await this.grantAccessRepository.updateById(
+        existing._id.toString(),
+        { status: "free" }
+      );
+
+      matchRecord = updated || existing;
+    } else {
+      matchRecord = await this.grantAccessRepository.create({
+        preMarketRequestId: requestId,
+        agentId,
+        status: "free",
+        createdAt: new Date(),
+      });
+    }
+
+    if (shouldNotify) {
+      this.notifyRenterAboutMatchedOpportunity(
+        agentId,
+        listingActivationCheck
+      ).catch((error) => {
+        logger.error(
+          { error, requestId, agentId },
+          "Failed to send renter match notification (non-blocking)"
+        );
+      });
+    }
+
+    return matchRecord;
+  }
+
   // ============================================
   // HELPER: FILTER VISIBILITY
   // ============================================
@@ -681,16 +904,11 @@ export class PreMarketService {
     return filtered;
   }
 
-  /**
-   * HELPER: Enrich request with renter and referrer information
-   * Fetches renter details and referrer (if applicable)
-   */
   private async enrichRequestWithRenterInfo(
     request: any,
     agentId: string,
     hasGrantAccess: boolean
   ): Promise<any> {
-    // Get renter details
     const renter = await this.renterRepository.findById(
       request.renterId.toString()
     );
@@ -703,7 +921,6 @@ export class PreMarketService {
       return request;
     }
 
-    // Get referrer information
     let referrerInfo = null;
     if (renter.referredByAgentId) {
       const referrer = await this.userRepository.findById(
@@ -767,9 +984,6 @@ export class PreMarketService {
     };
   }
 
-  /**
-   * Admin: Get single pre-market request with all details.
-   */
   async getRequestByIdForAdmin(
     requestId: string
   ): Promise<AdminPreMarketRequestItem> {
@@ -782,10 +996,6 @@ export class PreMarketService {
     const enriched = await this.enrichRequestForAdmin(request);
     return enriched;
   }
-
-  // ============================================
-  // HELPER: ENRICH REQUEST FOR ADMIN VIEW
-  // ============================================
 
   private async enrichRequestForAdmin(
     request: IPreMarketRequest
@@ -812,10 +1022,6 @@ export class PreMarketService {
     } as AdminPreMarketRequestItem;
   }
 
-  // ============================================
-  // HELPER: AGENT REQUEST SUMMARY
-  // ============================================
-
   private async getAgentRequestSummary(
     preMarketRequestId: string | Types.ObjectId
   ): Promise<AdminAgentRequestSummary> {
@@ -825,15 +1031,15 @@ export class PreMarketService {
       );
 
     if (!allRequests || allRequests.length === 0) {
-      return { total: 0, free: 0, pending: 0 };
+      return { total: 0, approve: 0, pending: 0 };
     }
 
-    let free = 0;
+    let approve = 0;
     let pending = 0;
 
     for (const req of allRequests) {
       if (req.status === "free" || req.status === "paid") {
-        free += 1;
+        approve += 1;
       } else if (req.status === "pending" || req.status === "approved") {
         pending += 1;
       }
@@ -841,18 +1047,13 @@ export class PreMarketService {
 
     return {
       total: allRequests.length,
-      free,
+      approve,
       pending,
     };
   }
 
-  /**
-   * Build renterInfo object from Renter document with referrer details.
-   * Handles cases where renter or referrer might not exist.
-   */
   private async buildRenterInfo(renter: any): Promise<AdminRenterInfo> {
     if (!renter) {
-      // Renter soft-deleted or not found
       return {
         renterId: "",
         fullName: "Unknown renter",
@@ -1120,12 +1321,18 @@ export class PreMarketService {
       }
     }
 
+    const profileImageUrl =
+      (typeof renter.userId === "object" && renter.userId
+        ? renter.userId.profileImageUrl
+        : renter.profileImageUrl) || null;
+
     // Build full renter info
     const renterInfo = {
       renterId: renter._id?.toString(),
       renterName: renter.fullName,
       renterEmail: renter.email,
       renterPhone: renter.phoneNumber,
+      profileImage: profileImageUrl,
       registrationType: renter.registrationType,
       referrer: referrerInfo,
     };
@@ -1326,6 +1533,100 @@ export class PreMarketService {
     };
   }
 
+  async getMatchedAccessRecord(
+    agentId: string,
+    requestId: string
+  ): Promise<IGrantAccessRequest | null> {
+    const grantAccess = await this.grantAccessRepository.findByAgentAndRequest(
+      agentId,
+      requestId
+    );
+
+    if (
+      grantAccess &&
+      (grantAccess.status === "free" || grantAccess.status === "paid")
+    ) {
+      return grantAccess;
+    }
+
+    return null;
+  }
+
+  private async notifyRenterAboutMatchedOpportunity(
+    agentId: string,
+    preMarketRequest: IPreMarketRequest
+  ): Promise<void> {
+    const renter = await this.renterRepository.findRenterWithReferrer(
+      preMarketRequest.renterId.toString()
+    );
+
+    if (!renter?.email || !renter.fullName) {
+      logger.warn(
+        { requestId: preMarketRequest._id },
+        "Renter not found for match notification"
+      );
+      return;
+    }
+
+    const agent = await this.userRepository.findById(agentId);
+    if (!agent?.email) {
+      logger.warn(
+        { agentId, requestId: preMarketRequest._id },
+        "Matching agent not found for match notification"
+      );
+      return;
+    }
+
+    const registeredAgentInfo =
+      renter.registrationType === "agent_referral" && renter.referredByAgentId
+        ? renter.referredByAgentId
+        : null;
+
+    const registeredAgentId =
+      typeof registeredAgentInfo === "object" && registeredAgentInfo?._id
+        ? registeredAgentInfo._id.toString()
+        : typeof registeredAgentInfo === "string"
+          ? registeredAgentInfo
+          : null;
+
+    const registeredAgentEmail =
+      typeof registeredAgentInfo === "object" && registeredAgentInfo?.email
+        ? registeredAgentInfo.email
+        : "tmor@corcoran.com";
+
+    const isRegisteredAgentMatch =
+      (registeredAgentId && agent._id?.toString() === registeredAgentId) ||
+      (agent.email &&
+        registeredAgentEmail &&
+        agent.email.toLowerCase() === registeredAgentEmail.toLowerCase());
+
+    const ccEmails = [!isRegisteredAgentMatch && agent.email]
+      .filter((email): email is string => Boolean(email))
+      .map((email) => email.trim())
+      .filter((email, index, items) => {
+        return (
+          items.findIndex(
+            (item) => item.toLowerCase() === email.toLowerCase()
+          ) === index
+        );
+      })
+      .filter((email) => email.toLowerCase() !== renter.email.toLowerCase());
+
+    if (isRegisteredAgentMatch) {
+      await emailService.sendRenterOpportunityFoundByRegisteredAgent({
+        to: renter.email,
+        renterName: renter.fullName,
+        cc: ccEmails.length > 0 ? ccEmails : undefined,
+      });
+    } else {
+      await emailService.sendRenterOpportunityFoundByOtherAgent({
+        to: renter.email,
+        renterName: renter.fullName,
+        cc: ccEmails.length > 0 ? ccEmails : undefined,
+      });
+    }
+  }
+
   /**
    * Check if agent has access to view RENTER INFO for a request
    * Returns true if:
@@ -1484,6 +1785,20 @@ export class PreMarketService {
       `Listing activation toggled: ${isActive ? "activated" : "deactivated"}`
     );
 
+    if (!isActive) {
+      const reason = userRole === "Admin" ? "Closed by Admin" : "Expired";
+      this.notifyRegisteredAgentRequestClosed(
+        listing,
+        reason,
+        new Date()
+      ).catch((error) => {
+        logger.error(
+          { error, listingId },
+          "Failed to send request closed alert (non-blocking)"
+        );
+      });
+    }
+
     return updated;
   }
 
@@ -1582,6 +1897,10 @@ export class PreMarketService {
           const agentMap = new Map<string, { status: string; record: any }>();
 
           for (const record of grantAccessRecords || []) {
+            if (record.status !== "free" && record.status !== "paid") {
+              continue;
+            }
+
             const agentId = record.agentId.toString();
             if (!agentMap.has(agentId)) {
               agentMap.set(agentId, {
@@ -1591,34 +1910,7 @@ export class PreMarketService {
             }
           }
 
-          const grantAccessAgents =
-            await this.agentRepository.findAllGrantAccessAgent({
-              hasGrantAccess: true,
-            });
-
-          const uniqueAgentIds = new Set<string>();
-
-          for (const id of agentMap.keys()) {
-            uniqueAgentIds.add(id);
-          }
-
-          for (const agent of grantAccessAgents) {
-            if (!agent.userId) {
-              continue;
-            }
-
-            const grantAccessUserId =
-              typeof agent.userId === "string"
-                ? agent.userId
-                : ((agent.userId as any)?._id?.toString() ??
-                  agent.userId.toString());
-
-            if (grantAccessUserId) {
-              uniqueAgentIds.add(grantAccessUserId);
-            }
-          }
-
-          const agentIds = Array.from(uniqueAgentIds);
+          const agentIds = Array.from(agentMap.keys());
 
           const agents = [];
 
@@ -1633,7 +1925,6 @@ export class PreMarketService {
 
               if (agentProfile && agentUser) {
                 const accessInfo = agentMap.get(agentId);
-                const hasGrantAccess = agentProfile.hasGrantAccess;
                 const accessStatus = accessInfo?.status as
                   | "pending"
                   | "free"
@@ -1642,8 +1933,9 @@ export class PreMarketService {
                   | undefined;
                 const hasRequestAccess =
                   accessStatus === "paid" || accessStatus === "free";
+                const hasGrantAccess = agentProfile.hasGrantAccess === true;
 
-                if (hasGrantAccess || hasRequestAccess) {
+                if (hasRequestAccess) {
                   agents.push({
                     _id: agentProfile._id?.toString(),
                     userId: agentUser._id?.toString(),
@@ -1653,9 +1945,7 @@ export class PreMarketService {
                     licenseNumber: agentProfile.licenseNumber,
                     profileImageUrl: agentUser.profileImageUrl || null,
                     accessStatus,
-                    ...(agentProfile.hasGrantAccess && {
-                      hasGrantAccess: agentProfile.hasGrantAccess,
-                    }),
+                    ...(hasGrantAccess && { hasGrantAccess }),
                   });
                 }
               }
@@ -1762,25 +2052,25 @@ export class PreMarketService {
       }
     }
 
+    const profileImageUrl =
+      (typeof renter.userId === "object" && renter.userId
+        ? renter.userId.profileImageUrl
+        : renter.profileImageUrl) || null;
+
     return {
       renterId: renter._id?.toString() || renterId,
       fullName: renter.fullName,
       email: renter.email,
       phoneNumber: renter.phoneNumber,
+      profileImage: profileImageUrl,
       registrationType: renter.registrationType,
       referralInfo: referrerInfo,
     };
   }
 
-  /**
-   * Update the single consolidated Excel file
-   * Called after every new request creation
-   */
   private async updateConsolidatedExcel(): Promise<void> {
-    // 1. Generate Excel with ALL requests
     const buffer = await this.excelService.generateConsolidatedPreMarketExcel();
 
-    // 2. Upload to S3
     const { url, fileName } =
       await this.excelService.uploadConsolidatedExcel(buffer);
 
