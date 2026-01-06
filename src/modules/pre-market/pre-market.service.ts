@@ -1091,6 +1091,7 @@ export class PreMarketService {
         renterInfo.referralInfo = {
           referrerId: referrer._id?.toString() || "",
           referrerName: referrer.fullName || referrer.name || "Unknown",
+          referralCode: referrer.referralCode || null,
           referrerType: "AGENT",
         };
       }
@@ -1109,6 +1110,9 @@ export class PreMarketService {
         renterInfo.referralInfo = {
           referrerId: referrer._id?.toString() || "",
           referrerName: referrer.fullName || referrer.name || "Unknown",
+          referrerEmail: referrer.email || null,
+          referrerPhoneNumber: referrer.phoneNumber || null,
+          referralCode: referrer.referralCode || null,
           referrerType: "ADMIN",
         };
       }
@@ -2030,6 +2034,9 @@ export class PreMarketService {
         referrerInfo = {
           referrerId: referrer._id?.toString(),
           referrerName: referrer.fullName,
+          referrerEmail: referrer.email ?? null,
+          referrerPhoneNumber: referrer.phoneNumber ?? null,
+          referralCode: referrer.referralCode ?? null,
           referrerType: "AGENT",
         };
       }
@@ -2047,6 +2054,9 @@ export class PreMarketService {
         referrerInfo = {
           referrerId: referrer._id?.toString(),
           referrerName: referrer.fullName,
+          referrerEmail: referrer.email ?? null,
+          referrerPhoneNumber: referrer.phoneNumber ?? null,
+          referralCode: referrer.referralCode ?? null,
           referrerType: "ADMIN",
         };
       }

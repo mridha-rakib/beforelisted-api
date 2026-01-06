@@ -8,11 +8,9 @@ export const preMarketSchemas = {
 
   CreatePreMarketRequestPayload: {
     type: "object",
-    required: ["movingDateRange", "priceRange", "locations", "bathrooms"],
     properties: {
       movingDateRange: {
         type: "object",
-        required: ["earliest", "latest"],
         properties: {
           earliest: {
             type: "string",
@@ -30,7 +28,6 @@ export const preMarketSchemas = {
       },
       priceRange: {
         type: "object",
-        required: ["min", "max"],
         properties: {
           min: {
             type: "number",

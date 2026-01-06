@@ -82,6 +82,9 @@ export interface AdminReferrerInfo {
   referrerId: string;
   referrerName: string;
   referrerType: "AGENT" | "ADMIN"; // or "NORMAL" for none
+  referralCode?: string | null;
+  referrerEmail?: string | null;
+  referrerPhoneNumber?: string | null;
 }
 
 export interface AdminRenterInfo {
