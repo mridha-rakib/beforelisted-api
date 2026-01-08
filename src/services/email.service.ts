@@ -24,7 +24,6 @@ import {
   renterOpportunityFoundOtherAgentTemplate,
   renterRequestClosedAgentAlertTemplate,
   renterRequestUpdatedNotificationTemplate,
-  renterAccessGrantedNotificationTemplate,
 } from "./email-notification.templates";
 import {
   IAdminContactRequestPayload,
@@ -38,7 +37,6 @@ import {
   IRenterOpportunityFoundOtherAgentPayload,
   IRenterRequestClosedAgentAlertPayload,
   IRenterRequestUpdatedNotificationPayload,
-  IRenterAccessGrantedNotificationPayload,
 } from "./email-notification.types";
 import { EmailTemplateFactory } from "./email-templates/email-template.factory";
 import { EmailTemplates } from "./email.templates.beforelisted";
@@ -591,7 +589,6 @@ export class EmailService {
 
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
-        cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
         subject: `We received your BeforeListed™ request`,
         html,
       };
@@ -1047,58 +1044,6 @@ export class EmailService {
   /**
    * Send renter notification when an agent gains access
    */
-  async sendRenterAccessGrantedNotification(
-    payload: IRenterAccessGrantedNotificationPayload
-  ): Promise<IEmailResult> {
-    try {
-      logger.debug(
-        { email: payload.to, listingTitle: payload.listingTitle },
-        "Sending renter access granted notification"
-      );
-
-      const html = renterAccessGrantedNotificationTemplate(
-        payload.renterName,
-        payload.agentName,
-        payload.agentEmail,
-        payload.listingTitle,
-        payload.location,
-        payload.accessType,
-        payload.listingUrl,
-        this.config.logoUrl!,
-        this.config.brandColor
-      );
-
-      const emailOptions: IEmailOptions = {
-        to: { email: payload.to, name: payload.renterName },
-        subject: `Agent Access Granted - ${payload.listingTitle}`,
-        html,
-        priority: "high",
-      };
-
-      return await this.sendEmail(
-        emailOptions,
-        "RENTER_ACCESS_GRANTED_NOTIFICATION",
-        payload.to
-      );
-    } catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : String(error),
-          email: payload.to,
-        },
-        "Failed to send renter access granted notification"
-      );
-
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-        timestamp: new Date(),
-        attempt: 1,
-        maxAttempts: this.config.maxRetries,
-      };
-    }
-  }
-
   /**
    * Send admin referral email with temporary password
    * Called during: Admin referral renter registration (passwordless flow)

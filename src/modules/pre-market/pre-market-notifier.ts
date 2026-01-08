@@ -354,26 +354,10 @@ export class PreMarketNotifier {
     }
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const agentEmail =
-        renterData.referringAgentEmail || DEFAULT_REFERRAL_AGENT_EMAIL;
-
-      const normalizedRenterEmail = renterData.renterEmail.trim().toLowerCase();
-      const ccEmails = [agentEmail]
-        .map((email) => email.trim())
-        .filter((email) => email.length > 0)
-        .filter(
-          (email, index, items) =>
-            items.findIndex(
-              (item) => item.toLowerCase() === email.toLowerCase()
-            ) === index
-        )
-        .filter((email) => email.toLowerCase() !== normalizedRenterEmail);
-
       const emailResult =
         await emailService.sendPreMarketRequestConfirmationToRenter({
           to: renterData.renterEmail,
           renterName: renterData.renterName,
-          cc: ccEmails,
         });
 
       if (emailResult.success) {

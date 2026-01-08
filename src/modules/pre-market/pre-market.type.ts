@@ -5,10 +5,6 @@ import { PaginatedResponse } from "@/ts/pagination.types";
 import { Types } from "mongoose";
 import { IPreMarketRequest } from "./pre-market.model";
 
-// ============================================
-// PRE-MARKET REQUEST TYPES
-// ============================================
-
 export type PreMarketLocation = {
   borough: string;
   neighborhoods: string[];
@@ -54,10 +50,6 @@ export type CreatePreMarketRequestPayload = {
 export type UpdatePreMarketRequestPayload =
   Partial<CreatePreMarketRequestPayload>;
 
-// ============================================
-// GRANT ACCESS TYPES
-// ============================================
-
 export type GrantAccessStatus =
   | "pending"
   | "approved"
@@ -81,7 +73,7 @@ export type AdminDecisionPayload = {
 export interface AdminReferrerInfo {
   referrerId: string;
   referrerName: string;
-  referrerType: "AGENT" | "ADMIN"; // or "NORMAL" for none
+  referrerType: "AGENT" | "ADMIN";
   referralCode?: string | null;
   referrerEmail?: string | null;
   referrerPhoneNumber?: string | null;

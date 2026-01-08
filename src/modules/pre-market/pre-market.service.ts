@@ -408,7 +408,21 @@ export class PreMarketService {
           excludedIds
         );
     } else {
-      paginated = await this.preMarketRepository.findAllWithPagination(query);
+      const matchedRecords =
+        await this.grantAccessRepository.findByAgentIdAndStatuses(agentId, [
+          "free",
+          "paid",
+        ]);
+      const excludedIds = matchedRecords.map((record) =>
+        record.preMarketRequestId.toString()
+      );
+
+      paginated = excludedIds.length
+        ? await this.preMarketRepository.findAllWithPaginationExcludingIds(
+            query,
+            excludedIds
+          )
+        : await this.preMarketRepository.findAllWithPagination(query);
     }
 
     const requestIds = paginated.data

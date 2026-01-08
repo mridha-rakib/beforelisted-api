@@ -112,10 +112,10 @@ export class ExcelService {
           this.getNeighborhoods(request),
           request.bedrooms || "N/A",
           request.bathrooms || "N/A",
-          this.serializeObject(request.unitFeatures),
-          this.serializeObject(request.buildingFeatures),
+          this.formatUnitFeatures(request.unitFeatures),
+          this.formatBuildingFeatures(request.buildingFeatures),
           request.petPolicy || "N/A",
-          request.guarantorRequired ? "Yes" : "No",
+          this.formatGuarantorRequired(request.guarantorRequired),
           request.preferences || "N/A",
           request.status || "unknown",
           this.formatDate(request.createdAt),
@@ -255,10 +255,10 @@ export class ExcelService {
             this.getNeighborhoods(request),
             request.bedrooms || "N/A",
             request.bathrooms || "N/A",
-            this.serializeObject(request.unitFeatures),
-            this.serializeObject(request.buildingFeatures),
+            this.formatUnitFeatures(request.unitFeatures),
+            this.formatBuildingFeatures(request.buildingFeatures),
             request.petPolicy || "N/A",
-            request.guarantorRequired ? "Yes" : "No",
+            this.formatGuarantorRequired(request.guarantorRequired),
             request.preferences || "N/A",
             request.status || "unknown",
             this.formatDate(request.createdAt),
@@ -758,6 +758,50 @@ export class ExcelService {
       return Object.values(obj).join(", ");
     }
     return String(obj);
+  }
+
+  private formatFeatureFlags(
+    source: Record<string, unknown> | undefined | null,
+    labels: Record<string, string>
+  ): string {
+    if (!source || typeof source !== "object") {
+      return "N/A";
+    }
+
+    const enabled = Object.keys(labels).filter((key) => source[key] === true);
+
+    if (enabled.length === 0) {
+      return "N/A";
+    }
+
+    return enabled.map((key) => labels[key]).join(", ");
+  }
+
+  private formatUnitFeatures(source: Record<string, unknown> | undefined | null) {
+    return this.formatFeatureFlags(source, {
+      laundryInUnit: "Laundry in Unit",
+      privateOutdoorSpace: "Private Outdoor Space",
+      dishwasher: "Dishwasher",
+    });
+  }
+
+  private formatBuildingFeatures(
+    source: Record<string, unknown> | undefined | null
+  ) {
+    return this.formatFeatureFlags(source, {
+      doorman: "Doorman",
+      elevator: "Elevator",
+      laundryInBuilding: "Laundry in Building",
+    });
+  }
+
+  private formatGuarantorRequired(
+    source: Record<string, unknown> | undefined | null
+  ) {
+    return this.formatFeatureFlags(source, {
+      personalGuarantor: "Personal Guarantor",
+      thirdPartyGuarantor: "Third-Party Guarantor",
+    });
   }
 
   /**

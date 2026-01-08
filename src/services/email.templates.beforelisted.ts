@@ -240,7 +240,7 @@ export class EmailTemplates {
         <!-- Footer -->
         <div class="footer">
             <p>© ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
-            <p><a href="mailto:${this.supportEmail}">Contact Support</a> | <a href="#">Help Center</a> | <a href="#">Privacy Policy</a></p>
+            <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
         </div>
     </div>
 </body>
@@ -474,7 +474,7 @@ export class EmailTemplates {
         <!-- Footer -->
         <div class="footer">
             <p>© ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
-            <p><a href="mailto:${this.supportEmail}">Contact Support</a> | <a href="#">Help Center</a> | <a href="#">Privacy Policy</a></p>
+            <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
         </div>
     </div>
 </body>
@@ -633,7 +633,7 @@ export class EmailTemplates {
         <!-- Footer -->
         <div class="footer">
             <p>© ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
-            <p><a href="mailto:${this.supportEmail}">Contact Support</a> | <a href="#">Help Center</a> | <a href="#">Privacy Policy</a></p>
+            <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
         </div>
     </div>
 </body>
@@ -791,7 +791,7 @@ export class EmailTemplates {
         <!-- Footer -->
         <div class="footer">
             <p>© ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
-            <p><a href="mailto:${this.supportEmail}">Contact Support</a> | <a href="#">Help Center</a> | <a href="#">Privacy Policy</a></p>
+            <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
         </div>
     </div>
 </body>
@@ -967,7 +967,7 @@ export class EmailTemplates {
         <!-- Footer -->
         <div class="footer">
             <p>© ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
-            <p><a href="mailto:${this.supportEmail}">Contact Support</a> | <a href="#">Help Center</a> | <a href="#">Privacy Policy</a></p>
+            <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
         </div>
     </div>
 </body>
@@ -1095,15 +1095,8 @@ export class EmailTemplates {
 
     <!-- Footer -->
     <div class="footer">
-      <div style="margin-bottom: 10px;">
-        Have questions? Visit our <a href="https://beforelisted.com/help" class="footer-link">Help Center</a> or reply to this email
-      </div>
       <div>
         © ${new Date().getFullYear()} BeforeListed. All rights reserved.
-      </div>
-      <div style="margin-top: 10px; font-size: 11px;">
-        <a href="https://beforelisted.com/privacy" class="footer-link">Privacy Policy</a> | 
-        <a href="https://beforelisted.com/terms" class="footer-link">Terms of Service</a>
       </div>
     </div>
   </div>
@@ -1225,15 +1218,8 @@ export class EmailTemplates {
 
     <!-- Footer -->
     <div class="footer">
-      <div style="margin-bottom: 10px;">
-        Have questions? Visit our <a href="https://beforelisted.com/help" class="footer-link">Help Center</a> or reply to this email
-      </div>
       <div>
         © ${new Date().getFullYear()} BeforeListed. All rights reserved.
-      </div>
-      <div style="margin-top: 10px; font-size: 11px;">
-        <a href="https://beforelisted.com/privacy" class="footer-link">Privacy Policy</a> | 
-        <a href="https://beforelisted.com/terms" class="footer-link">Terms of Service</a>
       </div>
     </div>
   </div>
@@ -1607,11 +1593,9 @@ export class EmailTemplates {
       <p class="footer-text"><strong>The BeforeListed Team</strong></p>
       <div class="footer-links">
         <a href="mailto:support@beforelisted.com">Contact Support</a> |
-        <a href="#">Help Center</a> |
-        <a href="#">Privacy Policy</a>
       </div>
       <p class="footer-text" style="margin-top: 15px; font-size: 10px; color: #ccc;">
-        © ${new Date().getFullYear()} BeforeListed. All rights reserved.
+        ${new Date().getFullYear()} BeforeListed. All rights reserved.
       </p>
     </div>
   </div>

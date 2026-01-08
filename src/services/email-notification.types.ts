@@ -10,10 +10,6 @@ export interface IPreMarketAgentNotificationPayload {
   listingUrl: string;
 }
 
-// ============================================
-// ADMIN NOTIFICATION PAYLOAD
-// ============================================
-
 export interface IPreMarketAdminNotificationPayload {
   to: string;
   listingTitle: string;
@@ -31,7 +27,6 @@ export interface IPreMarketAdminNotificationPayload {
 export interface IRenterRequestConfirmationPayload {
   to: string;
   renterName: string;
-  cc?: string[];
 }
 
 export interface IRenterRequestUpdatedNotificationPayload {
@@ -75,17 +70,6 @@ export interface IRenterRequestClosedAgentAlertPayload {
   cc?: string[];
 }
 
-export interface IRenterAccessGrantedNotificationPayload {
-  to: string;
-  renterName: string;
-  agentName: string;
-  agentEmail: string;
-  listingTitle: string;
-  location: string;
-  accessType: "free" | "paid";
-  listingUrl: string;
-}
-
 export interface IAdminContactRequestPayload {
   to: string;
   senderEmail: string;
@@ -113,34 +97,22 @@ export interface IRenterRegistrationVerifiedAdminPayload {
   referralTag: string;
 }
 
-// ============================================
-// IN-APP NOTIFICATION TYPES (Database)
-// ============================================
-
-/**
- * In-app notification for agents
- * Stored in database for UI display
- */
 export interface IPreMarketAgentNotification {
   notificationId: string;
   agentId: string;
   preMarketRequestId: string;
   type: "NEW_LISTING" | "ACCESS_GRANTED" | "ACCESS_DENIED" | "PAYMENT_REQUIRED";
   title: string;
-  message: string; // "New pre-market request available"
+  message: string;
   listingTitle?: string;
   location?: string;
   serviceType?: string;
   read: boolean;
   createdAt: Date;
   expiresAt?: Date;
-  actionUrl?: string; // Link to view listing
+  actionUrl?: string;
 }
 
-/**
- * In-app notification for admin
- * Stored in database for UI display
- */
 export interface IPreMarketAdminNotification {
   notificationId: string;
   preMarketRequestId: string;
@@ -155,16 +127,9 @@ export interface IPreMarketAdminNotification {
   read: boolean;
   createdAt: Date;
   expiresAt?: Date;
-  actionUrl?: string; // Link to view details
+  actionUrl?: string;
 }
 
-// ============================================
-// NOTIFICATION RESULT TYPES
-// ============================================
-
-/**
- * Result of sending a notification email
- */
 export interface INotificationEmailResult {
   success: boolean;
   messageId?: string;

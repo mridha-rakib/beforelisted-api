@@ -199,10 +199,7 @@ export function preMarketAgentNotificationTemplate(
         <div class="footer">
             <p style="margin: 0;">© ${currentYear} BeforeListed. All rights reserved.</p>
             <p style="margin: 5px 0 0 0;">
-                <a href="#">Unsubscribe</a> | 
-                <a href="#">Privacy Policy</a> | 
-                <a href="#">Contact Us</a>
-            </p>
+                                                            </p>
         </div>
     </div>
 </body>
@@ -603,10 +600,6 @@ export function renterRequestConfirmationTemplate(
 
         <div class="footer">
             <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
-            <p style="margin: 5px 0 0 0;">
-                <a href="#">Privacy Policy</a> | 
-                <a href="#">Contact Us</a>
-            </p>
         </div>
     </div>
 </body>
@@ -800,10 +793,6 @@ export function agentRenterRequestConfirmationTemplate(
 
         <div class="footer">
             <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
-            <p style="margin: 5px 0 0 0;">
-                <a href="#">Privacy Policy</a> | 
-                <a href="#">Contact Us</a>
-            </p>
         </div>
     </div>
 </body>
@@ -925,10 +914,6 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
 
         <div class="footer">
             <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
-            <p style="margin: 5px 0 0 0;">
-                <a href="#">Privacy Policy</a> | 
-                <a href="#">Contact Us</a>
-            </p>
         </div>
     </div>
 </body>
@@ -1050,10 +1035,6 @@ export function renterOpportunityFoundOtherAgentTemplate(
 
         <div class="footer">
             <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
-            <p style="margin: 5px 0 0 0;">
-                <a href="#">Privacy Policy</a> | 
-                <a href="#">Contact Us</a>
-            </p>
         </div>
     </div>
 </body>
@@ -1218,10 +1199,6 @@ export function renterRequestClosedAgentAlertTemplate(
 
         <div class="footer">
             <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
-            <p style="margin: 5px 0 0 0;">
-                <a href="#">Privacy Policy</a> | 
-                <a href="#">Contact Us</a>
-            </p>
         </div>
     </div>
 </body>
@@ -1400,185 +1377,6 @@ export function renterRequestUpdatedNotificationTemplate(
 
         <div class="footer">
             <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
-            <p style="margin: 5px 0 0 0;">
-                <a href="#">Privacy Policy</a> | 
-                <a href="#">Contact Us</a>
-            </p>
-        </div>
-    </div>
-</body>
-</html>
-  `;
-}
-
-/**
- * Email template for renter when an agent gains access
- */
-export function renterAccessGrantedNotificationTemplate(
-  renterName: string,
-  agentName: string,
-  agentEmail: string,
-  listingTitle: string,
-  location: string,
-  accessType: "free" | "paid",
-  listingUrl: string,
-  logoUrl?: string,
-  brandColor: string = "#1890FF"
-): string {
-  const currentYear = new Date().getFullYear();
-  const accessLabel =
-    accessType === "free" ? "Free access granted" : "Paid access granted";
-
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agent Access Granted</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f5f5f5;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 600px;
-            margin: 20px auto;
-            background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-        .header {
-            background: ${brandColor};
-            color: #ffffff;
-            padding: 30px 20px;
-            text-align: center;
-        }
-        .logo {
-            max-width: 150px;
-            height: auto;
-            margin-bottom: 15px;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 600;
-        }
-        .content {
-            padding: 30px 20px;
-        }
-        .greeting {
-            margin-bottom: 20px;
-            font-size: 16px;
-        }
-        .notification-box {
-            background-color: #f0f8fa;
-            border-left: 4px solid ${brandColor};
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .notification-box h2 {
-            margin: 0 0 10px 0;
-            color: ${brandColor};
-            font-size: 18px;
-        }
-        .details {
-            background-color: #fafafa;
-            padding: 15px;
-            border-radius: 4px;
-            margin: 20px 0;
-        }
-        .details p {
-            margin: 8px 0;
-            font-size: 14px;
-        }
-        .details strong {
-            color: ${brandColor};
-            display: inline-block;
-            min-width: 120px;
-        }
-        .cta-button {
-            display: inline-block;
-            background-color: ${brandColor};
-            color: #ffffff;
-            padding: 12px 30px;
-            text-decoration: none;
-            border-radius: 4px;
-            margin: 20px 0;
-            font-weight: 600;
-            transition: background-color 0.3s;
-        }
-        .cta-button:hover {
-            opacity: 0.9;
-        }
-        .footer {
-            background-color: #f9f9f9;
-            padding: 20px;
-            text-align: center;
-            font-size: 12px;
-            color: #999;
-        }
-        .footer a {
-            color: ${brandColor};
-            text-decoration: none;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
-            <h1>Agent Access Granted</h1>
-        </div>
-
-        <div class="content">
-            <div class="greeting">
-                Hi ${renterName},
-            </div>
-
-            <div class="notification-box">
-                <h2>${accessLabel}</h2>
-                <p>An agent has been granted access to your pre-market listing.</p>
-            </div>
-
-            <div class="details">
-                <p>
-                    <strong>Listing:</strong><br>
-                    ${listingTitle}
-                </p>
-                <p>
-                    <strong>Location:</strong><br>
-                    ${location}
-                </p>
-                <p>
-                    <strong>Agent Name:</strong><br>
-                    ${agentName}
-                </p>
-                <p>
-                    <strong>Agent Email:</strong><br>
-                    <a href="mailto:${agentEmail}">${agentEmail}</a>
-                </p>
-            </div>
-
-            <div style="text-align: center;">
-                <a href="${listingUrl}" class="cta-button">View Listing Details</a>
-            </div>
-
-            <p>If you have any questions, feel free to reply to this email.</p>
-        </div>
-
-        <div class="footer">
-            <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
-            <p style="margin: 5px 0 0 0;">
-                <a href="#">Privacy Policy</a> | 
-                <a href="#">Contact Us</a>
-            </p>
         </div>
     </div>
 </body>

@@ -17,27 +17,18 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRY: z.string(),
   SALT_ROUNDS: z.coerce.number().default(12),
 
-  // ============================================
-  // EMAIL SETTINGS
-  // ============================================
   POSTMARK_API_TOKEN: z.string().nonempty("POSTMARK_API_TOKEN is required"),
   POSTMARK_MESSAGE_STREAM: z
     .enum(["outbound", "broadcast"])
     .default("outbound"),
   POSTMARK_SANDBOX_MODE: z.coerce.boolean().default(false),
 
-  // ============================================
-  //  EMAIL DEFAULTS
-  // ============================================
   EMAIL_FROM_NAME: z.string().default("BeforeListed"),
   EMAIL_FROM_ADDRESS: z
     .email("Must be a valid email")
     .default("noreply@beforelisted.com"),
   EMAIL_REPLY_TO: z.email("Must be a valid email").optional(),
 
-  // ============================================
-  //  BRANDING
-  // ============================================
   EMAIL_LOGO_URL: z
     .url("Must be valid URL")
     .default("https://i.postimg.cc/wB4Zgqmy/Logo-8.jpg"),
@@ -56,11 +47,6 @@ const envSchema = z.object({
   HETZNER_SECRET_KEY: z.string().nonempty("Hetzner secret key is required."),
   HETZNER_REGION: z.string().nonempty("Hetzner region is required."),
 
-  // # ============================================
-  // # File Upload Configuration
-  // # ============================================
-
-  // Image upload limits
   MAX_IMAGE_SIZE: z
     .string()
     .transform(Number)
@@ -73,14 +59,14 @@ const envSchema = z.object({
     .refine((arr) => arr.length > 0, {
       message: "ALLOWED_IMAGE_TYPES must contain at least one type",
     }),
-  // Excel upload limits
+
   MAX_EXCEL_SIZE: z
     .string()
     .transform(Number)
     .refine((val) => !isNaN(val) && val > 0, {
       message: "MAX_EXCEL_SIZE must be a valid number",
     }),
-  // PDF upload limits
+
   MAX_PDF_SIZE: z
     .string()
     .transform(Number)
@@ -88,16 +74,13 @@ const envSchema = z.object({
       message: "MAX_PDF_SIZE must be a valid number",
     }),
 
-  // Admin email
   ADMIN_EMAIL: z.email().nonempty("Admin email is required."),
 
-  //  STRIPE CREDENTIALS
   STRIPE_SECRET_KEY: z.string().nonempty("Stripe secret key is required."),
   STRIPE_WEBHOOK_SECRET: z
     .string()
     .nonempty("Stripe webhook secret is required."),
 
-  // Frontend URL
   CLIENT_URL: z
     .string()
     .url()
@@ -119,7 +102,7 @@ const normalizeEnv = (
     }
 
     const trimmed =
-      (value.startsWith("\"") && value.endsWith("\"")) ||
+      (value.startsWith('"') && value.endsWith('"')) ||
       (value.startsWith("'") && value.endsWith("'"))
         ? value.slice(1, -1)
         : value;

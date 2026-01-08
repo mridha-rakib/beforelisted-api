@@ -300,7 +300,6 @@ export class GrantAccessService {
 
       await this.grantAccessRepository.updateById(grantAccessId, grantAccess);
       await this.notifier.notifyAgentOfApproval(grantAccess, true);
-      await this.notifyRenterAccessGranted(preMarketRequest, agent, "free");
 
       try {
         if (agent && preMarketRequest) {
@@ -406,70 +405,6 @@ export class GrantAccessService {
     }
 
     throw new BadRequestException("Invalid decision action");
-  }
-
-  private async notifyRenterAccessGranted(
-    preMarketRequest: IPreMarketRequest | null,
-    agent: any | null,
-    accessType: "free" | "paid"
-  ): Promise<void> {
-    try {
-      if (!preMarketRequest || !agent) {
-        return;
-      }
-
-      const renterId = preMarketRequest.renterId?.toString();
-      if (!renterId) {
-        return;
-      }
-
-      const renter = await this.renterRepository.findByUserId(renterId);
-      if (!renter) {
-        logger.warn(
-          { renterId, requestId: preMarketRequest._id },
-          "Renter not found for access grant email"
-        );
-        return;
-      }
-
-      if (renter.emailSubscriptionEnabled === false) {
-        logger.info(
-          { renterId, requestId: preMarketRequest._id },
-          "Renter email subscription disabled, skipping email"
-        );
-        return;
-      }
-
-      if (!renter.email) {
-        logger.warn(
-          { renterId, requestId: preMarketRequest._id },
-          "Renter email missing, skipping access grant email"
-        );
-        return;
-      }
-
-      const listingUrl = `${env.CLIENT_URL}/listings/${preMarketRequest._id}`;
-      const location =
-        preMarketRequest.locations?.map((l) => l.borough).join(", ") ||
-        "Multiple Locations";
-
-      await emailService.sendRenterAccessGrantedNotification({
-        to: renter.email,
-        renterName: renter.fullName || "Renter",
-        agentName: agent.fullName || "Agent",
-        agentEmail:
-          agent.email || env.EMAIL_REPLY_TO || "support@beforelisted.com",
-        listingTitle: preMarketRequest.requestName || "Pre-Market Listing",
-        location,
-        accessType,
-        listingUrl,
-      });
-    } catch (error) {
-      logger.error(
-        { error, requestId: preMarketRequest?._id },
-        "Failed to send renter access granted email"
-      );
-    }
   }
 
   // ============================================
