@@ -247,8 +247,20 @@ export class PreMarketController {
       userId,
       requestId
     );
+    const isRejected = accessSummary.grantAccessStatus === "rejected";
+    const hasRequestedAccess =
+      accessSummary.grantAccessStatus !== "Available" &&
+      accessSummary.grantAccessStatus !== "free" &&
+      accessSummary.grantAccessStatus !== "paid" &&
+      accessSummary.grantAccessStatus !== "rejected";
     const listingStatus =
-      accessSummary.accessType === "none" ? request.status : "matched";
+      accessSummary.accessType !== "none"
+        ? "matched"
+        : isRejected
+          ? "rejected"
+          : hasRequestedAccess
+            ? "requested"
+            : request.status;
 
     await this.preMarketRepository.addAgentToViewedBy(
       requestId,
@@ -265,8 +277,11 @@ export class PreMarketController {
       accessType: accessSummary.accessType,
       canRequestAccess: accessSummary.canRequestAccess,
       chargeAmount: accessSummary.chargeAmount ?? null,
-      payment: accessSummary.payment ?? null,
     };
+
+    if (accessSummary.showPayment && accessSummary.payment) {
+      response.payment = accessSummary.payment;
+    }
 
     // Include renter info if agent has access
     if (accessSummary.canSeeRenterInfo) {

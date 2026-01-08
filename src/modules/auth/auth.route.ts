@@ -21,7 +21,11 @@ router.post("/refresh-token", authController.refreshToken);
 
 router.use("/", passwordResetRoutes);
 
-router.put("/change-password", authController.changePassword);
+router.put(
+  "/change-password",
+  authMiddleware.verifyToken,
+  authController.changePassword
+);
 
 router.post("/logout", authMiddleware.verifyToken, authController.logout);
 

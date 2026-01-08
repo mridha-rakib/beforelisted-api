@@ -56,12 +56,6 @@ export class EmailTemplates {
                 <li>View matches if an agent identifies an opportunity that aligns with your request</li>
             </ul>
 
-            <p>To get started, you can access your dashboard below:</p>
-
-            <div style="text-align: center;">
-                <a href="${loginLink}" class="cta-button">Go to Dashboard</a>
-            </div>
-
             <p>If you have any questions or need assistance, you can reply to this email or contact us at <a href="mailto:${this.supportEmail}">${this.supportEmail}</a>.</p>
 
             <p>We're glad to have you here.</p>

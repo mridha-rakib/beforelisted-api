@@ -36,5 +36,5 @@ export default antfu(
       ],
       "test/prefer-lowercase-title": ["off"],
     },
-  },
+  }
 );

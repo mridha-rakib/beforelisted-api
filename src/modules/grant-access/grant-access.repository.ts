@@ -250,6 +250,9 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
     accessStatus?: GrantAccessStatus;
     page?: number;
     limit?: number;
+    excludeFree?: boolean;
+    excludeRejected?: boolean;
+    requirePayment?: boolean;
   }): Promise<{
     data: IGrantAccessRequest[];
     pagination: {
@@ -264,13 +267,36 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
     const skip = (page - 1) * limit;
 
     const query: FilterQuery<IGrantAccessRequest> = {};
+    const conditions: FilterQuery<IGrantAccessRequest>[] = [];
 
     if (filters?.paymentStatus) {
-      query["payment.paymentStatus"] = filters.paymentStatus;
+      conditions.push({ "payment.paymentStatus": filters.paymentStatus });
     }
 
     if (filters?.accessStatus) {
-      query.status = filters.accessStatus;
+      conditions.push({ status: filters.accessStatus });
+    }
+
+    if (filters?.excludeFree) {
+      conditions.push({ status: { $ne: "free" } });
+      conditions.push({ "adminDecision.isFree": { $ne: true } });
+    }
+
+    if (filters?.excludeRejected) {
+      conditions.push({ status: { $ne: "rejected" } });
+    }
+
+    if (filters?.requirePayment) {
+      conditions.push({
+        $or: [
+          { "payment.amount": { $gt: 0 } },
+          { "adminDecision.chargeAmount": { $gt: 0 } },
+        ],
+      });
+    }
+
+    if (conditions.length > 0) {
+      query.$and = conditions;
     }
 
     const total = await this.model.countDocuments(query);

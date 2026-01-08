@@ -11,7 +11,7 @@ export class AdminSeeder {
     email: "admin@beforelisted.com",
     password: "Admin@12345",
     fullName: "Tuval Mor",
-    phone: "+1646-342-1757",
+    phoneNumber: "+1646-342-1757",
     role: ROLES.ADMIN,
   };
 
@@ -52,9 +52,9 @@ export class AdminSeeder {
         email: this.DEFAULT_ADMIN.email,
         password: hashedPassword,
         fullName: this.DEFAULT_ADMIN.fullName,
-        phone: this.DEFAULT_ADMIN.phone,
+        phoneNumber: this.DEFAULT_ADMIN.phoneNumber,
         role: ROLES.ADMIN,
-        referralCode, // ✅ Store referral code
+        referralCode,
         emailVerified: true,
         accountStatus: "active",
         createdAt: new Date(),

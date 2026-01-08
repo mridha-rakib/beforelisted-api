@@ -107,9 +107,33 @@ const envSchema = z.object({
     .default("info"),
 });
 
+const normalizeEnv = (
+  rawEnv: NodeJS.ProcessEnv
+): Record<string, string | undefined> => {
+  const normalized: Record<string, string | undefined> = {};
+
+  for (const [key, value] of Object.entries(rawEnv)) {
+    if (typeof value !== "string") {
+      normalized[key] = value as undefined;
+      continue;
+    }
+
+    const trimmed =
+      (value.startsWith("\"") && value.endsWith("\"")) ||
+      (value.startsWith("'") && value.endsWith("'"))
+        ? value.slice(1, -1)
+        : value;
+
+    normalized[key] = trimmed;
+  }
+
+  return normalized;
+};
+
+const parsedEnv = normalizeEnv(process.env);
+
 try {
-  // eslint-disable-next-line node/no-process-env
-  envSchema.parse(process.env);
+  envSchema.parse(parsedEnv);
 } catch (error) {
   if (error instanceof z.ZodError) {
     console.error(
@@ -122,5 +146,4 @@ try {
   process.exit(1);
 }
 
-// eslint-disable-next-line node/no-process-env
-export const env = envSchema.parse(process.env);
+export const env = envSchema.parse(parsedEnv);

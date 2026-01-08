@@ -39,6 +39,7 @@ type NormalAgentListingResponse = Record<string, any> & {
 
 type AgentGrantAccessStatus =
   | "Available"
+  | "requested"
   | "approved"
   | "pending"
   | "paid"
@@ -86,17 +87,29 @@ export class PreMarketService {
       return "free";
     }
 
+    if (grantAccess.status === "rejected") {
+      return "rejected";
+    }
+
+    if (grantAccess.status === "paid") {
+      return "paid";
+    }
+
+    const chargeAmount =
+      grantAccess.payment?.amount ?? grantAccess.adminDecision?.chargeAmount ?? 0;
+    const isChargedDecision =
+      chargeAmount > 0 && grantAccess.adminDecision?.isFree !== true;
+
     if (grantAccess.status === "approved") {
+      return isChargedDecision ? "approved" : "requested";
+    }
+
+    if (isChargedDecision) {
       return "approved";
     }
 
-    if (
-      grantAccess.status === "pending" &&
-      grantAccess.adminDecision?.isFree === false &&
-      (grantAccess.payment?.paymentStatus ||
-        (grantAccess.payment as any)?.status) === "pending"
-    ) {
-      return "approved";
+    if (grantAccess.status === "pending") {
+      return "requested";
     }
 
     return grantAccess.status as AgentGrantAccessStatus;
@@ -126,20 +139,49 @@ export class PreMarketService {
       hasGrantAccess
     );
     const accessType = this.resolveAccessType(grantAccess, hasGrantAccess);
-    const isCharged = grantAccess?.adminDecision?.isFree === false;
-    const paymentInfo = grantAccess?.payment
-      ? {
-          amount: grantAccess.payment.amount ?? 0,
-          currency: grantAccess.payment.currency ?? "USD",
-          status: grantAccess.payment.paymentStatus ?? "pending",
-        }
-      : null;
-    const chargeAmount =
-      isCharged && grantAccess
-        ? (grantAccess.payment?.amount ??
-          grantAccess.adminDecision?.chargeAmount ??
-          null)
-        : null;
+    const chargeAmountValue =
+      grantAccess?.payment?.amount ??
+      grantAccess?.adminDecision?.chargeAmount ??
+      0;
+    const hasCharge =
+      chargeAmountValue > 0 && grantAccess?.adminDecision?.isFree !== true;
+    const showPayment = ["approved", "free", "rejected", "paid"].includes(
+      grantAccessStatus
+    );
+    let paymentInfo: {
+      amount: number;
+      currency: string;
+      status: string;
+    } | null = null;
+
+    if (showPayment && grantAccess) {
+      if (grantAccessStatus === "free") {
+        paymentInfo = {
+          amount: grantAccess.payment?.amount ?? 0,
+          currency: grantAccess.payment?.currency ?? "USD",
+          status: "free",
+        };
+      } else if (grantAccessStatus === "rejected") {
+        paymentInfo = {
+          amount: grantAccess.payment?.amount ?? 0,
+          currency: grantAccess.payment?.currency ?? "USD",
+          status: "rejected",
+        };
+      } else if (grantAccessStatus === "approved") {
+        paymentInfo = {
+          amount: chargeAmountValue,
+          currency: grantAccess.payment?.currency ?? "USD",
+          status: grantAccess.payment?.paymentStatus ?? "pending",
+        };
+      } else if (grantAccessStatus === "paid") {
+        paymentInfo = {
+          amount: grantAccess.payment?.amount ?? chargeAmountValue,
+          currency: grantAccess.payment?.currency ?? "USD",
+          status: grantAccess.payment?.paymentStatus ?? "succeeded",
+        };
+      }
+    }
+    const chargeAmount = hasCharge ? chargeAmountValue : null;
 
     return {
       grantAccessStatus,
@@ -149,6 +191,7 @@ export class PreMarketService {
       grantAccessId: grantAccess?._id?.toString(),
       chargeAmount,
       payment: paymentInfo,
+      showPayment,
     };
   }
 
@@ -385,28 +428,49 @@ export class PreMarketService {
       ])
     );
 
-    const enrichedData = paginated.data.map((request) => {
-      const grantAccess = request._id
-        ? grantAccessByRequestId.get(request._id.toString()) || null
-        : null;
-      const accessSummary = this.buildAgentAccessSummary(
-        grantAccess,
-        hasGrantAccess
-      );
-      const isMatched =
-        grantAccess &&
-        (grantAccess.status === "free" || grantAccess.status === "paid");
-      const listingStatus = isMatched ? "matched" : request.status;
-      return {
-        ...request,
-        status: accessSummary.grantAccessStatus,
-        listingStatus,
-        grantAccessStatus: accessSummary.grantAccessStatus,
-        grantAccessId: accessSummary.grantAccessId,
-        accessType: accessSummary.accessType,
-        canRequestAccess: accessSummary.canRequestAccess,
-      };
-    });
+    const enrichedData = await Promise.all(
+      paginated.data.map(async (request) => {
+        const grantAccess = request._id
+          ? grantAccessByRequestId.get(request._id.toString()) || null
+          : null;
+        const accessSummary = this.buildAgentAccessSummary(
+          grantAccess,
+          hasGrantAccess
+        );
+        const isMatched =
+          grantAccess &&
+          (grantAccess.status === "free" || grantAccess.status === "paid");
+        const isRejected =
+          !hasGrantAccess && grantAccess?.status === "rejected";
+        const hasRequestedAccess =
+          !hasGrantAccess &&
+          grantAccess &&
+          grantAccess.status !== "free" &&
+          grantAccess.status !== "paid" &&
+          grantAccess.status !== "rejected";
+        const listingStatus = isMatched
+          ? "matched"
+          : isRejected
+            ? "rejected"
+            : hasRequestedAccess
+              ? "requested"
+              : request.status;
+        const referralInfo = request.renterId
+          ? await this.getReferralInfoForRenter(request.renterId.toString())
+          : null;
+
+        return {
+          ...request,
+          referralInfo,
+          status: accessSummary.grantAccessStatus,
+          listingStatus,
+          grantAccessStatus: accessSummary.grantAccessStatus,
+          grantAccessId: accessSummary.grantAccessId,
+          accessType: accessSummary.accessType,
+          canRequestAccess: accessSummary.canRequestAccess,
+        };
+      })
+    );
 
     return {
       ...paginated,
@@ -2075,6 +2139,61 @@ export class PreMarketService {
       profileImage: profileImageUrl,
       registrationType: renter.registrationType,
       referralInfo: referrerInfo,
+    };
+  }
+
+  private async getReferralInfoForRenter(renterId: string) {
+    const renter = await this.renterRepository.findRenterWithReferrer(renterId);
+
+    if (!renter) {
+      return null;
+    }
+
+    const registrationType = renter.registrationType || "normal";
+    const referrer =
+      registrationType === "agent_referral"
+        ? renter.referredByAgentId
+        : registrationType === "admin_referral"
+          ? renter.referredByAdminId
+          : null;
+
+    if (!referrer) {
+      return { registrationType, referrer: null };
+    }
+
+    const referrerId =
+      typeof referrer === "object" && (referrer as any)?._id
+        ? (referrer as any)._id.toString()
+        : typeof referrer === "string"
+          ? referrer
+          : "";
+    const referrerName =
+      typeof referrer === "object"
+        ? (referrer as any).fullName || (referrer as any).name || "Unknown"
+        : "Unknown";
+    const referrerEmail =
+      typeof referrer === "object" ? (referrer as any).email || null : null;
+    const referrerPhoneNumber =
+      typeof referrer === "object"
+        ? (referrer as any).phoneNumber || null
+        : null;
+    const referrerCode =
+      typeof referrer === "object"
+        ? (referrer as any).referralCode || null
+        : null;
+    const referrerType =
+      registrationType === "agent_referral" ? "Agent" : "Admin";
+
+    return {
+      registrationType,
+      referrer: {
+        referrerId,
+        referrerName,
+        referrerEmail,
+        referrerPhoneNumber,
+        referralCode: referrerCode,
+        referrerType,
+      },
     };
   }
 

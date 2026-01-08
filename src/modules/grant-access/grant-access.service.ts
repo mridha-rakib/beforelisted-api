@@ -275,9 +275,16 @@ export class GrantAccessService {
       return grantAccess;
     }
 
-    // APPROVE (FREE)
     if (decision.action === "free" && decision.isFree) {
       grantAccess.status = "free";
+      grantAccess.payment = {
+        amount: grantAccess.payment?.amount ?? 0,
+        currency: grantAccess.payment?.currency ?? "USD",
+        paymentStatus: "free",
+        failureCount: grantAccess.payment?.failureCount ?? 0,
+        failedAt: grantAccess.payment?.failedAt ?? [],
+        succeededAt: grantAccess.payment?.succeededAt,
+      };
       grantAccess.adminDecision = {
         decidedBy: decision.adminId as any,
         decidedAt: new Date(),
@@ -285,7 +292,6 @@ export class GrantAccessService {
         notes: decision.notes,
       };
 
-      // Add agent to viewedBy
       await this.preMarketRepository.addAgentToViewedBy(
         grantAccess.preMarketRequestId.toString(),
         grantAccess.agentId.toString(),
@@ -512,6 +518,9 @@ export class GrantAccessService {
     accessStatus?: "pending" | "free" | "rejected" | "paid";
     page?: number;
     limit?: number;
+    excludeFree?: boolean;
+    excludeRejected?: boolean;
+    requirePayment?: boolean;
   }): Promise<{
     data: any[];
     pagination: {
@@ -523,8 +532,12 @@ export class GrantAccessService {
   }> {
     logger.info({ filters }, "Admin fetching all payments");
 
-    const result =
-      await this.grantAccessRepository.getAllWithPaymentInfo(filters);
+    const result = await this.grantAccessRepository.getAllWithPaymentInfo({
+      ...filters,
+      excludeFree: filters?.excludeFree ?? true,
+      excludeRejected: filters?.excludeRejected ?? true,
+      requirePayment: filters?.requirePayment ?? true,
+    });
 
     // Enrich with additional info
     const enrichedData = result.data.map((item: any) => ({

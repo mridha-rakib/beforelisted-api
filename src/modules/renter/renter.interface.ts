@@ -25,8 +25,7 @@ export interface INormalRenterRegistration {
 /**
  * Agent Referral Renter Registration Payload
  */
-export interface IAgentReferralRenterRegistration
-  extends INormalRenterRegistration {
+export interface IAgentReferralRenterRegistration extends INormalRenterRegistration {
   referralCode: string; // AGT-xxxxxxxx
 }
 
@@ -137,7 +136,7 @@ export interface IResetPasswordRequest {
   email: string;
   resetCode: string;
   newPassword: string;
-  confirmPassword: string;
+  // confirmPassword: string;
 }
 
 /**
@@ -146,7 +145,7 @@ export interface IResetPasswordRequest {
 export interface IUpdatePasswordRequest {
   currentPassword: string;
   newPassword: string;
-  confirmPassword: string;
+  // confirmPassword: string;
 }
 
 /**
