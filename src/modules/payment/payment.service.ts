@@ -2,7 +2,6 @@
 
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
-import { emailService } from "@/services/email.service";
 import Stripe from "stripe";
 import type { IGrantAccessRequest } from "../grant-access/grant-access.model";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
@@ -193,9 +192,7 @@ export class PaymentService {
     await this.handlePaymentFailure(intent);
   }
 
-  async reconcilePaymentIntent(
-    stripePaymentIntentId: string
-  ): Promise<void> {
+  async reconcilePaymentIntent(stripePaymentIntentId: string): Promise<void> {
     if (!stripePaymentIntentId) {
       return;
     }
@@ -378,17 +375,17 @@ export class PaymentService {
         preMarketRequest.locations?.map((l) => l.borough).join(", ") ||
         "Multiple Locations";
 
-      await emailService.sendRenterAccessGrantedNotification({
-        to: renter.email,
-        renterName: renter.fullName || "Renter",
-        agentName: agent.fullName || "Agent",
-        agentEmail:
-          agent.email || env.EMAIL_REPLY_TO || "support@beforelisted.com",
-        listingTitle: preMarketRequest.requestName || "Pre-Market Listing",
-        location,
-        accessType: "paid",
-        listingUrl,
-      });
+      // await emailService.sendRenterAccessGrantedNotification({
+      //   to: renter.email,
+      //   renterName: renter.fullName || "Renter",
+      //   agentName: agent.fullName || "Agent",
+      //   agentEmail:
+      //     agent.email || env.EMAIL_REPLY_TO || "support@beforelisted.com",
+      //   listingTitle: preMarketRequest.requestName || "Pre-Market Listing",
+      //   location,
+      //   accessType: "paid",
+      //   listingUrl,
+      // });
     } catch (error) {
       logger.error(
         { error, grantAccessId: grantAccess._id },
