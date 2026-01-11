@@ -5,8 +5,7 @@ export class EmailTemplates {
     "https://agi-prod-file-upload-public-main-use1.s3.amazonaws.com/d6a6bcf9-cea1-471c-a177-563559b38b29";
   private brandColor: string = "#1890FF";
   private supportEmail: string = "support@beforelisted.com";
-  private contactUrl: string =
-    "mailto:support@beforelisted.com";
+  private contactUrl: string = "mailto:support@beforelisted.com";
   private privacyUrl: string =
     "https://rental-pennymore-frontend.vercel.app/privacy-policy";
   private termsUrl: string =
@@ -1055,8 +1054,7 @@ export class EmailTemplates {
   <div class="email-container">
     <!-- Header -->
     <div class="header">
-      <div class="user-type-badge">${userTypeLabel}</div> <!-- ✅ NEW: User type badge -->
-      <div class="logo"> <img src="${logo}" alt="BeforeListed Logo" class="logo"> BeforeListed</div>
+      <div class="logo"> <img src="${logo}" alt="BeforeListed Logo" class="logo"></div>
       <div class="header-title">Password Reset Code</div>
     </div>
 
@@ -1153,14 +1151,12 @@ export class EmailTemplates {
     body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5; }
     .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); overflow: hidden; }
     .header { background: ${color}; padding: 40px 20px; text-align: center; color: white; }
-    .user-type-badge { display: inline-block; background-color: rgba(255, 255, 255, 0.3); color: white; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; } /* ✅ NEW */
     .logo { max-width: 150px;
             width: 100%;
             height: auto;
             margin: 0 auto 20px auto;
             display: block; }
     .header-title { font-size: 28px; margin: 10px 0; font-weight: 600; }
-    .success-icon { font-size: 48px; margin: 10px 0; }
     .content { padding: 40px 30px; }
     .greeting { font-size: 16px; color: #333333; margin-bottom: 20px; line-height: 1.6; }
     .confirmation-message { background-color: #d4edda; border-left: 4px solid ${color}; padding: 20px; margin: 30px 0; border-radius: 4px; }
@@ -1183,9 +1179,7 @@ export class EmailTemplates {
   <div class="email-container">
     <!-- Header -->
     <div class="header">
-      <div class="user-type-badge">${userTypeLabel}</div> <!-- ✅ NEW: User type badge -->
-      <div class="success-icon">✅</div>
-      <div class="logo"><img src="${logo}" alt="BeforeListed Logo" class="logo"> BeforeListed</div>
+      <div class="logo"><img src="${logo}" alt="BeforeListed Logo" class="logo"></div>
       <div class="header-title">Password Reset Successful</div>
     </div>
 
@@ -1232,7 +1226,7 @@ export class EmailTemplates {
       <div style="font-size: 13px; color: #666666; line-height: 1.6;">
         <strong>⚠️ Didn't Make This Change?</strong>
         <br>
-        If you didn't reset your password, please <a href="https://beforelisted.com/help/security" style="color: ${color}; text-decoration: none;">contact our support team immediately</a>. Your account security is our priority.
+        If you didn't reset your password, please <a href="mailto:support@beforelisted.com" style="color: ${color}; text-decoration: none;">email support@beforelisted.com</a>. Your account security is our priority.
       </div>
     </div>
 
