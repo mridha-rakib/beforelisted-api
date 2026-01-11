@@ -243,15 +243,16 @@ export class PreMarketNotifier {
       for (const agent of agents) {
         try {
           const emailResult =
-            await emailService.sendPreMarketNotificationToAgent({
-              to: agent.email,
-              agentName: agent.name,
-              agentType: agent.hasGrantAccess ? "Grant Access" : "Normal",
-              listingTitle: payload.title,
-              location: payload.location,
-              serviceType: payload.serviceType,
-              listingUrl: payload.listingUrl,
-            });
+          await emailService.sendPreMarketNotificationToAgent({
+            to: agent.email,
+            agentName: agent.name,
+            agentType: agent.hasGrantAccess ? "Grant Access" : "Normal",
+            listingTitle: payload.title,
+            listingDescription: payload.listingDescription,
+            location: payload.location,
+            serviceType: payload.serviceType,
+            listingUrl: payload.listingUrl,
+          });
 
           if (emailResult.success) {
             emailsSent++;

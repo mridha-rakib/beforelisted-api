@@ -9,6 +9,14 @@
  * WITHOUT renter information
  * Both Grant Access and Normal agents receive same template
  */
+const footerLinks = (brandColor: string): string => `
+            <p style="margin: 6px 0 0 0;">
+                <a href="mailto:support@beforelisted.com" style="color: ${brandColor}; text-decoration: none;">Contact Us</a> |
+                <a href="https://rental-pennymore-frontend.vercel.app/privacy-policy" style="color: ${brandColor}; text-decoration: none;">Privacy Policy</a> |
+                <a href="https://rental-pennymore-frontend.vercel.app/terms-conditions" style="color: ${brandColor}; text-decoration: none;">Terms and Conditions</a>
+            </p>
+`;
+
 export function preMarketAgentNotificationTemplate(
   agentName: string,
   listingTitle: string,
@@ -168,24 +176,13 @@ export function preMarketAgentNotificationTemplate(
                     <strong>Location:</strong><br>
                     ${location}
                 </p>
-                <p>
-                    <strong>Service Type:</strong><br>
-                    ${serviceType}
-                </p>
             </div>
 
             <!-- Call to Action -->
-            <div style="text-align: center;">
-                <a href="${listingUrl}" class="cta-button">View Full Listing</a>
-            </div>
-
+           
             <div class="info-text">
                 <strong>Note:</strong> Renter details will be available after you request access and complete the verification process.
             </div>
-
-            <p>If you're interested in this opportunity and would like to provide your services, click the button above to view more details and submit your interest.</p>
-
-            <p>Questions? Reply to this email or contact our support team.</p>
 
             <div class="divider"></div>
 
@@ -198,18 +195,13 @@ export function preMarketAgentNotificationTemplate(
         <!-- Footer -->
         <div class="footer">
             <p style="margin: 0;">© ${currentYear} BeforeListed. All rights reserved.</p>
-            <p style="margin: 5px 0 0 0;">
-                                                            </p>
+            ${footerLinks(brandColor)}
         </div>
     </div>
 </body>
 </html>
   `;
 }
-
-// ============================================
-// ADMIN NOTIFICATION EMAIL TEMPLATE
-// ============================================
 
 /**
  * Email template for admin about new pre-market request
@@ -444,9 +436,6 @@ export function preMarketAdminNotificationTemplate(
                     <li>Manage payment for access (free or paid)</li>
                     <li>Support renter and agent throughout the process</li>
                 </ul>
-                <div style="text-align: center;">
-                    <a href="${listingUrl}" class="cta-button">View Request Details</a>
-                </div>
             </div>
 
             <div class="divider"></div>
@@ -461,6 +450,7 @@ export function preMarketAdminNotificationTemplate(
         <div class="footer">
             <p style="margin: 0;">© ${currentYear} BeforeListed. All rights reserved.</p>
             <p style="margin: 5px 0 0 0;">Admin Control Panel | Support | Settings</p>
+            ${footerLinks(brandColor)}
         </div>
     </div>
 </body>
@@ -600,6 +590,7 @@ export function renterRequestConfirmationTemplate(
 
         <div class="footer">
             <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+            ${footerLinks(brandColor)}
         </div>
     </div>
 </body>
@@ -793,6 +784,7 @@ export function agentRenterRequestConfirmationTemplate(
 
         <div class="footer">
             <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+            ${footerLinks(brandColor)}
         </div>
     </div>
 </body>
@@ -914,6 +906,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
 
         <div class="footer">
             <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+            ${footerLinks(brandColor)}
         </div>
     </div>
 </body>
@@ -1035,6 +1028,7 @@ export function renterOpportunityFoundOtherAgentTemplate(
 
         <div class="footer">
             <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+            ${footerLinks(brandColor)}
         </div>
     </div>
 </body>
@@ -1199,6 +1193,7 @@ export function renterRequestClosedAgentAlertTemplate(
 
         <div class="footer">
             <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+            ${footerLinks(brandColor)}
         </div>
     </div>
 </body>
@@ -1377,6 +1372,7 @@ export function renterRequestUpdatedNotificationTemplate(
 
         <div class="footer">
             <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+            ${footerLinks(brandColor)}
         </div>
     </div>
 </body>
@@ -1541,6 +1537,7 @@ export function agentRegistrationVerifiedAdminTemplate(
         </div>
         <div class="footer">
             <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+            ${footerLinks(brandColor)}
         </div>
     </div>
 </body>
@@ -1683,6 +1680,7 @@ export function renterRegistrationVerifiedAdminTemplate(
         </div>
         <div class="footer">
             <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+            ${footerLinks(brandColor)}
         </div>
     </div>
 </body>
@@ -1837,6 +1835,7 @@ export function adminContactRequestTemplate(
         </div>
         <div class="footer">
             <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+            ${footerLinks(brandColor)}
         </div>
     </div>
 </body>

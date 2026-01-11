@@ -21,6 +21,7 @@ export async function sendPreMarketNotificationToAgent(
     const html = this.templates.preMarketAgentNotification(
       payload.agentName,
       payload.listingTitle,
+      payload.listingDescription,
       payload.location,
       payload.serviceType,
       payload.listingUrl,

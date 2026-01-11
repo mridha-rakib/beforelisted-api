@@ -25,7 +25,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
     const result = await (this.model as any).paginate(
       { isDeleted: false },
-      paginateOptions
+      { ...paginateOptions, useEstimatedCount: false }
     );
 
     return PaginationHelper.formatResponse(result);
@@ -42,7 +42,10 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       filter._id = { $nin: excludedIds };
     }
 
-    const result = await (this.model as any).paginate(filter, paginateOptions);
+    const result = await (this.model as any).paginate(filter, {
+      ...paginateOptions,
+      useEstimatedCount: false,
+    });
 
     return PaginationHelper.formatResponse(result);
   }

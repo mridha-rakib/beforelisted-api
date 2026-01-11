@@ -464,6 +464,7 @@ export class EmailService {
       const html = preMarketAgentNotificationTemplate(
         payload.agentName,
         payload.listingTitle,
+        payload.listingDescription,
         payload.location,
         payload.serviceType,
         payload.listingUrl,

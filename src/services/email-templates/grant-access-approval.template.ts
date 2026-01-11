@@ -84,12 +84,12 @@ export class GrantAccessApprovalTemplate extends BaseEmailTemplate {
         <p style="margin: 0 0 15px 0; font-weight: 600; color: #1F2937;">You can now access:</p>
         <div style="display: flex; margin: 10px 0;"><span style="color: ${this.brandColor}; margin-right: 10px; font-weight: bold;">✓</span><span>Renter contact information (name, email, phone)</span></div>
         <div style="display: flex; margin: 10px 0;"><span style="color: ${this.brandColor}; margin-right: 10px; font-weight: bold;">✓</span><span>Full property details and specifications</span></div>
-        <div style="display: flex; margin: 10px 0;"><span style="color: ${this.brandColor}; margin-right: 10px; font-weight: bold;">✓</span><span>Referrer information and agent notes</span></div>
+        <div style="display: flex; margin: 10px 0;"><span style="color: ${this.brandColor}; margin-right: 10px; font-weight: bold;">✓</span><span>Referrer information</span></div>
         <div style="display: flex; margin: 10px 0;"><span style="color: ${this.brandColor}; margin-right: 10px; font-weight: bold;">✓</span><span>Direct contact with the renter</span></div>
       </div>
     `;
 
-    const cta = this.generateButton("View Property Details", this.accessLink);
+    // const cta = this.generateButton("View Property Details", this.accessLink);
 
     const note = `
       <div class="section">
@@ -99,8 +99,7 @@ export class GrantAccessApprovalTemplate extends BaseEmailTemplate {
       </div>
     `;
 
-    const body =
-      successBanner + introduction + propertyDetails + features + cta + note;
+    const body = successBanner + introduction + propertyDetails + features;
 
     return this.wrapInHTML(header, body);
   }

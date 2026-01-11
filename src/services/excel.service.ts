@@ -40,6 +40,10 @@ export class ExcelService {
         "Renter Name",
         "Email",
         "Phone",
+        "Looking to Purchase",
+        "Purchase Timeline",
+        "Buyer Specialist Needed",
+        "Renter Specialist Needed",
         "Move Date (From)",
         "Move Date (To)",
         "Price Min",
@@ -104,6 +108,10 @@ export class ExcelService {
           this.getRenterName(request),
           this.getRenterEmail(request),
           this.getRenterPhone(request),
+          this.getQuestionnaireFlag(request, "lookingToPurchase"),
+          this.getQuestionnaireValue(request, "purchaseTimeline"),
+          this.getQuestionnaireFlag(request, "buyerSpecialistNeeded"),
+          this.getQuestionnaireFlag(request, "renterSpecialistNeeded"),
           this.formatDate(request.movingDateRange?.earliest),
           this.formatDate(request.movingDateRange?.latest),
           request.priceRange?.min || 0,
@@ -114,7 +122,7 @@ export class ExcelService {
           request.bathrooms || "N/A",
           this.formatUnitFeatures(request.unitFeatures),
           this.formatBuildingFeatures(request.buildingFeatures),
-          request.petPolicy || "N/A",
+          this.formatPetPolicy(request.petPolicy),
           this.formatGuarantorRequired(request.guarantorRequired),
           request.preferences || "N/A",
           request.status || "unknown",
@@ -131,8 +139,8 @@ export class ExcelService {
         }
 
         // Center align status and dates
-        dataRow.getCell(18).alignment = { horizontal: "center" };
-        dataRow.getCell(19).alignment = { horizontal: "center" };
+        dataRow.getCell(22).alignment = { horizontal: "center" };
+        dataRow.getCell(23).alignment = { horizontal: "center" };
 
         rowCount++;
       }
@@ -143,6 +151,10 @@ export class ExcelService {
         15, // Renter Name
         20, // Email
         15, // Phone
+        18, // Looking to Purchase
+        18, // Purchase Timeline
+        20, // Buyer Specialist Needed
+        20, // Renter Specialist Needed
         15, // Move From
         15, // Move To
         12, // Price Min
@@ -168,7 +180,7 @@ export class ExcelService {
       if (requests.length > 0) {
         worksheet.autoFilter = {
           from: "A1",
-          to: `S${requests.length + 1}`,
+          to: `W${requests.length + 1}`,
         };
       }
 
@@ -215,6 +227,10 @@ export class ExcelService {
           "Renter Name",
           "Email",
           "Phone",
+          "Looking to Purchase",
+          "Purchase Timeline",
+          "Buyer Specialist Needed",
+          "Renter Specialist Needed",
           "Move Date (From)",
           "Move Date (To)",
           "Price Min",
@@ -247,6 +263,10 @@ export class ExcelService {
             this.getRenterName(request),
             this.getRenterEmail(request),
             this.getRenterPhone(request),
+            this.getQuestionnaireFlag(request, "lookingToPurchase"),
+            this.getQuestionnaireValue(request, "purchaseTimeline"),
+            this.getQuestionnaireFlag(request, "buyerSpecialistNeeded"),
+            this.getQuestionnaireFlag(request, "renterSpecialistNeeded"),
             this.formatDate(request.movingDateRange?.earliest),
             this.formatDate(request.movingDateRange?.latest),
             request.priceRange?.min || 0,
@@ -257,7 +277,7 @@ export class ExcelService {
             request.bathrooms || "N/A",
             this.formatUnitFeatures(request.unitFeatures),
             this.formatBuildingFeatures(request.buildingFeatures),
-            request.petPolicy || "N/A",
+            this.formatPetPolicy(request.petPolicy),
             this.formatGuarantorRequired(request.guarantorRequired),
             request.preferences || "N/A",
             request.status || "unknown",
@@ -267,8 +287,8 @@ export class ExcelService {
 
         // Set column widths
         worksheet.columns = [
-          18, 15, 20, 15, 15, 15, 12, 12, 15, 25, 10, 10, 20, 20, 12, 15, 20,
-          12, 15,
+          18, 15, 20, 15, 18, 18, 20, 20, 15, 15, 12, 12, 15, 25, 10, 10, 20,
+          20, 12, 15, 20, 12, 15,
         ].map((width) => ({ width }));
       }
 
@@ -409,6 +429,72 @@ export class ExcelService {
       return allNeighborhoods.length > 0 ? allNeighborhoods.join(", ") : "N/A";
     }
     return request.locations.neighborhoods?.join(", ") || "N/A";
+  }
+
+  private getRenterRegistrationType(request: any): string | undefined {
+    if (request.renterInfo?.registrationType) {
+      return request.renterInfo.registrationType;
+    }
+    if (
+      request.renterId &&
+      typeof request.renterId === "object" &&
+      request.renterId.registrationType
+    ) {
+      return request.renterId.registrationType;
+    }
+    if (request.registrationType) {
+      return request.registrationType;
+    }
+    return undefined;
+  }
+
+  private getRenterQuestionnaire(
+    request: any
+  ): Record<string, unknown> | null {
+    if (request.renterInfo?.questionnaire) {
+      return request.renterInfo.questionnaire;
+    }
+    if (
+      request.renterId &&
+      typeof request.renterId === "object" &&
+      request.renterId.questionnaire
+    ) {
+      return request.renterId.questionnaire;
+    }
+    return null;
+  }
+
+  private getQuestionnaireFlag(
+    request: any,
+    key: string
+  ): string {
+    if (this.getRenterRegistrationType(request) !== "admin_referral") {
+      return "N/A";
+    }
+
+    const questionnaire = this.getRenterQuestionnaire(request);
+    if (!questionnaire || typeof questionnaire[key] !== "boolean") {
+      return "N/A";
+    }
+
+    return questionnaire[key] ? "Yes" : "No";
+  }
+
+  private getQuestionnaireValue(
+    request: any,
+    key: string
+  ): string {
+    if (this.getRenterRegistrationType(request) !== "admin_referral") {
+      return "N/A";
+    }
+
+    const questionnaire = this.getRenterQuestionnaire(request);
+    const value = questionnaire ? questionnaire[key] : undefined;
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value;
+    }
+
+    return "N/A";
   }
 
   async generateConsolidatedRenterExcel(): Promise<Buffer> {
@@ -792,6 +878,15 @@ export class ExcelService {
       doorman: "Doorman",
       elevator: "Elevator",
       laundryInBuilding: "Laundry in Building",
+    });
+  }
+
+  private formatPetPolicy(
+    source: Record<string, unknown> | undefined | null
+  ) {
+    return this.formatFeatureFlags(source, {
+      catsAllowed: "catsAllowed",
+      dogsAllowed: "dogsAllowed",
     });
   }
 

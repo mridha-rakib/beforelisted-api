@@ -335,7 +335,7 @@ export class PreMarketController {
 
     logger.info(
       { userId, preMarketRequestId: validated.body.preMarketRequestId },
-      "Access requested"
+      "Request was moved to the Renter Matches section"
     );
     ApiResponse.created(res, grantAccess, "Access request created");
   });
@@ -817,7 +817,11 @@ export class PreMarketController {
 
     logger.info({ agentId, requestId }, "Agent matched pre-market request");
 
-    ApiResponse.success(res, matchRecord, "Pre-market request matched");
+    ApiResponse.success(
+      res,
+      matchRecord,
+      "Request was moved to the Renter Matches section"
+    );
   });
 
   getRequestDetailsForAgent = asyncHandler(

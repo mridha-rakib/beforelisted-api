@@ -48,6 +48,7 @@ type AgentGrantAccessStatus =
 
 const DEFAULT_REGISTERED_AGENT_EMAIL = "tmor@corcoran.com";
 const DEFAULT_REGISTERED_AGENT_NAME = "Tuval";
+const DEFAULT_REFERRAL_AGENT_NAME = "Tuval Mor";
 
 export class PreMarketService {
   private readonly preMarketRepository: PreMarketRepository;
@@ -59,6 +60,13 @@ export class PreMarketService {
 
   private readonly paymentService: PaymentService;
   private readonly notifier: PreMarketNotifier;
+  private defaultReferralAgentCache?: {
+    id: string;
+    fullName: string;
+    email: string;
+    phoneNumber: string | null;
+    referralCode: string | null;
+  };
 
   constructor() {
     this.preMarketRepository = new PreMarketRepository();
@@ -69,6 +77,46 @@ export class PreMarketService {
     this.renterRepository = new RenterRepository();
     this.userRepository = new UserRepository();
     this.excelService = new ExcelService();
+  }
+
+  private async getDefaultReferralAgent(): Promise<{
+    id: string;
+    fullName: string;
+    email: string;
+    phoneNumber: string | null;
+    referralCode: string | null;
+  }> {
+    if (this.defaultReferralAgentCache) {
+      return this.defaultReferralAgentCache;
+    }
+
+    const fallback = {
+      id: "",
+      fullName: DEFAULT_REFERRAL_AGENT_NAME,
+      email: DEFAULT_REGISTERED_AGENT_EMAIL,
+      phoneNumber: null,
+      referralCode: null,
+    };
+
+    const user = await this.userRepository.findByEmail(
+      DEFAULT_REGISTERED_AGENT_EMAIL
+    );
+
+    if (!user) {
+      this.defaultReferralAgentCache = fallback;
+      return fallback;
+    }
+
+    const resolved = {
+      id: user._id?.toString() || "",
+      fullName: user.fullName || DEFAULT_REFERRAL_AGENT_NAME,
+      email: user.email || DEFAULT_REGISTERED_AGENT_EMAIL,
+      phoneNumber: user.phoneNumber ?? null,
+      referralCode: user.referralCode ?? null,
+    };
+
+    this.defaultReferralAgentCache = resolved;
+    return resolved;
   }
 
   private resolveGrantAccessStatus(
@@ -800,8 +848,21 @@ export class PreMarketService {
       ) as any;
     }
 
-    const preMarketRequestIds = accessRecords.map((access) =>
-      access.preMarketRequestId.toString()
+    const matchTimes = accessRecords
+      .map((access) => {
+        const timestamp = new Date(
+          access.updatedAt || access.createdAt || 0
+        ).getTime();
+        return {
+          requestId: access.preMarketRequestId.toString(),
+          timestamp,
+        };
+      })
+      .sort((a, b) => b.timestamp - a.timestamp);
+
+    const preMarketRequestIds = matchTimes.map((access) => access.requestId);
+    const matchTimeByRequestId = new Map(
+      matchTimes.map((access) => [access.requestId, access.timestamp])
     );
 
     const listings =
@@ -816,13 +877,19 @@ export class PreMarketService {
       ) as any;
     }
 
+    const sortedListings = listings.sort((a: any, b: any) => {
+      const timeA = matchTimeByRequestId.get(a._id?.toString()) ?? -1;
+      const timeB = matchTimeByRequestId.get(b._id?.toString()) ?? -1;
+      return timeB - timeA;
+    });
+
     // Manual pagination - counts ONLY your filtered results
     const page = (query.page as number) || 1;
     const limit = (query.limit as number) || 10;
-    const total = listings.length;
+    const total = sortedListings.length;
     const pages = Math.ceil(total / limit);
     const startIndex = (page - 1) * limit;
-    const paginatedData = listings.slice(startIndex, startIndex + limit);
+    const paginatedData = sortedListings.slice(startIndex, startIndex + limit);
 
     // Enrich with renter info
     const enrichedData = await Promise.all(
@@ -1025,6 +1092,15 @@ export class PreMarketService {
         };
       }
     }
+    if (!referrerInfo) {
+      const defaultAgent = await this.getDefaultReferralAgent();
+      referrerInfo = {
+        referrerId: defaultAgent.id,
+        referrerName: defaultAgent.fullName,
+        referrerRole: "Agent",
+        referralType: "agent_referral",
+      };
+    }
 
     const renterInfo: any = {
       renterId: renter._id,
@@ -1169,14 +1245,16 @@ export class PreMarketService {
         renterInfo.referralInfo = {
           referrerId: referrer._id?.toString() || "",
           referrerName: referrer.fullName || referrer.name || "Unknown",
+          referrerEmail: referrer.email || null,
+          referrerPhoneNumber: referrer.phoneNumber || null,
           referralCode: referrer.referralCode || null,
           referrerType: "AGENT",
         };
       }
-    } else if (
-      renter.registrationType === "admin_referral" &&
-      renter.referredByAdminId
-    ) {
+      } else if (
+        renter.registrationType === "admin_referral" &&
+        renter.referredByAdminId
+      ) {
       const referrer =
         typeof renter.referredByAdminId === "object"
           ? renter.referredByAdminId
@@ -1191,13 +1269,25 @@ export class PreMarketService {
           referrerEmail: referrer.email || null,
           referrerPhoneNumber: referrer.phoneNumber || null,
           referralCode: referrer.referralCode || null,
-          referrerType: "ADMIN",
+            referrerType: "ADMIN",
+          };
+        }
+      }
+
+      if (!renterInfo.referralInfo) {
+        const defaultAgent = await this.getDefaultReferralAgent();
+        renterInfo.referralInfo = {
+          referrerId: defaultAgent.id,
+          referrerName: defaultAgent.fullName,
+          referrerEmail: defaultAgent.email,
+          referrerPhoneNumber: defaultAgent.phoneNumber,
+          referralCode: defaultAgent.referralCode,
+          referrerType: "AGENT",
         };
       }
-    }
 
-    return renterInfo;
-  }
+      return renterInfo;
+    }
 
   private async getAgentRequestDetails(
     preMarketRequestId: string
@@ -1378,7 +1468,10 @@ export class PreMarketService {
       if (referrer) {
         referrerInfo = {
           referrerId: referrer._id?.toString(),
-          referrerName: referrer.fullName,
+          referrerName: referrer.fullName || referrer.name || "Unknown",
+          referrerEmail: referrer.email ?? null,
+          referrerPhoneNumber: referrer.phoneNumber ?? null,
+          referralCode: referrer.referralCode ?? null,
           referrerRole: "Agent",
           referralType: "agent_referral",
         };
@@ -1396,11 +1489,27 @@ export class PreMarketService {
       if (referrer) {
         referrerInfo = {
           referrerId: referrer._id?.toString(),
-          referrerName: referrer.fullName,
+          referrerName: referrer.fullName || referrer.name || "Unknown",
+          referrerEmail: referrer.email ?? null,
+          referrerPhoneNumber: referrer.phoneNumber ?? null,
+          referralCode: referrer.referralCode ?? null,
           referrerRole: "Admin",
           referralType: "admin_referral",
         };
       }
+    }
+
+    if (!referrerInfo) {
+      const defaultAgent = await this.getDefaultReferralAgent();
+      referrerInfo = {
+        referrerId: defaultAgent.id,
+        referrerName: defaultAgent.fullName,
+        referrerEmail: defaultAgent.email,
+        referrerPhoneNumber: defaultAgent.phoneNumber,
+        referralCode: defaultAgent.referralCode,
+        referrerRole: "Agent",
+        referralType: "agent_referral",
+      };
     }
 
     const profileImageUrl =
@@ -1676,35 +1785,53 @@ export class PreMarketService {
         ? registeredAgentInfo.email
         : "tmor@corcoran.com";
 
+    const buildCcList = (
+      emails: Array<string | undefined>
+    ): string[] | undefined => {
+      const renterEmail = renter.email.toLowerCase();
+      const unique: string[] = [];
+
+      for (const email of emails) {
+        if (!email) {
+          continue;
+        }
+        const trimmed = email.trim();
+        if (!trimmed) {
+          continue;
+        }
+        if (trimmed.toLowerCase() === renterEmail) {
+          continue;
+        }
+        if (
+          unique.some((item) => item.toLowerCase() === trimmed.toLowerCase())
+        ) {
+          continue;
+        }
+        unique.push(trimmed);
+      }
+
+      return unique.length > 0 ? unique : undefined;
+    };
+
     const isRegisteredAgentMatch =
       (registeredAgentId && agent._id?.toString() === registeredAgentId) ||
       (agent.email &&
         registeredAgentEmail &&
         agent.email.toLowerCase() === registeredAgentEmail.toLowerCase());
 
-    const ccEmails = [!isRegisteredAgentMatch && agent.email]
-      .filter((email): email is string => Boolean(email))
-      .map((email) => email.trim())
-      .filter((email, index, items) => {
-        return (
-          items.findIndex(
-            (item) => item.toLowerCase() === email.toLowerCase()
-          ) === index
-        );
-      })
-      .filter((email) => email.toLowerCase() !== renter.email.toLowerCase());
-
     if (isRegisteredAgentMatch) {
+      const ccEmails = buildCcList([registeredAgentEmail]);
       await emailService.sendRenterOpportunityFoundByRegisteredAgent({
         to: renter.email,
         renterName: renter.fullName,
-        cc: ccEmails.length > 0 ? ccEmails : undefined,
+        cc: ccEmails,
       });
     } else {
+      const ccEmails = buildCcList([registeredAgentEmail, agent.email]);
       await emailService.sendRenterOpportunityFoundByOtherAgent({
         to: renter.email,
         renterName: renter.fullName,
-        cc: ccEmails.length > 0 ? ccEmails : undefined,
+        cc: ccEmails,
       });
     }
   }
@@ -2118,11 +2245,11 @@ export class PreMarketService {
           referrerType: "AGENT",
         };
       }
-    } else if (renter.referredByAdminId) {
-      const referredAdmin =
-        typeof renter.referredByAdminId === "object" &&
-        (renter.referredByAdminId as any)?._id
-          ? renter.referredByAdminId
+      } else if (renter.referredByAdminId) {
+        const referredAdmin =
+          typeof renter.referredByAdminId === "object" &&
+          (renter.referredByAdminId as any)?._id
+            ? renter.referredByAdminId
           : null;
       const referrerId = resolveReferrerId(renter.referredByAdminId);
       const referrer =
@@ -2135,15 +2262,27 @@ export class PreMarketService {
           referrerEmail: referrer.email ?? null,
           referrerPhoneNumber: referrer.phoneNumber ?? null,
           referralCode: referrer.referralCode ?? null,
-          referrerType: "ADMIN",
+            referrerType: "ADMIN",
+          };
+        }
+      }
+
+      if (!referrerInfo) {
+        const defaultAgent = await this.getDefaultReferralAgent();
+        referrerInfo = {
+          referrerId: defaultAgent.id,
+          referrerName: defaultAgent.fullName,
+          referrerEmail: defaultAgent.email,
+          referrerPhoneNumber: defaultAgent.phoneNumber,
+          referralCode: defaultAgent.referralCode,
+          referrerType: "AGENT",
         };
       }
-    }
 
-    const profileImageUrl =
-      (typeof renter.userId === "object" && renter.userId
-        ? renter.userId.profileImageUrl
-        : renter.profileImageUrl) || null;
+      const profileImageUrl =
+        (typeof renter.userId === "object" && renter.userId
+          ? renter.userId.profileImageUrl
+          : renter.profileImageUrl) || null;
 
     return {
       renterId: renter._id?.toString() || renterId,
@@ -2172,7 +2311,18 @@ export class PreMarketService {
           : null;
 
     if (!referrer) {
-      return { registrationType, referrer: null };
+      const defaultAgent = await this.getDefaultReferralAgent();
+      return {
+        registrationType,
+        referrer: {
+          referrerId: defaultAgent.id,
+          referrerName: defaultAgent.fullName,
+          referrerEmail: defaultAgent.email,
+          referrerPhoneNumber: defaultAgent.phoneNumber,
+          referralCode: defaultAgent.referralCode,
+          referrerType: "Agent",
+        },
+      };
     }
 
     const referrerId =

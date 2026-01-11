@@ -5,6 +5,7 @@ export interface IPreMarketAgentNotificationPayload {
   agentName: string;
   agentType: "Grant Access" | "Normal";
   listingTitle: string;
+  listingDescription: string;
   location: string;
   serviceType: string;
   listingUrl: string;

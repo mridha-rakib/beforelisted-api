@@ -115,7 +115,7 @@ export class GrantAccessRequestTemplate extends BaseEmailTemplate {
     `;
 
     const body =
-      introduction + requestDetails + agentInfo + actionRequired + cta + note;
+      introduction + requestDetails + agentInfo + actionRequired + note;
 
     return this.wrapInHTML(header, body);
   }

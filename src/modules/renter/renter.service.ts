@@ -653,6 +653,11 @@ export class RenterService {
       true
     );
 
+    const profileImageUrl =
+      renter.userId && typeof renter.userId === "object"
+        ? (renter.userId as any).profileImageUrl
+        : undefined;
+
     const preMarketListings = listings.map((listing: any) => ({
       _id: listing._id,
       requestId: listing.requestId,
@@ -679,8 +684,8 @@ export class RenterService {
       fullName: renter.fullName,
       phoneNumber: renter.phoneNumber,
       accountStatus: renter.accountStatus,
-      // emailVerified: renter.emailVerified,
-
+      profileImage: profileImageUrl,
+      // emailVerified: renter.,
       referralInfo,
       preMarketListings,
       createdAt: renter.createdAt,

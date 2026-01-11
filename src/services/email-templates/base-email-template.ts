@@ -55,6 +55,11 @@ export abstract class BaseEmailTemplate {
       <div class="footer">
         <p style="margin: 0 0 10px 0;">© ${new Date().getFullYear()} ${this.brandName}. All rights reserved.</p>
         <p style="margin: 0;">This is an automated message. Please do not reply to this email.</p>
+        <p style="margin: 8px 0 0 0;">
+          <a href="mailto:support@beforelisted.com">Contact Us</a> |
+          <a href="https://rental-pennymore-frontend.vercel.app/privacy-policy">Privacy Policy</a> |
+          <a href="https://rental-pennymore-frontend.vercel.app/terms-conditions">Terms and Conditions</a>
+        </p>
       </div>
     `;
   }
