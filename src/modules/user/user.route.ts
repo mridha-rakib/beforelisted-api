@@ -8,7 +8,6 @@ import { UserController } from "./user.controller";
 const router = Router();
 const userController = new UserController();
 
-
 router.get("/profile", authMiddleware.verifyToken, userController.getProfile);
 
 router.put(
