@@ -23,6 +23,13 @@ import { PreMarketController } from "./modules/pre-market/pre-market.controller.
 const app: Application = express();
 const controller = new PreMarketController();
 
+app.use(
+  cors({
+    origin: ["https://beforelisted.com", "https://dashboard.beforelisted.com"],
+    credentials: true,
+  })
+);
+
 const captureRawBody = (
   req: any,
   res: any,
@@ -45,13 +52,6 @@ app.post(
   stripeWebhookPath,
   express.raw({ type: "application/json", verify: captureRawBody }),
   controller.handleWebhook.bind(controller)
-);
-
-app.use(
-  cors({
-    origin: ["https://beforelisted.com", "https://dashboard.beforelisted.com"],
-    credentials: true,
-  })
 );
 
 app.use(cookieParser());
