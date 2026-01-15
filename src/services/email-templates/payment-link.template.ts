@@ -71,12 +71,12 @@ export class PaymentLinkTemplate extends BaseEmailTemplate {
       </div>
     `;
 
-    const cta = `
-      <div class="button-container">
-        <a href="${this.paymentLink}" class="button" style="background: ${this.brandColor};">Pay Now & Access Property →</a>
-        <div style="background: #ECFDF5; padding: 10px 15px; border-radius: 4px; color: #047857; font-size: 12px; display: inline-block; margin: 10px 0;">🔒 Secure payment powered by Stripe</div>
-      </div>
-    `;
+    // const cta = `
+    //   <div class="button-container">
+    //     <a href="${this.paymentLink}" class="button" style="background: ${this.brandColor};">Pay Now & Access Property →</a>
+    //     <div style="background: #ECFDF5; padding: 10px 15px; border-radius: 4px; color: #047857; font-size: 12px; display: inline-block; margin: 10px 0;">🔒 Secure payment powered by Stripe</div>
+    //   </div>
+    // `;
 
     const warning = this.generateAlert(
       `<strong>⏰ Important:</strong> Please complete payment by ${this.paymentDeadline} to secure your access. After this date, you may need to submit a new request.`,
@@ -107,7 +107,7 @@ export class PaymentLinkTemplate extends BaseEmailTemplate {
       priceBox +
       introduction +
       propertySection +
-      cta +
+      // cta +
       warning +
       benefits +
       tip;
