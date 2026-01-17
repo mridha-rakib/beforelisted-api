@@ -38,6 +38,7 @@ export function createEmailConfig(): IEmailConfig {
     replyTo: env.EMAIL_REPLY_TO,
     logoUrl: env.EMAIL_LOGO_URL,
     brandColor: env.EMAIL_BRAND_COLOR,
+    adminEmail: env.ADMIN_EMAIL,
     maxRetries: env.EMAIL_MAX_RETRIES,
     retryDelayMs: env.EMAIL_RETRY_DELAY_MS,
   };

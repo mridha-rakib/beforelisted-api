@@ -4,6 +4,7 @@ import { emailConfig } from "@/config/email.config";
 import { logger } from "@/middlewares/pino-logger";
 import { createEmailTransporter } from "@/services/email.transporter";
 import {
+  type IAccountDeletedPayload,
   IAdminReferralEmailPayload,
   type IEmailOptions,
   type IEmailResult,
@@ -15,27 +16,27 @@ import {
 import {
   adminContactRequestTemplate,
   agentRegistrationVerifiedAdminTemplate,
-  renterRegistrationVerifiedAdminTemplate,
   agentRenterRequestConfirmationTemplate,
   preMarketAdminNotificationTemplate,
   preMarketAgentNotificationTemplate,
-  renterRequestConfirmationTemplate,
-  renterOpportunityFoundRegisteredAgentTemplate,
   renterOpportunityFoundOtherAgentTemplate,
+  renterOpportunityFoundRegisteredAgentTemplate,
+  renterRegistrationVerifiedAdminTemplate,
   renterRequestClosedAgentAlertTemplate,
+  renterRequestConfirmationTemplate,
   renterRequestUpdatedNotificationTemplate,
 } from "./email-notification.templates";
 import {
   IAdminContactRequestPayload,
   IAgentRegistrationVerifiedAdminPayload,
-  IRenterRegistrationVerifiedAdminPayload,
   IAgentRequestConfirmationPayload,
   IPreMarketAdminNotificationPayload,
   IPreMarketAgentNotificationPayload,
-  IRenterRequestConfirmationPayload,
-  IRenterOpportunityFoundRegisteredAgentPayload,
   IRenterOpportunityFoundOtherAgentPayload,
+  IRenterOpportunityFoundRegisteredAgentPayload,
+  IRenterRegistrationVerifiedAdminPayload,
   IRenterRequestClosedAgentAlertPayload,
+  IRenterRequestConfirmationPayload,
   IRenterRequestUpdatedNotificationPayload,
 } from "./email-notification.types";
 import { EmailTemplateFactory } from "./email-templates/email-template.factory";
@@ -51,7 +52,7 @@ export class EmailService {
     this.initializeTransporter();
     this.templateFactory = new EmailTemplateFactory(
       this.config.logoUrl,
-      this.config.brandColor
+      this.config.brandColor,
     );
   }
 
@@ -67,7 +68,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           note: "Service will attempt to send emails anyway",
         },
-        "⚠️  Email service initialization warning"
+        "⚠️  Email service initialization warning",
       );
     }
   }
@@ -76,12 +77,12 @@ export class EmailService {
     userName: string | undefined,
     email: string,
     otpCode: string,
-    expiresInMinutes: number
+    expiresInMinutes: number,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
         { email, expiresInMinutes },
-        "Sending password reset OTP email"
+        "Sending password reset OTP email",
       );
 
       // Render template
@@ -91,7 +92,7 @@ export class EmailService {
         expiresInMinutes,
         undefined,
         this.config.logoUrl,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       // Prepare email options
@@ -110,7 +111,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email,
         },
-        "Failed to send password reset OTP email"
+        "Failed to send password reset OTP email",
       );
 
       return {
@@ -125,7 +126,7 @@ export class EmailService {
 
   async sendPasswordResetConfirmation(
     userName: string | undefined,
-    email: string
+    email: string,
   ): Promise<IEmailResult> {
     try {
       logger.debug({ email }, "Sending password reset confirmation email");
@@ -134,7 +135,7 @@ export class EmailService {
       const html = this.templates.passwordResetConfirmation(
         userName,
         this.config.logoUrl,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       // Prepare email options
@@ -148,7 +149,7 @@ export class EmailService {
       return await this.sendEmail(
         emailOptions,
         "PASSWORD_RESET_CONFIRMATION",
-        email
+        email,
       );
     } catch (error) {
       logger.error(
@@ -156,7 +157,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email,
         },
-        "Failed to send password reset confirmation email"
+        "Failed to send password reset confirmation email",
       );
 
       return {
@@ -174,7 +175,7 @@ export class EmailService {
    * Called during: User registration (Agent/Renter)
    */
   async sendEmailVerification(
-    payload: IEmailVerificationPayload
+    payload: IEmailVerificationPayload,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
@@ -182,7 +183,7 @@ export class EmailService {
           email: payload.to,
           userType: payload.userType,
         },
-        "Sending email verification"
+        "Sending email verification",
       );
 
       // Render template
@@ -192,7 +193,7 @@ export class EmailService {
         String(payload.expiresIn),
         // payload.userType,
         this.config.logoUrl,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       // Prepare email options
@@ -206,7 +207,7 @@ export class EmailService {
       return await this.sendEmail(
         emailOptions,
         "EMAIL_VERIFICATION",
-        payload.to
+        payload.to,
       );
     } catch (error) {
       logger.error(
@@ -214,7 +215,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send email verification"
+        "Failed to send email verification",
       );
 
       return {
@@ -232,7 +233,7 @@ export class EmailService {
    * Called during: Resend verification request
    */
   async resendEmailVerification(
-    payload: IEmailVerificationPayload
+    payload: IEmailVerificationPayload,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
@@ -240,7 +241,7 @@ export class EmailService {
           email: payload.to,
           userType: payload.userType,
         },
-        "Resending email verification"
+        "Resending email verification",
       );
 
       const result = await this.sendEmailVerification(payload);
@@ -250,7 +251,7 @@ export class EmailService {
           email: payload.to,
           messageId: result.messageId,
         },
-        "✅ Verification email resent"
+        "✅ Verification email resent",
       );
 
       return result;
@@ -260,7 +261,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to resend email verification"
+        "Failed to resend email verification",
       );
 
       return {
@@ -291,7 +292,7 @@ export class EmailService {
           email: payload.to,
           userType: payload.userType,
         },
-        "Sending welcome email"
+        "Sending welcome email",
       );
 
       // Determine which welcome template to use
@@ -307,7 +308,7 @@ export class EmailService {
           payload.loginLink,
           resolvedUserType,
           this.config.logoUrl!,
-          this.config.brandColor
+          this.config.brandColor,
         );
         subject = `Welcome to BeforeListed - Your Temporary Password`;
       } else {
@@ -316,7 +317,7 @@ export class EmailService {
           resolvedUserType,
           payload.loginLink,
           this.config.logoUrl,
-          this.config.brandColor
+          this.config.brandColor,
         );
         subject =
           resolvedUserType === "Agent"
@@ -339,7 +340,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send welcome email"
+        "Failed to send welcome email",
       );
 
       return {
@@ -357,14 +358,14 @@ export class EmailService {
   // ============================================
 
   async sendPasswordResetEmail(
-    payload: IPasswordResetPayload
+    payload: IPasswordResetPayload,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
         {
           email: payload.to,
         },
-        "Sending password reset email"
+        "Sending password reset email",
       );
 
       // Render template
@@ -373,7 +374,7 @@ export class EmailService {
         payload.resetLink,
         String(payload.expiresIn),
         this.config.logoUrl,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       // Prepare email options
@@ -392,7 +393,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send password reset email"
+        "Failed to send password reset email",
       );
 
       return {
@@ -406,14 +407,14 @@ export class EmailService {
   }
 
   async sendPasswordChangedEmail(
-    payload: IPasswordChangedPayload
+    payload: IPasswordChangedPayload,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
         {
           email: payload.to,
         },
-        "Sending password changed email"
+        "Sending password changed email",
       );
 
       // Render template
@@ -421,7 +422,7 @@ export class EmailService {
         payload.userName,
         payload.timestamp,
         this.config.logoUrl,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       // Prepare email options
@@ -439,7 +440,97 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send password changed email"
+        "Failed to send password changed email",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  async sendRenterAccountDeletedEmail(
+    payload: IAccountDeletedPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to },
+        "Sending renter account deleted email",
+      );
+
+      const html = this.templates.accountDeletedRenter(
+        payload.userName,
+        this.config.logoUrl,
+        this.config.brandColor,
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.userName },
+        subject: "Your BeforeListed Account Has Been Deleted",
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "RENTER_ACCOUNT_DELETED",
+        payload.to,
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send renter account deleted email",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  async sendAgentAccountDeletedEmail(
+    payload: IAccountDeletedPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug({ email: payload.to }, "Sending agent account deleted email");
+
+      const html = this.templates.accountDeletedAgent(
+        payload.userName,
+        this.config.logoUrl,
+        this.config.brandColor,
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.userName },
+        cc: this.config.adminEmail
+          ? { email: this.config.adminEmail, name: "Admin" }
+          : undefined,
+        subject: "Your BeforeListed Agent Account Has Been Deleted",
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "AGENT_ACCOUNT_DELETED",
+        payload.to,
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send agent account deleted email",
       );
 
       return {
@@ -453,12 +544,12 @@ export class EmailService {
   }
 
   async sendPreMarketNotificationToAgent(
-    payload: IPreMarketAgentNotificationPayload
+    payload: IPreMarketAgentNotificationPayload,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
         { email: payload.to, agentType: payload.agentType },
-        "Sending pre-market notification to agent"
+        "Sending pre-market notification to agent",
       );
 
       const html = preMarketAgentNotificationTemplate(
@@ -469,7 +560,7 @@ export class EmailService {
         payload.serviceType,
         payload.listingUrl,
         this.config.logoUrl!,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       const emailOptions: IEmailOptions = {
@@ -483,7 +574,7 @@ export class EmailService {
       return await this.sendEmail(
         emailOptions,
         "PRE_MARKET_AGENT_NOTIFICATION",
-        payload.to
+        payload.to,
       );
     } catch (error) {
       logger.error(
@@ -491,7 +582,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send pre-market agent notification"
+        "Failed to send pre-market agent notification",
       );
 
       return {
@@ -513,12 +604,12 @@ export class EmailService {
    * @returns Promise with send result
    */
   async sendPreMarketNotificationToAdmin(
-    payload: IPreMarketAdminNotificationPayload
+    payload: IPreMarketAdminNotificationPayload,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
         { email: payload.to, preMarketRequestId: payload.preMarketRequestId },
-        "Sending pre-market notification to admin with renter info"
+        "Sending pre-market notification to admin with renter info",
       );
 
       // Render template (WITH renter info)
@@ -534,7 +625,7 @@ export class EmailService {
         payload.preMarketRequestId,
         payload.requestId,
         this.config.logoUrl!,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       // Prepare email options
@@ -549,7 +640,7 @@ export class EmailService {
       return await this.sendEmail(
         emailOptions,
         "PRE_MARKET_ADMIN_NOTIFICATION",
-        payload.to
+        payload.to,
       );
     } catch (error) {
       logger.error(
@@ -557,7 +648,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send pre-market admin notification"
+        "Failed to send pre-market admin notification",
       );
 
       return {
@@ -574,18 +665,18 @@ export class EmailService {
    * Send renter confirmation after submitting pre-market request
    */
   async sendPreMarketRequestConfirmationToRenter(
-    payload: IRenterRequestConfirmationPayload
+    payload: IRenterRequestConfirmationPayload,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
         { email: payload.to },
-        "Sending pre-market request confirmation to renter"
+        "Sending pre-market request confirmation to renter",
       );
 
       const html = renterRequestConfirmationTemplate(
         payload.renterName,
         this.config.logoUrl,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       const emailOptions: IEmailOptions = {
@@ -597,7 +688,7 @@ export class EmailService {
       return await this.sendEmail(
         emailOptions,
         "PRE_MARKET_RENTER_CONFIRMATION",
-        payload.to
+        payload.to,
       );
     } catch (error) {
       logger.error(
@@ -605,7 +696,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send pre-market request confirmation to renter"
+        "Failed to send pre-market request confirmation to renter",
       );
 
       return {
@@ -622,12 +713,12 @@ export class EmailService {
    * Send agent notification when renter updates a pre-market request
    */
   async sendPreMarketRequestUpdatedNotificationToAgent(
-    payload: IRenterRequestUpdatedNotificationPayload
+    payload: IRenterRequestUpdatedNotificationPayload,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
         { email: payload.to, requestId: payload.requestId },
-        "Sending pre-market request update notification to agent"
+        "Sending pre-market request update notification to agent",
       );
 
       const html = renterRequestUpdatedNotificationTemplate(
@@ -636,7 +727,7 @@ export class EmailService {
         payload.updatedFields,
         payload.updatedAt,
         this.config.logoUrl,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       const emailOptions: IEmailOptions = {
@@ -649,7 +740,7 @@ export class EmailService {
       return await this.sendEmail(
         emailOptions,
         "PRE_MARKET_REQUEST_UPDATED",
-        payload.to
+        payload.to,
       );
     } catch (error) {
       logger.error(
@@ -657,7 +748,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send pre-market request update notification to agent"
+        "Failed to send pre-market request update notification to agent",
       );
 
       return {
@@ -674,12 +765,12 @@ export class EmailService {
    * Send associated agent confirmation when renter submits a request
    */
   async sendRenterRequestConfirmationToAgent(
-    payload: IAgentRequestConfirmationPayload
+    payload: IAgentRequestConfirmationPayload,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
         { email: payload.to, requestId: payload.requestId },
-        "Sending renter request confirmation to agent"
+        "Sending renter request confirmation to agent",
       );
 
       const html = agentRenterRequestConfirmationTemplate(
@@ -690,7 +781,7 @@ export class EmailService {
         payload.maxRent,
         payload.submittedAt,
         this.config.logoUrl,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       const emailOptions: IEmailOptions = {
@@ -703,7 +794,7 @@ export class EmailService {
       return await this.sendEmail(
         emailOptions,
         "PRE_MARKET_REQUEST_CONFIRMATION_AGENT",
-        payload.to
+        payload.to,
       );
     } catch (error) {
       logger.error(
@@ -711,7 +802,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send renter request confirmation to agent"
+        "Failed to send renter request confirmation to agent",
       );
 
       return {
@@ -728,18 +819,18 @@ export class EmailService {
    * Send renter notification when registered agent finds an opportunity
    */
   async sendRenterOpportunityFoundByRegisteredAgent(
-    payload: IRenterOpportunityFoundRegisteredAgentPayload
+    payload: IRenterOpportunityFoundRegisteredAgentPayload,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
         { email: payload.to },
-        "Sending registered agent opportunity notification to renter"
+        "Sending registered agent opportunity notification to renter",
       );
 
       const html = renterOpportunityFoundRegisteredAgentTemplate(
         payload.renterName,
         this.config.logoUrl,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       const emailOptions: IEmailOptions = {
@@ -752,7 +843,7 @@ export class EmailService {
       return await this.sendEmail(
         emailOptions,
         "RENTER_OPPORTUNITY_FOUND_REGISTERED_AGENT",
-        payload.to
+        payload.to,
       );
     } catch (error) {
       logger.error(
@@ -760,7 +851,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send registered agent opportunity notification to renter"
+        "Failed to send registered agent opportunity notification to renter",
       );
 
       return {
@@ -777,31 +868,31 @@ export class EmailService {
    * Send renter notification when another agent finds an opportunity
    */
   async sendRenterOpportunityFoundByOtherAgent(
-    payload: IRenterOpportunityFoundOtherAgentPayload
+    payload: IRenterOpportunityFoundOtherAgentPayload,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
         { email: payload.to },
-        "Sending other agent opportunity notification to renter"
+        "Sending other agent opportunity notification to renter",
       );
 
       const html = renterOpportunityFoundOtherAgentTemplate(
         payload.renterName,
         this.config.logoUrl,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
         cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
-        subject: `An opportunity matching your request has been identified`,
+        subject: `An additional agent has identified a possible opportunity for you`,
         html,
       };
 
       return await this.sendEmail(
         emailOptions,
         "RENTER_OPPORTUNITY_FOUND_OTHER_AGENT",
-        payload.to
+        payload.to,
       );
     } catch (error) {
       logger.error(
@@ -809,7 +900,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send other agent opportunity notification to renter"
+        "Failed to send other agent opportunity notification to renter",
       );
 
       return {
@@ -826,12 +917,12 @@ export class EmailService {
    * Send agent alert when renter request is closed
    */
   async sendRenterRequestClosedAgentAlert(
-    payload: IRenterRequestClosedAgentAlertPayload
+    payload: IRenterRequestClosedAgentAlertPayload,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
         { email: payload.to, requestId: payload.requestId },
-        "Sending renter request closed alert to agent"
+        "Sending renter request closed alert to agent",
       );
 
       const html = renterRequestClosedAgentAlertTemplate(
@@ -840,7 +931,7 @@ export class EmailService {
         payload.reason,
         payload.closedAt,
         this.config.logoUrl,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       const emailOptions: IEmailOptions = {
@@ -853,7 +944,7 @@ export class EmailService {
       return await this.sendEmail(
         emailOptions,
         "RENTER_REQUEST_CLOSED_AGENT_ALERT",
-        payload.to
+        payload.to,
       );
     } catch (error) {
       logger.error(
@@ -861,7 +952,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send renter request closed alert to agent"
+        "Failed to send renter request closed alert to agent",
       );
 
       return {
@@ -878,12 +969,12 @@ export class EmailService {
    * Send admin notification when agent completes registration and verification
    */
   async sendAgentRegistrationVerifiedAdminNotification(
-    payload: IAgentRegistrationVerifiedAdminPayload
+    payload: IAgentRegistrationVerifiedAdminPayload,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
         { email: payload.to, agentEmail: payload.agentEmail },
-        "Sending agent registration verified notification to admin"
+        "Sending agent registration verified notification to admin",
       );
 
       const html = agentRegistrationVerifiedAdminTemplate(
@@ -892,7 +983,7 @@ export class EmailService {
         payload.agentEmail,
         payload.registrationDate,
         this.config.logoUrl,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       const emailOptions: IEmailOptions = {
@@ -905,7 +996,7 @@ export class EmailService {
       return await this.sendEmail(
         emailOptions,
         "AGENT_REGISTRATION_VERIFIED_ADMIN",
-        payload.to
+        payload.to,
       );
     } catch (error) {
       logger.error(
@@ -913,7 +1004,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send agent registration verified admin email"
+        "Failed to send agent registration verified admin email",
       );
 
       return {
@@ -930,12 +1021,12 @@ export class EmailService {
    * Send admin notification when renter completes registration and verification
    */
   async sendRenterRegistrationVerifiedAdminNotification(
-    payload: IRenterRegistrationVerifiedAdminPayload
+    payload: IRenterRegistrationVerifiedAdminPayload,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
         { email: payload.to, renterEmail: payload.renterEmail },
-        "Sending renter registration verified notification to admin"
+        "Sending renter registration verified notification to admin",
       );
 
       const html = renterRegistrationVerifiedAdminTemplate(
@@ -945,7 +1036,7 @@ export class EmailService {
         payload.registrationDate,
         payload.referralTag,
         this.config.logoUrl,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       const emailOptions: IEmailOptions = {
@@ -958,7 +1049,7 @@ export class EmailService {
       return await this.sendEmail(
         emailOptions,
         "RENTER_REGISTRATION_VERIFIED_ADMIN",
-        payload.to
+        payload.to,
       );
     } catch (error) {
       logger.error(
@@ -966,7 +1057,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send renter registration verified admin email"
+        "Failed to send renter registration verified admin email",
       );
 
       return {
@@ -983,12 +1074,12 @@ export class EmailService {
    * Send public contact request to admin
    */
   async sendAdminContactRequest(
-    payload: IAdminContactRequestPayload
+    payload: IAdminContactRequestPayload,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
         { email: payload.to, senderEmail: payload.senderEmail },
-        "Sending public contact request to admin"
+        "Sending public contact request to admin",
       );
 
       const subjectLine =
@@ -1003,7 +1094,7 @@ export class EmailService {
         payload.ipAddress!,
         payload.userAgent,
         this.config.logoUrl,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       const emailOptions: IEmailOptions = {
@@ -1020,7 +1111,7 @@ export class EmailService {
       return await this.sendEmail(
         emailOptions,
         "ADMIN_CONTACT_REQUEST",
-        payload.to
+        payload.to,
       );
     } catch (error) {
       logger.error(
@@ -1029,7 +1120,7 @@ export class EmailService {
           email: payload.to,
           senderEmail: payload.senderEmail,
         },
-        "Failed to send admin contact request"
+        "Failed to send admin contact request",
       );
 
       return {
@@ -1053,12 +1144,12 @@ export class EmailService {
    * @returns Promise<IEmailResult>
    */
   async sendAdminReferralEmail(
-    payload: IAdminReferralEmailPayload
+    payload: IAdminReferralEmailPayload,
   ): Promise<IEmailResult> {
     try {
       logger.debug(
         { email: payload.to, userName: payload.userName },
-        "Sending admin referral email with temporary password"
+        "Sending admin referral email with temporary password",
       );
 
       const passwordStr =
@@ -1090,7 +1181,7 @@ export class EmailService {
         payload.loginLink,
         accountType,
         this.config.logoUrl,
-        this.config.brandColor
+        this.config.brandColor,
       );
 
       const emailOptions: IEmailOptions = {
@@ -1108,7 +1199,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send admin referral email"
+        "Failed to send admin referral email",
       );
 
       return {
@@ -1132,7 +1223,7 @@ export class EmailService {
   private async sendEmail(
     options: IEmailOptions,
     templateType: string,
-    recipientEmail: string
+    recipientEmail: string,
   ): Promise<IEmailResult> {
     const startTime = Date.now();
 
@@ -1150,7 +1241,7 @@ export class EmailService {
             duration: `${duration}ms`,
             attempts: response.retries + 1,
           },
-          `❌ Email send failed: ${templateType}`
+          `❌ Email send failed: ${templateType}`,
         );
 
         return {
@@ -1168,7 +1259,7 @@ export class EmailService {
           email: recipientEmail,
           duration: `${duration}ms`,
         },
-        `✅ Email sent successfully: ${templateType}`
+        `✅ Email sent successfully: ${templateType}`,
       );
 
       return {
@@ -1184,7 +1275,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: recipientEmail,
         },
-        `❌ Unexpected error sending email: ${templateType}`
+        `❌ Unexpected error sending email: ${templateType}`,
       );
 
       return {
@@ -1225,7 +1316,7 @@ export class EmailService {
         payload.propertyTitle,
         payload.location,
         payload.requestedAt,
-        payload.adminDashboardLink
+        payload.adminDashboardLink,
       );
 
       const emailOptions: IEmailOptions = {
@@ -1239,7 +1330,7 @@ export class EmailService {
       return await this.sendEmail(
         emailOptions,
         "GRANT_ACCESS_REQUEST_ADMIN",
-        payload.to
+        payload.to,
       );
     } catch (error) {
       logger.error(
@@ -1247,7 +1338,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send grant access request email"
+        "Failed to send grant access request email",
       );
       return {
         success: false,
@@ -1278,7 +1369,7 @@ export class EmailService {
         payload.location,
         payload.isFree ? "free" : "paid",
         payload.chargeAmount || 0,
-        payload.accessLink
+        payload.accessLink,
       );
 
       const emailOptions: IEmailOptions = {
@@ -1291,7 +1382,7 @@ export class EmailService {
       return await this.sendEmail(
         emailOptions,
         "GRANT_ACCESS_APPROVAL_AGENT",
-        payload.to
+        payload.to,
       );
     } catch (error) {
       logger.error(
@@ -1299,7 +1390,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send grant access approval email"
+        "Failed to send grant access approval email",
       );
       return {
         success: false,
@@ -1326,7 +1417,7 @@ export class EmailService {
         payload.agentName,
         payload.propertyTitle,
         payload.rejectionReason,
-        payload.contactEmail
+        payload.contactEmail,
       );
 
       const emailOptions: IEmailOptions = {
@@ -1338,7 +1429,7 @@ export class EmailService {
       return await this.sendEmail(
         emailOptions,
         "GRANT_ACCESS_REJECTION_AGENT",
-        payload.to
+        payload.to,
       );
     } catch (error) {
       logger.error(
@@ -1346,7 +1437,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send grant access rejection email"
+        "Failed to send grant access rejection email",
       );
       return {
         success: false,
@@ -1375,7 +1466,7 @@ export class EmailService {
         payload.propertyTitle,
         payload.chargeAmount,
         payload.paymentLink,
-        payload.paymentDeadline
+        payload.paymentDeadline,
       );
 
       const emailOptions: IEmailOptions = {
@@ -1388,7 +1479,7 @@ export class EmailService {
       return await this.sendEmail(
         emailOptions,
         "PAYMENT_LINK_AGENT",
-        payload.to
+        payload.to,
       );
     } catch (error) {
       logger.error(
@@ -1396,7 +1487,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send payment link email"
+        "Failed to send payment link email",
       );
       return {
         success: false,
@@ -1420,7 +1511,7 @@ export class EmailService {
         {
           error: error instanceof Error ? error.message : String(error),
         },
-        "Error closing email service connection"
+        "Error closing email service connection",
       );
     }
   }
@@ -1441,7 +1532,7 @@ export async function initializeEmailService(): Promise<void> {
       {
         error: error instanceof Error ? error.message : String(error),
       },
-      "Failed to initialize email service"
+      "Failed to initialize email service",
     );
   }
 }
@@ -1455,7 +1546,7 @@ export async function cleanupEmailService(): Promise<void> {
       {
         error: error instanceof Error ? error.message : String(error),
       },
-      "Error during email service cleanup"
+      "Error during email service cleanup",
     );
   }
 }

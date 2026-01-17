@@ -64,6 +64,7 @@ export interface IEmailConfig {
   replyTo?: string;
   logoUrl?: string;
   brandColor?: string;
+  adminEmail: string;
   maxRetries: number;
   retryDelayMs: number;
 }
@@ -162,6 +163,11 @@ export interface IEmailChangePayload {
   userName: string;
   newEmail: string;
   oldEmail: string;
+}
+
+export interface IAccountDeletedPayload {
+  to: string;
+  userName: string | undefined;
 }
 
 export interface IEmailError extends Error {

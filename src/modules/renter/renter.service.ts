@@ -439,12 +439,45 @@ export class RenterService {
       throw new NotFoundException("Renter profile not found");
     }
 
+    const renterUser =
+      renter.userId && typeof renter.userId === "object"
+        ? (renter.userId as { fullName?: string; email?: string })
+        : null;
+    const renterEmail = renterUser?.email || renter.email;
+    const renterName = renterUser?.fullName || renter.fullName || renterEmail;
+
     const { UserRepository } = await import("../user/user.repository");
     const userRepository = new UserRepository();
     await this.repository.permanentlyDeleteRenter(userId);
     await userRepository.permanentlyDeleteUser(userId);
 
     logger.info({ userId }, "Renter profile and user account deleted");
+
+    if (renterEmail) {
+      try {
+        const emailResult =
+          await this.emailService.sendRenterAccountDeletedEmail({
+            to: renterEmail,
+            userName: renterName,
+          });
+
+        if (!emailResult.success) {
+          logger.warn(
+            { userId, email: renterEmail, error: emailResult.error },
+            "Account deletion email failed to send",
+          );
+        }
+      } catch (error) {
+        logger.error(
+          {
+            userId,
+            email: renterEmail,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Error sending account deletion email",
+        );
+      }
+    }
 
     return { message: "Renter profile deleted successfully" };
   }

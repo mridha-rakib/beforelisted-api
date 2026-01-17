@@ -4,6 +4,7 @@ import { ROLES } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 
 import { ExcelService } from "@/services/excel.service";
+import { EmailService } from "@/services/email.service";
 import { S3Service } from "@/services/s3.service";
 import {
   BadRequestException,
@@ -34,6 +35,7 @@ export class AgentService {
   private emailVerificationService: EmailVerificationService;
   private excelService: ExcelService;
   private s3Service: S3Service;
+  private emailService: EmailService;
 
   constructor() {
     this.repository = new AgentProfileRepository();
@@ -42,6 +44,7 @@ export class AgentService {
     this.emailVerificationService = new EmailVerificationService();
     this.excelService = new ExcelService();
     this.s3Service = new S3Service();
+    this.emailService = new EmailService();
   }
 
   async registerAgent(
@@ -647,6 +650,13 @@ export class AgentService {
       throw new NotFoundException("Agent profile not found");
     }
 
+    const agentUser =
+      profile.userId && typeof profile.userId === "object"
+        ? (profile.userId as { fullName?: string; email?: string })
+        : null;
+    const agentEmail = agentUser?.email;
+    const agentName = agentUser?.fullName || agentEmail;
+
     // Remove agent profile
     await this.repository.deleteById(profile._id.toString());
 
@@ -656,6 +666,33 @@ export class AgentService {
     await userRepository.permanentlyDeleteUser(userId);
 
     logger.info({ userId }, "Agent profile and user account deleted");
+
+    if (agentEmail) {
+      try {
+        const emailResult = await this.emailService.sendAgentAccountDeletedEmail(
+          {
+            to: agentEmail,
+            userName: agentName,
+          }
+        );
+
+        if (!emailResult.success) {
+          logger.warn(
+            { userId, email: agentEmail, error: emailResult.error },
+            "Agent account deletion email failed to send"
+          );
+        }
+      } catch (error) {
+        logger.error(
+          {
+            userId,
+            email: agentEmail,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Error sending agent account deletion email"
+        );
+      }
+    }
 
     return { message: "Agent profile deleted successfully" };
   }

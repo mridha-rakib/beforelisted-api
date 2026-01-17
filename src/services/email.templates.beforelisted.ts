@@ -1243,6 +1243,283 @@ export class EmailTemplates {
   `;
   };
 
+  accountDeletedRenter(
+    userName: string | undefined,
+    logoUrl?: string,
+    brandColor?: string
+  ): string {
+    const logo = logoUrl || this.logoUrl;
+    const color = brandColor || this.brandColor;
+    const displayName =
+      userName && userName.trim() ? userName.split(" ")[0] : "there";
+
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your BeforeListed Account Has Been Deleted</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: ${color};
+            padding: 40px 20px;
+            text-align: center;
+        }
+        ${this.getLogoStyles()}
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 26px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .content h2 {
+            color: #333333;
+            font-size: 20px;
+            margin: 0 0 20px 0;
+            font-weight: 600;
+        }
+        .content p {
+            color: #666666;
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0 0 15px 0;
+        }
+        .notice-box {
+            background-color: #f0f7ff;
+            border-left: 4px solid ${color};
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .notice-box p {
+            margin: 0;
+            color: #333333;
+        }
+        .details-list {
+            margin: 10px 0 20px 20px;
+            padding: 0;
+            color: #666666;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+        .details-list li {
+            margin: 8px 0;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+        }
+        .footer p {
+            color: #999999;
+            font-size: 13px;
+            margin: 5px 0;
+        }
+        .footer a {
+            color: ${color};
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <img src="${logo}" alt="BeforeListed Logo" class="logo">
+            <h1>Account Deleted</h1>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <h2>Hi ${displayName},</h2>
+            <p>This email confirms that your BeforeListed account has been successfully deleted, as requested.</p>
+
+            <div class="notice-box">
+                <p><strong>As a result:</strong></p>
+            </div>
+            <ul class="details-list">
+                <li>Your account access has been permanently removed</li>
+                <li>Any active requests associated with your account are no longer active</li>
+                <li>No further outreach will be made on your behalf through the platform</li>
+            </ul>
+
+            <p>If this deletion was made in error or you have questions about the process, you're welcome to reach out to us at <a href="mailto:${this.supportEmail}">${this.supportEmail}</a>.</p>
+
+            <p>Thank you for taking the time to try BeforeListed, and we wish you the best of luck with your housing search.</p>
+
+            <p>Best regards,<br><strong>BeforeListed Support</strong></p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>c ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
+            <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
+            ${this.getFooterLinks(color)}
+        </div>
+    </div>
+</body>
+</html>
+    `;
+  }
+
+  accountDeletedAgent(
+    userName: string | undefined,
+    logoUrl?: string,
+    brandColor?: string
+  ): string {
+    const logo = logoUrl || this.logoUrl;
+    const color = brandColor || this.brandColor;
+    const displayName =
+      userName && userName.trim() ? userName.split(" ")[0] : "there";
+
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your BeforeListed Agent Account Has Been Deleted</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: ${color};
+            padding: 40px 20px;
+            text-align: center;
+        }
+        ${this.getLogoStyles()}
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 26px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .content h2 {
+            color: #333333;
+            font-size: 20px;
+            margin: 0 0 20px 0;
+            font-weight: 600;
+        }
+        .content p {
+            color: #666666;
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0 0 15px 0;
+        }
+        .notice-box {
+            background-color: #f0f7ff;
+            border-left: 4px solid ${color};
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .notice-box p {
+            margin: 0;
+            color: #333333;
+        }
+        .details-list {
+            margin: 10px 0 20px 20px;
+            padding: 0;
+            color: #666666;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+        .details-list li {
+            margin: 8px 0;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+        }
+        .footer p {
+            color: #999999;
+            font-size: 13px;
+            margin: 5px 0;
+        }
+        .footer a {
+            color: ${color};
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <img src="${logo}" alt="BeforeListed Logo" class="logo">
+            <h1>Agent Account Deleted</h1>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <h2>Hi ${displayName},</h2>
+            <p>This email confirms that your BeforeListed agent account has been successfully deleted, as requested.</p>
+
+            <div class="notice-box">
+                <p><strong>As a result:</strong></p>
+            </div>
+            <ul class="details-list">
+                <li>Your agent account access has been permanently removed</li>
+                <li>You will no longer receive renter requests through the platform</li>
+                <li>Any active matches or pending requests associated with your account have been closed.</li>
+                <li>No further action is required on your part.</li>
+            </ul>
+
+            <p>If this deletion was made in error or you have questions about the process, you may contact us at <a href="mailto:${this.supportEmail}">${this.supportEmail}</a>.</p>
+
+            <p>Thank you for your time and participation with BeforeListed.</p>
+
+            <p>Best regards,<br><strong>BeforeListed Support</strong></p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>c ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
+            <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
+            ${this.getFooterLinks(color)}
+        </div>
+    </div>
+</body>
+</html>
+    `;
+  }
+
   welcomeAdminReferral(
     userName: string,
     email: string,
