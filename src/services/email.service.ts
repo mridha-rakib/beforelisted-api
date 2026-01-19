@@ -22,6 +22,7 @@ import {
   renterOpportunityFoundOtherAgentTemplate,
   renterOpportunityFoundRegisteredAgentTemplate,
   renterRegistrationVerifiedAdminTemplate,
+  renterRequestExpiredTemplate,
   renterRequestClosedAgentAlertTemplate,
   renterRequestConfirmationTemplate,
   renterRequestUpdatedNotificationTemplate,
@@ -35,6 +36,7 @@ import {
   IRenterOpportunityFoundOtherAgentPayload,
   IRenterOpportunityFoundRegisteredAgentPayload,
   IRenterRegistrationVerifiedAdminPayload,
+  IRenterRequestExpiredNotificationPayload,
   IRenterRequestClosedAgentAlertPayload,
   IRenterRequestConfirmationPayload,
   IRenterRequestUpdatedNotificationPayload,
@@ -697,6 +699,54 @@ export class EmailService {
           email: payload.to,
         },
         "Failed to send pre-market request confirmation to renter",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send renter notification when a request expires
+   */
+  async sendRenterRequestExpiredNotification(
+    payload: IRenterRequestExpiredNotificationPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to },
+        "Sending renter request expired notification",
+      );
+
+      const html = renterRequestExpiredTemplate(
+        payload.renterName,
+        this.config.logoUrl,
+        this.config.brandColor,
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.renterName },
+        subject: "Your BeforeListed Request Has Expired",
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "PRE_MARKET_RENTER_REQUEST_EXPIRED",
+        payload.to,
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send renter request expired notification",
       );
 
       return {

@@ -576,7 +576,8 @@ export class PreMarketNotifier {
     }>
   > {
     try {
-      const agents = await this.agentRepository.findActiveAgents();
+      const agents =
+        await this.agentRepository.findActiveAgentsAcceptingRequests();
 
       return agents.map((agent) => ({
         id: agent._id.toString(),

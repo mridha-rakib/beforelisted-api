@@ -19,12 +19,13 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   }
 
   async findAllWithPagination(
-    query: PaginationQuery
+    query: PaginationQuery,
+    filters: Record<string, any> = {}
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
 
     const result = await (this.model as any).paginate(
-      { isDeleted: false },
+      { isDeleted: false, ...filters },
       { ...paginateOptions, useEstimatedCount: false }
     );
 
@@ -33,10 +34,11 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
   async findAllWithPaginationExcludingIds(
     query: PaginationQuery,
-    excludedIds: string[]
+    excludedIds: string[],
+    filters: Record<string, any> = {}
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
-    const filter: Record<string, any> = { isDeleted: false };
+    const filter: Record<string, any> = { isDeleted: false, ...filters };
 
     if (excludedIds && excludedIds.length > 0) {
       filter._id = { $nin: excludedIds };
@@ -294,13 +296,15 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
   async findForGrantAccessAgents(
     agentId: string,
-    query: PaginationQuery
+    query: PaginationQuery,
+    filters: Record<string, any> = {}
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
 
     const result = await (this.model as any).paginate(
       {
         isDeleted: false,
+        ...filters,
         // isDeleted: false,
         // "viewedBy.grantAccessAgents": { $ne: agentId },
       },
@@ -329,7 +333,8 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
   async findAvailableForNormalAgents(
     agentId: string,
-    query: PaginationQuery
+    query: PaginationQuery,
+    filters: Record<string, any> = {}
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
 
@@ -337,6 +342,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       {
         status: "Available",
         isDeleted: false,
+        ...filters,
         "viewedBy.normalAgents": { $ne: agentId },
       },
       paginateOptions
@@ -423,6 +429,15 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return this.model
       .findOne({ _id: id, isActive: true })
       .lean() as Promise<IPreMarketRequest | null>;
+  }
+
+  async findExpiredRequests(now: Date = new Date()): Promise<IPreMarketRequest[]> {
+    return this.model
+      .find({
+        "movingDateRange.latest": { $lt: now },
+        isDeleted: false,
+      })
+      .exec();
   }
 
   /**
@@ -570,19 +585,40 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   async getAllActiveAgentIds(): Promise<string[]> {
     try {
       const agents = await this.model.db
-        .collection("users")
-        .find(
+        .collection("agentprofiles")
+        .aggregate([
           {
-            accountStatus: "active",
-            role: "Agent",
+            $match: {
+              isActive: true,
+              acceptingRequests: { $ne: false },
+            },
           },
           {
-            projection: { _id: 1 },
-          }
-        )
+            $lookup: {
+              from: "users",
+              localField: "userId",
+              foreignField: "_id",
+              as: "userInfo",
+            },
+          },
+          { $unwind: "$userInfo" },
+          {
+            $match: {
+              "userInfo.accountStatus": "active",
+              "userInfo.role": "Agent",
+              "userInfo.isDeleted": { $ne: true },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              userId: "$userInfo._id",
+            },
+          },
+        ])
         .toArray();
 
-      return agents.map((agent: any) => agent._id.toString());
+      return agents.map((agent: any) => agent.userId.toString());
     } catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },

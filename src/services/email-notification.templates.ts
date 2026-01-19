@@ -599,6 +599,126 @@ export function renterRequestConfirmationTemplate(
 }
 
 /**
+ * Email template for renter when a request expires
+ */
+export function renterRequestExpiredTemplate(
+  renterName: string,
+  logoUrl?: string,
+  brandColor: string = "#1890FF"
+): string {
+  const currentYear = new Date().getFullYear();
+  const firstName = renterName?.trim().split(" ")[0] || renterName;
+  const safeFirstName = escapeHtml(firstName);
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your BeforeListed Request Has Expired</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: ${brandColor};
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .greeting {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .notification-box {
+            background-color: #f0f8fa;
+            border-left: 4px solid ${brandColor};
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .notification-box h2 {
+            margin: 0 0 10px 0;
+            color: ${brandColor};
+            font-size: 18px;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+        .footer a {
+            color: ${brandColor};
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            <h1>Your BeforeListed Request Has Expired</h1>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                Hi ${safeFirstName},
+            </div>
+
+            <div class="notification-box">
+                <h2>Request expired</h2>
+                <p>This email is to let you know that your BeforeListed renter request has expired and has been automatically removed from the platform.</p>
+            </div>
+
+            <p>Requests are time-limited to ensure agents are working with up-to-date information and active housing needs. No further action will be taken on this request.</p>
+
+            <p>If you're still searching for an apartment, you're welcome to submit a new request at any time.</p>
+
+            <p>Thank you for using BeforeListed, and we wish you the best of luck with your search.</p>
+
+            <p>Best regards,<br>Tuval<br><strong>BeforeListed</strong></p>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0;">c ${currentYear} BeforeListed. All rights reserved.</p>
+            ${footerLinks(brandColor)}
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
+/**
  * Email template for associated agent when renter submits a request
  */
 export function agentRenterRequestConfirmationTemplate(

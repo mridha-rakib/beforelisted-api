@@ -44,6 +44,8 @@ export interface IAgentProfile extends Document {
 
   // Access Management
   emailSubscriptionEnabled: boolean;
+  acceptingRequests: boolean;
+  acceptingRequestsToggledAt?: Date;
   hasGrantAccess: boolean;
   accessToggleHistory: IAccessToggleRecord[];
   lastAccessToggleAt?: Date;

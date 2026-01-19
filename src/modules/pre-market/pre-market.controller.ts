@@ -191,6 +191,8 @@ export class PreMarketController {
       throw new NotFoundException("Pre-market request not found");
     }
 
+    this.preMarketService.ensureAgentCanViewRequest(agent, request as any);
+
     if (agent.hasGrantAccess) {
       const matchRecord = await this.preMarketService.getMatchedAccessRecord(
         userId,
@@ -686,6 +688,8 @@ export class PreMarketController {
         throw new NotFoundException("Pre-market request not found");
       }
 
+      this.preMarketService.ensureAgentCanViewRequest(agent, request as any);
+
       if (agent.hasGrantAccess === true) {
         const matchRecord = await this.preMarketService.getMatchedAccessRecord(
           agentId,
@@ -837,6 +841,8 @@ export class PreMarketController {
 
       // Get request
       const request = await this.preMarketService.getRequestById(requestId);
+
+      this.preMarketService.ensureAgentCanViewRequest(agent, request as any);
 
       // Check dual access
       const accessCheck = await this.preMarketService.checkAgentAccessToRequest(

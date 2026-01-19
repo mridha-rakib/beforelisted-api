@@ -61,6 +61,19 @@ router.post(
 );
 
 /**
+ * POST /agent/accepting-requests/toggle
+ * Toggle accepting requests ON/OFF
+ */
+router.post(
+  "/accepting-requests/toggle",
+  authMiddleware.verifyToken,
+  authMiddleware.verifyEmailVerified,
+  agentActivationMiddleware.verify,
+  authMiddleware.authorize(ROLES.AGENT),
+  controller.toggleAcceptingRequests
+);
+
+/**
  * NEW: GET /agent/referral-link
  * Get agent's referral code and link
  */

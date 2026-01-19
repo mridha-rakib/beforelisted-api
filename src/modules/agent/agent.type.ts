@@ -39,6 +39,8 @@ export type AgentProfileResponse = {
   activeReferrals: number;
 
   emailSubscriptionEnabled: boolean;
+  acceptingRequests: boolean;
+  acceptingRequestsToggledAt?: Date;
   hasGrantAccess: boolean;
   lastAccessToggleAt?: Date;
 

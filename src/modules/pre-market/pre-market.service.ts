@@ -13,6 +13,7 @@ import {
 } from "@/utils/app-error.utils";
 import { PaginationHelper } from "@/utils/pagination-helper";
 import { Types } from "mongoose";
+import type { IAgentProfile } from "../agent/agent.interface";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import type { IGrantAccessRequest } from "../grant-access/grant-access.model";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
@@ -306,6 +307,40 @@ export class PreMarketService {
       );
     }
 
+    const renter = await this.renterRepository.findRenterWithReferrer(renterId);
+    if (!renter) {
+      throw new NotFoundException("Renter not found");
+    }
+
+    if (
+      renter.registrationType === "agent_referral" &&
+      renter.referredByAgentId
+    ) {
+      const referredAgent =
+        typeof renter.referredByAgentId === "object"
+          ? renter.referredByAgentId
+          : null;
+      const referredAgentId =
+        typeof renter.referredByAgentId === "object" &&
+        renter.referredByAgentId?._id
+          ? renter.referredByAgentId._id.toString()
+          : typeof renter.referredByAgentId === "string"
+            ? renter.referredByAgentId
+            : null;
+      const referredAgentName =
+        referredAgent?.fullName || DEFAULT_REFERRAL_AGENT_NAME;
+
+      if (referredAgentId) {
+        const agentProfile =
+          await this.agentRepository.findByUserId(referredAgentId);
+        if (agentProfile?.acceptingRequests === false) {
+          throw new BadRequestException(
+            `${referredAgentName} is not accepting new requests at this time. Please try again later.`
+          );
+        }
+      }
+    }
+
     const activeListingCount =
       await this.preMarketRepository.countActiveByRenterId(renterId);
 
@@ -437,7 +472,11 @@ export class PreMarketService {
     agentId: string
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const agent = await this.agentRepository.findByUserId(agentId);
+    if (!agent) {
+      throw new NotFoundException("Agent profile not found");
+    }
     const hasGrantAccess = agent?.hasGrantAccess === true;
+    const visibilityFilter = this.buildAgentVisibilityFilter(agent);
 
     let paginated: PaginatedResponse<IPreMarketRequest>;
     if (!hasGrantAccess) {
@@ -453,7 +492,8 @@ export class PreMarketService {
       paginated =
         await this.preMarketRepository.findAllWithPaginationExcludingIds(
           query,
-          excludedIds
+          excludedIds,
+          visibilityFilter
         );
     } else {
       const matchedRecords =
@@ -468,9 +508,13 @@ export class PreMarketService {
       paginated = excludedIds.length
         ? await this.preMarketRepository.findAllWithPaginationExcludingIds(
             query,
-            excludedIds
+            excludedIds,
+            visibilityFilter
           )
-        : await this.preMarketRepository.findAllWithPagination(query);
+        : await this.preMarketRepository.findAllWithPagination(
+            query,
+            visibilityFilter
+          );
     }
 
     const requestIds = paginated.data
@@ -706,6 +750,35 @@ export class PreMarketService {
     });
   }
 
+  private async notifyRenterRequestExpired(
+    request: IPreMarketRequest
+  ): Promise<void> {
+    const renter = await this.renterRepository.findRenterWithReferrer(
+      request.renterId.toString()
+    );
+
+    if (!renter) {
+      logger.warn(
+        { requestId: request._id },
+        "Renter not found for request expiration notice"
+      );
+      return;
+    }
+
+    if (!renter.email) {
+      logger.warn(
+        { requestId: request._id },
+        "Renter email missing for request expiration notice"
+      );
+      return;
+    }
+
+    await emailService.sendRenterRequestExpiredNotification({
+      to: renter.email,
+      renterName: renter.fullName,
+    });
+  }
+
   private async isAgentEmailSubscriptionEnabled(
     agentEmail: string,
     agentUserId?: string
@@ -814,6 +887,40 @@ export class PreMarketService {
     });
   }
 
+  private getAgentVisibilityCutoff(agent: IAgentProfile): Date | null {
+    if (!agent || agent.acceptingRequests !== false) {
+      return null;
+    }
+
+    return agent.acceptingRequestsToggledAt || agent.updatedAt || new Date();
+  }
+
+  private buildAgentVisibilityFilter(agent: IAgentProfile): Record<string, any> {
+    const cutoff = this.getAgentVisibilityCutoff(agent);
+    if (!cutoff) {
+      return {};
+    }
+
+    return {
+      createdAt: { $lte: cutoff },
+    };
+  }
+
+  public ensureAgentCanViewRequest(
+    agent: IAgentProfile,
+    request: IPreMarketRequest
+  ): void {
+    const cutoff = this.getAgentVisibilityCutoff(agent);
+    if (!cutoff || !request?.createdAt) {
+      return;
+    }
+
+    const createdAt = new Date(request.createdAt);
+    if (createdAt > cutoff) {
+      throw new ForbiddenException("This request is not available");
+    }
+  }
+
   // ============================================
   // DELETE REQUEST (RENTER ONLY)
   // ============================================
@@ -839,6 +946,84 @@ export class PreMarketService {
         "Failed to send request closed alert (non-blocking)"
       );
     });
+  }
+
+  async expireRequests(): Promise<{
+    expiredCount: number;
+    deletedCount: number;
+    failedCount: number;
+  }> {
+    const expiredRequests = await this.preMarketRepository.findExpiredRequests();
+
+    if (!expiredRequests || expiredRequests.length === 0) {
+      return { expiredCount: 0, deletedCount: 0, failedCount: 0 };
+    }
+
+    let deletedCount = 0;
+    let failedCount = 0;
+
+    for (const request of expiredRequests) {
+      const requestId = request._id?.toString();
+      if (!requestId) {
+        failedCount += 1;
+        logger.warn(
+          { requestId: request.requestId },
+          "Expired request missing id; skipping delete"
+        );
+        continue;
+      }
+
+      try {
+        const deleted = await this.preMarketRepository.deleteById(requestId);
+        if (!deleted) {
+          failedCount += 1;
+          logger.warn(
+            { requestId },
+            "Expired request not found during delete"
+          );
+          continue;
+        }
+
+        deletedCount += 1;
+
+        const closedAt = new Date();
+        this.notifyRenterRequestExpired(request).catch((error) => {
+          logger.error(
+            { error, requestId },
+            "Failed to send renter expiration notice (non-blocking)"
+          );
+        });
+
+        this.notifyRegisteredAgentRequestClosed(
+          request,
+          "Request expired.",
+          closedAt
+        ).catch((error) => {
+          logger.error(
+            { error, requestId },
+            "Failed to send request closed alert (non-blocking)"
+          );
+        });
+      } catch (error) {
+        failedCount += 1;
+        logger.error(
+          { error, requestId },
+          "Failed to delete expired pre-market request"
+        );
+      }
+    }
+
+    if (deletedCount > 0) {
+      this.updateConsolidatedExcel().catch((error) => {
+        logger.error({ error }, "Consolidated Excel update failed");
+      });
+    }
+
+    return {
+      expiredCount: expiredRequests.length,
+      deletedCount,
+      failedCount,
+    };
   }
 
   // ============================================
@@ -985,6 +1170,7 @@ export class PreMarketService {
     }
 
     const request = await this.getRequestById(requestId);
+    this.ensureAgentCanViewRequest(agent, request);
 
     const enrichedRequest = await this.enrichRequestWithRenterInfo(
       request,
@@ -1012,6 +1198,8 @@ export class PreMarketService {
     if (!listingActivationCheck) {
       throw new NotFoundException("Pre-market request not found");
     }
+
+    this.ensureAgentCanViewRequest(agent, listingActivationCheck as any);
 
     if (!listingActivationCheck.isActive) {
       throw new ForbiddenException(
@@ -1447,7 +1635,8 @@ export class PreMarketService {
     // Get requests for this agent
     const paginated = await this.preMarketRepository.findForGrantAccessAgents(
       agentId,
-      query
+      query,
+      this.buildAgentVisibilityFilter(agent)
     );
 
     // Enrich each request with full renter information
@@ -1594,7 +1783,8 @@ export class PreMarketService {
     const paginated =
       await this.preMarketRepository.findAvailableForNormalAgents(
         agentId,
-        query
+        query,
+        this.buildAgentVisibilityFilter(agent)
       );
 
     // For each request, conditionally include renter info
@@ -1661,6 +1851,8 @@ export class PreMarketService {
     if (!agent) {
       throw new ForbiddenException("Agent profile not found");
     }
+
+    this.ensureAgentCanViewRequest(agent, request as any);
 
     // GRANT ACCESS AGENTS - Full info
     if (agent.hasGrantAccess) {

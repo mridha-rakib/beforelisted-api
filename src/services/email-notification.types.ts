@@ -30,6 +30,11 @@ export interface IRenterRequestConfirmationPayload {
   renterName: string;
 }
 
+export interface IRenterRequestExpiredNotificationPayload {
+  to: string;
+  renterName: string;
+}
+
 export interface IRenterRequestUpdatedNotificationPayload {
   to: string;
   agentName: string;

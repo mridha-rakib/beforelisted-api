@@ -88,6 +88,15 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
     index: true,
   },
 
+  acceptingRequests: {
+    type: Boolean,
+    default: true,
+    index: true,
+  },
+  acceptingRequestsToggledAt: {
+    type: Date,
+  },
+
   hasGrantAccess: {
     type: Boolean,
     default: false,

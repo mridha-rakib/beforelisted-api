@@ -229,6 +229,30 @@ export class AgentService {
     return { emailSubscriptionEnabled: nextValue };
   }
 
+  async toggleAcceptingRequests(userId: string): Promise<{
+    acceptingRequests: boolean;
+    acceptingRequestsToggledAt: Date;
+  }> {
+    const profile = await this.repository.findByUserId(userId);
+    if (!profile) {
+      throw new NotFoundException("Agent profile not found");
+    }
+
+    const current = profile.acceptingRequests !== false;
+    const nextValue = !current;
+    const toggledAt = new Date();
+
+    await this.repository.updateProfile(userId, {
+      acceptingRequests: nextValue,
+      acceptingRequestsToggledAt: toggledAt,
+    });
+
+    return {
+      acceptingRequests: nextValue,
+      acceptingRequestsToggledAt: toggledAt,
+    };
+  }
+
   async getAgentStats(userId: string): Promise<{
     grantAccessCount: number;
     totalMatches: number;
@@ -629,6 +653,8 @@ export class AgentService {
       totalRentersReferred: agent.totalRentersReferred,
       activeReferrals: agent.activeReferrals,
       emailSubscriptionEnabled: agent.emailSubscriptionEnabled !== false,
+      acceptingRequests: agent.acceptingRequests !== false,
+      acceptingRequestsToggledAt: agent.acceptingRequestsToggledAt,
       hasGrantAccess: agent.hasGrantAccess,
       lastAccessToggleAt: agent.lastAccessToggleAt,
       grantAccessCount: agent.grantAccessCount,

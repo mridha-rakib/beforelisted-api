@@ -490,4 +490,37 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
       ])
       .exec();
   }
+
+  async findActiveAgentsAcceptingRequests(): Promise<any[]> {
+    return this.model
+      .aggregate([
+        {
+          $match: {
+            isActive: true,
+            emailSubscriptionEnabled: { $ne: false },
+            acceptingRequests: { $ne: false },
+          },
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "userId",
+            foreignField: "_id",
+            as: "userInfo",
+          },
+        },
+        { $unwind: "$userInfo" },
+        { $match: { "userInfo.isDeleted": { $ne: true } } },
+        {
+          $project: {
+            _id: 1,
+            hasGrantAccess: 1,
+            lastAccessToggleAt: 1,
+            fullName: "$userInfo.fullName",
+            email: "$userInfo.email",
+          },
+        },
+      ])
+      .exec();
+  }
 }
