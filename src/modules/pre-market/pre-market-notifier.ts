@@ -404,6 +404,16 @@ export class PreMarketNotifier {
         renterData.referringAgentEmail || DEFAULT_REFERRAL_AGENT_EMAIL;
       const agentName =
         renterData.referringAgentName || DEFAULT_REFERRAL_AGENT_NAME;
+      const shouldNotify = await this.isAgentEmailSubscriptionEnabledByEmail(
+        agentEmail
+      );
+      if (!shouldNotify) {
+        logger.info(
+          { email: agentEmail },
+          "Agent email subscription disabled; skipping referral notification"
+        );
+        return;
+      }
       const requestId =
         preMarketRequest.requestId || preMarketRequest._id?.toString() || "";
       const borough = this.formatBorough(preMarketRequest.locations);
@@ -605,6 +615,28 @@ export class PreMarketNotifier {
     }
   }
 
+  private async isAgentEmailSubscriptionEnabledByEmail(
+    agentEmail: string
+  ): Promise<boolean> {
+    if (!agentEmail) {
+      return false;
+    }
+
+    const agentUser = await this.userRepository.findByEmail(agentEmail);
+    if (!agentUser) {
+      return true;
+    }
+
+    const agentProfile = await this.agentRepository.findByUserId(
+      agentUser._id.toString()
+    );
+    if (!agentProfile) {
+      return true;
+    }
+
+    return agentProfile.emailSubscriptionEnabled !== false;
+  }
+
   async notifyAdminOfGrantAccessRequest(
     grantAccess: IGrantAccessRequest
   ): Promise<{ success: boolean; error?: string }> {
@@ -702,12 +734,23 @@ export class PreMarketNotifier {
       const agentUser = await this.userRepository.findById(
         grantAccess.agentId.toString()
       );
+      const agentProfile = await this.agentRepository.findByUserId(
+        grantAccess.agentId.toString()
+      );
       if (!agentUser) {
         logger.warn(
           { agentId: grantAccess.agentId },
           "Agent not found for approval notification"
         );
         return { success: false, error: "Agent not found" };
+      }
+
+      if (agentProfile?.emailSubscriptionEnabled === false) {
+        logger.info(
+          { agentId: grantAccess.agentId, email: agentUser.email },
+          "Agent email subscription disabled; skipping approval notification"
+        );
+        return { success: true };
       }
 
       const preMarketRequest = await this.preMarketRepository.findById(
@@ -792,6 +835,14 @@ export class PreMarketNotifier {
         return { success: false, error: "Agent not found" };
       }
 
+      if (agentProfile.emailSubscriptionEnabled === false) {
+        logger.info(
+          { agentId: grantAccess.agentId, email: agentUser.email },
+          "Agent email subscription disabled; skipping rejection notification"
+        );
+        return { success: true };
+      }
+
       const preMarketRequest = await this.preMarketRepository.findById(
         grantAccess.preMarketRequestId.toString()
       );
@@ -864,6 +915,14 @@ export class PreMarketNotifier {
           "Agent not found for payment notification"
         );
         return { success: false, error: "Agent not found" };
+      }
+
+      if (agentProfile.emailSubscriptionEnabled === false) {
+        logger.info(
+          { agentId: grantAccess.agentId, email: agentUser.email },
+          "Agent email subscription disabled; skipping payment link"
+        );
+        return { success: true };
       }
 
       const preMarketRequest = await this.preMarketRepository.findById(

@@ -608,6 +608,30 @@ export const preMarketPaths = {
     },
   },
 
+  "/pre-market/admin/requests/{requestId}": {
+    delete: {
+      tags: ["Pre-Market - Admin"],
+      summary: "Delete pre-market request (admin)",
+      description: "Admin deletes any pre-market request (hard delete)",
+      operationId: "adminDeletePreMarketRequest",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "requestId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      responses: {
+        200: {
+          description: "Pre-market request deleted successfully",
+        },
+        404: { description: "Request not found" },
+      },
+    },
+  },
+
   "/grant-access/statistics": {
     get: {
       tags: ["Pre-Market - Admin"],

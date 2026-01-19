@@ -663,6 +663,25 @@ export class PreMarketService {
       }
     }
 
+    const referredAgentId =
+      renter.registrationType === "agent_referral" &&
+      renter.referredByAgentId &&
+      typeof renter.referredByAgentId === "object" &&
+      "_id" in renter.referredByAgentId
+        ? renter.referredByAgentId._id.toString()
+        : undefined;
+    const shouldNotify = await this.isAgentEmailSubscriptionEnabled(
+      agentEmail,
+      referredAgentId
+    );
+    if (!shouldNotify) {
+      logger.info(
+        { email: agentEmail },
+        "Agent email subscription disabled; skipping request closed alert"
+      );
+      return;
+    }
+
     const adminEmail = env.ADMIN_EMAIL;
     const ccEmails = [adminEmail]
       .filter((email): email is string => Boolean(email))
@@ -685,6 +704,30 @@ export class PreMarketService {
       closedAt: this.formatEasternTime(closedAt),
       cc: ccEmails.length > 0 ? ccEmails : undefined,
     });
+  }
+
+  private async isAgentEmailSubscriptionEnabled(
+    agentEmail: string,
+    agentUserId?: string
+  ): Promise<boolean> {
+    if (!agentEmail) {
+      return false;
+    }
+
+    const lookupUserId = agentUserId
+      ? agentUserId
+      : (await this.userRepository.findByEmail(agentEmail))?._id?.toString();
+
+    if (!lookupUserId) {
+      return true;
+    }
+
+    const agentProfile = await this.agentRepository.findByUserId(lookupUserId);
+    if (!agentProfile) {
+      return true;
+    }
+
+    return agentProfile.emailSubscriptionEnabled !== false;
   }
 
   private buildChangedFieldsSummary(
@@ -1925,7 +1968,7 @@ export class PreMarketService {
 
   /**
    * Admin can delete any pre-market request
-   * Soft delete - marks as deleted without removing from DB
+   * Hard delete - removes from DB
    * Related grant access records are also marked as deleted
    */
   async adminDeleteRequest(requestId: string): Promise<void> {
@@ -1935,7 +1978,7 @@ export class PreMarketService {
       throw new NotFoundException("Pre-market request not found");
     }
 
-    // Delete the request (soft delete)
+    // Delete the request (hard delete)
     await this.preMarketRepository.deleteById(requestId);
 
     // Also clean up related grant access records
@@ -1945,6 +1988,17 @@ export class PreMarketService {
       { requestId, renterId: request.renterId },
       "Admin deleted pre-market request"
     );
+
+    this.notifyRegisteredAgentRequestClosed(
+      request,
+      "Deleted by Admin",
+      new Date()
+    ).catch((error) => {
+      logger.error(
+        { error, requestId: request._id },
+        "Failed to send request closed alert (non-blocking)"
+      );
+    });
   }
 
   // ============================================

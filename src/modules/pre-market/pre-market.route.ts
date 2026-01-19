@@ -13,21 +13,21 @@ router.post(
   "/create",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Renter"),
-  controller.createRequest.bind(controller)
+  controller.createRequest.bind(controller),
 );
 
 router.get(
   "/my-requests",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Renter"),
-  controller.getRenterRequests.bind(controller)
+  controller.getRenterRequests.bind(controller),
 );
 
 router.get(
   "/renter/requests/with-agents",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Renter"),
-  controller.getRenterRequestsWithAgents.bind(controller)
+  controller.getRenterRequestsWithAgents.bind(controller),
 );
 
 // ============================================
@@ -37,7 +37,7 @@ router.get(
   "/agent/all-requests",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Agent"),
-  controller.getAllRequestsForAgent.bind(controller)
+  controller.getAllRequestsForAgent.bind(controller),
 );
 
 /**
@@ -49,14 +49,14 @@ router.get(
   "/agent/:requestId",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Agent"),
-  controller.getRequestDetailsForGrantAccessAgent.bind(controller)
+  controller.getRequestDetailsForGrantAccessAgent.bind(controller),
 );
 
 router.post(
   "/agent/:requestId/match",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Agent"),
-  controller.matchRequestForAgent.bind(controller)
+  controller.matchRequestForAgent.bind(controller),
 );
 
 // ============================================
@@ -72,7 +72,7 @@ router.get(
   "/all",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Agent"),
-  controller.getAllRequests.bind(controller)
+  controller.getAllRequests.bind(controller),
 );
 
 /**
@@ -84,7 +84,7 @@ router.get(
   "/:requestId",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Agent"),
-  controller.getRequestDetails.bind(controller)
+  controller.getRequestDetails.bind(controller),
 );
 
 /**
@@ -95,7 +95,7 @@ router.get(
   "/:requestId/details",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Agent"),
-  controller.getRequestDetails.bind(controller)
+  controller.getRequestDetails.bind(controller),
 );
 
 // ============================================
@@ -109,7 +109,7 @@ router.post(
   "/grant-access/request",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Agent"),
-  controller.requestAccess.bind(controller)
+  controller.requestAccess.bind(controller),
 );
 
 /**
@@ -120,7 +120,7 @@ router.post(
   "/payment/create-intent",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Agent"),
-  controller.createPaymentIntent.bind(controller)
+  controller.createPaymentIntent.bind(controller),
 );
 
 // ============================================
@@ -135,7 +135,7 @@ router.get(
   "/admin/requests",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.getAllRequestsForAdmin.bind(controller)
+  controller.getAllRequestsForAdmin.bind(controller),
 );
 
 /**
@@ -146,48 +146,42 @@ router.get(
   "/admin/requests/:requestId",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.getRequestByIdForAdmin.bind(controller)
+  controller.getRequestByIdForAdmin.bind(controller),
 );
 
 router.post(
   "/grant-access/admin/:requestId/approve",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.adminApprove.bind(controller)
+  controller.adminApprove.bind(controller),
 );
 
 router.post(
   "/grant-access/admin/:requestId/charge",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.adminCharge.bind(controller)
+  controller.adminCharge.bind(controller),
 );
 
 router.post(
   "/grant-access/admin/:requestId/reject",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.adminReject.bind(controller)
+  controller.adminReject.bind(controller),
 );
 
-/**
- * DELETE /pre-market/admin/requests/:requestId
- * Admin deletes any pre-market request
- * Protected: Admins only
- * Performs soft delete
- */
 router.delete(
   "/admin/requests/:requestId",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.adminDeleteRequest.bind(controller)
+  controller.adminDeleteRequest.bind(controller),
 );
 
 router.put(
   "/admin/renters/:renterId/listings/:listingId/toggle-status",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.adminToggleListingStatus.bind(controller)
+  controller.adminToggleListingStatus.bind(controller),
 );
 
 // Admin Excel endpoints
@@ -195,26 +189,26 @@ router.get(
   "/admin/excel-download",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.downloadConsolidatedExcel
+  controller.downloadConsolidatedExcel,
 );
 
 router.get(
   "/admin/excel-renter-listings",
   authMiddleware.verifyToken,
-  controller.downloadPreMarketListingsExcel.bind(controller)
+  controller.downloadPreMarketListingsExcel.bind(controller),
 );
 
 router.get(
   "/admin/excel-stats",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.getExcelStats
+  controller.getExcelStats,
 );
 // show all listings with all data
 router.get(
   "/",
   authMiddleware.verifyToken,
-  controller.getAllListingsWithAllData.bind(controller)
+  controller.getAllListingsWithAllData.bind(controller),
 );
 
 // ===========================================RENTER ROUTES
@@ -222,28 +216,28 @@ router.get(
   "/renter/:requestId",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Renter"),
-  controller.getRenterRequestById.bind(controller)
+  controller.getRenterRequestById.bind(controller),
 );
 
 router.put(
   "/:requestId",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Renter"),
-  controller.updateRequest.bind(controller)
+  controller.updateRequest.bind(controller),
 );
 
 router.delete(
   "/:requestId",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Renter"),
-  controller.deleteRequest.bind(controller)
+  controller.deleteRequest.bind(controller),
 );
 
 router.put(
   "/:requestId/toggle-status",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Renter"),
-  controller.toggleListingActivation.bind(controller)
+  controller.toggleListingActivation.bind(controller),
 );
 // ===========================================RENTER ROUTES
 
