@@ -42,6 +42,7 @@ app.use(
         "https://beforelisted.com",
         "https://www.beforelisted.com",
         "https://dashboard.beforelisted.com",
+        "http://localhost:3000",
         "http://localhost:3001",
       ]);
 
@@ -61,14 +62,14 @@ app.use(
       "Accept",
       "Origin",
     ],
-  })
+  }),
 );
 
 const captureRawBody = (
   req: any,
   res: any,
   buf: Buffer,
-  encoding: string | undefined
+  encoding: string | undefined,
 ) => {
   if (buf && buf.length) {
     req.rawBody = buf;
@@ -85,7 +86,7 @@ const stripeWebhookPath = `${basePath}/pre-market/payment/webhook`;
 app.post(
   stripeWebhookPath,
   express.raw({ type: "application/json", verify: captureRawBody }),
-  controller.handleWebhook.bind(controller)
+  controller.handleWebhook.bind(controller),
 );
 
 app.use(cookieParser());
@@ -97,7 +98,7 @@ app.use(
   helmet({
     crossOriginResourcePolicy: false,
     crossOriginOpenerPolicy: false,
-  })
+  }),
 );
 
 app.get<object>("/", (req, res) => {
@@ -111,7 +112,7 @@ app.use(
   swaggerUi.serve,
   (req: Request, res: Response, next: NextFunction) => {
     swaggerUi.setup(swaggerSpec, swaggerUiOptions)(req, res, next);
-  }
+  },
 );
 
 app.use(env.BASE_URL, rootRouter);
