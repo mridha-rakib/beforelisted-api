@@ -27,6 +27,7 @@ import type {
 } from "./auth.type";
 import { RenterRepository } from "../renter/renter.repository";
 import { AuthUtil } from "./auth.utils";
+import type { UserResponse } from "../user/user.type";
 
 export class AuthService {
   private userService: UserService;
@@ -145,7 +146,9 @@ export class AuthService {
   /**
    * Verify email
    */
-  async verifyEmail(payload: VerifyEmailPayload): Promise<{ message: string }> {
+  async verifyEmail(
+    payload: VerifyEmailPayload
+  ): Promise<{ message: string; user: UserResponse; role: string }> {
     const result = await this.emailVerificationService.verifyOTP({
       email: payload.email,
       code: payload.code,
@@ -156,7 +159,9 @@ export class AuthService {
       throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
     }
 
-    await this.userService.markEmailAsVerified(result.userId);
+    const updatedUser =
+      (await this.userService.markEmailAsVerified(result.userId)) || user;
+    const userResponse = this.userService.toUserResponse(updatedUser);
 
     logger.info(
       { userId: result.userId, userType: result.userType },
@@ -275,7 +280,11 @@ export class AuthService {
       temporaryPassword: undefined,
     });
 
-    return { message: MESSAGES.AUTH.EMAIL_VERIFIED_SUCCESS };
+    return {
+      message: MESSAGES.AUTH.EMAIL_VERIFIED_SUCCESS,
+      user: userResponse,
+      role: userResponse.role,
+    };
   }
 
   /**

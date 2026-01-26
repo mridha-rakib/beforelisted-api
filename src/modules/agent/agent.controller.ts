@@ -92,6 +92,19 @@ export class AgentController {
     }
   );
 
+  getAcceptingRequestsStatus = asyncHandler(
+    async (req: Request, res: Response) => {
+      const userId = req.user!.userId;
+      const result = await this.service.getAcceptingRequestsStatus(userId);
+
+      ApiResponse.success(
+        res,
+        result,
+        "Agent accepting requests status retrieved successfully"
+      );
+    }
+  );
+
   getReferralLink = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
       const userId = req.user!.userId;

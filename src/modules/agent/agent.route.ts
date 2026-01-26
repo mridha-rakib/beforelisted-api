@@ -74,6 +74,19 @@ router.post(
 );
 
 /**
+ * GET /agent/accepting-requests/status
+ * Get accepting requests status for agent
+ */
+router.get(
+  "/accepting-requests/status",
+  authMiddleware.verifyToken,
+  authMiddleware.verifyEmailVerified,
+  agentActivationMiddleware.verify,
+  authMiddleware.authorize(ROLES.AGENT),
+  controller.getAcceptingRequestsStatus
+);
+
+/**
  * NEW: GET /agent/referral-link
  * Get agent's referral code and link
  */

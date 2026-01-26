@@ -344,13 +344,13 @@ export class PreMarketService {
     const activeListingCount =
       await this.preMarketRepository.countActiveByRenterId(renterId);
 
-    if (activeListingCount >= 3) {
+    if (activeListingCount >= 1) {
       throw new BadRequestException(
-        "You can create a maximum of 3 pre-market listings. "
+        "You can create a maximum of 1 pre-market listing."
       );
     }
 
-    const requestNumber = activeListingCount + 1;
+    const requestNumber = activeListingCount + 1; // will be 1 when single limit enforced
     const requestName = `BeforeListed-${requestNumber}`;
     const requestId = await this.generateUniqueRequestId(requestName, renterId);
 
@@ -921,6 +921,29 @@ export class PreMarketService {
     }
   }
 
+  private async deleteGrantAccessRecords(
+    requestId: string
+  ): Promise<void> {
+    try {
+      const result =
+        await this.grantAccessRepository.deleteByPreMarketRequestId(
+          requestId
+        );
+      const deletedCount = (result as any)?.deletedCount ?? 0;
+      if (deletedCount > 0) {
+        logger.info(
+          { requestId, deletedCount },
+          "Deleted grant access records for pre-market request"
+        );
+      }
+    } catch (error) {
+      logger.error(
+        { error, requestId },
+        "Failed to delete grant access records for pre-market request"
+      );
+    }
+  }
+
   // ============================================
   // DELETE REQUEST (RENTER ONLY)
   // ============================================
@@ -932,7 +955,12 @@ export class PreMarketService {
       throw new BadRequestException("Cannot delete others' requests");
     }
 
-    await this.preMarketRepository.softDelete(requestId);
+    const deleted = await this.preMarketRepository.deleteById(requestId);
+    if (!deleted) {
+      throw new NotFoundException("Pre-market request not found");
+    }
+
+    await this.deleteGrantAccessRecords(requestId);
 
     logger.info({ renterId }, `Pre-market request deleted: ${requestId}`);
 
@@ -945,6 +973,10 @@ export class PreMarketService {
         { error, requestId: request._id },
         "Failed to send request closed alert (non-blocking)"
       );
+    });
+
+    this.updateConsolidatedExcel().catch((error) => {
+      logger.error({ error }, "Consolidated Excel update failed");
     });
   }
 
@@ -983,6 +1015,8 @@ export class PreMarketService {
           );
           continue;
         }
+
+        await this.deleteGrantAccessRecords(requestId);
 
         deletedCount += 1;
 
@@ -2161,7 +2195,7 @@ export class PreMarketService {
   /**
    * Admin can delete any pre-market request
    * Hard delete - removes from DB
-   * Related grant access records are also marked as deleted
+   * Related grant access records are also removed
    */
   async adminDeleteRequest(requestId: string): Promise<void> {
     const request = await this.preMarketRepository.findById(requestId);
@@ -2172,9 +2206,7 @@ export class PreMarketService {
 
     // Delete the request (hard delete)
     await this.preMarketRepository.deleteById(requestId);
-
-    // Also clean up related grant access records
-    // await this.grantAccessRepository.softDeleteByPreMarketRequestId(requestId);
+    await this.deleteGrantAccessRecords(requestId);
 
     logger.warn(
       { requestId, renterId: request.renterId },
@@ -2190,6 +2222,10 @@ export class PreMarketService {
         { error, requestId: request._id },
         "Failed to send request closed alert (non-blocking)"
       );
+    });
+
+    this.updateConsolidatedExcel().catch((error) => {
+      logger.error({ error }, "Consolidated Excel update failed");
     });
   }
 

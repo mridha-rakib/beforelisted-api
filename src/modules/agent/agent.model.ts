@@ -128,10 +128,6 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
     index: true,
   },
 
-  // ============================================
-  // PERFORMANCE METRICS
-  // ============================================
-
   grantAccessCount: {
     type: Number,
     default: 0,
@@ -165,5 +161,5 @@ agentProfileSchema.pre(/^find/, function (this: any) {
 
 export const AgentProfile = model<IAgentProfile>(
   "AgentProfile",
-  agentProfileSchema
+  agentProfileSchema,
 );

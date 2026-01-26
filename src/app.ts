@@ -44,6 +44,7 @@ app.use(
         "https://dashboard.beforelisted.com",
         "http://localhost:3000",
         "http://localhost:3001",
+        "*",
       ]);
 
       if (allowedOrigins.has(origin)) {

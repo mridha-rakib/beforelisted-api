@@ -185,7 +185,8 @@ export const preMarketPaths = {
     delete: {
       tags: ["Pre-Market Management"],
       summary: "Delete pre-market request",
-      description: "Soft delete a pre-market request",
+      description:
+        "Hard delete a pre-market request (permanently removes the listing)",
       operationId: "deletePreMarketRequest",
       security: [{ bearerAuth: [] }],
       parameters: [

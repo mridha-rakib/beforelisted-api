@@ -3,8 +3,8 @@
 import { ROLES } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 
-import { ExcelService } from "@/services/excel.service";
 import { EmailService } from "@/services/email.service";
+import { ExcelService } from "@/services/excel.service";
 import { S3Service } from "@/services/s3.service";
 import {
   BadRequestException,
@@ -48,7 +48,7 @@ export class AgentService {
   }
 
   async registerAgent(
-    payload: AgentRegisterPayload
+    payload: AgentRegisterPayload,
   ): Promise<AgentRegistrationResponse> {
     const existingUser = await this.userService.getUserByEmail(payload.email);
     if (existingUser) {
@@ -56,7 +56,7 @@ export class AgentService {
     }
 
     const existingAgent = await this.repository.findByLicenseNumber(
-      payload.licenseNumber
+      payload.licenseNumber,
     );
     if (existingAgent) {
       throw new ConflictException("License number already registered");
@@ -76,7 +76,7 @@ export class AgentService {
 
     const referralCode = await this.referralService.generateReferralCode(
       user._id.toString(),
-      ROLES.AGENT
+      ROLES.AGENT,
     );
 
     const profile = await this.repository.create({
@@ -106,7 +106,7 @@ export class AgentService {
       user.email,
       user.role,
       user.accountStatus,
-      user.emailVerified
+      user.emailVerified,
     );
 
     this.updateAgentConsolidatedExcel().catch((error) => {
@@ -131,10 +131,10 @@ export class AgentService {
    */
   async createAgentProfile(
     userId: string | Types.ObjectId,
-    payload: CreateAgentProfilePayload
+    payload: CreateAgentProfilePayload,
   ): Promise<AgentProfileResponse> {
     const existingAgent = await this.repository.findByLicenseNumber(
-      payload.licenseNumber
+      payload.licenseNumber,
     );
     if (existingAgent) {
       throw new ConflictException("License number already registered");
@@ -172,7 +172,7 @@ export class AgentService {
 
   async updateAgentProfile(
     userId: string,
-    payload: UpdateAgentProfilePayload
+    payload: UpdateAgentProfilePayload,
   ): Promise<AgentProfileResponse> {
     const profile = await this.repository.findByUserId(userId);
     if (!profile) {
@@ -253,6 +253,21 @@ export class AgentService {
     };
   }
 
+  async getAcceptingRequestsStatus(userId: string): Promise<{
+    acceptingRequests: boolean;
+    acceptingRequestsToggledAt?: Date;
+  }> {
+    const profile = await this.repository.findByUserId(userId);
+    if (!profile) {
+      throw new NotFoundException("Agent profile not found");
+    }
+
+    return {
+      acceptingRequests: profile.acceptingRequests !== false,
+      acceptingRequestsToggledAt: profile.acceptingRequestsToggledAt,
+    };
+  }
+
   async getAgentStats(userId: string): Promise<{
     grantAccessCount: number;
     totalMatches: number;
@@ -287,7 +302,7 @@ export class AgentService {
       search?: string;
       isActive?: boolean;
       hasGrantAccess?: boolean;
-    } = {}
+    } = {},
   ): Promise<{
     data: AgentProfileResponse[];
     pagination: {
@@ -356,18 +371,18 @@ export class AgentService {
                   ? (agent.successfulMatches / agent.totalMatches) * 100
                   : 0;
               return sum + rate;
-            }, 0) / allAgents.length
+            }, 0) / allAgents.length,
           )
         : 0;
 
     const totalMatches = allAgents.reduce(
       (sum: number, agent: IAgentProfile) => sum + agent.totalMatches,
-      0
+      0,
     );
 
     const totalGrantAccess = allAgents.reduce(
       (sum: number, agent: IAgentProfile) => sum + agent.grantAccessCount,
-      0
+      0,
     );
 
     return {
@@ -405,7 +420,7 @@ export class AgentService {
     email: string,
     role: string,
     accountStatus: string,
-    emailVerified: boolean
+    emailVerified: boolean,
   ): {
     accessToken: string;
     refreshToken: string;
@@ -435,7 +450,7 @@ export class AgentService {
   async toggleAccess(
     agentId: string,
     adminId: string,
-    reason?: string
+    reason?: string,
   ): Promise<{
     hasGrantAccess: boolean;
     previousAccess: boolean;
@@ -457,7 +472,7 @@ export class AgentService {
     const updated = await this.repository.toggleAccess(
       agentId,
       adminId,
-      reason
+      reason,
     );
 
     // Get agent name from populated userId or use "Agent"
@@ -474,7 +489,7 @@ export class AgentService {
         newAccess: newAccessStatus,
         reason,
       },
-      `Agent access ${newAccessStatus ? "granted" : "revoked"}`
+      `Agent access ${newAccessStatus ? "granted" : "revoked"}`,
     );
 
     return {
@@ -509,7 +524,7 @@ export class AgentService {
   async toggleAgentActive(
     userId: string,
     adminId: string,
-    reason?: string
+    reason?: string,
   ): Promise<{
     isActive: boolean;
     previousStatus: boolean;
@@ -571,7 +586,7 @@ export class AgentService {
     } catch (error) {
       logger.error(
         { error, userId },
-        "Failed to send agent status notification"
+        "Failed to send agent status notification",
       );
     }
 
@@ -695,17 +710,16 @@ export class AgentService {
 
     if (agentEmail) {
       try {
-        const emailResult = await this.emailService.sendAgentAccountDeletedEmail(
-          {
+        const emailResult =
+          await this.emailService.sendAgentAccountDeletedEmail({
             to: agentEmail,
             userName: agentName,
-          }
-        );
+          });
 
         if (!emailResult.success) {
           logger.warn(
             { userId, email: agentEmail, error: emailResult.error },
-            "Agent account deletion email failed to send"
+            "Agent account deletion email failed to send",
           );
         }
       } catch (error) {
@@ -715,7 +729,7 @@ export class AgentService {
             email: agentEmail,
             error: error instanceof Error ? error.message : String(error),
           },
-          "Error sending agent account deletion email"
+          "Error sending agent account deletion email",
         );
       }
     }

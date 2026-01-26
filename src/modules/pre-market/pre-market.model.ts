@@ -76,7 +76,7 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
     type: Number,
     required: true,
     min: 1,
-    max: 3,
+    max: 1,
   },
   renterId: {
     type: Types.ObjectId,

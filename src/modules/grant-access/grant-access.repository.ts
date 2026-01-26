@@ -122,6 +122,12 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       .exec() as unknown as Promise<IGrantAccessRequest[]>;
   }
 
+  async deleteByPreMarketRequestId(
+    preMarketRequestId: string | Types.ObjectId
+  ): Promise<{ deletedCount?: number }> {
+    return this.model.deleteMany({ preMarketRequestId });
+  }
+
   async findPending(): Promise<IGrantAccessRequest[]> {
     return this.model
       .find({ status: "pending" })
