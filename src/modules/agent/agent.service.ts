@@ -16,6 +16,7 @@ import type { Types } from "mongoose";
 import { AuthUtil } from "../auth/auth.utils";
 import { EmailVerificationService } from "../email-verification/email-verification.service";
 import { ReferralService } from "../referral/referral.service";
+import { PreMarketService } from "../pre-market/pre-market.service";
 import { UserService } from "../user/user.service";
 import type { IAgentProfile } from "./agent.interface";
 import { AgentProfileRepository } from "./agent.repository";
@@ -36,6 +37,7 @@ export class AgentService {
   private excelService: ExcelService;
   private s3Service: S3Service;
   private emailService: EmailService;
+  private preMarketService: PreMarketService;
 
   constructor() {
     this.repository = new AgentProfileRepository();
@@ -45,6 +47,7 @@ export class AgentService {
     this.excelService = new ExcelService();
     this.s3Service = new S3Service();
     this.emailService = new EmailService();
+    this.preMarketService = new PreMarketService();
   }
 
   async registerAgent(
@@ -697,6 +700,8 @@ export class AgentService {
         : null;
     const agentEmail = agentUser?.email;
     const agentName = agentUser?.fullName || agentEmail;
+
+    await this.preMarketService.deleteAgentMatchHistory(userId);
 
     // Remove agent profile
     await this.repository.deleteById(profile._id.toString());

@@ -105,6 +105,13 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return PaginationHelper.buildResponse(data, total, page, limit);
   }
 
+  async findAllByRenterId(renterId: string): Promise<IPreMarketRequest[]> {
+    return this.model
+      .find({ renterId })
+      .lean<IPreMarketRequest[]>()
+      .exec();
+  }
+
   async findByLocations(
     locations: string[],
     query: PaginationQuery
@@ -553,6 +560,14 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       .exec() as unknown as Promise<IPreMarketRequest[]>;
 
     // return PaginationHelper.formatResponse(response) as any;
+  }
+
+  async deleteManyByIds(ids: string[]): Promise<{ deletedCount?: number }> {
+    if (!ids || ids.length === 0) {
+      return { deletedCount: 0 };
+    }
+
+    return this.model.deleteMany({ _id: { $in: ids } }).exec();
   }
 
   findByIdsWithPagination(ids: any[], query: PaginationQuery) {

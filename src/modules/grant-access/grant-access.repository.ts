@@ -128,6 +128,24 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
     return this.model.deleteMany({ preMarketRequestId });
   }
 
+  async deleteByPreMarketRequestIds(
+    preMarketRequestIds: string[]
+  ): Promise<{ deletedCount?: number }> {
+    if (!preMarketRequestIds || preMarketRequestIds.length === 0) {
+      return { deletedCount: 0 };
+    }
+
+    return this.model.deleteMany({
+      preMarketRequestId: { $in: preMarketRequestIds },
+    });
+  }
+
+  async deleteByAgentId(
+    agentId: string | Types.ObjectId
+  ): Promise<{ deletedCount?: number }> {
+    return this.model.deleteMany({ agentId });
+  }
+
   async findPending(): Promise<IGrantAccessRequest[]> {
     return this.model
       .find({ status: "pending" })

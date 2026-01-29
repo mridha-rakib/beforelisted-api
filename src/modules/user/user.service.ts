@@ -1,11 +1,12 @@
 // file: src/modules/user/user.service.ts (ENHANCED VERSION)
 
-import { MESSAGES } from "@/constants/app.constants";
+import { MESSAGES, ROLES } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 import { EmailService } from "@/services/email.service";
 import { NotFoundException } from "@/utils/app-error.utils";
 import { ReferralService } from "../referral/referral.service";
 import type { IUser } from "./user.interface";
+import { PreMarketService } from "../pre-market/pre-market.service";
 import { UserRepository } from "./user.repository";
 import type {
   UpdateUserPayload,
@@ -17,11 +18,13 @@ export class UserService {
   private userRepository: UserRepository;
   private referralService: ReferralService;
   private emailService: EmailService;
+  private preMarketService: PreMarketService;
 
   constructor() {
     this.userRepository = new UserRepository();
     this.emailService = new EmailService();
     this.referralService = new ReferralService();
+    this.preMarketService = new PreMarketService();
   }
 
   toUserResponse(user: IUser): UserResponse {
@@ -203,13 +206,19 @@ export class UserService {
   }
 
   /**
-   * Delete user account (soft delete)
+   * Delete user account (hard delete)
    */
   async deleteUserAccount(userId: string): Promise<{ message: string }> {
-    const user = await this.userRepository.permanentlyDeleteUser(userId);
+    const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
     }
+
+    if (user.role === ROLES.RENTER) {
+      await this.preMarketService.deleteRequestsByRenterId(userId);
+    }
+
+    await this.userRepository.permanentlyDeleteUser(userId);
 
     return { message: MESSAGES.USER.USER_DELETED };
   }

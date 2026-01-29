@@ -980,6 +980,54 @@ export class PreMarketService {
     });
   }
 
+  async deleteRequestsByRenterId(renterId: string): Promise<void> {
+    const requests = await this.preMarketRepository.findAllByRenterId(renterId);
+
+    if (!requests || requests.length === 0) {
+      return;
+    }
+
+    const requestIds = requests
+      .map((request) => request._id?.toString())
+      .filter((id): id is string => Boolean(id));
+
+    if (requestIds.length === 0) {
+      return;
+    }
+
+    await this.preMarketRepository.deleteManyByIds(requestIds);
+    await this.grantAccessRepository.deleteByPreMarketRequestIds(requestIds);
+
+    logger.info(
+      { renterId, deletedCount: requestIds.length },
+      "Deleted pre-market requests after renter account deletion"
+    );
+
+    this.updateConsolidatedExcel().catch((error) => {
+      logger.error(
+        { error, renterId },
+        "Failed to update consolidated Excel after renter cleanup"
+      );
+    });
+  }
+
+  async deleteAgentMatchHistory(agentId: string): Promise<void> {
+    try {
+      const result = await this.grantAccessRepository.deleteByAgentId(agentId);
+      if (result.deletedCount && result.deletedCount > 0) {
+        logger.info(
+          { agentId, deletedCount: result.deletedCount },
+          "Deleted agent match requests during profile removal"
+        );
+      }
+    } catch (error) {
+      logger.error(
+        { agentId, error },
+        "Failed to delete agent match history during profile removal"
+      );
+    }
+  }
+
   async expireRequests(): Promise<{
     expiredCount: number;
     deletedCount: number;
