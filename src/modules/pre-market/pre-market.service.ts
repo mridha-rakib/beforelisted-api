@@ -2,6 +2,7 @@
 
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
+import { NotificationService } from "@/modules/notification/notification.service";
 
 import { emailService } from "@/services/email.service";
 import { ExcelService } from "@/services/excel.service";
@@ -17,6 +18,7 @@ import type { IAgentProfile } from "../agent/agent.interface";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import type { IGrantAccessRequest } from "../grant-access/grant-access.model";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
+import type { NotificationType } from "@/modules/notification/notification.interface";
 import { PaymentService } from "../payment/payment.service";
 import { RenterRepository } from "../renter/renter.repository";
 import { UserRepository } from "../user/user.repository";
@@ -61,6 +63,7 @@ export class PreMarketService {
 
   private readonly paymentService: PaymentService;
   private readonly notifier: PreMarketNotifier;
+  private readonly notificationService: NotificationService;
   private defaultReferralAgentCache?: {
     id: string;
     fullName: string;
@@ -75,6 +78,7 @@ export class PreMarketService {
     this.agentRepository = new AgentProfileRepository();
     this.paymentService = new PaymentService();
     this.notifier = new PreMarketNotifier();
+    this.notificationService = new NotificationService();
     this.renterRepository = new RenterRepository();
     this.userRepository = new UserRepository();
     this.excelService = new ExcelService();
@@ -747,6 +751,84 @@ export class PreMarketService {
       reason,
       closedAt: this.formatEasternTime(closedAt),
       cc: ccEmails.length > 0 ? ccEmails : undefined,
+    });
+  }
+
+  private async createRenterNotification(payload: {
+    renterId: string | Types.ObjectId;
+    title: string;
+    message: string;
+    notificationType: NotificationType;
+    type?: "info" | "warning" | "success" | "alert";
+    relatedEntityId?: string;
+    actionUrl?: string;
+    actionData?: Record<string, any>;
+  }): Promise<void> {
+    try {
+      await this.notificationService.createNotification({
+        recipientId: payload.renterId,
+        recipientRole: "Renter",
+        title: payload.title,
+        message: payload.message,
+        type: payload.type ?? "info",
+        notificationType: payload.notificationType,
+        relatedEntityType: "Request",
+        relatedEntityId: payload.relatedEntityId,
+        actionUrl: payload.actionUrl,
+        actionData: payload.actionData,
+      });
+    } catch (error) {
+      logger.error(
+        {
+          error,
+          renterId: payload.renterId,
+          notificationType: payload.notificationType,
+        },
+        "Failed to create renter notification"
+      );
+    }
+  }
+
+  private async notifyRenterAboutAdminDeletion(
+    request: IPreMarketRequest
+  ): Promise<void> {
+    const renterIdValue =
+      typeof request.renterId === "string"
+        ? request.renterId
+        : request.renterId?.toString();
+
+    if (!renterIdValue) {
+      logger.warn(
+        { requestId: request._id },
+        "Invalid renter ID for admin deletion notification"
+      );
+      return;
+    }
+
+    const renter = await this.renterRepository.findById(renterIdValue);
+    if (!renter) {
+      logger.warn(
+        { renterId: renterIdValue },
+        "Renter not found for admin deletion notification"
+      );
+      return;
+    }
+
+    const listingTitle =
+      request.requestName || request.requestId || "pre-market listing";
+
+    await this.createRenterNotification({
+      renterId: renterIdValue,
+      title: "Pre-market listing removed",
+      message: `Admin deleted your pre-market listing "${listingTitle}". Contact support if you need help reposting.`,
+      type: "warning",
+      notificationType: "pre_market_listing_deleted_by_admin",
+      relatedEntityId: request._id?.toString(),
+      actionUrl: `${env.CLIENT_URL}/pre-market/my-requests`,
+      actionData: {
+        requestId: request.requestId,
+        listingTitle,
+      },
     });
   }
 
@@ -2151,6 +2233,37 @@ export class PreMarketService {
         cc: ccEmails,
       });
     }
+
+    const renterIdForNotification =
+      typeof renter._id === "string" ? renter._id : renter._id?.toString();
+    if (!renterIdForNotification) {
+      logger.warn(
+        { requestId: preMarketRequest._id },
+        "Skipping renter match notification because renter ID is missing"
+      );
+      return;
+    }
+
+    const agentDisplayName =
+      agent.fullName || agent.email || `Agent ${agentId}`;
+    const listingTitle =
+      preMarketRequest.requestName || "your pre-market request";
+
+    await this.createRenterNotification({
+      renterId: renterIdForNotification,
+      title: "Agent matched your listing",
+      message: `${agentDisplayName} has been matched to ${listingTitle}. Expect them to reach out soon.`,
+      type: "success",
+      notificationType: "pre_market_agent_matched",
+      relatedEntityId: preMarketRequest._id?.toString(),
+      actionUrl: `${env.CLIENT_URL}/listings/${preMarketRequest._id}`,
+      actionData: {
+        requestId: preMarketRequest.requestId,
+        agentId,
+        agentName: agentDisplayName,
+        agentEmail: agent.email,
+      },
+    });
   }
 
   /**
@@ -2269,6 +2382,13 @@ export class PreMarketService {
       logger.error(
         { error, requestId: request._id },
         "Failed to send request closed alert (non-blocking)"
+      );
+    });
+
+    this.notifyRenterAboutAdminDeletion(request).catch((error) => {
+      logger.error(
+        { error, requestId: request._id },
+        "Failed to notify renter about admin deletion (non-blocking)"
       );
     });
 

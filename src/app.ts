@@ -102,6 +102,11 @@ app.use(
   }),
 );
 
+app.use((req, res, next) => {
+  res.setHeader("X-Robots-Tag", "noindex, nofollow");
+  next();
+});
+
 app.get<object>("/", (req, res) => {
   res.json({
     message: "BeforeListed - API",
