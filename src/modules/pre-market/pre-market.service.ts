@@ -755,7 +755,7 @@ export class PreMarketService {
   }
 
   private async createRenterNotification(payload: {
-    renterId: string | Types.ObjectId;
+    recipientId: string | Types.ObjectId;
     title: string;
     message: string;
     notificationType: NotificationType;
@@ -766,7 +766,7 @@ export class PreMarketService {
   }): Promise<void> {
     try {
       await this.notificationService.createNotification({
-        recipientId: payload.renterId,
+        recipientId: payload.recipientId,
         recipientRole: "Renter",
         title: payload.title,
         message: payload.message,
@@ -781,12 +781,40 @@ export class PreMarketService {
       logger.error(
         {
           error,
-          renterId: payload.renterId,
+          renterId: payload.recipientId,
           notificationType: payload.notificationType,
         },
         "Failed to create renter notification"
       );
     }
+  }
+
+  private normalizeUserId(
+    id?: string | Types.ObjectId | { _id?: string | Types.ObjectId }
+  ): string | null {
+    if (!id) {
+      return null;
+    }
+
+    if (typeof id === "string") {
+      return id;
+    }
+
+    if (id instanceof Types.ObjectId) {
+      return id.toString();
+    }
+
+    if (typeof id === "object") {
+      if ("_id" in id && id._id) {
+        return this.normalizeUserId(id._id as any);
+      }
+
+      if ("userId" in id && id.userId) {
+        return this.normalizeUserId(id.userId as any);
+      }
+    }
+
+    return null;
   }
 
   private async notifyRenterAboutAdminDeletion(
@@ -805,7 +833,9 @@ export class PreMarketService {
       return;
     }
 
-    const renter = await this.renterRepository.findById(renterIdValue);
+    const renter = await this.renterRepository.findRenterWithReferrer(
+      renterIdValue
+    );
     if (!renter) {
       logger.warn(
         { renterId: renterIdValue },
@@ -817,8 +847,11 @@ export class PreMarketService {
     const listingTitle =
       request.requestName || request.requestId || "pre-market listing";
 
+    const renterUserId =
+      this.normalizeUserId(renter.userId ?? renterIdValue) ?? renterIdValue;
+
     await this.createRenterNotification({
-      renterId: renterIdValue,
+      recipientId: renterUserId,
       title: "Pre-market listing removed",
       message: `Admin deleted your pre-market listing "${listingTitle}". Contact support if you need help reposting.`,
       type: "warning",
@@ -2234,12 +2267,14 @@ export class PreMarketService {
       });
     }
 
-    const renterIdForNotification =
-      typeof renter._id === "string" ? renter._id : renter._id?.toString();
-    if (!renterIdForNotification) {
+    const renterUserId =
+      this.normalizeUserId(renter.userId) ??
+      this.normalizeUserId(preMarketRequest.renterId);
+
+    if (!renterUserId) {
       logger.warn(
         { requestId: preMarketRequest._id },
-        "Skipping renter match notification because renter ID is missing"
+        "Skipping renter match notification because renter user ID is missing"
       );
       return;
     }
@@ -2250,7 +2285,7 @@ export class PreMarketService {
       preMarketRequest.requestName || "your pre-market request";
 
     await this.createRenterNotification({
-      renterId: renterIdForNotification,
+      recipientId: renterUserId,
       title: "Agent matched your listing",
       message: `${agentDisplayName} has been matched to ${listingTitle}. Expect them to reach out soon.`,
       type: "success",
