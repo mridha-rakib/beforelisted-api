@@ -15,6 +15,10 @@ export type RenterQuestionnairePayload = {
   renterSpecialistNeeded?: boolean;
 };
 
+export type RenterQuestionnaireRecord = RenterQuestionnairePayload & {
+  _id: false;
+};
+
 /**
  * Normal Renter Registration Payload
  */

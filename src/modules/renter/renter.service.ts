@@ -21,6 +21,7 @@ import type {
   AdminReferralRenterRegisterPayload,
   AgentReferralRenterRegisterPayload,
   NormalRenterRegisterPayload,
+  RenterQuestionnaireRecord,
   RenterRegistrationResponse,
   RenterResponse,
   ResetPasswordPayload,
@@ -32,6 +33,7 @@ import { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { PreMarketRepository } from "../pre-market/pre-market.repository";
 import { ReferralService } from "../referral/referral.service";
+import type { UserResponse } from "@/modules/user/user.type";
 import { UserRepository } from "../user/user.repository";
 
 export class RenterService {
@@ -87,9 +89,9 @@ export class RenterService {
 
     const hashedPassword = await hashPassword(payload.password);
 
-    const questionnaire =
+    const questionnaire: RenterQuestionnaireRecord | undefined =
       payload.questionnaire && Object.keys(payload.questionnaire).length > 0
-        ? { ...payload.questionnaire, _id: false }
+        ? ({ ...payload.questionnaire, _id: false } as RenterQuestionnaireRecord)
         : undefined;
 
     const registrationType = RenterUtil.shouldTreatAsAdminReferralFromQuestionnaire(
@@ -316,11 +318,10 @@ export class RenterService {
     });
 
     const userResponse = this.userService.toUserResponse(user);
-    delete userResponse.referralLink;
-    delete userResponse.totalReferrals;
+    const { referralLink, totalReferrals, ...restUser } = userResponse;
 
     return {
-      user: userResponse,
+      user: restUser as UserResponse,
       renter: this.toRenterResponse(renterProfile),
       tokens,
       registrationType: "admin_referral",
