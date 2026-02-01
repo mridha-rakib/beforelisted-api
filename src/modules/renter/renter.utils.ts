@@ -1,6 +1,7 @@
 // file: src/modules/renter/renter.utils.ts
 
 import { IGeneratedPasswordResponse } from "./renter.interface";
+import type { RenterQuestionnairePayload } from "./renter.type";
 
 export class RenterUtil {
   /**
@@ -225,6 +226,25 @@ export class RenterUtil {
     }
 
     return "normal";
+  }
+
+  /**
+   * Business rules for conditional admin referral classification.
+   * Question 1 (start a BeforeListed request) or Question 2 (renter specialist)
+   * being answered "Yes" drives this to true.
+   */
+  static shouldTreatAsAdminReferralFromQuestionnaire(
+    questionnaire?: RenterQuestionnairePayload
+  ): boolean {
+    if (!questionnaire) {
+      return false;
+    }
+
+    const wantsBeforeListedRequest = questionnaire.lookingToPurchase === true;
+    const optedForRenterSpecialist =
+      questionnaire.renterSpecialistNeeded === true;
+
+    return wantsBeforeListedRequest || optedForRenterSpecialist;
   }
 
   static buildUserData(data: {

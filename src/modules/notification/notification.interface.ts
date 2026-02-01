@@ -67,4 +67,5 @@ export type NotificationType =
   | "grant_access_agent_charged"
   | "grant_access_agent_rejected"
   | "pre_market_listing_deleted_by_admin"
-  | "pre_market_agent_matched";
+  | "pre_market_agent_matched"
+  | "pre_market_request_created";

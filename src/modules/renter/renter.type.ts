@@ -8,6 +8,13 @@ import { renterDetailSchema, renterListSchema } from "./renter.schema";
 // REGISTRATION PAYLOADS
 // ============================================
 
+export type RenterQuestionnairePayload = {
+  lookingToPurchase?: boolean;
+  purchaseTimeline?: string;
+  buyerSpecialistNeeded?: boolean;
+  renterSpecialistNeeded?: boolean;
+};
+
 /**
  * Normal Renter Registration Payload
  */
@@ -16,6 +23,7 @@ export type NormalRenterRegisterPayload = {
   password: string;
   fullName: string;
   phoneNumber?: string;
+  questionnaire?: RenterQuestionnairePayload;
 };
 
 /**
@@ -33,12 +41,7 @@ export type AdminReferralRenterRegisterPayload = {
   fullName: string;
   phoneNumber?: string;
   referralCode: string; // ADM-xxxxx
-  questionnaire?: {
-    lookingToPurchase?: boolean;
-    purchaseTimeline?: string;
-    buyerSpecialistNeeded?: boolean;
-    renterSpecialistNeeded?: boolean;
-  };
+  questionnaire?: RenterQuestionnairePayload;
 };
 
 /**
@@ -60,12 +63,7 @@ export type RenterResponse = {
   referredByAdminId?: string;
   emailSubscriptionEnabled: boolean;
   profileImageUrl?: string;
-  questionnaire?: {
-    lookingToPurchase?: boolean;
-    purchaseTimeline?: string;
-    buyerSpecialistNeeded?: boolean;
-    renterSpecialistNeeded?: boolean;
-  };
+  questionnaire?: RenterQuestionnairePayload;
   createdAt: Date;
   updatedAt: Date;
 };

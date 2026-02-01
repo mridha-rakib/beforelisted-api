@@ -4,6 +4,7 @@ import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import { NotificationService } from "@/modules/notification/notification.service";
 
+import type { NotificationType } from "@/modules/notification/notification.interface";
 import { emailService } from "@/services/email.service";
 import { ExcelService } from "@/services/excel.service";
 import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
@@ -18,7 +19,6 @@ import type { IAgentProfile } from "../agent/agent.interface";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import type { IGrantAccessRequest } from "../grant-access/grant-access.model";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
-import type { NotificationType } from "@/modules/notification/notification.interface";
 import { PaymentService } from "../payment/payment.service";
 import { RenterRepository } from "../renter/renter.repository";
 import { UserRepository } from "../user/user.repository";
@@ -104,7 +104,7 @@ export class PreMarketService {
     };
 
     const user = await this.userRepository.findByEmail(
-      DEFAULT_REGISTERED_AGENT_EMAIL
+      DEFAULT_REGISTERED_AGENT_EMAIL,
     );
 
     if (!user) {
@@ -126,7 +126,7 @@ export class PreMarketService {
 
   private resolveGrantAccessStatus(
     grantAccess: IGrantAccessRequest | null,
-    hasGrantAccess: boolean
+    hasGrantAccess: boolean,
   ): AgentGrantAccessStatus {
     if (hasGrantAccess) {
       return "free";
@@ -149,7 +149,9 @@ export class PreMarketService {
     }
 
     const chargeAmount =
-      grantAccess.payment?.amount ?? grantAccess.adminDecision?.chargeAmount ?? 0;
+      grantAccess.payment?.amount ??
+      grantAccess.adminDecision?.chargeAmount ??
+      0;
     const isChargedDecision =
       chargeAmount > 0 && grantAccess.adminDecision?.isFree !== true;
 
@@ -170,7 +172,7 @@ export class PreMarketService {
 
   private resolveAccessType(
     grantAccess: IGrantAccessRequest | null,
-    hasGrantAccess: boolean
+    hasGrantAccess: boolean,
   ): "admin-granted" | "payment-based" | "none" {
     if (hasGrantAccess) {
       return "admin-granted";
@@ -185,11 +187,11 @@ export class PreMarketService {
 
   private buildAgentAccessSummary(
     grantAccess: IGrantAccessRequest | null,
-    hasGrantAccess: boolean
+    hasGrantAccess: boolean,
   ) {
     const grantAccessStatus = this.resolveGrantAccessStatus(
       grantAccess,
-      hasGrantAccess
+      hasGrantAccess,
     );
     const accessType = this.resolveAccessType(grantAccess, hasGrantAccess);
     const chargeAmountValue =
@@ -199,7 +201,7 @@ export class PreMarketService {
     const hasCharge =
       chargeAmountValue > 0 && grantAccess?.adminDecision?.isFree !== true;
     const showPayment = ["approved", "free", "rejected", "paid"].includes(
-      grantAccessStatus
+      grantAccessStatus,
     );
     let paymentInfo: {
       amount: number;
@@ -253,7 +255,7 @@ export class PreMarketService {
     const hasGrantAccess = agent?.hasGrantAccess === true;
     let grantAccess = await this.grantAccessRepository.findByAgentAndRequest(
       agentId,
-      requestId
+      requestId,
     );
 
     const grantAccessId = grantAccess?._id;
@@ -264,16 +266,16 @@ export class PreMarketService {
     ) {
       try {
         await this.paymentService.reconcilePaymentIntent(
-          grantAccess.payment.stripePaymentIntentId
+          grantAccess.payment.stripePaymentIntentId,
         );
         grantAccess = await this.grantAccessRepository.findByAgentAndRequest(
           agentId,
-          requestId
+          requestId,
         );
       } catch (error) {
         logger.warn(
           { error, grantAccessId },
-          "Failed to refresh payment status"
+          "Failed to refresh payment status",
         );
       }
     }
@@ -294,20 +296,20 @@ export class PreMarketService {
       petPolicy?: any;
       guarantorRequired?: any;
       preferences?: string[];
-    }
+    },
   ): Promise<IPreMarketRequest> {
     const earliest = new Date(payload.movingDateRange.earliest);
     const latest = new Date(payload.movingDateRange.latest);
 
     if (earliest >= latest) {
       throw new BadRequestException(
-        "Invalid date range: earliest must be before latest"
+        "Invalid date range: earliest must be before latest",
       );
     }
 
     if (payload.priceRange.min > payload.priceRange.max) {
       throw new BadRequestException(
-        "Invalid price range: min must be less than max"
+        "Invalid price range: min must be less than max",
       );
     }
 
@@ -339,7 +341,7 @@ export class PreMarketService {
           await this.agentRepository.findByUserId(referredAgentId);
         if (agentProfile?.acceptingRequests === false) {
           throw new BadRequestException(
-            `${referredAgentName} is not accepting new requests at this time. Please try again later.`
+            `${referredAgentName} is not accepting new requests at this time. Please try again later.`,
           );
         }
       }
@@ -350,7 +352,7 @@ export class PreMarketService {
 
     if (activeListingCount >= 1) {
       throw new BadRequestException(
-        "You can create a maximum of 1 pre-market listing."
+        "You can have one active request at a time.",
       );
     }
 
@@ -387,7 +389,25 @@ export class PreMarketService {
     this.sendNotifications(request, renterId).catch((error) => {
       logger.error(
         { error, requestId: request._id },
-        "Failed to send notifications (non-blocking - request already created)"
+        "Failed to send notifications (non-blocking - request already created)",
+      );
+    });
+
+    await this.createRenterNotification({
+      recipientId: renterId,
+      title: "Pre-market request submitted",
+      message: `We received your new request "${request.requestName}". We'll follow up if an agent is matched.`,
+      type: "success",
+      notificationType: "pre_market_request_created",
+      relatedEntityId: request._id?.toString(),
+      actionUrl: `${env.CLIENT_URL}/pre-market/my-requests`,
+      actionData: {
+        requestId: request.requestId,
+      },
+    }).catch((error) => {
+      logger.error(
+        { error, renterId },
+        "Failed to create renter notification for new request",
       );
     });
 
@@ -400,14 +420,14 @@ export class PreMarketService {
 
   private async sendNotifications(
     request: any,
-    renterId: string
+    renterId: string,
   ): Promise<void> {
     const renter = await this.renterRepository.findRenterWithReferrer(renterId);
 
     if (!renter) {
       logger.warn(
         { renterId, requestId: request._id },
-        "Renter not found for notification"
+        "Renter not found for notification",
       );
       return;
     }
@@ -443,13 +463,13 @@ export class PreMarketService {
 
     logger.info(
       { requestId: request._id },
-      "✅ All notifications sent successfully"
+      "✅ All notifications sent successfully",
     );
   }
 
   private async generateUniqueRequestId(
     baseRequestId: string,
-    renterId: string
+    renterId: string,
   ): Promise<string> {
     let candidate = baseRequestId;
     let attempt = 0;
@@ -473,7 +493,7 @@ export class PreMarketService {
 
   async getAllRequests(
     query: PaginationQuery,
-    agentId: string
+    agentId: string,
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const agent = await this.agentRepository.findByUserId(agentId);
     if (!agent) {
@@ -490,14 +510,14 @@ export class PreMarketService {
           "paid",
         ]);
       const excludedIds = accessRecords.map((record) =>
-        record.preMarketRequestId.toString()
+        record.preMarketRequestId.toString(),
       );
 
       paginated =
         await this.preMarketRepository.findAllWithPaginationExcludingIds(
           query,
           excludedIds,
-          visibilityFilter
+          visibilityFilter,
         );
     } else {
       const matchedRecords =
@@ -506,18 +526,18 @@ export class PreMarketService {
           "paid",
         ]);
       const excludedIds = matchedRecords.map((record) =>
-        record.preMarketRequestId.toString()
+        record.preMarketRequestId.toString(),
       );
 
       paginated = excludedIds.length
         ? await this.preMarketRepository.findAllWithPaginationExcludingIds(
             query,
             excludedIds,
-            visibilityFilter
+            visibilityFilter,
           )
         : await this.preMarketRepository.findAllWithPagination(
             query,
-            visibilityFilter
+            visibilityFilter,
           );
     }
 
@@ -528,14 +548,14 @@ export class PreMarketService {
     const grantAccessRecords =
       await this.grantAccessRepository.findByAgentIdAndRequestIds(
         agentId,
-        requestIds as string[]
+        requestIds as string[],
       );
 
     const grantAccessByRequestId = new Map(
       grantAccessRecords.map((record) => [
         record.preMarketRequestId.toString(),
         record,
-      ])
+      ]),
     );
 
     const enrichedData = await Promise.all(
@@ -545,7 +565,7 @@ export class PreMarketService {
           : null;
         const accessSummary = this.buildAgentAccessSummary(
           grantAccess,
-          hasGrantAccess
+          hasGrantAccess,
         );
         const isMatched =
           grantAccess &&
@@ -579,7 +599,7 @@ export class PreMarketService {
           accessType: accessSummary.accessType,
           canRequestAccess: accessSummary.canRequestAccess,
         };
-      })
+      }),
     );
 
     return {
@@ -590,7 +610,7 @@ export class PreMarketService {
 
   async getRenterRequests(
     renterId: string,
-    query: PaginationQuery
+    query: PaginationQuery,
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const result = this.preMarketRepository.findByRenterId(renterId, query);
     return result;
@@ -623,7 +643,7 @@ export class PreMarketService {
   async updateRequest(
     renterId: string,
     requestId: string,
-    payload: any
+    payload: any,
   ): Promise<IPreMarketRequest> {
     const request = await this.getRequestById(requestId);
 
@@ -654,7 +674,7 @@ export class PreMarketService {
     // Update
     const updated = await this.preMarketRepository.updateById(
       requestId,
-      payload as Partial<IPreMarketRequest>
+      payload as Partial<IPreMarketRequest>,
     );
 
     logger.info({ renterId }, `Pre-market request updated: ${requestId}`);
@@ -664,12 +684,12 @@ export class PreMarketService {
       .notifyAgentsAboutUpdatedRequest(
         updated || request,
         changedFields,
-        updatedAt
+        updatedAt,
       )
       .catch((error) => {
         logger.error(
           { error, requestId: request._id },
-          "Failed to send update notifications (non-blocking)"
+          "Failed to send update notifications (non-blocking)",
         );
       });
 
@@ -679,16 +699,16 @@ export class PreMarketService {
   private async notifyRegisteredAgentRequestClosed(
     request: IPreMarketRequest,
     reason: string,
-    closedAt: Date
+    closedAt: Date,
   ): Promise<void> {
     const renter = await this.renterRepository.findRenterWithReferrer(
-      request.renterId.toString()
+      request.renterId.toString(),
     );
 
     if (!renter) {
       logger.warn(
         { requestId: request._id },
-        "Renter not found for request closed alert"
+        "Renter not found for request closed alert",
       );
       return;
     }
@@ -720,12 +740,12 @@ export class PreMarketService {
         : undefined;
     const shouldNotify = await this.isAgentEmailSubscriptionEnabled(
       agentEmail,
-      referredAgentId
+      referredAgentId,
     );
     if (!shouldNotify) {
       logger.info(
         { email: agentEmail },
-        "Agent email subscription disabled; skipping request closed alert"
+        "Agent email subscription disabled; skipping request closed alert",
       );
       return;
     }
@@ -737,8 +757,8 @@ export class PreMarketService {
       .filter(
         (email, index, items) =>
           items.findIndex(
-            (item) => item.toLowerCase() === email.toLowerCase()
-          ) === index
+            (item) => item.toLowerCase() === email.toLowerCase(),
+          ) === index,
       )
       .filter((email) => email.toLowerCase() !== agentEmail.toLowerCase());
 
@@ -784,13 +804,13 @@ export class PreMarketService {
           renterId: payload.recipientId,
           notificationType: payload.notificationType,
         },
-        "Failed to create renter notification"
+        "Failed to create renter notification",
       );
     }
   }
 
   private normalizeUserId(
-    id?: string | Types.ObjectId | { _id?: string | Types.ObjectId }
+    id?: string | Types.ObjectId | { _id?: string | Types.ObjectId },
   ): string | null {
     if (!id) {
       return null;
@@ -818,7 +838,7 @@ export class PreMarketService {
   }
 
   private async notifyRenterAboutAdminDeletion(
-    request: IPreMarketRequest
+    request: IPreMarketRequest,
   ): Promise<void> {
     const renterIdValue =
       typeof request.renterId === "string"
@@ -828,18 +848,17 @@ export class PreMarketService {
     if (!renterIdValue) {
       logger.warn(
         { requestId: request._id },
-        "Invalid renter ID for admin deletion notification"
+        "Invalid renter ID for admin deletion notification",
       );
       return;
     }
 
-    const renter = await this.renterRepository.findRenterWithReferrer(
-      renterIdValue
-    );
+    const renter =
+      await this.renterRepository.findRenterWithReferrer(renterIdValue);
     if (!renter) {
       logger.warn(
         { renterId: renterIdValue },
-        "Renter not found for admin deletion notification"
+        "Renter not found for admin deletion notification",
       );
       return;
     }
@@ -866,16 +885,16 @@ export class PreMarketService {
   }
 
   private async notifyRenterRequestExpired(
-    request: IPreMarketRequest
+    request: IPreMarketRequest,
   ): Promise<void> {
     const renter = await this.renterRepository.findRenterWithReferrer(
-      request.renterId.toString()
+      request.renterId.toString(),
     );
 
     if (!renter) {
       logger.warn(
         { requestId: request._id },
-        "Renter not found for request expiration notice"
+        "Renter not found for request expiration notice",
       );
       return;
     }
@@ -883,7 +902,7 @@ export class PreMarketService {
     if (!renter.email) {
       logger.warn(
         { requestId: request._id },
-        "Renter email missing for request expiration notice"
+        "Renter email missing for request expiration notice",
       );
       return;
     }
@@ -896,7 +915,7 @@ export class PreMarketService {
 
   private async isAgentEmailSubscriptionEnabled(
     agentEmail: string,
-    agentUserId?: string
+    agentUserId?: string,
   ): Promise<boolean> {
     if (!agentEmail) {
       return false;
@@ -920,7 +939,7 @@ export class PreMarketService {
 
   private buildChangedFieldsSummary(
     request: IPreMarketRequest,
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
   ): string[] {
     const fieldLabels: Record<string, string> = {
       movingDateRange: "Move date range",
@@ -947,7 +966,7 @@ export class PreMarketService {
         }
         return accumulator;
       },
-      []
+      [],
     );
 
     return Array.from(new Set(changedFields));
@@ -974,7 +993,7 @@ export class PreMarketService {
         .sort()
         .reduce<Record<string, unknown>>((accumulator, key) => {
           accumulator[key] = this.normalizeValue(
-            (value as Record<string, unknown>)[key]
+            (value as Record<string, unknown>)[key],
           );
           return accumulator;
         }, {});
@@ -1010,7 +1029,9 @@ export class PreMarketService {
     return agent.acceptingRequestsToggledAt || agent.updatedAt || new Date();
   }
 
-  private buildAgentVisibilityFilter(agent: IAgentProfile): Record<string, any> {
+  private buildAgentVisibilityFilter(
+    agent: IAgentProfile,
+  ): Record<string, any> {
     const cutoff = this.getAgentVisibilityCutoff(agent);
     if (!cutoff) {
       return {};
@@ -1023,7 +1044,7 @@ export class PreMarketService {
 
   public ensureAgentCanViewRequest(
     agent: IAgentProfile,
-    request: IPreMarketRequest
+    request: IPreMarketRequest,
   ): void {
     const cutoff = this.getAgentVisibilityCutoff(agent);
     if (!cutoff || !request?.createdAt) {
@@ -1036,25 +1057,21 @@ export class PreMarketService {
     }
   }
 
-  private async deleteGrantAccessRecords(
-    requestId: string
-  ): Promise<void> {
+  private async deleteGrantAccessRecords(requestId: string): Promise<void> {
     try {
       const result =
-        await this.grantAccessRepository.deleteByPreMarketRequestId(
-          requestId
-        );
+        await this.grantAccessRepository.deleteByPreMarketRequestId(requestId);
       const deletedCount = (result as any)?.deletedCount ?? 0;
       if (deletedCount > 0) {
         logger.info(
           { requestId, deletedCount },
-          "Deleted grant access records for pre-market request"
+          "Deleted grant access records for pre-market request",
         );
       }
     } catch (error) {
       logger.error(
         { error, requestId },
-        "Failed to delete grant access records for pre-market request"
+        "Failed to delete grant access records for pre-market request",
       );
     }
   }
@@ -1082,11 +1099,11 @@ export class PreMarketService {
     this.notifyRegisteredAgentRequestClosed(
       request,
       "Deleted by Renter",
-      new Date()
+      new Date(),
     ).catch((error) => {
       logger.error(
         { error, requestId: request._id },
-        "Failed to send request closed alert (non-blocking)"
+        "Failed to send request closed alert (non-blocking)",
       );
     });
 
@@ -1115,13 +1132,13 @@ export class PreMarketService {
 
     logger.info(
       { renterId, deletedCount: requestIds.length },
-      "Deleted pre-market requests after renter account deletion"
+      "Deleted pre-market requests after renter account deletion",
     );
 
     this.updateConsolidatedExcel().catch((error) => {
       logger.error(
         { error, renterId },
-        "Failed to update consolidated Excel after renter cleanup"
+        "Failed to update consolidated Excel after renter cleanup",
       );
     });
   }
@@ -1132,13 +1149,13 @@ export class PreMarketService {
       if (result.deletedCount && result.deletedCount > 0) {
         logger.info(
           { agentId, deletedCount: result.deletedCount },
-          "Deleted agent match requests during profile removal"
+          "Deleted agent match requests during profile removal",
         );
       }
     } catch (error) {
       logger.error(
         { agentId, error },
-        "Failed to delete agent match history during profile removal"
+        "Failed to delete agent match history during profile removal",
       );
     }
   }
@@ -1148,7 +1165,8 @@ export class PreMarketService {
     deletedCount: number;
     failedCount: number;
   }> {
-    const expiredRequests = await this.preMarketRepository.findExpiredRequests();
+    const expiredRequests =
+      await this.preMarketRepository.findExpiredRequests();
 
     if (!expiredRequests || expiredRequests.length === 0) {
       return { expiredCount: 0, deletedCount: 0, failedCount: 0 };
@@ -1163,7 +1181,7 @@ export class PreMarketService {
         failedCount += 1;
         logger.warn(
           { requestId: request.requestId },
-          "Expired request missing id; skipping delete"
+          "Expired request missing id; skipping delete",
         );
         continue;
       }
@@ -1172,10 +1190,7 @@ export class PreMarketService {
         const deleted = await this.preMarketRepository.deleteById(requestId);
         if (!deleted) {
           failedCount += 1;
-          logger.warn(
-            { requestId },
-            "Expired request not found during delete"
-          );
+          logger.warn({ requestId }, "Expired request not found during delete");
           continue;
         }
 
@@ -1187,25 +1202,25 @@ export class PreMarketService {
         this.notifyRenterRequestExpired(request).catch((error) => {
           logger.error(
             { error, requestId },
-            "Failed to send renter expiration notice (non-blocking)"
+            "Failed to send renter expiration notice (non-blocking)",
           );
         });
 
         this.notifyRegisteredAgentRequestClosed(
           request,
           "Request expired.",
-          closedAt
+          closedAt,
         ).catch((error) => {
           logger.error(
             { error, requestId },
-            "Failed to send request closed alert (non-blocking)"
+            "Failed to send request closed alert (non-blocking)",
           );
         });
       } catch (error) {
         failedCount += 1;
         logger.error(
           { error, requestId },
-          "Failed to delete expired pre-market request"
+          "Failed to delete expired pre-market request",
         );
       }
     }
@@ -1241,7 +1256,7 @@ export class PreMarketService {
 
   async getAllRequestsForAgent(
     agentId: string,
-    query: PaginationQuery
+    query: PaginationQuery,
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const agent = await this.agentRepository.findByUserId(agentId);
     if (!agent) {
@@ -1253,7 +1268,7 @@ export class PreMarketService {
     // ============================================
     logger.info(
       { agentId, type: agent.hasGrantAccess ? "grant-access" : "normal" },
-      "Agent fetching matched pre-market listings"
+      "Agent fetching matched pre-market listings",
     );
 
     // Step 1: Get all GrantAccess records for this agent with access
@@ -1269,14 +1284,14 @@ export class PreMarketService {
         [],
         0,
         (query.page as number) || 1,
-        (query.limit as number) || 10
+        (query.limit as number) || 10,
       ) as any;
     }
 
     const matchTimes = accessRecords
       .map((access) => {
         const timestamp = new Date(
-          access.updatedAt || access.createdAt || 0
+          access.updatedAt || access.createdAt || 0,
         ).getTime();
         return {
           requestId: access.preMarketRequestId.toString(),
@@ -1287,7 +1302,7 @@ export class PreMarketService {
 
     const preMarketRequestIds = matchTimes.map((access) => access.requestId);
     const matchTimeByRequestId = new Map(
-      matchTimes.map((access) => [access.requestId, access.timestamp])
+      matchTimes.map((access) => [access.requestId, access.timestamp]),
     );
 
     const listings =
@@ -1298,7 +1313,7 @@ export class PreMarketService {
         [],
         0,
         (query.page as number) || 1,
-        (query.limit as number) || 10
+        (query.limit as number) || 10,
       ) as any;
     }
 
@@ -1320,7 +1335,7 @@ export class PreMarketService {
     const enrichedData = await Promise.all(
       paginatedData.map(async (request: any) => {
         const renterInfo = await this.getRenterInfoForRequest(
-          request.renterId?.toString()
+          request.renterId?.toString(),
         );
         return {
           ...request,
@@ -1328,7 +1343,7 @@ export class PreMarketService {
           status: "matched",
           listingStatus: "matched",
         };
-      })
+      }),
     );
 
     // Track views
@@ -1340,9 +1355,9 @@ export class PreMarketService {
         this.preMarketRepository.addAgentToViewedBy(
           request._id!.toString(),
           agentId,
-          viewType
-        )
-      )
+          viewType,
+        ),
+      ),
     );
 
     // Return with CORRECT pagination count
@@ -1350,7 +1365,7 @@ export class PreMarketService {
       enrichedData,
       total,
       page,
-      limit
+      limit,
     ) as any;
 
     return response;
@@ -1372,7 +1387,7 @@ export class PreMarketService {
     const enrichedRequest = await this.enrichRequestWithRenterInfo(
       request,
       agentId,
-      agent.hasGrantAccess
+      agent.hasGrantAccess,
     );
 
     return enrichedRequest;
@@ -1380,12 +1395,12 @@ export class PreMarketService {
 
   async matchRequestForAgent(
     agentId: string,
-    requestId: string
+    requestId: string,
   ): Promise<IGrantAccessRequest> {
     const agent = await this.agentRepository.findByUserId(agentId);
     if (!agent || !agent.hasGrantAccess) {
       throw new ForbiddenException(
-        "You do not have permission to match requests"
+        "You do not have permission to match requests",
       );
     }
 
@@ -1400,13 +1415,13 @@ export class PreMarketService {
 
     if (!listingActivationCheck.isActive) {
       throw new ForbiddenException(
-        "This listing is no longer accepting requests"
+        "This listing is no longer accepting requests",
       );
     }
 
     const existing = await this.grantAccessRepository.findByAgentAndRequest(
       agentId,
-      requestId
+      requestId,
     );
 
     const shouldNotify =
@@ -1420,7 +1435,7 @@ export class PreMarketService {
 
       const updated = await this.grantAccessRepository.updateById(
         existing._id.toString(),
-        { status: "free" }
+        { status: "free" },
       );
 
       matchRecord = updated || existing;
@@ -1436,11 +1451,11 @@ export class PreMarketService {
     if (shouldNotify) {
       this.notifyRenterAboutMatchedOpportunity(
         agentId,
-        listingActivationCheck
+        listingActivationCheck,
       ).catch((error) => {
         logger.error(
           { error, requestId, agentId },
-          "Failed to send renter match notification (non-blocking)"
+          "Failed to send renter match notification (non-blocking)",
         );
       });
     }
@@ -1454,7 +1469,7 @@ export class PreMarketService {
 
   private filterRequestVisibility(
     request: any,
-    hasGrantAccess: boolean
+    hasGrantAccess: boolean,
   ): IPreMarketRequest {
     if (hasGrantAccess) {
       return request;
@@ -1480,16 +1495,16 @@ export class PreMarketService {
   private async enrichRequestWithRenterInfo(
     request: any,
     agentId: string,
-    hasGrantAccess: boolean
+    hasGrantAccess: boolean,
   ): Promise<any> {
     const renter = await this.renterRepository.findById(
-      request.renterId.toString()
+      request.renterId.toString(),
     );
 
     if (!renter) {
       logger.warn(
         { renterId: request.renterId, requestId: request.requestId },
-        "Renter not found for request"
+        "Renter not found for request",
       );
       return request;
     }
@@ -1497,7 +1512,7 @@ export class PreMarketService {
     let referrerInfo = null;
     if (renter.referredByAgentId) {
       const referrer = await this.userRepository.findById(
-        renter.referredByAgentId.toString()
+        renter.referredByAgentId.toString(),
       );
       if (referrer) {
         referrerInfo = {
@@ -1509,7 +1524,7 @@ export class PreMarketService {
       }
     } else if (renter.referredByAdminId) {
       const referrer = await this.userRepository.findById(
-        renter.referredByAdminId.toString()
+        renter.referredByAdminId.toString(),
       );
       if (referrer) {
         referrerInfo = {
@@ -1552,12 +1567,12 @@ export class PreMarketService {
   }
 
   async getAllRequestsForAdmin(
-    query: PaginationQuery
+    query: PaginationQuery,
   ): Promise<AdminPreMarketPaginatedResponse> {
     const paginated = await this.preMarketRepository.findAllForAdmin(query);
 
     const enrichedData = await Promise.all(
-      paginated.data.map((request) => this.enrichRequestForAdmin(request))
+      paginated.data.map((request) => this.enrichRequestForAdmin(request)),
     );
 
     return {
@@ -1567,7 +1582,7 @@ export class PreMarketService {
   }
 
   async getRequestByIdForAdmin(
-    requestId: string
+    requestId: string,
   ): Promise<AdminPreMarketRequestItem> {
     const request = await this.preMarketRepository.findByIdForAdmin(requestId);
 
@@ -1580,20 +1595,20 @@ export class PreMarketService {
   }
 
   private async enrichRequestForAdmin(
-    request: IPreMarketRequest
+    request: IPreMarketRequest,
   ): Promise<AdminPreMarketRequestItem> {
     const renter = await this.renterRepository.findRenterWithReferrer(
-      request.renterId.toString()
+      request.renterId.toString(),
     );
 
     const renterInfo = await this.buildRenterInfo(renter);
 
     const agentRequestSummary = await this.getAgentRequestSummary(
-      request._id!.toString()
+      request._id!.toString(),
     );
 
     const agentRequests = await this.getAgentRequestDetails(
-      request._id!.toString()
+      request._id!.toString(),
     );
 
     return {
@@ -1605,11 +1620,11 @@ export class PreMarketService {
   }
 
   private async getAgentRequestSummary(
-    preMarketRequestId: string | Types.ObjectId
+    preMarketRequestId: string | Types.ObjectId,
   ): Promise<AdminAgentRequestSummary> {
     const allRequests =
       await this.grantAccessRepository.findByPreMarketRequestId(
-        preMarketRequestId
+        preMarketRequestId,
       );
 
     if (!allRequests || allRequests.length === 0) {
@@ -1666,7 +1681,7 @@ export class PreMarketService {
         typeof renter.referredByAgentId === "object"
           ? renter.referredByAgentId
           : await this.userRepository.findById(
-              renter.referredByAgentId.toString()
+              renter.referredByAgentId.toString(),
             );
 
       if (referrer) {
@@ -1679,15 +1694,15 @@ export class PreMarketService {
           referrerType: "AGENT",
         };
       }
-      } else if (
-        renter.registrationType === "admin_referral" &&
-        renter.referredByAdminId
-      ) {
+    } else if (
+      renter.registrationType === "admin_referral" &&
+      renter.referredByAdminId
+    ) {
       const referrer =
         typeof renter.referredByAdminId === "object"
           ? renter.referredByAdminId
           : await this.userRepository.findById(
-              renter.referredByAdminId.toString()
+              renter.referredByAdminId.toString(),
             );
 
       if (referrer) {
@@ -1697,32 +1712,32 @@ export class PreMarketService {
           referrerEmail: referrer.email || null,
           referrerPhoneNumber: referrer.phoneNumber || null,
           referralCode: referrer.referralCode || null,
-            referrerType: "ADMIN",
-          };
-        }
-      }
-
-      if (!renterInfo.referralInfo) {
-        const defaultAgent = await this.getDefaultReferralAgent();
-        renterInfo.referralInfo = {
-          referrerId: defaultAgent.id,
-          referrerName: defaultAgent.fullName,
-          referrerEmail: defaultAgent.email,
-          referrerPhoneNumber: defaultAgent.phoneNumber,
-          referralCode: defaultAgent.referralCode,
-          referrerType: "AGENT",
+          referrerType: "ADMIN",
         };
       }
-
-      return renterInfo;
     }
 
+    if (!renterInfo.referralInfo) {
+      const defaultAgent = await this.getDefaultReferralAgent();
+      renterInfo.referralInfo = {
+        referrerId: defaultAgent.id,
+        referrerName: defaultAgent.fullName,
+        referrerEmail: defaultAgent.email,
+        referrerPhoneNumber: defaultAgent.phoneNumber,
+        referralCode: defaultAgent.referralCode,
+        referrerType: "AGENT",
+      };
+    }
+
+    return renterInfo;
+  }
+
   private async getAgentRequestDetails(
-    preMarketRequestId: string
+    preMarketRequestId: string,
   ): Promise<AgentRequestDetail[]> {
     const allRequests =
       await this.grantAccessRepository.findByPreMarketRequestId(
-        preMarketRequestId
+        preMarketRequestId,
       );
 
     if (!allRequests || allRequests.length === 0) {
@@ -1734,7 +1749,7 @@ export class PreMarketService {
       allRequests.map(async (req: any) => {
         // Get agent user details
         const agent = await this.userRepository.findById(
-          req.agentId.toString()
+          req.agentId.toString(),
         );
 
         // Build agent object with proper types
@@ -1809,7 +1824,7 @@ export class PreMarketService {
         };
 
         return agentRequestDetail;
-      })
+      }),
     );
 
     return requestsWithAgents;
@@ -1820,12 +1835,12 @@ export class PreMarketService {
    */
   async getRequestsForGrantAccessAgents(
     agentId: string,
-    query: PaginationQuery
+    query: PaginationQuery,
   ): Promise<PaginatedResponse<any>> {
     const agent = await this.agentRepository.findByUserId(agentId);
     if (!agent || !agent.hasGrantAccess) {
       throw new ForbiddenException(
-        "You do not have grant access to view these requests"
+        "You do not have grant access to view these requests",
       );
     }
 
@@ -1833,14 +1848,14 @@ export class PreMarketService {
     const paginated = await this.preMarketRepository.findForGrantAccessAgents(
       agentId,
       query,
-      this.buildAgentVisibilityFilter(agent)
+      this.buildAgentVisibilityFilter(agent),
     );
 
     // Enrich each request with full renter information
     const enrichedData = await Promise.all(
       paginated.data.map(async (request) => {
         return this.enrichRequestWithFullRenterInfo(request, agentId);
-      })
+      }),
     );
 
     // Mark agent as having viewed these requests
@@ -1850,9 +1865,9 @@ export class PreMarketService {
         this.preMarketRepository.addAgentToViewedBy(
           requestId!,
           agentId,
-          "grantAccessAgents"
-        )
-      )
+          "grantAccessAgents",
+        ),
+      ),
     );
 
     return {
@@ -1866,16 +1881,16 @@ export class PreMarketService {
    */
   public async enrichRequestWithFullRenterInfo(
     request: IPreMarketRequest,
-    agentId: string
+    agentId: string,
   ) {
     const renter = await this.renterRepository.findRenterWithReferrer(
-      request.renterId.toString()
+      request.renterId.toString(),
     );
 
     if (!renter) {
       logger.warn(
         { renterId: request.renterId, requestId: request.requestId },
-        "Renter not found for request"
+        "Renter not found for request",
       );
       return { ...request, renterInfo: null };
     }
@@ -1891,7 +1906,7 @@ export class PreMarketService {
         renter.referredByAgentId._id
           ? renter.referredByAgentId // Already populated
           : await this.userRepository.findById(
-              renter.referredByAgentId.toString()
+              renter.referredByAgentId.toString(),
             );
 
       if (referrer) {
@@ -1912,7 +1927,7 @@ export class PreMarketService {
         renter.referredByAdminId._id
           ? renter.referredByAdminId // Already populated
           : await this.userRepository.findById(
-              renter.referredByAdminId.toString()
+              renter.referredByAdminId.toString(),
             );
 
       if (referrer) {
@@ -1969,7 +1984,7 @@ export class PreMarketService {
    */
   async getAvailableRequestsForNormalAgents(
     agentId: string,
-    query: PaginationQuery
+    query: PaginationQuery,
   ): Promise<PaginatedResponse<NormalAgentListingResponse>> {
     const agent = await this.agentRepository.findByUserId(agentId);
     if (!agent) {
@@ -1981,7 +1996,7 @@ export class PreMarketService {
       await this.preMarketRepository.findAvailableForNormalAgents(
         agentId,
         query,
-        this.buildAgentVisibilityFilter(agent)
+        this.buildAgentVisibilityFilter(agent),
       );
 
     // For each request, conditionally include renter info
@@ -1989,13 +2004,13 @@ export class PreMarketService {
       paginated.data.map(async (request) => {
         const accessCheck = await this.canAgentSeeRenterInfo(
           agentId,
-          request._id!.toString()
+          request._id!.toString(),
         );
 
         if (accessCheck.canSee) {
           const enriched = await this.enrichRequestWithFullRenterInfo(
             request,
-            agentId
+            agentId,
           );
           return {
             ...enriched,
@@ -2013,7 +2028,7 @@ export class PreMarketService {
               "Request grant access to see renter information",
           };
         }
-      })
+      }),
     );
 
     // Mark as viewed
@@ -2023,9 +2038,9 @@ export class PreMarketService {
         this.preMarketRepository.addAgentToViewedBy(
           requestId!,
           agentId,
-          "normalAgents"
-        )
-      )
+          "normalAgents",
+        ),
+      ),
     );
 
     return {
@@ -2036,7 +2051,7 @@ export class PreMarketService {
 
   async getRequestDetailsForAgent(
     agentId: string,
-    requestId: string
+    requestId: string,
   ): Promise<any> {
     const request = await this.preMarketRepository.getRequestById(requestId);
     if (!request) {
@@ -2059,30 +2074,30 @@ export class PreMarketService {
     // NORMAL AGENTS - Check access status
     const grantAccess = await this.grantAccessRepository.findByAgentAndRequest(
       agentId,
-      requestId
+      requestId,
     );
 
     if (!grantAccess) {
       throw new ForbiddenException(
-        "You must request access to view renter information"
+        "You must request access to view renter information",
       );
     }
 
     if (grantAccess.status === "rejected") {
       throw new ForbiddenException(
-        "Your access request was rejected by the admin"
+        "Your access request was rejected by the admin",
       );
     }
 
     if (grantAccess.status === "pending") {
       throw new ForbiddenException(
-        "Your access request is pending admin approval"
+        "Your access request is pending admin approval",
       );
     }
 
     if (grantAccess.status === "approved") {
       throw new ForbiddenException(
-        "Your access request was approved. Complete payment to proceed"
+        "Your access request was approved. Complete payment to proceed",
       );
     }
 
@@ -2096,7 +2111,7 @@ export class PreMarketService {
 
   public async checkAgentAccessToRequest(
     agentId: string,
-    requestId: string
+    requestId: string,
   ): Promise<{
     hasAccess: boolean;
     accessType: "admin-granted" | "payment-based" | "none";
@@ -2114,7 +2129,7 @@ export class PreMarketService {
     // Check if agent paid for this specific request
     let grantAccess = await this.grantAccessRepository.findByAgentAndRequest(
       agentId,
-      requestId
+      requestId,
     );
 
     const grantAccessId = grantAccess?._id;
@@ -2125,16 +2140,16 @@ export class PreMarketService {
     ) {
       try {
         await this.paymentService.reconcilePaymentIntent(
-          grantAccess.payment.stripePaymentIntentId
+          grantAccess.payment.stripePaymentIntentId,
         );
         grantAccess = await this.grantAccessRepository.findByAgentAndRequest(
           agentId,
-          requestId
+          requestId,
         );
       } catch (error) {
         logger.warn(
           { error, grantAccessId },
-          "Failed to refresh payment status"
+          "Failed to refresh payment status",
         );
       }
     }
@@ -2158,11 +2173,11 @@ export class PreMarketService {
 
   async getMatchedAccessRecord(
     agentId: string,
-    requestId: string
+    requestId: string,
   ): Promise<IGrantAccessRequest | null> {
     const grantAccess = await this.grantAccessRepository.findByAgentAndRequest(
       agentId,
-      requestId
+      requestId,
     );
 
     if (
@@ -2177,16 +2192,16 @@ export class PreMarketService {
 
   private async notifyRenterAboutMatchedOpportunity(
     agentId: string,
-    preMarketRequest: IPreMarketRequest
+    preMarketRequest: IPreMarketRequest,
   ): Promise<void> {
     const renter = await this.renterRepository.findRenterWithReferrer(
-      preMarketRequest.renterId.toString()
+      preMarketRequest.renterId.toString(),
     );
 
     if (!renter?.email || !renter.fullName) {
       logger.warn(
         { requestId: preMarketRequest._id },
-        "Renter not found for match notification"
+        "Renter not found for match notification",
       );
       return;
     }
@@ -2195,7 +2210,7 @@ export class PreMarketService {
     if (!agent?.email) {
       logger.warn(
         { agentId, requestId: preMarketRequest._id },
-        "Matching agent not found for match notification"
+        "Matching agent not found for match notification",
       );
       return;
     }
@@ -2218,7 +2233,7 @@ export class PreMarketService {
         : "tmor@corcoran.com";
 
     const buildCcList = (
-      emails: Array<string | undefined>
+      emails: Array<string | undefined>,
     ): string[] | undefined => {
       const renterEmail = renter.email.toLowerCase();
       const unique: string[] = [];
@@ -2274,7 +2289,7 @@ export class PreMarketService {
     if (!renterUserId) {
       logger.warn(
         { requestId: preMarketRequest._id },
-        "Skipping renter match notification because renter user ID is missing"
+        "Skipping renter match notification because renter user ID is missing",
       );
       return;
     }
@@ -2309,7 +2324,7 @@ export class PreMarketService {
    */
   async canAgentSeeRenterInfo(
     agentId: string,
-    requestId: string | Types.ObjectId
+    requestId: string | Types.ObjectId,
   ): Promise<{
     canSee: boolean;
     accessType: "admin-granted" | "payment-based" | "none";
@@ -2350,7 +2365,7 @@ export class PreMarketService {
   async markRequestAsViewedByAgent(
     requestId: string,
     agentId: string,
-    type: "grantAccessAgents" | "normalAgents"
+    type: "grantAccessAgents" | "normalAgents",
   ): Promise<void> {
     await this.preMarketRepository.addAgentToViewedBy(requestId, agentId, type);
   }
@@ -2361,7 +2376,7 @@ export class PreMarketService {
    */
   async getRenterRequestById(
     renterId: string,
-    requestId: string
+    requestId: string,
   ): Promise<IPreMarketRequest> {
     const request = await this.preMarketRepository.findById(requestId);
 
@@ -2372,13 +2387,13 @@ export class PreMarketService {
     // Verify ownership
     if (request.renterId.toString() !== renterId) {
       throw new ForbiddenException(
-        "You can only view your own pre-market requests"
+        "You can only view your own pre-market requests",
       );
     }
 
     logger.info(
       { renterId, requestId: request.requestId },
-      "Renter retrieved their request details"
+      "Renter retrieved their request details",
     );
 
     return request;
@@ -2406,24 +2421,24 @@ export class PreMarketService {
 
     logger.warn(
       { requestId, renterId: request.renterId },
-      "Admin deleted pre-market request"
+      "Admin deleted pre-market request",
     );
 
     this.notifyRegisteredAgentRequestClosed(
       request,
       "Deleted by Admin",
-      new Date()
+      new Date(),
     ).catch((error) => {
       logger.error(
         { error, requestId: request._id },
-        "Failed to send request closed alert (non-blocking)"
+        "Failed to send request closed alert (non-blocking)",
       );
     });
 
     this.notifyRenterAboutAdminDeletion(request).catch((error) => {
       logger.error(
         { error, requestId: request._id },
-        "Failed to notify renter about admin deletion (non-blocking)"
+        "Failed to notify renter about admin deletion (non-blocking)",
       );
     });
 
@@ -2447,7 +2462,7 @@ export class PreMarketService {
     listingId: string,
     isActive: boolean,
     userId: string,
-    userRole: string
+    userRole: string,
   ): Promise<IPreMarketRequest> {
     const listing = await this.getRequestById(listingId);
 
@@ -2460,14 +2475,14 @@ export class PreMarketService {
     } else if (userRole !== "Admin") {
       // Only Admin or Renter allowed
       throw new ForbiddenException(
-        "You don't have permission to manage listings"
+        "You don't have permission to manage listings",
       );
     }
 
     // Update listing
     const updated = await this.preMarketRepository.toggleListingActive(
       listingId,
-      isActive
+      isActive,
     );
 
     if (!updated) {
@@ -2476,7 +2491,7 @@ export class PreMarketService {
 
     logger.info(
       { userId, listingId, isActive, userRole },
-      `Listing activation toggled: ${isActive ? "activated" : "deactivated"}`
+      `Listing activation toggled: ${isActive ? "activated" : "deactivated"}`,
     );
 
     if (!isActive) {
@@ -2484,11 +2499,11 @@ export class PreMarketService {
       this.notifyRegisteredAgentRequestClosed(
         listing,
         reason,
-        new Date()
+        new Date(),
       ).catch((error) => {
         logger.error(
           { error, listingId },
-          "Failed to send request closed alert (non-blocking)"
+          "Failed to send request closed alert (non-blocking)",
         );
       });
     }
@@ -2537,17 +2552,17 @@ export class PreMarketService {
    */
   async getRenterListings(
     renterId: string,
-    includeInactive: boolean = true
+    includeInactive: boolean = true,
   ): Promise<IPreMarketRequest[]> {
     return this.preMarketRepository.findByRenterIdAll(
       renterId,
-      includeInactive
+      includeInactive,
     );
   }
 
   async getRenterRequestsWithAgents(
     renterId: string,
-    query: PaginationQuery
+    query: PaginationQuery,
   ): Promise<{
     data: any[];
     pagination: {
@@ -2562,7 +2577,7 @@ export class PreMarketService {
     // Step 1: Get ALL requests for this renter
     const requests = await this.preMarketRepository.findByRenterId(
       renterId,
-      query
+      query,
     );
 
     if (!requests || requests.data.length === 0) {
@@ -2585,7 +2600,7 @@ export class PreMarketService {
           const requestId = request._id!.toString();
           const grantAccessRecords =
             await this.grantAccessRepository.findByPreMarketRequestId(
-              requestId
+              requestId,
             );
 
           const agentMap = new Map<string, { status: string; record: any }>();
@@ -2646,7 +2661,7 @@ export class PreMarketService {
             } catch (error) {
               logger.warn(
                 { agentId, requestId },
-                "Failed to fetch agent details, skipping"
+                "Failed to fetch agent details, skipping",
               );
               continue;
             }
@@ -2668,7 +2683,7 @@ export class PreMarketService {
         } catch (error) {
           logger.warn(
             { requestId: request._id, error },
-            "Failed to fetch agents for request, returning without agents"
+            "Failed to fetch agents for request, returning without agents",
           );
 
           // Return request without agents if fetch fails
@@ -2681,7 +2696,7 @@ export class PreMarketService {
             },
           };
         }
-      })
+      }),
     );
 
     return {
@@ -2730,11 +2745,11 @@ export class PreMarketService {
           referrerType: "AGENT",
         };
       }
-      } else if (renter.referredByAdminId) {
-        const referredAdmin =
-          typeof renter.referredByAdminId === "object" &&
-          (renter.referredByAdminId as any)?._id
-            ? renter.referredByAdminId
+    } else if (renter.referredByAdminId) {
+      const referredAdmin =
+        typeof renter.referredByAdminId === "object" &&
+        (renter.referredByAdminId as any)?._id
+          ? renter.referredByAdminId
           : null;
       const referrerId = resolveReferrerId(renter.referredByAdminId);
       const referrer =
@@ -2747,27 +2762,27 @@ export class PreMarketService {
           referrerEmail: referrer.email ?? null,
           referrerPhoneNumber: referrer.phoneNumber ?? null,
           referralCode: referrer.referralCode ?? null,
-            referrerType: "ADMIN",
-          };
-        }
-      }
-
-      if (!referrerInfo) {
-        const defaultAgent = await this.getDefaultReferralAgent();
-        referrerInfo = {
-          referrerId: defaultAgent.id,
-          referrerName: defaultAgent.fullName,
-          referrerEmail: defaultAgent.email,
-          referrerPhoneNumber: defaultAgent.phoneNumber,
-          referralCode: defaultAgent.referralCode,
-          referrerType: "AGENT",
+          referrerType: "ADMIN",
         };
       }
+    }
 
-      const profileImageUrl =
-        (typeof renter.userId === "object" && renter.userId
-          ? renter.userId.profileImageUrl
-          : renter.profileImageUrl) || null;
+    if (!referrerInfo) {
+      const defaultAgent = await this.getDefaultReferralAgent();
+      referrerInfo = {
+        referrerId: defaultAgent.id,
+        referrerName: defaultAgent.fullName,
+        referrerEmail: defaultAgent.email,
+        referrerPhoneNumber: defaultAgent.phoneNumber,
+        referralCode: defaultAgent.referralCode,
+        referrerType: "AGENT",
+      };
+    }
+
+    const profileImageUrl =
+      (typeof renter.userId === "object" && renter.userId
+        ? renter.userId.profileImageUrl
+        : renter.profileImageUrl) || null;
 
     return {
       renterId: renter._id?.toString() || renterId,
@@ -2872,7 +2887,7 @@ export class PreMarketService {
 
     logger.info(
       { url, fileName, version, totalRequests },
-      "Consolidated Excel updated"
+      "Consolidated Excel updated",
     );
   }
 

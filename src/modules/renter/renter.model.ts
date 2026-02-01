@@ -50,7 +50,7 @@ const renterSchema = BaseSchemaUtil.createSchema({
 
   ...BaseSchemaUtil.mergeDefinitions(
     BaseSchemaUtil.emailField(false),
-    BaseSchemaUtil.phoneField()
+    BaseSchemaUtil.phoneField(),
   ),
 
   fullName: {
@@ -142,7 +142,7 @@ renterSchema.pre(/^find/, function (this: Query<any, any>) {
 });
 
 renterSchema.virtual("registrationSourceLabel").get(function (
-  this: IRenterModel
+  this: IRenterModel,
 ) {
   const labels: Record<string, string> = {
     normal: "Direct Registration",
@@ -164,7 +164,7 @@ renterSchema.set("toJSON", { virtuals: true });
 renterSchema.set("toObject", { virtuals: true });
 
 renterSchema.methods.softDelete = async function (
-  this: IRenterModel
+  this: IRenterModel,
 ): Promise<void> {
   this.isDeleted = true;
   this.deletedAt = new Date();
@@ -172,7 +172,7 @@ renterSchema.methods.softDelete = async function (
 };
 
 renterSchema.methods.restore = async function (
-  this: IRenterModel
+  this: IRenterModel,
 ): Promise<void> {
   this.isDeleted = false;
   this.deletedAt = undefined;
@@ -181,7 +181,7 @@ renterSchema.methods.restore = async function (
 
 renterSchema.methods.completeProfile = async function (
   this: IRenterModel,
-  data: Partial<IRenterModel>
+  data: Partial<IRenterModel>,
 ): Promise<void> {
   Object.assign(this, data);
   await this.save();
@@ -189,7 +189,7 @@ renterSchema.methods.completeProfile = async function (
 
 renterSchema.statics.findByRegistrationType = async function (
   this: any,
-  type: "normal" | "agent_referral" | "admin_referral"
+  type: "normal" | "agent_referral" | "admin_referral",
 ) {
   return this.find({ registrationType: type });
 };
