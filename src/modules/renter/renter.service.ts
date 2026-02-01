@@ -32,6 +32,7 @@ import { RenterUtil } from "./renter.utils";
 import { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { PreMarketRepository } from "../pre-market/pre-market.repository";
+import { PreMarketService } from "../pre-market/pre-market.service";
 import { ReferralService } from "../referral/referral.service";
 import type { UserResponse } from "@/modules/user/user.type";
 import { UserRepository } from "../user/user.repository";
@@ -44,6 +45,7 @@ export class RenterService {
   private passwordResetService: PasswordResetService;
   private referralService: ReferralService;
   private excelService: ExcelService;
+  private preMarketService: PreMarketService;
 
   constructor() {
     this.repository = new RenterRepository();
@@ -53,6 +55,7 @@ export class RenterService {
     this.passwordResetService = new PasswordResetService();
     this.referralService = new ReferralService();
     this.excelService = new ExcelService();
+    this.preMarketService = new PreMarketService();
   }
 
   async registerRenter(payload: any): Promise<RenterRegistrationResponse> {
@@ -455,6 +458,8 @@ export class RenterService {
     if (!renter) {
       throw new NotFoundException("Renter profile not found");
     }
+
+    await this.preMarketService.deleteRequestsByRenterId(userId);
 
     const renterUser =
       renter.userId && typeof renter.userId === "object"
