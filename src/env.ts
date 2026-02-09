@@ -11,8 +11,8 @@ const envSchema = z.object({
   BASE_URL: z.string().default("/api/v1"),
   PORT: z.coerce.number().default(3000),
   MONGO_URI: z.url().nonempty("MONGO_URI is required"),
-  JWT_SECRET: z.string().default("lp01yPo31ACozd4pDI9Z1DSD30A"),
-  JWT_REFRESH_SECRET: z.string().default("rwN17KgtvujqVe6jANmu3r5FIFY0jw"),
+  JWT_SECRET: z.string().nonempty("JWT_SECRET is required"),
+  JWT_REFRESH_SECRET: z.string().nonempty("JWT_REFRESH_SECRET is required"),
   JWT_EXPIRY: z.string(),
   JWT_REFRESH_EXPIRY: z.string(),
   SALT_ROUNDS: z.coerce.number().default(12),
@@ -90,8 +90,10 @@ const envSchema = z.object({
     .default("info"),
 });
 
+const requiredJwtKeys = ["JWT_SECRET", "JWT_REFRESH_SECRET"] as const;
+
 const normalizeEnv = (
-  rawEnv: NodeJS.ProcessEnv
+  rawEnv: NodeJS.ProcessEnv,
 ): Record<string, string | undefined> => {
   const normalized: Record<string, string | undefined> = {};
 
@@ -116,12 +118,23 @@ const normalizeEnv = (
 const parsedEnv = normalizeEnv(process.env);
 
 try {
+  if (parsedEnv.NODE_ENV === "production") {
+    const missingJwtKeys = requiredJwtKeys.filter((key) => !parsedEnv[key]);
+    if (missingJwtKeys.length > 0) {
+      throw new Error(
+        `Missing required JWT env vars in production: ${missingJwtKeys.join(
+          ", ",
+        )}`,
+      );
+    }
+  }
+
   envSchema.parse(parsedEnv);
 } catch (error) {
   if (error instanceof z.ZodError) {
     console.error(
       "Missing environment variables:",
-      error.issues.flatMap((issue) => issue.path)
+      error.issues.flatMap((issue) => issue.path),
     );
   } else {
     console.error(error);
