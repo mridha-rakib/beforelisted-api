@@ -26,6 +26,7 @@ import {
   preMarketListSchema,
   requestAccessSchema,
   toggleListingActivationSchema,
+  updateRequestVisibilitySchema,
   updatePreMarketRequestSchema,
 } from "./pre-market.schema";
 import { PreMarketService } from "./pre-market.service";
@@ -192,6 +193,10 @@ export class PreMarketController {
     }
 
     this.preMarketService.ensureAgentCanViewRequest(agent, request as any);
+    await this.preMarketService.ensureAgentCanViewRequestVisibility(
+      userId,
+      request as any,
+    );
 
     if (agent.hasGrantAccess) {
       const matchRecord = await this.preMarketService.getMatchedAccessRecord(
@@ -329,6 +334,14 @@ export class PreMarketController {
   requestAccess = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(requestAccessSchema, req);
     const userId = req.user!.userId;
+
+    const request = await this.preMarketService.getRequestById(
+      validated.body.preMarketRequestId,
+    );
+    await this.preMarketService.ensureAgentCanViewRequestVisibility(
+      userId,
+      request as any,
+    );
 
     const grantAccess = await this.grantAccessService.requestAccess(
       userId,
@@ -525,6 +538,21 @@ export class PreMarketController {
     );
   });
 
+  updateRequestVisibility = asyncHandler(
+    async (req: Request, res: Response) => {
+      const validated = await zParse(updateRequestVisibilitySchema, req);
+      const agentId = req.user!.userId;
+
+      const updated = await this.preMarketService.updateRequestVisibility(
+        agentId,
+        validated.params.requestId,
+        validated.body.visibility
+      );
+
+      ApiResponse.success(res, updated, "Request visibility updated");
+    }
+  );
+
   // ============================================
   // ADMIN: GET ALL PRE-MARKET REQUESTS (FULL)
   // ============================================
@@ -689,6 +717,10 @@ export class PreMarketController {
       }
 
       this.preMarketService.ensureAgentCanViewRequest(agent, request as any);
+      await this.preMarketService.ensureAgentCanViewRequestVisibility(
+        agentId,
+        request as any,
+      );
 
       if (agent.hasGrantAccess === true) {
         const matchRecord = await this.preMarketService.getMatchedAccessRecord(
@@ -843,6 +875,10 @@ export class PreMarketController {
       const request = await this.preMarketService.getRequestById(requestId);
 
       this.preMarketService.ensureAgentCanViewRequest(agent, request as any);
+      await this.preMarketService.ensureAgentCanViewRequestVisibility(
+        userId,
+        request as any,
+      );
 
       // Check dual access
       const accessCheck = await this.preMarketService.checkAgentAccessToRequest(

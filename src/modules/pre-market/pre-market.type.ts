@@ -45,6 +45,7 @@ export type CreatePreMarketRequestPayload = {
     personalGuarantor?: boolean;
     thirdPartyGuarantor?: boolean;
   };
+  shareConsent?: boolean;
 };
 
 export type UpdatePreMarketRequestPayload =

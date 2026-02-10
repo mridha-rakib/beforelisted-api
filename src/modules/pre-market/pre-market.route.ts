@@ -63,6 +63,13 @@ router.post(
 // AGENT ROUTES - GENERIC (ALL AGENTS)
 // ============================================
 
+router.put(
+  "/:requestId/visibility",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.updateRequestVisibility.bind(controller),
+);
+
 /**
  * GET /pre-market/all
  * Normal Agents: View all AVAILABLE requests

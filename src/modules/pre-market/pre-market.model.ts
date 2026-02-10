@@ -50,6 +50,10 @@ export interface IPreMarketRequest extends Document {
 
   preferences: string[];
 
+  shareConsent: boolean;
+  visibility: "PRIVATE" | "SHARED";
+  referralAgentId?: Types.ObjectId | string;
+
   status: "Available" | "match" | "matched" | "deleted";
   isActive: boolean;
   viewedBy: {
@@ -166,6 +170,24 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
   } as any,
   preferences: [],
 
+  shareConsent: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
+  visibility: {
+    type: String,
+    enum: ["PRIVATE", "SHARED"],
+    default: "PRIVATE",
+    index: true,
+  } as any,
+  referralAgentId: {
+    type: Types.ObjectId,
+    ref: "User",
+    index: true,
+    sparse: true,
+  } as any,
+
   viewedBy: {
     grantAccessAgents: [
       {
@@ -193,6 +215,8 @@ preMarketSchema.index({ locations: 1 });
 preMarketSchema.index({ "priceRange.min": 1, "priceRange.max": 1 });
 preMarketSchema.index({ "viewedBy.grantAccessAgents": 1 });
 preMarketSchema.index({ "viewedBy.normalAgents": 1 });
+preMarketSchema.index({ referralAgentId: 1 });
+preMarketSchema.index({ visibility: 1 });
 
 // MIDDLEWARE
 

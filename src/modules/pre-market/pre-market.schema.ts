@@ -65,6 +65,7 @@ export const createPreMarketRequestSchema = z.object({
         })
         .optional(),
       preferences: z.array(z.string().trim()).optional(),
+      shareConsent: z.boolean().optional(),
     })
     .refine(
       (data) => data.movingDateRange.earliest < data.movingDateRange.latest,
@@ -213,6 +214,15 @@ export const toggleListingActivationSchema = z.object({
   }),
   body: z.object({
     isActive: z.boolean(),
+  }),
+});
+
+export const updateRequestVisibilitySchema = z.object({
+  params: z.object({
+    requestId: z.string().min(24, "Invalid request ID"),
+  }),
+  body: z.object({
+    visibility: z.enum(["PRIVATE", "SHARED"]),
   }),
 });
 

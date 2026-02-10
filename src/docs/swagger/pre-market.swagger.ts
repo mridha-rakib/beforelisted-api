@@ -47,6 +47,7 @@ export const preMarketPaths = {
                 catsAllowed: true,
                 dogsAllowed: true,
               },
+              shareConsent: false,
             },
           },
         },
@@ -333,6 +334,53 @@ export const preMarketPaths = {
             },
           },
         },
+      },
+    },
+  },
+
+  "/pre-market/{requestId}/visibility": {
+    put: {
+      tags: ["Pre-Market - Agent"],
+      summary: "Update request visibility",
+      description:
+        "Registered agent updates visibility for a pre-market request",
+      operationId: "updatePreMarketRequestVisibility",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "requestId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: {
+                visibility: {
+                  type: "string",
+                  enum: ["PRIVATE", "SHARED"],
+                },
+              },
+              required: ["visibility"],
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: "Request visibility updated",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/PreMarketRequestData" },
+            },
+          },
+        },
+        403: { description: "Forbidden" },
       },
     },
   },

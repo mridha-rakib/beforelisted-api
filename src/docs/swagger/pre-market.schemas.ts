@@ -118,6 +118,11 @@ export const preMarketSchemas = {
         nullable: true,
         example: ["quiet neighborhood", "near subway"],
       },
+      shareConsent: {
+        type: "boolean",
+        description: "Renter consent to share request with other agents",
+        example: false,
+      },
     },
   },
 
@@ -390,6 +395,22 @@ export const preMarketSchemas = {
       bathrooms: {
         type: "array",
         items: { type: "string" },
+      },
+      shareConsent: {
+        type: "boolean",
+        description: "Renter consent to share request with other agents",
+        example: false,
+      },
+      visibility: {
+        type: "string",
+        enum: ["PRIVATE", "SHARED"],
+        description: "Who can see this request",
+        example: "PRIVATE",
+      },
+      referralAgentId: {
+        type: "string",
+        nullable: true,
+        description: "Registered (referral) agent owning this request",
       },
       status: {
         type: "string",

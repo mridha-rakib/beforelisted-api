@@ -296,6 +296,7 @@ export class PreMarketService {
       petPolicy?: any;
       guarantorRequired?: any;
       preferences?: string[];
+      shareConsent?: boolean;
     },
   ): Promise<IPreMarketRequest> {
     const earliest = new Date(payload.movingDateRange.earliest);
@@ -359,6 +360,9 @@ export class PreMarketService {
     const requestNumber = activeListingCount + 1; // will be 1 when single limit enforced
     const requestName = `BeforeListed-${requestNumber}`;
     const requestId = await this.generateUniqueRequestId(requestName, renterId);
+    const shareConsent = payload.shareConsent === true;
+    const referralAgentId =
+      await this.resolveRegisteredAgentIdFromRenter(renter);
 
     // Create request
     const request = await this.preMarketRepository.create({
@@ -376,6 +380,9 @@ export class PreMarketService {
       petPolicy: payload.petPolicy || {},
       preferences: payload.preferences || [],
       guarantorRequired: payload.guarantorRequired || {},
+      shareConsent,
+      visibility: "PRIVATE",
+      ...(referralAgentId ? { referralAgentId } : {}),
       isActive: true,
       isDeleted: false,
       status: "Available",
@@ -500,7 +507,14 @@ export class PreMarketService {
       throw new NotFoundException("Agent profile not found");
     }
     const hasGrantAccess = agent?.hasGrantAccess === true;
-    const visibilityFilter = this.buildAgentVisibilityFilter(agent);
+    const visibilityFilter = await this.buildRequestVisibilityFilterForAgent(
+      agentId,
+    );
+    const cutoffFilter = this.buildAgentVisibilityFilter(agent);
+    const combinedFilters = this.mergeFilters([
+      visibilityFilter,
+      cutoffFilter,
+    ]);
 
     let paginated: PaginatedResponse<IPreMarketRequest>;
     if (!hasGrantAccess) {
@@ -517,7 +531,7 @@ export class PreMarketService {
         await this.preMarketRepository.findAllWithPaginationExcludingIds(
           query,
           excludedIds,
-          visibilityFilter,
+          combinedFilters,
         );
     } else {
       const matchedRecords =
@@ -533,11 +547,11 @@ export class PreMarketService {
         ? await this.preMarketRepository.findAllWithPaginationExcludingIds(
             query,
             excludedIds,
-            visibilityFilter,
+            combinedFilters,
           )
         : await this.preMarketRepository.findAllWithPagination(
             query,
-            visibilityFilter,
+            combinedFilters,
           );
     }
 
@@ -835,6 +849,108 @@ export class PreMarketService {
     }
 
     return null;
+  }
+
+  private async resolveRegisteredAgentIdFromRenter(
+    renter: any,
+  ): Promise<string | null> {
+    if (!renter) {
+      return null;
+    }
+
+    if (renter.registrationType === "agent_referral" && renter.referredByAgentId) {
+      const resolved = this.normalizeUserId(renter.referredByAgentId);
+      if (resolved) {
+        return resolved;
+      }
+    }
+
+    const defaultAgent = await this.getDefaultReferralAgent();
+    return defaultAgent.id || null;
+  }
+
+  private async resolveRegisteredAgentIdForRequest(
+    request: IPreMarketRequest,
+  ): Promise<string | null> {
+    const fromRequest = this.normalizeUserId(
+      (request as unknown as { referralAgentId?: string | Types.ObjectId })
+        .referralAgentId,
+    );
+    if (fromRequest) {
+      return fromRequest;
+    }
+
+    const renter = await this.renterRepository.findRenterWithReferrer(
+      request.renterId.toString(),
+    );
+    if (!renter) {
+      return null;
+    }
+
+    return this.resolveRegisteredAgentIdFromRenter(renter);
+  }
+
+  private mergeFilters(filters: Array<Record<string, any>>): Record<string, any> {
+    const active = filters.filter(
+      (filter) => filter && Object.keys(filter).length > 0,
+    );
+    if (active.length === 0) {
+      return {};
+    }
+    if (active.length === 1) {
+      return active[0];
+    }
+    return { $and: active };
+  }
+
+  private async buildRequestVisibilityFilterForAgent(
+    agentId: string,
+  ): Promise<Record<string, any>> {
+    const orConditions: Record<string, any>[] = [
+      { visibility: "SHARED" },
+      { referralAgentId: agentId },
+    ];
+
+    const referredRenters = await this.renterRepository.findRentersByAgent(
+      agentId,
+    );
+    if (Array.isArray(referredRenters) && referredRenters.length > 0) {
+      const renterIds = referredRenters
+        .map((renter) => renter._id?.toString())
+        .filter((id): id is string => Boolean(id));
+      if (renterIds.length > 0) {
+        orConditions.push({ renterId: { $in: renterIds } });
+      }
+    }
+
+    return { $or: orConditions };
+  }
+
+  public async ensureAgentCanViewRequestVisibility(
+    agentId: string,
+    request: IPreMarketRequest,
+  ): Promise<void> {
+    const visibility =
+      (request as unknown as { visibility?: string }).visibility ?? "PRIVATE";
+    if (visibility === "SHARED") {
+      return;
+    }
+
+    const registeredAgentId =
+      await this.resolveRegisteredAgentIdForRequest(request);
+    if (registeredAgentId && registeredAgentId === agentId) {
+      return;
+    }
+
+    const requestId = request._id?.toString();
+    if (requestId) {
+      const matched = await this.getMatchedAccessRecord(agentId, requestId);
+      if (matched) {
+        return;
+      }
+    }
+
+    throw new ForbiddenException("This request is not available");
   }
 
   private async notifyRenterAboutAdminDeletion(
@@ -1160,6 +1276,47 @@ export class PreMarketService {
     }
   }
 
+  // ============================================
+  // VISIBILITY (AGENT-OWNED)
+  // ============================================
+
+  async updateRequestVisibility(
+    agentId: string,
+    requestId: string,
+    visibility: "PRIVATE" | "SHARED",
+  ): Promise<IPreMarketRequest> {
+    const request = await this.getRequestById(requestId);
+    const registeredAgentId =
+      await this.resolveRegisteredAgentIdForRequest(request);
+
+    if (!registeredAgentId || registeredAgentId !== agentId) {
+      throw new ForbiddenException(
+        "Only the registered agent can change request visibility",
+      );
+    }
+
+    if (request.shareConsent !== true && visibility === "SHARED") {
+      throw new ForbiddenException(
+        "Renter consent is required to share this request",
+      );
+    }
+
+    const nextVisibility =
+      visibility === "SHARED" && request.shareConsent === true
+        ? "SHARED"
+        : "PRIVATE";
+
+    const updated = await this.preMarketRepository.updateById(requestId, {
+      visibility: nextVisibility,
+    } as Partial<IPreMarketRequest>);
+
+    if (!updated) {
+      throw new NotFoundException("Pre-market request not found");
+    }
+
+    return updated;
+  }
+
   async expireRequests(): Promise<{
     expiredCount: number;
     deletedCount: number;
@@ -1383,6 +1540,7 @@ export class PreMarketService {
 
     const request = await this.getRequestById(requestId);
     this.ensureAgentCanViewRequest(agent, request);
+    await this.ensureAgentCanViewRequestVisibility(agentId, request);
 
     const enrichedRequest = await this.enrichRequestWithRenterInfo(
       request,
@@ -1412,6 +1570,10 @@ export class PreMarketService {
     }
 
     this.ensureAgentCanViewRequest(agent, listingActivationCheck as any);
+    await this.ensureAgentCanViewRequestVisibility(
+      agentId,
+      listingActivationCheck as any,
+    );
 
     if (!listingActivationCheck.isActive) {
       throw new ForbiddenException(
@@ -1845,10 +2007,18 @@ export class PreMarketService {
     }
 
     // Get requests for this agent
+    const visibilityFilter = await this.buildRequestVisibilityFilterForAgent(
+      agentId,
+    );
+    const cutoffFilter = this.buildAgentVisibilityFilter(agent);
+    const combinedFilters = this.mergeFilters([
+      visibilityFilter,
+      cutoffFilter,
+    ]);
     const paginated = await this.preMarketRepository.findForGrantAccessAgents(
       agentId,
       query,
-      this.buildAgentVisibilityFilter(agent),
+      combinedFilters,
     );
 
     // Enrich each request with full renter information
@@ -1992,11 +2162,19 @@ export class PreMarketService {
     }
 
     // Get all Available status requests
+    const visibilityFilter = await this.buildRequestVisibilityFilterForAgent(
+      agentId,
+    );
+    const cutoffFilter = this.buildAgentVisibilityFilter(agent);
+    const combinedFilters = this.mergeFilters([
+      visibilityFilter,
+      cutoffFilter,
+    ]);
     const paginated =
       await this.preMarketRepository.findAvailableForNormalAgents(
         agentId,
         query,
-        this.buildAgentVisibilityFilter(agent),
+        combinedFilters,
       );
 
     // For each request, conditionally include renter info
