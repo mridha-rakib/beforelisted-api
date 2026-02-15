@@ -392,6 +392,61 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       .exec() as Promise<IPreMarketRequest | null>;
   }
 
+  async claimRequestLock(
+    requestId: string,
+    agentId: string
+  ): Promise<IPreMarketRequest | null> {
+    return this.model
+      .findOneAndUpdate(
+        {
+          _id: requestId,
+          isDeleted: { $ne: true },
+          $or: [
+            { lockedByAgentId: { $exists: false } },
+            { lockedByAgentId: null },
+            { lockedByAgentId: agentId },
+          ],
+        },
+        {
+          $set: {
+            lockedByAgentId: agentId,
+            lockedAt: new Date(),
+          },
+        },
+        { new: true }
+      )
+      .lean()
+      .exec() as Promise<IPreMarketRequest | null>;
+  }
+
+  async releaseRequestLock(
+    requestId: string,
+    agentId?: string
+  ): Promise<IPreMarketRequest | null> {
+    const filter: Record<string, any> = {
+      _id: requestId,
+      isDeleted: { $ne: true },
+    };
+
+    if (agentId) {
+      filter.lockedByAgentId = agentId;
+    }
+
+    return this.model
+      .findOneAndUpdate(
+        filter,
+        {
+          $unset: {
+            lockedByAgentId: "",
+            lockedAt: "",
+          },
+        },
+        { new: true }
+      )
+      .lean()
+      .exec() as Promise<IPreMarketRequest | null>;
+  }
+
   async toggleListingActive(
     id: string,
     isActive: boolean

@@ -8,7 +8,14 @@ export const agentSchemas = {
 
   AgentRegisterRequest: {
     type: "object",
-    required: ["fullName", "email", "password", "licenseNumber", "brokerageName"],
+    required: [
+      "fullName",
+      "email",
+      "password",
+      "licenseNumber",
+      "brokerageName",
+      "title",
+    ],
     properties: {
       fullName: {
         type: "string",
@@ -46,6 +53,15 @@ export const agentSchemas = {
         example: "Smith & Associates Realty",
         description: "Name of brokerage firm",
       },
+      title: {
+        type: "string",
+        enum: [
+          "Licensed Real Estate Salesperson",
+          "Associate Real Estate Broker",
+        ],
+        example: "Licensed Real Estate Salesperson",
+        description: "Standardized agent credential title",
+      },
     },
   },
 
@@ -63,6 +79,14 @@ export const agentSchemas = {
         minLength: 1,
         maxLength: 100,
         example: "Updated Brokerage Name",
+      },
+      title: {
+        type: "string",
+        enum: [
+          "Licensed Real Estate Salesperson",
+          "Associate Real Estate Broker",
+        ],
+        example: "Associate Real Estate Broker",
       },
     },
   },
@@ -514,6 +538,14 @@ export const agentSchemas = {
       brokerageName: {
         type: "string",
         example: "Smith & Associates Realty",
+      },
+      title: {
+        type: "string",
+        enum: [
+          "Licensed Real Estate Salesperson",
+          "Associate Real Estate Broker",
+        ],
+        example: "Licensed Real Estate Salesperson",
       },
       isActive: {
         type: "boolean",

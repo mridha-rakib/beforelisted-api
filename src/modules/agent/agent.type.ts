@@ -1,5 +1,12 @@
 // file: src/modules/agent/agent.type.ts
 
+export const AGENT_TITLES = [
+  "Licensed Real Estate Salesperson",
+  "Associate Real Estate Broker",
+] as const;
+
+export type AgentTitle = (typeof AGENT_TITLES)[number];
+
 export type AgentRegisterPayload = {
   // User fields
   email: string;
@@ -10,11 +17,13 @@ export type AgentRegisterPayload = {
   // Agent-specific fields
   licenseNumber: string;
   brokerageName: string;
+  title: AgentTitle;
 };
 
 export type CreateAgentProfilePayload = {
   licenseNumber: string;
   brokerageName: string;
+  title: AgentTitle;
 };
 
 export type UpdateAgentProfilePayload = {
@@ -22,6 +31,7 @@ export type UpdateAgentProfilePayload = {
   phoneNumber?: string;
   licenseNumber?: string;
   brokerageName?: string;
+  title?: AgentTitle;
   emailSubscriptionEnabled?: boolean;
 };
 
@@ -30,6 +40,7 @@ export type AgentProfileResponse = {
   userInfo: string | any;
   licenseNumber: string;
   brokerageName: string;
+  title: AgentTitle;
   profileImageUrl: string | null;
 
   isActive: boolean;

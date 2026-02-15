@@ -25,6 +25,7 @@ import {
   createPreMarketRequestSchema,
   preMarketListSchema,
   requestAccessSchema,
+  toggleShareVisibilitySchema,
   toggleListingActivationSchema,
   updateRequestVisibilitySchema,
   updatePreMarketRequestSchema,
@@ -552,6 +553,19 @@ export class PreMarketController {
       ApiResponse.success(res, updated, "Request visibility updated");
     }
   );
+
+  toggleShareVisibility = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(toggleShareVisibilitySchema, req);
+    const agentId = req.user!.userId;
+
+    const updated = await this.preMarketService.toggleRequestShareVisibility(
+      agentId,
+      validated.params.requestId
+    );
+
+    const mode = updated.visibility === "SHARED" ? "ON (Shared)" : "OFF (Private)";
+    ApiResponse.success(res, updated, `Share toggle updated: ${mode}`);
+  });
 
   // ============================================
   // ADMIN: GET ALL PRE-MARKET REQUESTS (FULL)

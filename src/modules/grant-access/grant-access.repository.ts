@@ -836,6 +836,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
           phone: agentInfo?.phoneNumber || "",
           brokerageName: agentProfile?.brokerageName || null,
           licenseNumber: agentProfile?.licenseNumber || null,
+          title: agentProfile?.title || null,
           yearsOfExperience: agentProfile?.yearsOfExperience || null,
           hasGrantAccess: agentProfile?.hasGrantAccess || false,
           accountStatus: agentProfile?.accountStatus || "pending",

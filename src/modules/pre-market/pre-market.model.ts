@@ -54,6 +54,8 @@ export interface IPreMarketRequest extends Document {
   scope: "Upcoming" | "All Market";
   visibility: "PRIVATE" | "SHARED";
   referralAgentId?: Types.ObjectId | string;
+  lockedByAgentId?: Types.ObjectId | string;
+  lockedAt?: Date;
 
   status: "Available" | "match" | "matched" | "deleted";
   isActive: boolean;
@@ -194,6 +196,16 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
     index: true,
     sparse: true,
   } as any,
+  lockedByAgentId: {
+    type: Types.ObjectId,
+    ref: "User",
+    index: true,
+    sparse: true,
+  } as any,
+  lockedAt: {
+    type: Date,
+    index: true,
+  } as any,
 
   viewedBy: {
     grantAccessAgents: [
@@ -225,6 +237,7 @@ preMarketSchema.index({ "viewedBy.normalAgents": 1 });
 preMarketSchema.index({ referralAgentId: 1 });
 preMarketSchema.index({ visibility: 1 });
 preMarketSchema.index({ referralAgentId: 1, visibility: 1, createdAt: -1 });
+preMarketSchema.index({ visibility: 1, lockedByAgentId: 1, createdAt: -1 });
 
 // MIDDLEWARE
 

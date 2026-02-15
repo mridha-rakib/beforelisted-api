@@ -10,6 +10,7 @@ import { ExcelService } from "@/services/excel.service";
 import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from "@/utils/app-error.utils";
@@ -343,8 +344,17 @@ export class PreMarketService {
         const agentProfile =
           await this.agentRepository.findByUserId(referredAgentId);
         if (agentProfile?.acceptingRequests === false) {
+          let blockedAgentName = referredAgentName;
+          if (!blockedAgentName || blockedAgentName === DEFAULT_REFERRAL_AGENT_NAME) {
+            const referredAgentUser =
+              await this.userRepository.findById(referredAgentId);
+            if (referredAgentUser?.fullName) {
+              blockedAgentName = referredAgentUser.fullName;
+            }
+          }
+
           throw new BadRequestException(
-            `${referredAgentName} is not accepting new requests at this time. Please try again later.`,
+            `New renter requests are temporarily unavailable for ${blockedAgentName} due to current capacity. Please check back later and submit your request again.`,
           );
         }
       }
@@ -875,11 +885,42 @@ export class PreMarketService {
     return { $and: active };
   }
 
+  private buildLockVisibilityFilter(agentId: string): Record<string, any> {
+    return {
+      $or: [
+        { lockedByAgentId: { $exists: false } },
+        { lockedByAgentId: null },
+        { lockedByAgentId: agentId },
+      ],
+    };
+  }
+
+  private isRequestLockedForOtherAgent(
+    agentId: string,
+    request: IPreMarketRequest,
+  ): boolean {
+    const lockOwner = this.normalizeUserId(
+      (request as unknown as { lockedByAgentId?: string | Types.ObjectId })
+        .lockedByAgentId,
+    );
+
+    return Boolean(lockOwner && lockOwner !== agentId);
+  }
+
   private async buildRequestVisibilityFilterForAgent(
     agentId: string,
   ): Promise<Record<string, any>> {
+    const sharedLockFilter = this.buildLockVisibilityFilter(agentId);
+
     return {
-      $or: [{ visibility: "SHARED" }, { referralAgentId: agentId }],
+      $or: [
+        {
+          $and: [{ visibility: "PRIVATE" }, { referralAgentId: agentId }],
+        },
+        {
+          $and: [{ visibility: "SHARED" }, sharedLockFilter],
+        },
+      ],
     };
   }
 
@@ -890,21 +931,21 @@ export class PreMarketService {
     const visibility =
       (request as unknown as { visibility?: string }).visibility ?? "PRIVATE";
     if (visibility === "SHARED") {
-      return;
+      if (!this.isRequestLockedForOtherAgent(agentId, request)) {
+        return;
+      }
+
+      throw new ForbiddenException("This request is not available");
+    }
+
+    if (this.isRequestLockedForOtherAgent(agentId, request)) {
+      throw new ForbiddenException("This request is not available");
     }
 
     const registeredAgentId =
       await this.resolveRegisteredAgentIdForRequest(request);
     if (registeredAgentId && registeredAgentId === agentId) {
       return;
-    }
-
-    const requestId = request._id?.toString();
-    if (requestId) {
-      const matched = await this.getMatchedAccessRecord(agentId, requestId);
-      if (matched) {
-        return;
-      }
     }
 
     throw new ForbiddenException("This request is not available");
@@ -1237,12 +1278,47 @@ export class PreMarketService {
   // VISIBILITY (AGENT-OWNED)
   // ============================================
 
+  async toggleRequestShareVisibility(
+    agentId: string,
+    requestId: string,
+  ): Promise<IPreMarketRequest> {
+    const request = await this.getRequestById(requestId);
+    const registeredAgentId =
+      await this.resolveRegisteredAgentIdForRequest(request);
+
+    if (!registeredAgentId || registeredAgentId !== agentId) {
+      throw new ForbiddenException(
+        "Only the registered agent can change request visibility",
+      );
+    }
+
+    if (request.shareConsent !== true) {
+      throw new ForbiddenException(
+        "Renter consent is required to use share toggle for this request",
+      );
+    }
+
+    const currentVisibility =
+      (request as unknown as { visibility?: "PRIVATE" | "SHARED" }).visibility ??
+      "PRIVATE";
+    const nextVisibility =
+      currentVisibility === "SHARED" ? "PRIVATE" : "SHARED";
+
+    return this.updateRequestVisibility(agentId, requestId, nextVisibility);
+  }
+
   async updateRequestVisibility(
     agentId: string,
     requestId: string,
     visibility: "PRIVATE" | "SHARED",
   ): Promise<IPreMarketRequest> {
     const request = await this.getRequestById(requestId);
+    if (this.isRequestLockedForOtherAgent(agentId, request)) {
+      throw new ForbiddenException(
+        "Visibility cannot be changed while another agent owns this request",
+      );
+    }
+
     const registeredAgentId =
       await this.resolveRegisteredAgentIdForRequest(request);
 
@@ -1437,13 +1513,35 @@ export class PreMarketService {
       return timeB - timeA;
     });
 
+    const visibleListings: IPreMarketRequest[] = [];
+    for (const listing of sortedListings) {
+      if (this.isRequestLockedForOtherAgent(agentId, listing)) {
+        continue;
+      }
+
+      const visibility =
+        (listing as unknown as { visibility?: "PRIVATE" | "SHARED" }).visibility ??
+        "PRIVATE";
+
+      if (visibility === "SHARED") {
+        visibleListings.push(listing);
+        continue;
+      }
+
+      const registeredAgentId =
+        await this.resolveRegisteredAgentIdForRequest(listing);
+      if (registeredAgentId && registeredAgentId === agentId) {
+        visibleListings.push(listing);
+      }
+    }
+
     // Manual pagination - counts ONLY your filtered results
     const page = (query.page as number) || 1;
     const limit = (query.limit as number) || 10;
-    const total = sortedListings.length;
+    const total = visibleListings.length;
     const pages = Math.ceil(total / limit);
     const startIndex = (page - 1) * limit;
-    const paginatedData = sortedListings.slice(startIndex, startIndex + limit);
+    const paginatedData = visibleListings.slice(startIndex, startIndex + limit);
 
     // Enrich with renter info
     const enrichedData = await Promise.all(
@@ -1538,6 +1636,16 @@ export class PreMarketService {
       );
     }
 
+    const lockClaimed = await this.preMarketRepository.claimRequestLock(
+      requestId,
+      agentId,
+    );
+    if (!lockClaimed) {
+      throw new ConflictException(
+        "Another agent already matched or requested this listing",
+      );
+    }
+
     const existing = await this.grantAccessRepository.findByAgentAndRequest(
       agentId,
       requestId,
@@ -1547,24 +1655,36 @@ export class PreMarketService {
       !existing || (existing.status !== "free" && existing.status !== "paid");
 
     let matchRecord: IGrantAccessRequest;
-    if (existing) {
-      if (existing.status === "free" || existing.status === "paid") {
-        return existing;
+    try {
+      if (existing) {
+        if (existing.status === "free" || existing.status === "paid") {
+          return existing;
+        }
+
+        const updated = await this.grantAccessRepository.updateById(
+          existing._id.toString(),
+          { status: "free" },
+        );
+
+        matchRecord = updated || existing;
+      } else {
+        matchRecord = await this.grantAccessRepository.create({
+          preMarketRequestId: requestId,
+          agentId,
+          status: "free",
+          createdAt: new Date(),
+        });
       }
-
-      const updated = await this.grantAccessRepository.updateById(
-        existing._id.toString(),
-        { status: "free" },
-      );
-
-      matchRecord = updated || existing;
-    } else {
-      matchRecord = await this.grantAccessRepository.create({
-        preMarketRequestId: requestId,
-        agentId,
-        status: "free",
-        createdAt: new Date(),
-      });
+    } catch (error) {
+      await this.preMarketRepository
+        .releaseRequestLock(requestId, agentId)
+        .catch((unlockError) => {
+          logger.error(
+            { unlockError, requestId, agentId },
+            "Failed to release request lock after match failure",
+          );
+        });
+      throw error;
     }
 
     if (shouldNotify) {
@@ -2787,6 +2907,7 @@ export class PreMarketService {
                     email: agentUser.email,
                     phoneNumber: agentUser.phoneNumber || null,
                     licenseNumber: agentProfile.licenseNumber,
+                    title: agentProfile.title || null,
                     profileImageUrl: agentUser.profileImageUrl || null,
                     accessStatus,
                     ...(hasGrantAccess && { hasGrantAccess }),

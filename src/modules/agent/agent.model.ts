@@ -3,6 +3,7 @@
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 import { model, Types } from "mongoose";
 import type { IAgentProfile } from "./agent.interface";
+import { AGENT_TITLES } from "./agent.type";
 
 const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
   userId: {
@@ -23,6 +24,13 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
   brokerageName: {
     type: String,
     required: true,
+  },
+
+  title: {
+    type: String,
+    enum: AGENT_TITLES,
+    required: true,
+    index: true,
   },
 
   isActive: {

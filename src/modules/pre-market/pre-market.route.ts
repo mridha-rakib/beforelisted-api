@@ -70,6 +70,13 @@ router.put(
   controller.updateRequestVisibility.bind(controller),
 );
 
+router.patch(
+  "/:requestId/toggle-share",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.toggleShareVisibility.bind(controller),
+);
+
 /**
  * GET /pre-market/all
  * Agents: View all visible requests

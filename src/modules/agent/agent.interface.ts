@@ -1,6 +1,7 @@
 // file: src/modules/agent/agent.interface.ts
 
 import type { Document, Types } from "mongoose";
+import type { AgentTitle } from "./agent.type";
 
 export interface IAccessToggleRecord {
   action: "granted" | "revoked";
@@ -25,6 +26,7 @@ export interface IAgentProfile extends Document {
   userId: Types.ObjectId;
   licenseNumber: string;
   brokerageName: string;
+  title: AgentTitle;
 
   // Activation Status
   isActive: boolean;

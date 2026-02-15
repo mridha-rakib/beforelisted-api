@@ -257,7 +257,7 @@ export const preMarketPaths = {
               properties: {
                 visibility: {
                   type: "string",
-                  enum: ["private", "public", "matched"],
+                  enum: ["PRIVATE", "SHARED"],
                 },
               },
             },
@@ -268,6 +268,29 @@ export const preMarketPaths = {
         "200": { description: "Visibility updated successfully" },
         "400": { description: "Invalid payload" },
         "401": { description: "Unauthorized" },
+        "404": { description: "Request not found" },
+      },
+    },
+  },
+
+  "/pre-market/{requestId}/toggle-share": {
+    patch: {
+      tags: ["Pre-Market - Agent"],
+      summary: "Toggle share visibility (PRIVATE <-> SHARED)",
+      operationId: "togglePreMarketRequestShareVisibility",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "requestId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      responses: {
+        "200": { description: "Share visibility toggled successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - only registered agent can toggle" },
         "404": { description: "Request not found" },
       },
     },

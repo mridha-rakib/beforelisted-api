@@ -1,6 +1,7 @@
 // file: src/modules/agent/agent.schema.ts
 
 import { z } from "zod";
+import { AGENT_TITLES } from "./agent.type";
 
 
 export const agentRegisterSchema = z.object({
@@ -14,6 +15,7 @@ export const agentRegisterSchema = z.object({
     // Agent-specific fields
     licenseNumber: z.string().min(1, "License number is required").max(50),
     brokerageName: z.string().min(1, "Brokerage name is required").max(100),
+    title: z.enum(AGENT_TITLES),
   }),
 });
 
@@ -22,6 +24,7 @@ export const createAgentProfileSchema = z.object({
   body: z.object({
     licenseNumber: z.string().min(1, "License number is required").max(100),
     brokerageName: z.string().min(1, "Brokerage name is required").max(100),
+    title: z.enum(AGENT_TITLES),
   }),
 });
 
@@ -32,6 +35,7 @@ export const updateAgentProfileSchema = z.object({
     phoneNumber: z.string().optional(),
     licenseNumber: z.string().min(1).max(100).optional(),
     brokerageName: z.string().min(1).max(100).optional(),
+    title: z.enum(AGENT_TITLES).optional(),
     emailSubscriptionEnabled: z.boolean().optional(),
   }),
 });

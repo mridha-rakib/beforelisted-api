@@ -144,13 +144,36 @@ export class GrantAccessService {
       );
     }
 
-    // Create grant access request
-    const grantAccess = await this.grantAccessRepository.create({
+    const lockClaimed = await this.preMarketRepository.claimRequestLock(
       preMarketRequestId,
       agentId,
-      status: "pending",
-      createdAt: new Date(),
-    });
+    );
+    if (!lockClaimed) {
+      throw new ConflictException(
+        "Another agent already matched or requested this listing",
+      );
+    }
+
+    // Create grant access request
+    let grantAccess: IGrantAccessRequest;
+    try {
+      grantAccess = await this.grantAccessRepository.create({
+        preMarketRequestId,
+        agentId,
+        status: "pending",
+        createdAt: new Date(),
+      });
+    } catch (error) {
+      await this.preMarketRepository
+        .releaseRequestLock(preMarketRequestId, agentId)
+        .catch((unlockError) => {
+          logger.error(
+            { unlockError, preMarketRequestId, agentId },
+            "Failed to release request lock after create failure",
+          );
+        });
+      throw error;
+    }
 
     logger.info({ agentId }, `Grant access requested: ${preMarketRequestId}`);
 
@@ -239,6 +262,10 @@ export class GrantAccessService {
       };
 
       await this.grantAccessRepository.updateById(grantAccessId, grantAccess);
+      await this.preMarketRepository.releaseRequestLock(
+        grantAccess.preMarketRequestId.toString(),
+        grantAccess.agentId.toString(),
+      );
       await this.notifier.notifyAgentOfRejection(grantAccess);
 
       try {

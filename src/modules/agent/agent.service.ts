@@ -86,6 +86,7 @@ export class AgentService {
       userId: user._id,
       licenseNumber: payload.licenseNumber,
       brokerageName: payload.brokerageName,
+      title: payload.title,
       isVerified: false,
       isSuspended: false,
       isApprovedByAdmin: false,
@@ -147,6 +148,7 @@ export class AgentService {
       userId,
       licenseNumber: payload.licenseNumber,
       brokerageName: payload.brokerageName,
+      title: payload.title,
       isVerified: false,
       isSuspended: false,
       isApprovedByAdmin: false,
@@ -187,6 +189,7 @@ export class AgentService {
       agentPayload.licenseNumber = payload.licenseNumber;
     if (payload.brokerageName)
       agentPayload.brokerageName = payload.brokerageName;
+    if (payload.title) agentPayload.title = payload.title;
     if (payload.emailSubscriptionEnabled !== undefined) {
       agentPayload.emailSubscriptionEnabled = payload.emailSubscriptionEnabled;
     }
@@ -666,6 +669,7 @@ export class AgentService {
           : (agent.userId?.toString() ?? ""),
       licenseNumber: agent.licenseNumber,
       brokerageName: agent.brokerageName,
+      title: agent.title,
       isActive: agent.isActive,
       activeAt: agent.activeAt,
       totalRentersReferred: agent.totalRentersReferred,
