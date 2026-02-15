@@ -72,8 +72,8 @@ router.put(
 
 /**
  * GET /pre-market/all
- * Normal Agents: View all AVAILABLE requests
- * Renter info visibility depends on access level
+ * Agents: View all visible requests
+ * Private requests are visible only to the renter's registered referral agent.
  */
 router.get(
   "/all",
@@ -202,6 +202,7 @@ router.get(
 router.get(
   "/admin/excel-renter-listings",
   authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
   controller.downloadPreMarketListingsExcel.bind(controller),
 );
 
@@ -215,6 +216,7 @@ router.get(
 router.get(
   "/",
   authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
   controller.getAllListingsWithAllData.bind(controller),
 );
 

@@ -13,6 +13,7 @@ export type PreMarketBedroom = (typeof PREMARKET_CONFIG.BEDROOMS)[number];
 export type PreMarketBathroom = (typeof PREMARKET_CONFIG.BATHROOMS)[number];
 export type PreMarketStatus =
   (typeof PREMARKET_CONFIG.REQUEST_STATUSES)[number];
+export type PreMarketScope = "Upcoming" | "All Market";
 
 export type CreatePreMarketRequestPayload = {
   movingDateRange: {
@@ -46,6 +47,7 @@ export type CreatePreMarketRequestPayload = {
     thirdPartyGuarantor?: boolean;
   };
   shareConsent?: boolean;
+  scope?: PreMarketScope;
 };
 
 export type UpdatePreMarketRequestPayload =

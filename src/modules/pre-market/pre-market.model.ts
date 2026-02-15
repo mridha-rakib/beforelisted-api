@@ -51,6 +51,7 @@ export interface IPreMarketRequest extends Document {
   preferences: string[];
 
   shareConsent: boolean;
+  scope: "Upcoming" | "All Market";
   visibility: "PRIVATE" | "SHARED";
   referralAgentId?: Types.ObjectId | string;
 
@@ -174,7 +175,13 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
     type: Boolean,
     default: false,
     index: true,
-  },
+  } as any,
+  scope: {
+    type: String,
+    enum: ["Upcoming", "All Market"],
+    default: "Upcoming",
+    index: true,
+  } as any,
   visibility: {
     type: String,
     enum: ["PRIVATE", "SHARED"],
@@ -217,6 +224,7 @@ preMarketSchema.index({ "viewedBy.grantAccessAgents": 1 });
 preMarketSchema.index({ "viewedBy.normalAgents": 1 });
 preMarketSchema.index({ referralAgentId: 1 });
 preMarketSchema.index({ visibility: 1 });
+preMarketSchema.index({ referralAgentId: 1, visibility: 1, createdAt: -1 });
 
 // MIDDLEWARE
 

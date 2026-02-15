@@ -123,6 +123,12 @@ export const preMarketSchemas = {
         description: "Renter consent to share request with other agents",
         example: false,
       },
+      scope: {
+        type: "string",
+        enum: ["Upcoming", "All Market"],
+        description: "Market scope selected by renter",
+        example: "Upcoming",
+      },
     },
   },
 
@@ -400,6 +406,12 @@ export const preMarketSchemas = {
         type: "boolean",
         description: "Renter consent to share request with other agents",
         example: false,
+      },
+      scope: {
+        type: "string",
+        enum: ["Upcoming", "All Market"],
+        description: "Normalized market scope selected by renter",
+        example: "Upcoming",
       },
       visibility: {
         type: "string",

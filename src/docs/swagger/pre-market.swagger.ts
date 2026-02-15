@@ -1,128 +1,59 @@
 // file: src/docs/swagger/pre-market.swagger.ts
-// OpenAPI endpoint definitions for Pre-Market module
+// OpenAPI paths for Pre-Market endpoints
 
 export const preMarketPaths = {
-  // ==========================================
-  // RENTER ENDPOINTS
-  // ==========================================
-
   "/pre-market/create": {
     post: {
-      tags: ["Pre-Market Management"],
+      tags: ["Pre-Market - Renter"],
       summary: "Create pre-market request",
-      description:
-        "Create a new pre-market request to find properties before they're listed",
       operationId: "createPreMarketRequest",
       security: [{ bearerAuth: [] }],
       requestBody: {
         required: true,
         content: {
           "application/json": {
-            schema: {
-              $ref: "#/components/schemas/CreatePreMarketRequestPayload",
-            },
-            example: {
-              movingDateRange: {
-                earliest: "2024-06-01",
-                latest: "2024-08-31",
-              },
-              priceRange: { min: 2500, max: 4500 },
-              locations: [
-                {
-                  borough: "Manhattan",
-                  neighborhoods: ["Upper West Side", "Upper East Side"],
-                },
-              ],
-              bedrooms: ["1", "2"],
-              bathrooms: ["1", "1.5", "2"],
-              unitFeatures: {
-                laundryInUnit: true,
-                dishwasher: true,
-              },
-              buildingFeatures: {
-                doorman: true,
-                elevator: true,
-              },
-              petPolicy: {
-                catsAllowed: true,
-                dogsAllowed: true,
-              },
-              shareConsent: false,
-            },
+            schema: { $ref: "#/components/schemas/CreatePreMarketRequest" },
           },
         },
       },
       responses: {
-        201: {
-          description: "Pre-market request created successfully",
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/PreMarketRequestResponse" },
-            },
-          },
-        },
-        400: {
-          description: "Invalid request data",
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/ErrorResponse" },
-            },
-          },
-        },
-        401: { description: "Unauthorized" },
+        "201": { description: "Pre-market request created successfully" },
+        "400": { description: "Invalid payload" },
+        "401": { description: "Unauthorized" },
       },
     },
   },
 
   "/pre-market/my-requests": {
     get: {
-      tags: ["Pre-Market Management"],
-      summary: "Get renter's pre-market requests",
-      description:
-        "Get all pre-market requests created by the authenticated renter",
-      operationId: "getRenterRequests",
+      tags: ["Pre-Market - Renter"],
+      summary: "Get renter's own requests",
+      operationId: "getRenterPreMarketRequests",
       security: [{ bearerAuth: [] }],
-      parameters: [
-        {
-          name: "page",
-          in: "query",
-          schema: { type: "integer", default: 1 },
-          description: "Page number",
-        },
-        {
-          name: "limit",
-          in: "query",
-          schema: { type: "integer", default: 10 },
-          description: "Items per page",
-        },
-        {
-          name: "sort",
-          in: "query",
-          schema: { type: "string", default: "-createdAt" },
-          description: "Sort field",
-        },
-      ],
       responses: {
-        200: {
-          description: "Renter requests retrieved successfully",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/PaginatedPreMarketResponse",
-              },
-            },
-          },
-        },
-        401: { description: "Unauthorized" },
+        "200": { description: "Requests retrieved successfully" },
+        "401": { description: "Unauthorized" },
       },
     },
   },
 
-  "/pre-market/{requestId}": {
+  "/pre-market/renter/requests/with-agents": {
     get: {
-      tags: ["Pre-Market Management"],
-      summary: "Get renter's request details",
-      description: "Get specific pre-market request details created by renter",
+      tags: ["Pre-Market - Renter"],
+      summary: "Get renter requests with matched agents",
+      operationId: "getRenterRequestsWithAgents",
+      security: [{ bearerAuth: [] }],
+      responses: {
+        "200": { description: "Requests retrieved successfully" },
+        "401": { description: "Unauthorized" },
+      },
+    },
+  },
+
+  "/pre-market/renter/{requestId}": {
+    get: {
+      tags: ["Pre-Market - Renter"],
+      summary: "Get renter request by ID",
       operationId: "getRenterRequestById",
       security: [{ bearerAuth: [] }],
       parameters: [
@@ -131,25 +62,110 @@ export const preMarketPaths = {
           in: "path",
           required: true,
           schema: { type: "string" },
-          description: "Pre-market request ID",
         },
       ],
       responses: {
-        200: {
-          description: "Request details retrieved",
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/PreMarketRequestData" },
-            },
-          },
+        "200": { description: "Request retrieved successfully" },
+        "401": { description: "Unauthorized" },
+        "404": { description: "Request not found" },
+      },
+    },
+  },
+
+  "/pre-market/agent/all-requests": {
+    get: {
+      tags: ["Pre-Market - Agent"],
+      summary: "Get all requests assigned to agent",
+      operationId: "getAllRequestsForAgent",
+      security: [{ bearerAuth: [] }],
+      responses: {
+        "200": { description: "Requests retrieved successfully" },
+        "401": { description: "Unauthorized" },
+      },
+    },
+  },
+
+  "/pre-market/agent/{requestId}": {
+    get: {
+      tags: ["Pre-Market - Agent"],
+      summary: "Get request details for grant-access agent",
+      operationId: "getRequestDetailsForGrantAccessAgent",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "requestId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
         },
-        404: { description: "Request not found" },
+      ],
+      responses: {
+        "200": { description: "Request details retrieved successfully" },
+        "401": { description: "Unauthorized" },
+        "404": { description: "Request not found" },
+      },
+    },
+  },
+
+  "/pre-market/agent/{requestId}/match": {
+    post: {
+      tags: ["Pre-Market - Agent"],
+      summary: "Match request for agent",
+      operationId: "matchRequestForAgent",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "requestId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      responses: {
+        "200": { description: "Request matched successfully" },
+        "401": { description: "Unauthorized" },
+        "404": { description: "Request not found" },
+      },
+    },
+  },
+
+  "/pre-market/all": {
+    get: {
+      tags: ["Pre-Market - Agent"],
+      summary: "Get all available requests",
+      operationId: "getAllPreMarketRequestsForAgent",
+      security: [{ bearerAuth: [] }],
+      responses: {
+        "200": { description: "Requests retrieved successfully" },
+        "401": { description: "Unauthorized" },
+      },
+    },
+  },
+
+  "/pre-market/{requestId}": {
+    get: {
+      tags: ["Pre-Market - Agent"],
+      summary: "Get request details by ID",
+      description: "Agent endpoint to view a single request.",
+      operationId: "getPreMarketRequestDetails",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "requestId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      responses: {
+        "200": { description: "Request details retrieved successfully" },
+        "401": { description: "Unauthorized" },
+        "404": { description: "Request not found" },
       },
     },
     put: {
-      tags: ["Pre-Market Management"],
-      summary: "Update pre-market request",
-      description: "Update an existing pre-market request",
+      tags: ["Pre-Market - Renter"],
+      summary: "Update renter request",
       operationId: "updatePreMarketRequest",
       security: [{ bearerAuth: [] }],
       parameters: [
@@ -164,30 +180,20 @@ export const preMarketPaths = {
         required: true,
         content: {
           "application/json": {
-            schema: {
-              $ref: "#/components/schemas/UpdatePreMarketRequestPayload",
-            },
+            schema: { $ref: "#/components/schemas/UpdatePreMarketRequest" },
           },
         },
       },
       responses: {
-        200: {
-          description: "Request updated successfully",
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/PreMarketRequestData" },
-            },
-          },
-        },
-        400: { description: "Invalid update data" },
-        404: { description: "Request not found" },
+        "200": { description: "Request updated successfully" },
+        "400": { description: "Invalid payload" },
+        "401": { description: "Unauthorized" },
+        "404": { description: "Request not found" },
       },
     },
     delete: {
-      tags: ["Pre-Market Management"],
-      summary: "Delete pre-market request",
-      description:
-        "Hard delete a pre-market request (permanently removes the listing)",
+      tags: ["Pre-Market - Renter"],
+      summary: "Delete renter request",
       operationId: "deletePreMarketRequest",
       security: [{ bearerAuth: [] }],
       parameters: [
@@ -199,20 +205,18 @@ export const preMarketPaths = {
         },
       ],
       responses: {
-        200: {
-          description: "Request deleted successfully",
-        },
-        404: { description: "Request not found" },
+        "200": { description: "Request deleted successfully" },
+        "401": { description: "Unauthorized" },
+        "404": { description: "Request not found" },
       },
     },
   },
 
-  "/pre-market/{requestId}/toggle-status": {
-    put: {
-      tags: ["Pre-Market Management"],
-      summary: "Toggle listing activation status",
-      description: "Activate or deactivate a pre-market listing",
-      operationId: "toggleListingActivation",
+  "/pre-market/{requestId}/details": {
+    get: {
+      tags: ["Pre-Market - Agent"],
+      summary: "Get request details (legacy route)",
+      operationId: "getPreMarketRequestDetailsLegacy",
       security: [{ bearerAuth: [] }],
       parameters: [
         {
@@ -222,118 +226,10 @@ export const preMarketPaths = {
           schema: { type: "string" },
         },
       ],
-      requestBody: {
-        required: true,
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                isActive: {
-                  type: "boolean",
-                  description: "True to activate, false to deactivate",
-                },
-              },
-              required: ["isActive"],
-            },
-          },
-        },
-      },
       responses: {
-        200: {
-          description: "Listing status toggled successfully",
-        },
-        404: { description: "Listing not found" },
-      },
-    },
-  },
-
-  "/pre-market/renter/requests/with-agents": {
-    get: {
-      tags: ["Pre-Market Management"],
-      summary: "Get renter's requests with agent matches",
-      description:
-        "Get all renter's pre-market requests including matched agents",
-      operationId: "getRenterRequestsWithAgents",
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        {
-          name: "page",
-          in: "query",
-          schema: { type: "integer", default: 1 },
-        },
-        {
-          name: "limit",
-          in: "query",
-          schema: { type: "integer", default: 10 },
-        },
-      ],
-      responses: {
-        200: {
-          description: "Requests with agents retrieved",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/PaginatedPreMarketWithAgentsResponse",
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-
-  // ==========================================
-  // AGENT ENDPOINTS
-  // ==========================================
-
-  "/pre-market/all": {
-    get: {
-      tags: ["Pre-Market - Agent"],
-      summary: "Get all pre-market requests",
-      description:
-        "Get all available pre-market requests (agents can see property details)",
-      operationId: "getAllPreMarketRequests",
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        {
-          name: "page",
-          in: "query",
-          schema: { type: "integer", default: 1 },
-        },
-        {
-          name: "limit",
-          in: "query",
-          schema: { type: "integer", default: 10 },
-        },
-        {
-          name: "locations",
-          in: "query",
-          schema: { type: "string" },
-          description: "Filter by locations (comma-separated)",
-        },
-        {
-          name: "minPrice",
-          in: "query",
-          schema: { type: "number" },
-        },
-        {
-          name: "maxPrice",
-          in: "query",
-          schema: { type: "number" },
-        },
-      ],
-      responses: {
-        200: {
-          description: "All requests retrieved",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/PaginatedPreMarketResponse",
-              },
-            },
-          },
-        },
+        "200": { description: "Request details retrieved successfully" },
+        "401": { description: "Unauthorized" },
+        "404": { description: "Request not found" },
       },
     },
   },
@@ -342,8 +238,6 @@ export const preMarketPaths = {
     put: {
       tags: ["Pre-Market - Agent"],
       summary: "Update request visibility",
-      description:
-        "Registered agent updates visibility for a pre-market request",
       operationId: "updatePreMarketRequestVisibility",
       security: [{ bearerAuth: [] }],
       parameters: [
@@ -363,35 +257,27 @@ export const preMarketPaths = {
               properties: {
                 visibility: {
                   type: "string",
-                  enum: ["PRIVATE", "SHARED"],
+                  enum: ["private", "public", "matched"],
                 },
               },
-              required: ["visibility"],
             },
           },
         },
       },
       responses: {
-        200: {
-          description: "Request visibility updated",
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/PreMarketRequestData" },
-            },
-          },
-        },
-        403: { description: "Forbidden" },
+        "200": { description: "Visibility updated successfully" },
+        "400": { description: "Invalid payload" },
+        "401": { description: "Unauthorized" },
+        "404": { description: "Request not found" },
       },
     },
   },
 
-  "/pre-market/{requestId}/details": {
-    get: {
-      tags: ["Pre-Market - Agent"],
-      summary: "Get pre-market request details",
-      description:
-        "Get detailed information about a pre-market request. Returns full details if agent has grant access, otherwise limited information",
-      operationId: "getRequestDetails",
+  "/pre-market/{requestId}/toggle-status": {
+    put: {
+      tags: ["Pre-Market - Renter"],
+      summary: "Toggle listing activation status",
+      operationId: "togglePreMarketListingStatus",
       security: [{ bearerAuth: [] }],
       parameters: [
         {
@@ -402,127 +288,32 @@ export const preMarketPaths = {
         },
       ],
       responses: {
-        200: {
-          description: "Request details retrieved",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/PreMarketRequestDetailsResponse",
-              },
-            },
-          },
-        },
-        404: { description: "Request not found" },
+        "200": { description: "Listing status toggled successfully" },
+        "401": { description: "Unauthorized" },
+        "404": { description: "Request not found" },
       },
     },
   },
 
-  // ==========================================
-  // GRANT ACCESS ENDPOINTS
-  // ==========================================
-
   "/pre-market/grant-access/request": {
     post: {
-      tags: ["Pre-Market - Grant Access"],
-      summary: "Request access to pre-market details",
-      description: "Agent requests access to view renter information",
+      tags: ["Pre-Market - Agent"],
+      summary: "Request grant access",
       operationId: "requestGrantAccess",
       security: [{ bearerAuth: [] }],
-      requestBody: {
-        required: true,
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                preMarketRequestId: {
-                  type: "string",
-                  example: "507f1f77bcf86cd799439011",
-                },
-              },
-              required: ["preMarketRequestId"],
-            },
-          },
-        },
-      },
       responses: {
-        201: {
-          description: "Access request created",
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/GrantAccessResponse" },
-            },
-          },
-        },
-        409: { description: "Access already requested or granted" },
+        "200": { description: "Grant access request submitted successfully" },
+        "401": { description: "Unauthorized" },
       },
     },
   },
 
   "/pre-market/payment/create-intent": {
     post: {
-      tags: ["Pre-Market - Grant Access"],
+      tags: ["Pre-Market - Agent"],
       summary: "Create payment intent for grant access",
-      description:
-        "Create Stripe payment intent for accessing pre-market request",
-      operationId: "createPaymentIntent",
+      operationId: "createPreMarketPaymentIntent",
       security: [{ bearerAuth: [] }],
-      requestBody: {
-        required: true,
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                grantAccessId: {
-                  type: "string",
-                  description: "Grant access request ID",
-                },
-              },
-              required: ["grantAccessId"],
-            },
-          },
-        },
-      },
-      responses: {
-        200: {
-          description: "Payment intent created",
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                properties: {
-                  clientSecret: { type: "string" },
-                  amount: { type: "number" },
-                },
-              },
-            },
-          },
-        },
-        400: { description: "Invalid payment request" },
-      },
-    },
-  },
-
-  // ==========================================
-  // ADMIN ENDPOINTS
-  // ==========================================
-
-  "/pre-market/admin/{requestId}/approve": {
-    post: {
-      tags: ["Pre-Market - Admin"],
-      summary: "Approve grant access (free)",
-      description: "Admin approves access request for free",
-      operationId: "adminApproveAccess",
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        {
-          name: "requestId",
-          in: "path",
-          required: true,
-          schema: { type: "string" },
-        },
-      ],
       requestBody: {
         required: false,
         content: {
@@ -530,31 +321,38 @@ export const preMarketPaths = {
             schema: {
               type: "object",
               properties: {
-                notes: { type: "string" },
+                requestId: { type: "string" },
               },
             },
           },
         },
       },
       responses: {
-        200: {
-          description: "Access approved",
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/GrantAccessResponse" },
-            },
-          },
-        },
+        "200": { description: "Payment intent created successfully" },
+        "401": { description: "Unauthorized" },
       },
     },
   },
 
-  "/pre-market/admin/{requestId}/charge": {
-    post: {
+  "/pre-market/admin/requests": {
+    get: {
       tags: ["Pre-Market - Admin"],
-      summary: "Charge agent for grant access",
-      description: "Admin sets charge amount and sends payment link to agent",
-      operationId: "adminChargeAccess",
+      summary: "Get all pre-market requests (Admin only)",
+      operationId: "adminGetAllPreMarketRequests",
+      security: [{ bearerAuth: [] }],
+      responses: {
+        "200": { description: "Requests retrieved successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
+      },
+    },
+  },
+
+  "/pre-market/admin/requests/{requestId}": {
+    get: {
+      tags: ["Pre-Market - Admin"],
+      summary: "Get pre-market request by ID (Admin only)",
+      operationId: "adminGetPreMarketRequestById",
       security: [{ bearerAuth: [] }],
       parameters: [
         {
@@ -564,39 +362,17 @@ export const preMarketPaths = {
           schema: { type: "string" },
         },
       ],
-      requestBody: {
-        required: true,
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                chargeAmount: {
-                  type: "number",
-                  minimum: 0,
-                  example: 99.99,
-                },
-                notes: { type: "string" },
-              },
-              required: ["chargeAmount"],
-            },
-          },
-        },
-      },
       responses: {
-        200: {
-          description: "Charge set and payment link sent",
-        },
+        "200": { description: "Request retrieved successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
+        "404": { description: "Request not found" },
       },
     },
-  },
-
-  "/pre-market/admin/{requestId}/reject": {
-    post: {
+    delete: {
       tags: ["Pre-Market - Admin"],
-      summary: "Reject grant access request",
-      description: "Admin rejects agent's request for access",
-      operationId: "adminRejectAccess",
+      summary: "Delete pre-market request (Admin only)",
+      operationId: "adminDeletePreMarketRequest",
       security: [{ bearerAuth: [] }],
       parameters: [
         {
@@ -606,34 +382,89 @@ export const preMarketPaths = {
           schema: { type: "string" },
         },
       ],
-      requestBody: {
-        required: false,
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                notes: { type: "string" },
-              },
-            },
-          },
-        },
-      },
       responses: {
-        200: {
-          description: "Access rejected",
-        },
+        "200": { description: "Request deleted successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
+        "404": { description: "Request not found" },
       },
     },
   },
 
-  "/pre-market/admin/renter/{renterId}/listing/{listingId}/toggle": {
+  "/pre-market/grant-access/admin/{requestId}/approve": {
+    post: {
+      tags: ["Pre-Market - Admin"],
+      summary: "Approve grant-access request (Admin only)",
+      operationId: "adminApproveGrantAccess",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "requestId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      responses: {
+        "200": { description: "Grant access approved successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
+        "404": { description: "Request not found" },
+      },
+    },
+  },
+
+  "/pre-market/grant-access/admin/{requestId}/charge": {
+    post: {
+      tags: ["Pre-Market - Admin"],
+      summary: "Charge grant-access request (Admin only)",
+      operationId: "adminChargeGrantAccess",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "requestId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      responses: {
+        "200": { description: "Charge completed successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
+        "404": { description: "Request not found" },
+      },
+    },
+  },
+
+  "/pre-market/grant-access/admin/{requestId}/reject": {
+    post: {
+      tags: ["Pre-Market - Admin"],
+      summary: "Reject grant-access request (Admin only)",
+      operationId: "adminRejectGrantAccess",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "requestId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      responses: {
+        "200": { description: "Grant access rejected successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
+        "404": { description: "Request not found" },
+      },
+    },
+  },
+
+  "/pre-market/admin/renters/{renterId}/listings/{listingId}/toggle-status": {
     put: {
       tags: ["Pre-Market - Admin"],
-      summary: "Toggle listing status (admin)",
-      description:
-        "Admin activates or deactivates a renter's pre-market listing",
-      operationId: "adminToggleListingStatus",
+      summary: "Toggle renter listing status (Admin only)",
+      operationId: "adminToggleRenterListingStatus",
       security: [{ bearerAuth: [] }],
       parameters: [
         {
@@ -650,53 +481,64 @@ export const preMarketPaths = {
         },
       ],
       responses: {
-        200: {
-          description: "Listing status toggled",
-        },
+        "200": { description: "Listing status toggled successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
+        "404": { description: "Listing not found" },
       },
     },
   },
 
-  "/pre-market/admin/requests/{requestId}": {
-    delete: {
-      tags: ["Pre-Market - Admin"],
-      summary: "Delete pre-market request (admin)",
-      description: "Admin deletes any pre-market request (hard delete)",
-      operationId: "adminDeletePreMarketRequest",
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        {
-          name: "requestId",
-          in: "path",
-          required: true,
-          schema: { type: "string" },
-        },
-      ],
-      responses: {
-        200: {
-          description: "Pre-market request deleted successfully",
-        },
-        404: { description: "Request not found" },
-      },
-    },
-  },
-
-  "/grant-access/statistics": {
+  "/pre-market/admin/excel-download": {
     get: {
       tags: ["Pre-Market - Admin"],
-      summary: "Get grant access statistics",
-      description: "Get statistics on grant access requests and payments",
-      operationId: "getGrantAccessStatistics",
+      summary: "Get consolidated pre-market excel metadata",
+      operationId: "downloadPreMarketConsolidatedExcel",
       security: [{ bearerAuth: [] }],
       responses: {
-        200: {
-          description: "Statistics retrieved",
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/GrantAccessStatistics" },
-            },
-          },
-        },
+        "200": { description: "Excel metadata retrieved successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
+      },
+    },
+  },
+
+  "/pre-market/admin/excel-renter-listings": {
+    get: {
+      tags: ["Pre-Market - Admin"],
+      summary: "Get renter listings excel metadata",
+      operationId: "downloadPreMarketRenterListingsExcel",
+      security: [{ bearerAuth: [] }],
+      responses: {
+        "200": { description: "Excel metadata retrieved successfully" },
+        "401": { description: "Unauthorized" },
+      },
+    },
+  },
+
+  "/pre-market/admin/excel-stats": {
+    get: {
+      tags: ["Pre-Market - Admin"],
+      summary: "Get pre-market excel stats",
+      operationId: "getPreMarketExcelStats",
+      security: [{ bearerAuth: [] }],
+      responses: {
+        "200": { description: "Stats retrieved successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
+      },
+    },
+  },
+
+  "/pre-market": {
+    get: {
+      tags: ["Pre-Market - Admin"],
+      summary: "Get all listings with complete data",
+      operationId: "getAllListingsWithAllData",
+      security: [{ bearerAuth: [] }],
+      responses: {
+        "200": { description: "Listings retrieved successfully" },
+        "401": { description: "Unauthorized" },
       },
     },
   },

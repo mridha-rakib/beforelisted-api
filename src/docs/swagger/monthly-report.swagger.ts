@@ -1,208 +1,102 @@
 // file: src/docs/swagger/monthly-report.swagger.ts
-// OpenAPI endpoint definitions for Monthly Report module
+// OpenAPI paths for Monthly Report endpoints
 
 export const monthlyReportPaths = {
-  // ==========================================
-  // PUBLIC ENDPOINTS
-  // ==========================================
-
-  "/monthly-report": {
+  "/monthly-reports": {
     get: {
       tags: ["Monthly Reports"],
-      summary: "Get all active reports",
-      description:
-        "Get all publicly available active monthly reports. No authentication required.",
-      operationId: "getAllPublicReports",
+      summary: "Get all public reports",
+      description: "Retrieve all active monthly reports.",
+      operationId: "getAllPublicMonthlyReports",
       responses: {
-        200: {
-          description: "All active reports retrieved successfully",
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                properties: {
-                  success: { type: "boolean", example: true },
-                  statusCode: { type: "integer", example: 200 },
-                  message: { type: "string" },
-                  data: {
-                    type: "array",
-                    items: { $ref: "#/components/schemas/MonthlyReportData" },
-                  },
-                },
-              },
-            },
-          },
-        },
+        "200": { description: "Reports retrieved successfully" },
       },
     },
   },
 
-  "/monthly-report/{id}": {
+  "/monthly-reports/{id}": {
     get: {
       tags: ["Monthly Reports"],
-      summary: "Get single report by ID",
-      description: "Get details of a specific report by ID. Public endpoint.",
-      operationId: "getReportById",
+      summary: "Get report by ID",
+      description: "Retrieve a single report by ID.",
+      operationId: "getMonthlyReportById",
       parameters: [
         {
           name: "id",
           in: "path",
           required: true,
           schema: { type: "string" },
-          description: "Report ID (MongoDB ObjectId)",
         },
       ],
       responses: {
-        200: {
-          description: "Report retrieved successfully",
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                properties: {
-                  success: { type: "boolean", example: true },
-                  statusCode: { type: "integer", example: 200 },
-                  message: { type: "string" },
-                  data: { $ref: "#/components/schemas/MonthlyReportData" },
-                },
-              },
-            },
-          },
-        },
-        404: { description: "Report not found" },
+        "200": { description: "Report retrieved successfully" },
+        "404": { description: "Report not found" },
       },
     },
   },
 
-  "/monthly-report/year/{year}": {
+  "/monthly-reports/year/{year}": {
     get: {
       tags: ["Monthly Reports"],
       summary: "Get reports by year",
-      description:
-        "Get all active reports for a specific year. Public endpoint.",
-      operationId: "getReportsByYear",
+      description: "Retrieve all reports for a given year.",
+      operationId: "getMonthlyReportsByYear",
       parameters: [
         {
           name: "year",
           in: "path",
           required: true,
-          schema: { type: "integer", minimum: 2000, maximum: 2100 },
-          description: "Year (e.g., 2024)",
+          schema: { type: "integer", example: 2026 },
         },
       ],
       responses: {
-        200: {
-          description: "Reports for the year retrieved successfully",
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                properties: {
-                  success: { type: "boolean", example: true },
-                  statusCode: { type: "integer", example: 200 },
-                  message: { type: "string" },
-                  data: {
-                    type: "array",
-                    items: { $ref: "#/components/schemas/MonthlyReportData" },
-                  },
-                },
-              },
-            },
-          },
-        },
-        400: { description: "Invalid year format" },
+        "200": { description: "Reports retrieved successfully" },
       },
     },
   },
 
-  // ==========================================
-  // ADMIN ENDPOINTS
-  // ==========================================
-
-  "/monthly-report/admin/all": {
+  "/monthly-reports/admin/all": {
     get: {
       tags: ["Monthly Reports - Admin"],
-      summary: "Get all reports (including inactive)",
-      description: "Get all reports including inactive ones. Admin only.",
-      operationId: "getAllReports",
+      summary: "Get all reports including inactive (Admin only)",
+      operationId: "adminGetAllMonthlyReports",
       security: [{ bearerAuth: [] }],
       responses: {
-        200: {
-          description: "All reports retrieved",
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                properties: {
-                  success: { type: "boolean", example: true },
-                  statusCode: { type: "integer", example: 200 },
-                  message: { type: "string" },
-                  data: {
-                    type: "array",
-                    items: { $ref: "#/components/schemas/MonthlyReportData" },
-                  },
-                },
-              },
-            },
-          },
-        },
-        401: { description: "Unauthorized" },
+        "200": { description: "Reports retrieved successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
       },
     },
   },
 
-  "/monthly-report/admin": {
+  "/monthly-reports/admin": {
     post: {
       tags: ["Monthly Reports - Admin"],
-      summary: "Create new report",
-      description: "Create a new monthly report. Admin only.",
-      operationId: "createReport",
+      summary: "Create monthly report (Admin only)",
+      operationId: "adminCreateMonthlyReport",
       security: [{ bearerAuth: [] }],
       requestBody: {
         required: true,
         content: {
           "application/json": {
-            schema: { $ref: "#/components/schemas/CreateMonthlyReportPayload" },
-            example: {
-              title: "December 2024 Report",
-              month: 12,
-              year: 2024,
-              content: "Comprehensive analysis of December operations...",
-              isActive: true,
-              tags: ["operations", "financial", "2024"],
-            },
+            schema: { $ref: "#/components/schemas/CreateMonthlyReportRequest" },
           },
         },
       },
       responses: {
-        201: {
-          description: "Report created successfully",
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                properties: {
-                  success: { type: "boolean", example: true },
-                  statusCode: { type: "integer", example: 201 },
-                  message: { type: "string" },
-                  data: { $ref: "#/components/schemas/MonthlyReportData" },
-                },
-              },
-            },
-          },
-        },
-        400: { description: "Invalid report data" },
-        401: { description: "Unauthorized" },
+        "201": { description: "Report created successfully" },
+        "400": { description: "Invalid request payload" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
       },
     },
   },
 
-  "/monthly-report/admin/{id}": {
+  "/monthly-reports/admin/{id}": {
     put: {
       tags: ["Monthly Reports - Admin"],
-      summary: "Update report",
-      description: "Update an existing report. Admin only.",
-      operationId: "updateReport",
+      summary: "Update monthly report (Admin only)",
+      operationId: "adminUpdateMonthlyReport",
       security: [{ bearerAuth: [] }],
       parameters: [
         {
@@ -216,35 +110,22 @@ export const monthlyReportPaths = {
         required: true,
         content: {
           "application/json": {
-            schema: { $ref: "#/components/schemas/UpdateMonthlyReportPayload" },
+            schema: { $ref: "#/components/schemas/UpdateMonthlyReportRequest" },
           },
         },
       },
       responses: {
-        200: {
-          description: "Report updated successfully",
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                properties: {
-                  success: { type: "boolean", example: true },
-                  statusCode: { type: "integer", example: 200 },
-                  message: { type: "string" },
-                  data: { $ref: "#/components/schemas/MonthlyReportData" },
-                },
-              },
-            },
-          },
-        },
-        404: { description: "Report not found" },
+        "200": { description: "Report updated successfully" },
+        "400": { description: "Invalid request payload" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
+        "404": { description: "Report not found" },
       },
     },
     delete: {
       tags: ["Monthly Reports - Admin"],
-      summary: "Soft delete report",
-      description: "Soft delete a report (marks as inactive). Admin only.",
-      operationId: "deleteReport",
+      summary: "Soft-delete monthly report (Admin only)",
+      operationId: "adminDeleteMonthlyReport",
       security: [{ bearerAuth: [] }],
       parameters: [
         {
@@ -255,34 +136,19 @@ export const monthlyReportPaths = {
         },
       ],
       responses: {
-        200: {
-          description: "Report deleted successfully",
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                properties: {
-                  success: { type: "boolean", example: true },
-                  statusCode: { type: "integer", example: 200 },
-                  message: { type: "string" },
-                  data: { $ref: "#/components/schemas/MonthlyReportData" },
-                },
-              },
-            },
-          },
-        },
-        404: { description: "Report not found" },
+        "200": { description: "Report deleted successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
+        "404": { description: "Report not found" },
       },
     },
   },
 
-  "/monthly-report/admin/{id}/hard-delete": {
+  "/monthly-reports/admin/{id}/hard-delete": {
     delete: {
       tags: ["Monthly Reports - Admin"],
-      summary: "Permanently delete report",
-      description:
-        "Permanently hard delete a report from database. Admin only.",
-      operationId: "hardDeleteReport",
+      summary: "Hard-delete monthly report (Admin only)",
+      operationId: "adminHardDeleteMonthlyReport",
       security: [{ bearerAuth: [] }],
       parameters: [
         {
@@ -293,31 +159,10 @@ export const monthlyReportPaths = {
         },
       ],
       responses: {
-        200: {
-          description: "Report permanently deleted",
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                properties: {
-                  success: { type: "boolean", example: true },
-                  statusCode: { type: "integer", example: 200 },
-                  message: { type: "string" },
-                  data: {
-                    type: "object",
-                    properties: {
-                      message: {
-                        type: "string",
-                        example: "Report permanently deleted",
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-        404: { description: "Report not found" },
+        "200": { description: "Report permanently deleted" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
+        "404": { description: "Report not found" },
       },
     },
   },

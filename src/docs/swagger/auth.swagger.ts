@@ -2,6 +2,44 @@
 // Complete OpenAPI paths for Authentication endpoints
 
 export const authPaths = {
+  "/auth/admin/login": {
+    post: {
+      tags: ["Authentication"],
+      summary: "Login admin",
+      description:
+        "Authenticate admin with email and password. Same behavior as /auth/login.",
+      operationId: "adminLoginUser",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              $ref: "#/components/schemas/LoginRequest",
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Login successful",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/LoginResponse",
+              },
+            },
+          },
+        },
+        "400": {
+          description: "Invalid credentials",
+        },
+        "401": {
+          description: "Unauthorized",
+        },
+      },
+    },
+  },
+
   "/auth/login": {
     post: {
       tags: ["Authentication"],

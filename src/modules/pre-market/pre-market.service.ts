@@ -31,6 +31,7 @@ import {
   AdminPreMarketRequestItem,
   AdminRenterInfo,
   AgentRequestDetail,
+  PreMarketScope,
 } from "./pre-market.type";
 
 type NormalAgentListingResponse = Record<string, any> & {
@@ -297,6 +298,7 @@ export class PreMarketService {
       guarantorRequired?: any;
       preferences?: string[];
       shareConsent?: boolean;
+      scope?: PreMarketScope;
     },
   ): Promise<IPreMarketRequest> {
     const earliest = new Date(payload.movingDateRange.earliest);
@@ -361,8 +363,14 @@ export class PreMarketService {
     const requestName = `BeforeListed-${requestNumber}`;
     const requestId = await this.generateUniqueRequestId(requestName, renterId);
     const shareConsent = payload.shareConsent === true;
+    const scope = payload.scope ?? "Upcoming";
     const referralAgentId =
       await this.resolveRegisteredAgentIdFromRenter(renter);
+    if (renter.registrationType === "agent_referral" && !referralAgentId) {
+      throw new BadRequestException(
+        "Referred agent is required to create this request",
+      );
+    }
 
     // Create request
     const request = await this.preMarketRepository.create({
@@ -381,6 +389,7 @@ export class PreMarketService {
       preferences: payload.preferences || [],
       guarantorRequired: payload.guarantorRequired || {},
       shareConsent,
+      scope,
       visibility: "PRIVATE",
       ...(referralAgentId ? { referralAgentId } : {}),
       isActive: true,
@@ -516,44 +525,10 @@ export class PreMarketService {
       cutoffFilter,
     ]);
 
-    let paginated: PaginatedResponse<IPreMarketRequest>;
-    if (!hasGrantAccess) {
-      const accessRecords =
-        await this.grantAccessRepository.findByAgentIdAndStatuses(agentId, [
-          "free",
-          "paid",
-        ]);
-      const excludedIds = accessRecords.map((record) =>
-        record.preMarketRequestId.toString(),
-      );
-
-      paginated =
-        await this.preMarketRepository.findAllWithPaginationExcludingIds(
-          query,
-          excludedIds,
-          combinedFilters,
-        );
-    } else {
-      const matchedRecords =
-        await this.grantAccessRepository.findByAgentIdAndStatuses(agentId, [
-          "free",
-          "paid",
-        ]);
-      const excludedIds = matchedRecords.map((record) =>
-        record.preMarketRequestId.toString(),
-      );
-
-      paginated = excludedIds.length
-        ? await this.preMarketRepository.findAllWithPaginationExcludingIds(
-            query,
-            excludedIds,
-            combinedFilters,
-          )
-        : await this.preMarketRepository.findAllWithPagination(
-            query,
-            combinedFilters,
-          );
-    }
+    const paginated = await this.preMarketRepository.findAllWithPagination(
+      query,
+      combinedFilters,
+    );
 
     const requestIds = paginated.data
       .map((request) => request._id?.toString())
@@ -858,11 +833,8 @@ export class PreMarketService {
       return null;
     }
 
-    if (renter.registrationType === "agent_referral" && renter.referredByAgentId) {
-      const resolved = this.normalizeUserId(renter.referredByAgentId);
-      if (resolved) {
-        return resolved;
-      }
+    if (renter.registrationType === "agent_referral") {
+      return this.normalizeUserId(renter.referredByAgentId);
     }
 
     const defaultAgent = await this.getDefaultReferralAgent();
@@ -906,24 +878,9 @@ export class PreMarketService {
   private async buildRequestVisibilityFilterForAgent(
     agentId: string,
   ): Promise<Record<string, any>> {
-    const orConditions: Record<string, any>[] = [
-      { visibility: "SHARED" },
-      { referralAgentId: agentId },
-    ];
-
-    const referredRenters = await this.renterRepository.findRentersByAgent(
-      agentId,
-    );
-    if (Array.isArray(referredRenters) && referredRenters.length > 0) {
-      const renterIds = referredRenters
-        .map((renter) => renter._id?.toString())
-        .filter((id): id is string => Boolean(id));
-      if (renterIds.length > 0) {
-        orConditions.push({ renterId: { $in: renterIds } });
-      }
-    }
-
-    return { $or: orConditions };
+    return {
+      $or: [{ visibility: "SHARED" }, { referralAgentId: agentId }],
+    };
   }
 
   public async ensureAgentCanViewRequestVisibility(

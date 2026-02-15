@@ -66,6 +66,7 @@ export const createPreMarketRequestSchema = z.object({
         .optional(),
       preferences: z.array(z.string().trim()).optional(),
       shareConsent: z.boolean().optional(),
+      scope: z.enum(["Upcoming", "All Market"]).default("Upcoming"),
     })
     .refine(
       (data) => data.movingDateRange.earliest < data.movingDateRange.latest,

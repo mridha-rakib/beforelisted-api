@@ -1,40 +1,25 @@
 // file: src/docs/swagger/agent.swagger.ts
-// Complete OpenAPI paths for Agent endpoints
+// OpenAPI paths for Agent endpoints
 
 export const agentPaths = {
   "/agent/register": {
     post: {
       tags: ["Agent Management"],
       summary: "Register new agent",
-      description: "Complete agent registration with license and brokerage details.",
+      description: "Public endpoint to register a new agent account.",
       operationId: "registerAgent",
       requestBody: {
         required: true,
         content: {
           "application/json": {
-            schema: {
-              $ref: "#/components/schemas/AgentRegisterRequest",
-            },
+            schema: { $ref: "#/components/schemas/AgentRegisterRequest" },
           },
         },
       },
       responses: {
-        "201": {
-          description: "Agent registered successfully",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/AgentRegisterResponse",
-              },
-            },
-          },
-        },
-        "400": {
-          description: "Invalid input - missing or invalid fields",
-        },
-        "409": {
-          description: "Conflict - email already exists",
-        },
+        "201": { description: "Agent registered successfully" },
+        "400": { description: "Invalid request payload" },
+        "409": { description: "Conflict - email already exists" },
       },
     },
   },
@@ -43,70 +28,85 @@ export const agentPaths = {
     get: {
       tags: ["Agent Management"],
       summary: "Get own agent profile",
-      description: "Retrieve authenticated agent's profile with license and brokerage info.",
+      description: "Retrieve the authenticated agent profile.",
       operationId: "getAgentProfile",
-      security: [
-        {
-          bearerAuth: [],
-        },
-      ],
+      security: [{ bearerAuth: [] }],
       responses: {
-        "200": {
-          description: "Profile retrieved successfully",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/GetAgentProfileResponse",
-              },
-            },
-          },
-        },
-        "401": {
-          description: "Unauthorized",
-        },
-        "404": {
-          description: "Agent profile not found",
-        },
+        "200": { description: "Profile retrieved successfully" },
+        "401": { description: "Unauthorized" },
       },
     },
-
     put: {
       tags: ["Agent Management"],
-      summary: "Update agent profile",
-      description: "Update authenticated agent's profile information.",
+      summary: "Update own agent profile",
+      description: "Update the authenticated agent profile.",
       operationId: "updateAgentProfile",
-      security: [
-        {
-          bearerAuth: [],
-        },
-      ],
+      security: [{ bearerAuth: [] }],
       requestBody: {
         required: true,
         content: {
           "application/json": {
-            schema: {
-              $ref: "#/components/schemas/UpdateAgentProfileRequest",
-            },
+            schema: { $ref: "#/components/schemas/UpdateAgentProfileRequest" },
           },
         },
       },
       responses: {
-        "200": {
-          description: "Profile updated successfully",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/UpdateAgentProfileResponse",
-              },
-            },
-          },
-        },
-        "400": {
-          description: "Invalid input data",
-        },
-        "401": {
-          description: "Unauthorized",
-        },
+        "200": { description: "Profile updated successfully" },
+        "400": { description: "Invalid request payload" },
+        "401": { description: "Unauthorized" },
+      },
+    },
+    delete: {
+      tags: ["Agent Management"],
+      summary: "Delete own agent profile",
+      description: "Soft-delete the authenticated agent profile.",
+      operationId: "deleteAgentProfile",
+      security: [{ bearerAuth: [] }],
+      responses: {
+        "200": { description: "Profile deleted successfully" },
+        "401": { description: "Unauthorized" },
+      },
+    },
+  },
+
+  "/agent/email-subscription/toggle": {
+    post: {
+      tags: ["Agent Management"],
+      summary: "Toggle agent email subscription",
+      description: "Enable or disable email notifications for the agent.",
+      operationId: "toggleAgentEmailSubscription",
+      security: [{ bearerAuth: [] }],
+      responses: {
+        "200": { description: "Email subscription updated" },
+        "401": { description: "Unauthorized" },
+      },
+    },
+  },
+
+  "/agent/accepting-requests/toggle": {
+    post: {
+      tags: ["Agent Management"],
+      summary: "Toggle accepting requests",
+      description: "Toggle whether the agent is accepting new requests.",
+      operationId: "toggleAcceptingRequests",
+      security: [{ bearerAuth: [] }],
+      responses: {
+        "200": { description: "Accepting requests updated" },
+        "401": { description: "Unauthorized" },
+      },
+    },
+  },
+
+  "/agent/accepting-requests/status": {
+    get: {
+      tags: ["Agent Management"],
+      summary: "Get accepting requests status",
+      description: "Get current accepting-requests status for the agent.",
+      operationId: "getAcceptingRequestsStatus",
+      security: [{ bearerAuth: [] }],
+      responses: {
+        "200": { description: "Status retrieved successfully" },
+        "401": { description: "Unauthorized" },
       },
     },
   },
@@ -115,56 +115,12 @@ export const agentPaths = {
     get: {
       tags: ["Agent Management"],
       summary: "Get agent referral link",
-      description: "Retrieve agent's referral code and link for renter referrals.",
+      description: "Retrieve the authenticated agent referral code and link.",
       operationId: "getAgentReferralLink",
-      security: [
-        {
-          bearerAuth: [],
-        },
-      ],
+      security: [{ bearerAuth: [] }],
       responses: {
-        "200": {
-          description: "Referral link retrieved successfully",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/ReferralLinkResponse",
-              },
-            },
-          },
-        },
-        "401": {
-          description: "Unauthorized",
-        },
-      },
-    },
-  },
-
-  "/agent/stats": {
-    get: {
-      tags: ["Agent Management"],
-      summary: "Get agent statistics",
-      description: "Retrieve agent's performance statistics and metrics.",
-      operationId: "getAgentStats",
-      security: [
-        {
-          bearerAuth: [],
-        },
-      ],
-      responses: {
-        "200": {
-          description: "Statistics retrieved successfully",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/AgentStatsResponse",
-              },
-            },
-          },
-        },
-        "401": {
-          description: "Unauthorized",
-        },
+        "200": { description: "Referral information retrieved successfully" },
+        "401": { description: "Unauthorized" },
       },
     },
   },
@@ -173,94 +129,61 @@ export const agentPaths = {
     get: {
       tags: ["Agent Management - Admin"],
       summary: "Get all agents (Admin only)",
-      description: "Retrieve list of all agents. Admin only.",
+      description: "Retrieve all agents with pagination and filters.",
       operationId: "adminGetAllAgents",
-      security: [
+      security: [{ bearerAuth: [] }],
+      parameters: [
         {
-          bearerAuth: [],
+          name: "page",
+          in: "query",
+          schema: { type: "integer", example: 1 },
+        },
+        {
+          name: "limit",
+          in: "query",
+          schema: { type: "integer", example: 10 },
+        },
+        {
+          name: "sort",
+          in: "query",
+          schema: { type: "string", example: "-createdAt" },
+        },
+        {
+          name: "search",
+          in: "query",
+          schema: { type: "string" },
+        },
+        {
+          name: "isActive",
+          in: "query",
+          schema: { type: "boolean" },
+        },
+        {
+          name: "hasGrantAccess",
+          in: "query",
+          schema: { type: "boolean" },
         },
       ],
       responses: {
-        "200": {
-          description: "Agents retrieved successfully",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/AllAgentsResponse",
-              },
-            },
-          },
-        },
-        "401": {
-          description: "Unauthorized",
-        },
-        "403": {
-          description: "Forbidden - Admin role required",
-        },
+        "200": { description: "Agents retrieved successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
       },
     },
   },
 
-  "/agent/admin/pending-approval": {
+  "/agent/admin/excel-download": {
     get: {
       tags: ["Agent Management - Admin"],
-      summary: "Get pending approval agents (Admin only)",
-      description: "Retrieve list of agents pending admin approval.",
-      operationId: "adminGetPendingApprovalAgents",
-      security: [
-        {
-          bearerAuth: [],
-        },
-      ],
+      summary: "Get agents consolidated excel metadata",
+      description:
+        "Retrieve downloadable metadata for the agents consolidated excel file.",
+      operationId: "downloadAgentConsolidatedExcel",
+      security: [{ bearerAuth: [] }],
       responses: {
-        "200": {
-          description: "Pending agents retrieved successfully",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/AllAgentsResponse",
-              },
-            },
-          },
-        },
-        "401": {
-          description: "Unauthorized",
-        },
-        "403": {
-          description: "Forbidden - Admin role required",
-        },
-      },
-    },
-  },
-
-  "/agent/admin/suspended": {
-    get: {
-      tags: ["Agent Management - Admin"],
-      summary: "Get suspended agents (Admin only)",
-      description: "Retrieve list of suspended agents.",
-      operationId: "adminGetSuspendedAgents",
-      security: [
-        {
-          bearerAuth: [],
-        },
-      ],
-      responses: {
-        "200": {
-          description: "Suspended agents retrieved successfully",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/AllAgentsResponse",
-              },
-            },
-          },
-        },
-        "401": {
-          description: "Unauthorized",
-        },
-        "403": {
-          description: "Forbidden - Admin role required",
-        },
+        "200": { description: "Excel metadata retrieved successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
       },
     },
   },
@@ -269,189 +192,82 @@ export const agentPaths = {
     get: {
       tags: ["Agent Management - Admin"],
       summary: "Get specific agent (Admin only)",
-      description: "Retrieve specific agent's profile by ID.",
-      operationId: "adminGetAgent",
-      security: [
-        {
-          bearerAuth: [],
-        },
-      ],
+      description: "Retrieve a specific agent profile by user ID.",
+      operationId: "adminGetSpecificAgent",
+      security: [{ bearerAuth: [] }],
       parameters: [
         {
           name: "userId",
           in: "path",
           required: true,
-          schema: {
-            type: "string",
-          },
-          description: "Agent user ID",
+          schema: { type: "string" },
         },
       ],
       responses: {
-        "200": {
-          description: "Agent retrieved successfully",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/AgentProfileResponse",
-              },
-            },
-          },
-        },
-        "401": {
-          description: "Unauthorized",
-        },
-        "403": {
-          description: "Forbidden - Admin role required",
-        },
-        "404": {
-          description: "Agent not found",
-        },
+        "200": { description: "Agent retrieved successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
+        "404": { description: "Agent not found" },
       },
     },
   },
 
-  "/agent/admin/approve/{userId}": {
+  "/agent/{agentId}/toggle-access": {
     post: {
       tags: ["Agent Management - Admin"],
-      summary: "Approve agent (Admin only)",
-      description: "Approve a pending agent application.",
-      operationId: "adminApproveAgent",
-      security: [
-        {
-          bearerAuth: [],
-        },
-      ],
+      summary: "Toggle agent grant access (Admin only)",
+      description:
+        "Grant or revoke agent access to restricted pre-market information.",
+      operationId: "toggleAgentAccess",
+      security: [{ bearerAuth: [] }],
       parameters: [
         {
-          name: "userId",
+          name: "agentId",
           in: "path",
           required: true,
-          schema: {
-            type: "string",
-          },
+          schema: { type: "string" },
         },
       ],
       requestBody: {
+        required: false,
         content: {
           "application/json": {
             schema: {
-              $ref: "#/components/schemas/AdminApproveAgentRequest",
+              type: "object",
+              properties: {
+                reason: { type: "string" },
+              },
             },
           },
         },
       },
       responses: {
-        "200": {
-          description: "Agent approved successfully",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/ApprovalResponse",
-              },
-            },
-          },
-        },
-        "401": {
-          description: "Unauthorized",
-        },
-        "403": {
-          description: "Forbidden - Admin role required",
-        },
+        "200": { description: "Agent access toggled successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
       },
     },
   },
 
-  "/agent/admin/suspend/{userId}": {
-    post: {
+  "/agent/{agentId}/access-status": {
+    get: {
       tags: ["Agent Management - Admin"],
-      summary: "Suspend agent (Admin only)",
-      description: "Suspend an active agent's account.",
-      operationId: "adminSuspendAgent",
-      security: [
-        {
-          bearerAuth: [],
-        },
-      ],
+      summary: "Get agent access status (Admin only)",
+      description: "Retrieve current grant-access status for an agent.",
+      operationId: "getAgentAccessStatus",
+      security: [{ bearerAuth: [] }],
       parameters: [
         {
-          name: "userId",
+          name: "agentId",
           in: "path",
           required: true,
-          schema: {
-            type: "string",
-          },
-        },
-      ],
-      requestBody: {
-        required: true,
-        content: {
-          "application/json": {
-            schema: {
-              $ref: "#/components/schemas/AdminSuspendAgentRequest",
-            },
-          },
-        },
-      },
-      responses: {
-        "200": {
-          description: "Agent suspended successfully",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/SuspensionResponse",
-              },
-            },
-          },
-        },
-        "401": {
-          description: "Unauthorized",
-        },
-        "403": {
-          description: "Forbidden - Admin role required",
-        },
-      },
-    },
-  },
-
-  "/agent/admin/verify/{userId}": {
-    post: {
-      tags: ["Agent Management - Admin"],
-      summary: "Verify agent (Admin only)",
-      description: "Verify an agent's license and credentials.",
-      operationId: "adminVerifyAgent",
-      security: [
-        {
-          bearerAuth: [],
-        },
-      ],
-      parameters: [
-        {
-          name: "userId",
-          in: "path",
-          required: true,
-          schema: {
-            type: "string",
-          },
+          schema: { type: "string" },
         },
       ],
       responses: {
-        "200": {
-          description: "Agent verified successfully",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/VerificationResponse",
-              },
-            },
-          },
-        },
-        "401": {
-          description: "Unauthorized",
-        },
-        "403": {
-          description: "Forbidden - Admin role required",
-        },
+        "200": { description: "Access status retrieved successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
       },
     },
   },
@@ -460,49 +276,35 @@ export const agentPaths = {
     post: {
       tags: ["Agent Management - Admin"],
       summary: "Toggle agent active status (Admin only)",
-      description: "Toggle agent between active and deactivated status.",
-      operationId: "adminToggleAgentActive",
-      security: [
-        {
-          bearerAuth: [],
-        },
-      ],
+      description:
+        "Activate or deactivate an agent account with optional reason.",
+      operationId: "toggleAgentActive",
+      security: [{ bearerAuth: [] }],
       parameters: [
         {
           name: "userId",
           in: "path",
           required: true,
-          schema: {
-            type: "string",
-          },
+          schema: { type: "string" },
         },
       ],
       requestBody: {
+        required: false,
         content: {
           "application/json": {
             schema: {
-              $ref: "#/components/schemas/ToggleActiveRequest",
+              type: "object",
+              properties: {
+                reason: { type: "string" },
+              },
             },
           },
         },
       },
       responses: {
-        "200": {
-          description: "Agent status toggled successfully",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/StatusToggleResponse",
-              },
-            },
-          },
-        },
-        "401": {
-          description: "Unauthorized",
-        },
-        "403": {
-          description: "Forbidden - Admin role required",
-        },
+        "200": { description: "Agent status updated successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
       },
     },
   },
@@ -510,41 +312,22 @@ export const agentPaths = {
   "/agent/admin/{userId}/activation-history": {
     get: {
       tags: ["Agent Management - Admin"],
-      summary: "Get activation history (Admin only)",
-      description: "Retrieve agent's activation/deactivation history.",
-      operationId: "getActivationHistory",
-      security: [
-        {
-          bearerAuth: [],
-        },
-      ],
+      summary: "Get agent activation history (Admin only)",
+      description: "Retrieve activation and deactivation history for an agent.",
+      operationId: "getAgentActivationHistory",
+      security: [{ bearerAuth: [] }],
       parameters: [
         {
           name: "userId",
           in: "path",
           required: true,
-          schema: {
-            type: "string",
-          },
+          schema: { type: "string" },
         },
       ],
       responses: {
-        "200": {
-          description: "Activation history retrieved successfully",
-          content: {
-            "application/json": {
-              schema: {
-                $ref: "#/components/schemas/ActivationHistoryResponse",
-              },
-            },
-          },
-        },
-        "401": {
-          description: "Unauthorized",
-        },
-        "403": {
-          description: "Forbidden - Admin role required",
-        },
+        "200": { description: "Activation history retrieved successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
       },
     },
   },

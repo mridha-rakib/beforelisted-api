@@ -809,6 +809,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
               petPolicy: listing.petPolicy,
               guarantorRequired: listing.guarantorRequired,
               preferences: listing.preferences,
+              scope: listing.scope,
               createdAt: listing.createdAt,
               updatedAt: listing.updatedAt,
             },
