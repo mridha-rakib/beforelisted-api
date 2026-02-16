@@ -42,6 +42,10 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
   activeAt: {
     type: Date,
   },
+  activationLink: {
+    type: String,
+    trim: true,
+  },
   activationHistory: [
     {
       action: {

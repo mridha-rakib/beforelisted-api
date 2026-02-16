@@ -35,6 +35,11 @@ export type UpdateAgentProfilePayload = {
   emailSubscriptionEnabled?: boolean;
 };
 
+export type ActivateAgentWithLinkPayload = {
+  activationLink: string;
+  reason?: string;
+};
+
 export type AgentProfileResponse = {
   _id: string;
   userInfo: string | any;
@@ -45,6 +50,7 @@ export type AgentProfileResponse = {
 
   isActive: boolean;
   activeAt?: Date;
+  activationLink?: string;
 
   totalRentersReferred: number;
   activeReferrals: number;

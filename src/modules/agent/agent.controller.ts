@@ -13,6 +13,7 @@ import { zParse } from "@/utils/validators.utils";
 import type { NextFunction, Request, Response } from "express";
 import { UserService } from "../user/user.service";
 import {
+  activateAgentWithLinkSchema,
   agentRegisterSchema,
   agentToggleActiveSchema,
   createAgentProfileSchema,
@@ -348,6 +349,23 @@ export class AgentController {
       validated.params.userId,
       adminId,
       validated.body?.reason
+    );
+
+    ApiResponse.success(res, result, result.message);
+  });
+
+  /**
+   * ADMIN: Activate agent account with required link
+   * POST /agent/admin/:userId/activate-with-link
+   */
+  activateAgentWithLink = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(activateAgentWithLinkSchema, req);
+    const adminId = req.user!.userId;
+
+    const result = await this.service.activateAgentWithLink(
+      validated.params.userId,
+      adminId,
+      validated.body,
     );
 
     ApiResponse.success(res, result, result.message);

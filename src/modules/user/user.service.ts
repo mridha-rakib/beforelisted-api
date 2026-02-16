@@ -294,7 +294,59 @@ export class UserService {
   async adminPermanentlyDeleteUser(
     userId: string
   ): Promise<{ message: string }> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
+    }
+
+    let referredRenters: any[] = [];
+    if (user.role === ROLES.AGENT) {
+      const { RenterRepository } = await import("../renter/renter.repository");
+      const renterRepository = new RenterRepository();
+      referredRenters = await renterRepository.findRentersByAgent(userId);
+    }
+
     await this.userRepository.permanentlyDeleteUser(userId);
+
+    if (user.role === ROLES.AGENT && referredRenters.length > 0) {
+      await Promise.all(
+        referredRenters.map(async (renter: any) => {
+          if (!renter?.email) {
+            return;
+          }
+
+          try {
+            const emailResult =
+              await this.emailService.sendRegisteredAgentNoLongerActiveToRenter(
+                {
+                  to: renter.email,
+                  renterName: renter.fullName || "Renter",
+                },
+              );
+
+            if (!emailResult.success) {
+              logger.warn(
+                {
+                  userId,
+                  renterEmail: renter.email,
+                  error: emailResult.error,
+                },
+                "Registered-agent-inactive email failed to send",
+              );
+            }
+          } catch (error) {
+            logger.error(
+              {
+                userId,
+                renterEmail: renter.email,
+                error: error instanceof Error ? error.message : String(error),
+              },
+              "Error sending registered-agent-inactive email",
+            );
+          }
+        }),
+      );
+    }
 
     logger.warn({ userId }, "User permanently deleted by admin");
     return { message: "User permanently deleted" };

@@ -34,6 +34,7 @@ import {
   IPreMarketAdminNotificationPayload,
   IPreMarketAgentNotificationPayload,
   IRenterOpportunityFoundOtherAgentPayload,
+  IRenterRegisteredAgentInactivePayload,
   IRenterOpportunityFoundRegisteredAgentPayload,
   IRenterRegistrationVerifiedAdminPayload,
   IRenterRequestExpiredNotificationPayload,
@@ -533,6 +534,52 @@ export class EmailService {
           email: payload.to,
         },
         "Failed to send agent account deleted email",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  async sendRegisteredAgentNoLongerActiveToRenter(
+    payload: IRenterRegisteredAgentInactivePayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to },
+        "Sending registered agent inactive notification to renter",
+      );
+
+      const html = this.templates.registeredAgentNoLongerActiveRenter(
+        payload.renterName,
+        this.config.logoUrl,
+        this.config.brandColor,
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.renterName },
+        replyTo: "support@beforelisted.com",
+        subject: "Your Registered Agent Is No Longer Active on BeforeListed",
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "RENTER_REGISTERED_AGENT_INACTIVE",
+        payload.to,
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send registered agent inactive notification to renter",
       );
 
       return {

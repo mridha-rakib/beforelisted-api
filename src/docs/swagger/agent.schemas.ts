@@ -127,6 +127,24 @@ export const agentSchemas = {
     },
   },
 
+  ActivateAgentWithLinkRequest: {
+    type: "object",
+    required: ["activationLink"],
+    properties: {
+      activationLink: {
+        type: "string",
+        format: "uri",
+        example: "https://powerforms.docusign.net/abc123?PowerFormId=xyz",
+        description: "Required activation link attached to agent profile",
+      },
+      reason: {
+        type: "string",
+        nullable: true,
+        example: "Activation approved by admin after link review",
+      },
+    },
+  },
+
   // ==========================================
   // RESPONSE SCHEMAS
   // ==========================================
@@ -550,6 +568,12 @@ export const agentSchemas = {
       isActive: {
         type: "boolean",
         example: true,
+      },
+      activationLink: {
+        type: "string",
+        format: "uri",
+        nullable: true,
+        example: "https://powerforms.docusign.net/abc123?PowerFormId=xyz",
       },
       isApprovedByAdmin: {
         type: "boolean",

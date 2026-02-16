@@ -17,11 +17,13 @@ import { AuthUtil } from "../auth/auth.utils";
 import { EmailVerificationService } from "../email-verification/email-verification.service";
 import { ReferralService } from "../referral/referral.service";
 import { PreMarketService } from "../pre-market/pre-market.service";
+import { RenterRepository } from "../renter/renter.repository";
 import { UserService } from "../user/user.service";
 import type { IAgentProfile } from "./agent.interface";
 import { AgentProfileRepository } from "./agent.repository";
 import type {
   AdminAgentMetricsResponse,
+  ActivateAgentWithLinkPayload,
   AgentProfileResponse,
   AgentRegisterPayload,
   AgentRegistrationResponse,
@@ -38,6 +40,7 @@ export class AgentService {
   private s3Service: S3Service;
   private emailService: EmailService;
   private preMarketService: PreMarketService;
+  private renterRepository: RenterRepository;
 
   constructor() {
     this.repository = new AgentProfileRepository();
@@ -48,6 +51,7 @@ export class AgentService {
     this.s3Service = new S3Service();
     this.emailService = new EmailService();
     this.preMarketService = new PreMarketService();
+    this.renterRepository = new RenterRepository();
   }
 
   async registerAgent(
@@ -599,11 +603,101 @@ export class AgentService {
     const message = newStatus
       ? `Agent activated successfully`
       : `Agent deactivated successfully`;
+
+    if (!newStatus) {
+      this.notifyRenterRegisteredAgentNoLongerActive(resolvedUserId).catch(
+        (error) => {
+          logger.error(
+            { error, agentId: resolvedUserId },
+            "Failed to send renter notifications for inactive registered agent",
+          );
+        },
+      );
+    }
+
     return {
       isActive: Boolean(updated.isActive),
       previousStatus: Boolean(previousStatus),
       accountStatus,
       message,
+    };
+  }
+
+  async activateAgentWithLink(
+    userId: string,
+    adminId: string,
+    payload: ActivateAgentWithLinkPayload,
+  ): Promise<{
+    isActive: boolean;
+    previousStatus: boolean;
+    accountStatus: "active";
+    activationLink: string;
+    message: string;
+  }> {
+    if (!userId || userId.trim() === "") {
+      throw new BadRequestException("User ID is required");
+    }
+
+    let agent = await this.repository.findByUserId(userId);
+    let resolvedUserId = userId;
+
+    if (!agent) {
+      const byProfileId = await this.repository.findById(userId);
+      if (byProfileId) {
+        agent = byProfileId;
+        resolvedUserId = byProfileId.userId.toString();
+      }
+    }
+
+    if (!agent) {
+      throw new NotFoundException("Agent not found");
+    }
+
+    const user = await this.userService.getById(resolvedUserId);
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    const previousStatus = Boolean(agent.isActive);
+
+    const [updated] = await Promise.all([
+      this.repository.activateWithLink(
+        resolvedUserId,
+        adminId,
+        payload.activationLink,
+        payload.reason,
+      ),
+      this.userService.updateAccountStatus(resolvedUserId, "active"),
+    ]);
+
+    if (!previousStatus) {
+      const { NotificationService } =
+        await import("../notification/notification.service");
+      const notificationService = new NotificationService();
+
+      try {
+        await notificationService.notifyAgentActivated({
+          agentId: user._id.toString(),
+          agentEmail: user.email,
+          agentName: user.fullName,
+          activatedBy: adminId,
+        });
+      } catch (error) {
+        logger.error(
+          { error, userId: resolvedUserId },
+          "Failed to send agent status notification",
+        );
+      }
+    }
+
+    return {
+      isActive: true,
+      previousStatus,
+      accountStatus: "active",
+      activationLink: updated.activationLink || payload.activationLink,
+      message: previousStatus
+        ? "Agent activation link updated successfully"
+        : "Agent activated successfully and activation link attached",
     };
   }
 
@@ -672,6 +766,7 @@ export class AgentService {
       title: agent.title,
       isActive: agent.isActive,
       activeAt: agent.activeAt,
+      activationLink: agent.activationLink,
       totalRentersReferred: agent.totalRentersReferred,
       activeReferrals: agent.activeReferrals,
       emailSubscriptionEnabled: agent.emailSubscriptionEnabled !== false,
@@ -717,6 +812,13 @@ export class AgentService {
 
     logger.info({ userId }, "Agent profile and user account deleted");
 
+    this.notifyRenterRegisteredAgentNoLongerActive(userId).catch((error) => {
+      logger.error(
+        { error, agentId: userId },
+        "Failed to send renter notifications for deleted registered agent",
+      );
+    });
+
     if (agentEmail) {
       try {
         const emailResult =
@@ -744,5 +846,54 @@ export class AgentService {
     }
 
     return { message: "Agent profile deleted successfully" };
+  }
+
+  private async notifyRenterRegisteredAgentNoLongerActive(
+    agentUserId: string,
+  ): Promise<void> {
+    const renters = await this.renterRepository.findRentersByAgent(agentUserId);
+
+    if (!Array.isArray(renters) || renters.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      renters.map(async (renter) => {
+        const renterEmail = (renter as any)?.email;
+        if (!renterEmail) {
+          return;
+        }
+
+        const renterName = (renter as any)?.fullName || "Renter";
+
+        try {
+          const emailResult =
+            await this.emailService.sendRegisteredAgentNoLongerActiveToRenter({
+              to: renterEmail,
+              renterName,
+            });
+
+          if (!emailResult.success) {
+            logger.warn(
+              {
+                agentId: agentUserId,
+                renterEmail,
+                error: emailResult.error,
+              },
+              "Registered-agent-inactive email failed to send",
+            );
+          }
+        } catch (error) {
+          logger.error(
+            {
+              agentId: agentUserId,
+              renterEmail,
+              error: error instanceof Error ? error.message : String(error),
+            },
+            "Error sending registered-agent-inactive email",
+          );
+        }
+      }),
+    );
   }
 }

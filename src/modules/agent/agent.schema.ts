@@ -57,3 +57,28 @@ export const agentToggleActiveSchema = z.object({
     })
     .optional(),
 });
+
+const activationLinkSchema = z
+  .string()
+  .trim()
+  .url("A valid activation link is required");
+
+export const activateAgentWithLinkSchema = z.object({
+  params: z.object({
+    userId: z.string().min(24),
+  }),
+  body: z
+    .object({
+      activationLink: activationLinkSchema.optional(),
+      link: activationLinkSchema.optional(),
+      reason: z.string().trim().optional(),
+    })
+    .refine((data) => Boolean(data.activationLink || data.link), {
+      message: "Activation link is required",
+      path: ["activationLink"],
+    })
+    .transform((data) => ({
+      activationLink: data.activationLink ?? data.link!,
+      reason: data.reason,
+    })),
+});

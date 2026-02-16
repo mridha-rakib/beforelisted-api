@@ -178,6 +178,17 @@ router.post(
   authMiddleware.authorize(ROLES.ADMIN),
   controller.toggleAgentActive
 );
+
+/**
+ * POST /agent/admin/:userId/activate-with-link
+ * Activate agent account and store activation link (admin only)
+ */
+router.post(
+  "/admin/:userId/activate-with-link",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize(ROLES.ADMIN),
+  controller.activateAgentWithLink
+);
 /**
  * GET /agent/admin/:userId/activation-history
  * Get agent activation history

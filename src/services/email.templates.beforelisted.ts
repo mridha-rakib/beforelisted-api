@@ -1520,6 +1520,144 @@ export class EmailTemplates {
     `;
   }
 
+  registeredAgentNoLongerActiveRenter(
+    userName: string | undefined,
+    logoUrl?: string,
+    brandColor?: string
+  ): string {
+    const logo = logoUrl || this.logoUrl;
+    const color = brandColor || this.brandColor;
+    const displayName =
+      userName && userName.trim() ? userName.split(" ")[0] : "there";
+
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Registered Agent Is No Longer Active on BeforeListed</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: ${color};
+            padding: 40px 20px;
+            text-align: center;
+        }
+        ${this.getLogoStyles()}
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+        .content {
+            padding: 36px 30px;
+        }
+        .content h2 {
+            color: #333333;
+            font-size: 20px;
+            margin: 0 0 18px 0;
+            font-weight: 600;
+        }
+        .content p {
+            color: #666666;
+            font-size: 15px;
+            line-height: 1.7;
+            margin: 0 0 14px 0;
+        }
+        .notice-box {
+            background-color: #f0f7ff;
+            border-left: 4px solid ${color};
+            padding: 14px;
+            margin: 18px 0;
+            border-radius: 4px;
+        }
+        .notice-box p {
+            margin: 0;
+            color: #333333;
+        }
+        .details-list {
+            margin: 8px 0 18px 20px;
+            padding: 0;
+            color: #666666;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+        .details-list li {
+            margin: 8px 0;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 28px 24px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+        }
+        .footer p {
+            color: #999999;
+            font-size: 13px;
+            margin: 5px 0;
+        }
+        .footer a {
+            color: ${color};
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="${logo}" alt="BeforeListed Logo" class="logo">
+            <h1>Your Registered Agent Is No Longer Active</h1>
+        </div>
+
+        <div class="content">
+            <h2>Hi ${displayName},</h2>
+
+            <p>We're writing to inform you that your previously registered agent is no longer active on the BeforeListed&trade; platform.</p>
+
+            <div class="notice-box">
+                <p>Your renter account and any active request have not been deleted. Your request remains private and will not be shared with any other agents unless and until you choose how to proceed.</p>
+            </div>
+
+            <p>You may choose to continue working with your previous agent outside of the BeforeListed&trade; platform.</p>
+
+            <p>To continue using BeforeListed&trade;, you may do one of the following:</p>
+            <ul class="details-list">
+                <li>Log in to your account and associate your request with an available active licensed agent on the platform, or</li>
+                <li>If you are working with a different agent who uses the BeforeListed&trade; system, log in using that agent's registration link</li>
+            </ul>
+
+            <p>If you have any questions or need assistance, please feel free to reply to this email.</p>
+
+            <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
+        </div>
+
+        <div class="footer">
+            <p>c ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
+            <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
+            ${this.getFooterLinks(color)}
+        </div>
+    </div>
+</body>
+</html>
+    `;
+  }
+
   welcomeAdminReferral(
     userName: string,
     email: string,

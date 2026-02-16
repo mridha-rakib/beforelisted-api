@@ -287,6 +287,45 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
       .exec() as any;
   }
 
+  async activateWithLink(
+    userId: string,
+    adminId: string,
+    activationLink: string,
+    reason?: string
+  ): Promise<IAgentProfile> {
+    const agent = await this.model.findOne({ userId }).exec();
+
+    if (!agent) {
+      throw new NotFoundException("Agent not found");
+    }
+
+    const now = new Date();
+    const updateQuery: Record<string, any> = {
+      $set: {
+        isActive: true,
+        activeAt: agent.isActive && agent.activeAt ? agent.activeAt : now,
+        lastActivationChange: now,
+        activationLink,
+      },
+    };
+
+    if (!agent.isActive) {
+      updateQuery.$push = {
+        activationHistory: {
+          action: "activated",
+          changedBy: adminId,
+          changedAt: now,
+          reason,
+        },
+      };
+    }
+
+    return this.model
+      .findOneAndUpdate({ userId }, updateQuery, { new: true })
+      .populate("activationHistory.changedBy", "email fullName")
+      .exec() as any;
+  }
+
   async getActivationHistory(userId: string): Promise<any[]> {
     const agent = await this.model
       .findOne({ userId })

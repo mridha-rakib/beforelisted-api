@@ -103,6 +103,11 @@ export interface IRenterRegistrationVerifiedAdminPayload {
   referralTag: string;
 }
 
+export interface IRenterRegisteredAgentInactivePayload {
+  to: string;
+  renterName: string;
+}
+
 export interface IPreMarketAgentNotification {
   notificationId: string;
   agentId: string;

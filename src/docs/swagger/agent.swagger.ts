@@ -309,6 +309,41 @@ export const agentPaths = {
     },
   },
 
+  "/agent/admin/{userId}/activate-with-link": {
+    post: {
+      tags: ["Agent Management - Admin"],
+      summary: "Activate agent with required link (Admin only)",
+      description:
+        "Activate an agent account and attach the required activation link to the agent profile.",
+      operationId: "activateAgentWithLink",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "userId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              $ref: "#/components/schemas/ActivateAgentWithLinkRequest",
+            },
+          },
+        },
+      },
+      responses: {
+        "200": { description: "Agent activated and link attached successfully" },
+        "401": { description: "Unauthorized" },
+        "403": { description: "Forbidden - Admin role required" },
+        "404": { description: "Agent not found" },
+      },
+    },
+  },
+
   "/agent/admin/{userId}/activation-history": {
     get: {
       tags: ["Agent Management - Admin"],
