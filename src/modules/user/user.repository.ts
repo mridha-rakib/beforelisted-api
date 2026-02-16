@@ -116,6 +116,33 @@ export class UserRepository extends BaseRepository<IUser> {
       .exec();
   }
 
+  async clearAgentReferrerFromUsers(
+    agentUserId: string,
+    userIds: string[]
+  ): Promise<number> {
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return 0;
+    }
+
+    const result = await this.model
+      .updateMany(
+        {
+          _id: { $in: userIds },
+          referredBy: agentUserId,
+          referredByRole: "Agent",
+        },
+        {
+          $unset: {
+            referredBy: "",
+            referredByRole: "",
+          },
+        }
+      )
+      .exec();
+
+    return result.modifiedCount || 0;
+  }
+
   async countReferredUsers(referrerId: string): Promise<number> {
     return this.model
       .countDocuments({

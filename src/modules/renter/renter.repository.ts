@@ -86,6 +86,53 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
   }
 
   /**
+   * Remove agent referral linkage from renter profiles.
+   * Used when an agent account is deleted by the agent owner.
+   */
+  async clearReferredAgentFromRenters(
+    agentId: string | Types.ObjectId
+  ): Promise<{ modifiedCount: number; renterUserIds: string[] }> {
+    const objectId =
+      typeof agentId === "string"
+        ? new mongoose.Types.ObjectId(agentId)
+        : agentId;
+
+    const referredRenters = await this.model
+      .find({
+        referredByAgentId: objectId,
+        isDeleted: false,
+      })
+      .select("userId")
+      .lean()
+      .exec();
+
+    const renterUserIds = referredRenters
+      .map((renter: any) => renter.userId?.toString())
+      .filter(Boolean);
+
+    if (renterUserIds.length === 0) {
+      return { modifiedCount: 0, renterUserIds: [] };
+    }
+
+    const result = await this.model
+      .updateMany(
+        {
+          referredByAgentId: objectId,
+          isDeleted: false,
+        },
+        {
+          $unset: { referredByAgentId: "" },
+        }
+      )
+      .exec();
+
+    return {
+      modifiedCount: result.modifiedCount || 0,
+      renterUserIds,
+    };
+  }
+
+  /**
    * Find renters referred by specific admin
    */
   async findRentersByAdmin(

@@ -799,8 +799,32 @@ export class AgentService {
         : null;
     const agentEmail = agentUser?.email;
     const agentName = agentUser?.fullName || agentEmail;
+    const referredRenters = await this.renterRepository.findRentersByAgent(
+      userId,
+    );
 
     await this.preMarketService.deleteAgentMatchHistory(userId);
+
+    const referralCleanup =
+      await this.renterRepository.clearReferredAgentFromRenters(userId);
+
+    if (referralCleanup.renterUserIds.length > 0) {
+      const { UserRepository } = await import("../user/user.repository");
+      const userRepository = new UserRepository();
+      const userRefCleanupCount = await userRepository.clearAgentReferrerFromUsers(
+        userId,
+        referralCleanup.renterUserIds,
+      );
+
+      logger.info(
+        {
+          userId,
+          renterProfilesUpdated: referralCleanup.modifiedCount,
+          renterUsersUpdated: userRefCleanupCount,
+        },
+        "Cleared deleted agent referral linkage from referred renter profiles",
+      );
+    }
 
     // Remove agent profile
     await this.repository.deleteById(profile._id.toString());
@@ -812,12 +836,17 @@ export class AgentService {
 
     logger.info({ userId }, "Agent profile and user account deleted");
 
-    this.notifyRenterRegisteredAgentNoLongerActive(userId).catch((error) => {
-      logger.error(
-        { error, agentId: userId },
-        "Failed to send renter notifications for deleted registered agent",
-      );
-    });
+    if (referredRenters.length > 0) {
+      this.notifyRenterRegisteredAgentNoLongerActive(
+        userId,
+        referredRenters,
+      ).catch((error) => {
+        logger.error(
+          { error, agentId: userId },
+          "Failed to send renter notifications for deleted registered agent",
+        );
+      });
+    }
 
     if (agentEmail) {
       try {
@@ -850,8 +879,11 @@ export class AgentService {
 
   private async notifyRenterRegisteredAgentNoLongerActive(
     agentUserId: string,
+    rentersOverride?: any[],
   ): Promise<void> {
-    const renters = await this.renterRepository.findRentersByAgent(agentUserId);
+    const renters =
+      rentersOverride ??
+      (await this.renterRepository.findRentersByAgent(agentUserId));
 
     if (!Array.isArray(renters) || renters.length === 0) {
       return;
