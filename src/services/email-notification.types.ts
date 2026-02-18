@@ -106,6 +106,8 @@ export interface IRenterRegistrationVerifiedAdminPayload {
 export interface IRenterRegisteredAgentInactivePayload {
   to: string;
   renterName: string;
+  defaultAgentReferralLoginLink?: string;
+  notificationReason?: "inactive" | "deleted";
 }
 
 export interface IPreMarketAgentNotification {

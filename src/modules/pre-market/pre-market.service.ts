@@ -4,6 +4,7 @@ import { env } from "@/env";
 import { SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 import { NotificationService } from "@/modules/notification/notification.service";
+import { randomInt } from "crypto";
 
 import type { NotificationType } from "@/modules/notification/notification.interface";
 import { emailService } from "@/services/email.service";
@@ -372,7 +373,7 @@ export class PreMarketService {
 
     const requestNumber = activeListingCount + 1; // will be 1 when single limit enforced
     const requestName = `BeforeListed-${requestNumber}`;
-    const requestId = await this.generateUniqueRequestId(requestName, renterId);
+    const requestId = await this.generateUniqueRequestId();
     const shareConsent = payload.shareConsent === true;
     const scope = payload.scope ?? "Upcoming";
     const referralAgentId =
@@ -494,28 +495,25 @@ export class PreMarketService {
     );
   }
 
-  private async generateUniqueRequestId(
-    baseRequestId: string,
-    renterId: string,
-  ): Promise<string> {
-    let candidate = baseRequestId;
-    let attempt = 0;
+  private async generateUniqueRequestId(): Promise<string> {
+    const maxAttempts = 50;
 
-    while (
-      await this.preMarketRepository.findByRequestIdIncludingDeleted(candidate)
-    ) {
-      attempt += 1;
-      const timeSuffix = Date.now().toString(36);
-      const renterSuffix = renterId.slice(-4);
-      const randomSuffix = Math.random().toString(36).slice(2, 6);
-      candidate = `${baseRequestId}-${renterSuffix}-${timeSuffix}${randomSuffix}`;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const sixDigitNumber = randomInt(100000, 1000000);
+      const candidate = `R-${sixDigitNumber}`;
 
-      if (attempt > 5) {
-        break;
+      const exists =
+        await this.preMarketRepository.findByRequestIdIncludingDeleted(
+          candidate,
+        );
+      if (!exists) {
+        return candidate;
       }
     }
 
-    return candidate;
+    throw new ConflictException(
+      "Failed to generate unique request ID. Please try again.",
+    );
   }
 
   async getAllRequests(

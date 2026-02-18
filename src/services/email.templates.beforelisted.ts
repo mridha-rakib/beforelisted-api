@@ -1522,6 +1522,8 @@ export class EmailTemplates {
 
   registeredAgentNoLongerActiveRenter(
     userName: string | undefined,
+    notificationReason: "inactive" | "deleted" = "inactive",
+    defaultAgentReferralLoginLink?: string,
     logoUrl?: string,
     brandColor?: string
   ): string {
@@ -1529,6 +1531,57 @@ export class EmailTemplates {
     const color = brandColor || this.brandColor;
     const displayName =
       userName && userName.trim() ? userName.split(" ")[0] : "there";
+    const isDeletedNotice = notificationReason === "deleted";
+    const emailTitle = isDeletedNotice
+      ? "Agent no longer participating"
+      : "Your Registered Agent Is No Longer Active on BeforeListed";
+    const headerTitle = isDeletedNotice
+      ? "Agent no longer participating"
+      : "Your Registered Agent Is No Longer Active";
+    const referralLoginLink =
+      defaultAgentReferralLoginLink || "https://beforelisted.com/signin";
+    const contentHtml = isDeletedNotice
+      ? `
+            <p>Your originally registered agent is no longer participating in the BeforeListed intake service. You may contact that agent directly if you wish. Your request will remain private on BeforeListed and will not be shared with any other agents unless you choose to continue.</p>
+
+            <p>If you would like to continue using the service, you may request representation by Tuval Mor, a licensed New York real estate agent. If you proceed, you will be asked to review and sign the required Corcoran agency disclosures before any assistance begins.</p>
+
+            <p>If you are currently working with a different agent who uses the BeforeListed service, please log in using that agent's unique registration link.</p>
+
+            <div class="notice-box">
+                <p>Default agent referral login link:</p>
+            </div>
+            <div class="link-box">
+                <a href="${referralLoginLink}" style="color: ${color}; text-decoration: none;">${referralLoginLink}</a>
+            </div>
+
+            <div class="cta-wrap">
+                <a href="${referralLoginLink}" class="cta-button">Log in with Tuval Mor's referral link</a>
+            </div>
+
+            <p>If you have any questions or need assistance, please feel free to reply to this email.</p>
+
+            <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
+        `
+      : `
+            <p>We're writing to inform you that your previously registered agent is no longer active on the BeforeListed&trade; platform.</p>
+
+            <div class="notice-box">
+                <p>Your renter account and any active request have not been deleted. Your request remains private and will not be shared with any other agents unless and until you choose how to proceed.</p>
+            </div>
+
+            <p>You may choose to continue working with your previous agent outside of the BeforeListed&trade; platform.</p>
+
+            <p>To continue using BeforeListed&trade;, you may do one of the following:</p>
+            <ul class="details-list">
+                <li>Log in to your account and associate your request with an available active licensed agent on the platform, or</li>
+                <li>If you are working with a different agent who uses the BeforeListed&trade; system, log in using that agent's registration link</li>
+            </ul>
+
+            <p>If you have any questions or need assistance, please feel free to reply to this email.</p>
+
+            <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
+        `;
 
     return `
 <!DOCTYPE html>
@@ -1536,7 +1589,7 @@ export class EmailTemplates {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Registered Agent Is No Longer Active on BeforeListed</title>
+    <title>${emailTitle}</title>
     <style>
         body {
             margin: 0;
@@ -1601,6 +1654,29 @@ export class EmailTemplates {
         .details-list li {
             margin: 8px 0;
         }
+        .cta-wrap {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: ${color};
+            color: #ffffff !important;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        .link-box {
+            background-color: #f8f9fb;
+            border: 1px solid #e7e9ef;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 16px 0;
+            word-break: break-all;
+            font-size: 14px;
+            line-height: 1.5;
+        }
         .footer {
             background-color: #f9f9f9;
             padding: 28px 24px;
@@ -1622,29 +1698,12 @@ export class EmailTemplates {
     <div class="container">
         <div class="header">
             <img src="${logo}" alt="BeforeListed Logo" class="logo">
-            <h1>Your Registered Agent Is No Longer Active</h1>
+            <h1>${headerTitle}</h1>
         </div>
 
         <div class="content">
             <h2>Hi ${displayName},</h2>
-
-            <p>We're writing to inform you that your previously registered agent is no longer active on the BeforeListed&trade; platform.</p>
-
-            <div class="notice-box">
-                <p>Your renter account and any active request have not been deleted. Your request remains private and will not be shared with any other agents unless and until you choose how to proceed.</p>
-            </div>
-
-            <p>You may choose to continue working with your previous agent outside of the BeforeListed&trade; platform.</p>
-
-            <p>To continue using BeforeListed&trade;, you may do one of the following:</p>
-            <ul class="details-list">
-                <li>Log in to your account and associate your request with an available active licensed agent on the platform, or</li>
-                <li>If you are working with a different agent who uses the BeforeListed&trade; system, log in using that agent's registration link</li>
-            </ul>
-
-            <p>If you have any questions or need assistance, please feel free to reply to this email.</p>
-
-            <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
+            ${contentHtml}
         </div>
 
         <div class="footer">

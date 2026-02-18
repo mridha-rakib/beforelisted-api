@@ -78,6 +78,9 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
     required: true,
     unique: true,
     index: true,
+    match: [/^R-\d{6}$/, "requestId must follow format R-123456"],
+    minlength: 8,
+    maxlength: 8,
   },
   requestNumber: {
     type: Number,

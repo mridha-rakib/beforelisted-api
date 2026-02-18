@@ -550,13 +550,17 @@ export class EmailService {
     payload: IRenterRegisteredAgentInactivePayload,
   ): Promise<IEmailResult> {
     try {
+      const notificationReason = payload.notificationReason || "inactive";
+
       logger.debug(
-        { email: payload.to },
+        { email: payload.to, notificationReason },
         "Sending registered agent inactive notification to renter",
       );
 
       const html = this.templates.registeredAgentNoLongerActiveRenter(
         payload.renterName,
+        notificationReason,
+        payload.defaultAgentReferralLoginLink,
         this.config.logoUrl,
         this.config.brandColor,
       );
@@ -564,7 +568,10 @@ export class EmailService {
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
         replyTo: "support@beforelisted.com",
-        subject: "Your Registered Agent Is No Longer Active on BeforeListed",
+        subject:
+          notificationReason === "deleted"
+            ? "Agent no longer participating"
+            : "Your Registered Agent Is No Longer Active on BeforeListed",
         html,
       };
 

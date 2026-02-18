@@ -3,7 +3,7 @@
 import { z } from "zod";
 
 export const PREMARKET_CONFIG = {
-  REQUEST_ID_PREFIX: "BeforeListed-PM",
+  REQUEST_ID_PREFIX: "R",
   BEDROOMS: ["Studio", "1BR", "2BR", "3BR", "4BR+"] as const,
   BATHROOMS: ["1", "2", "3", "4+"] as const,
   REQUEST_STATUSES: ["active", "archived", "deleted"] as const,

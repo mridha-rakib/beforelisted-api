@@ -1,6 +1,7 @@
 // file: src/modules/agent/agent.service.ts
 
 import { ROLES, SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
+import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 
 import { EmailService } from "@/services/email.service";
@@ -848,9 +849,14 @@ export class AgentService {
     logger.info({ userId }, "Agent profile and user account deleted");
 
     if (referredRenters.length > 0) {
+      const defaultAgentReferralLoginLink =
+        await this.getDefaultAgentReferralLoginLink();
+
       this.notifyRenterRegisteredAgentNoLongerActive(
         userId,
         referredRenters,
+        defaultAgentReferralLoginLink,
+        "deleted",
       ).catch((error) => {
         logger.error(
           { error, agentId: userId },
@@ -888,9 +894,38 @@ export class AgentService {
     return { message: "Agent profile deleted successfully" };
   }
 
+  private async getDefaultAgentReferralLoginLink(): Promise<string> {
+    try {
+      const defaultAgent = await this.userService.getUserByEmail(
+        SYSTEM_DEFAULT_AGENT.email,
+      );
+
+      if (!defaultAgent?.referralCode) {
+        logger.warn(
+          { email: SYSTEM_DEFAULT_AGENT.email },
+          "Default agent referral code not found; using fallback sign-in link",
+        );
+        return `${env.CLIENT_URL}/signin`;
+      }
+
+      return `${env.CLIENT_URL}/signin?ref=${encodeURIComponent(defaultAgent.referralCode)}`;
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: SYSTEM_DEFAULT_AGENT.email,
+        },
+        "Failed to resolve default agent referral login link; using fallback sign-in link",
+      );
+      return `${env.CLIENT_URL}/signin`;
+    }
+  }
+
   private async notifyRenterRegisteredAgentNoLongerActive(
     agentUserId: string,
     rentersOverride?: any[],
+    defaultAgentReferralLoginLink?: string,
+    notificationReason: "inactive" | "deleted" = "inactive",
   ): Promise<void> {
     const renters =
       rentersOverride ??
@@ -899,6 +934,12 @@ export class AgentService {
     if (!Array.isArray(renters) || renters.length === 0) {
       return;
     }
+
+    const resolvedDefaultAgentReferralLoginLink =
+      notificationReason === "deleted"
+        ? defaultAgentReferralLoginLink ??
+          (await this.getDefaultAgentReferralLoginLink())
+        : undefined;
 
     await Promise.all(
       renters.map(async (renter) => {
@@ -914,6 +955,9 @@ export class AgentService {
             await this.emailService.sendRegisteredAgentNoLongerActiveToRenter({
               to: renterEmail,
               renterName,
+              notificationReason,
+              defaultAgentReferralLoginLink:
+                resolvedDefaultAgentReferralLoginLink,
             });
 
           if (!emailResult.success) {

@@ -362,7 +362,7 @@ export const preMarketSchemas = {
       _id: { type: "string" },
       requestId: {
         type: "string",
-        example: "BeforeListed-abc123",
+        example: "R-123456",
         description: "Unique request identifier",
       },
       renterId: { type: "string" },
