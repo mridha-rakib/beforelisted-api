@@ -19,6 +19,14 @@ export const authSchemas = {
         example: "SecurePassword123!",
         description: "User password",
       },
+      referralCode: {
+        type: "string",
+        pattern: "^(AGT|ADM)-[A-Z0-9]{8}$",
+        nullable: true,
+        example: "AGT-ILTFDRTU",
+        description:
+          "Optional at login. Required only when renter has no associated referral and needs reassignment.",
+      },
     },
   },
 
@@ -192,6 +200,64 @@ export const authSchemas = {
             type: "boolean",
             example: false,
             description: "Flag if password change is required",
+          },
+          agentProfile: {
+            allOf: [{ $ref: "#/components/schemas/AgentProfile" }],
+            nullable: true,
+            description:
+              "Returned for agent logins. Includes licenseNumber, brokerageName, title, and other profile fields.",
+          },
+          referralInfo: {
+            type: "object",
+            nullable: true,
+            properties: {
+              registrationType: {
+                type: "string",
+                enum: ["agent_referral", "admin_referral"],
+                example: "agent_referral",
+              },
+              referrer: {
+                type: "object",
+                properties: {
+                  id: {
+                    type: "string",
+                    example: "6990c03f7d9b8c7a4a6a04d8",
+                  },
+                  role: {
+                    type: "string",
+                    enum: ["Agent", "Admin"],
+                    example: "Agent",
+                  },
+                  fullName: {
+                    type: "string",
+                    nullable: true,
+                    example: "Rajuan",
+                  },
+                  title: {
+                    type: "string",
+                    nullable: true,
+                    example: "Licensed Real Estate Salesperson",
+                    description:
+                      "Available for agent referrals; null for admin referrals",
+                  },
+                  email: {
+                    type: "string",
+                    nullable: true,
+                    example: "agent@example.com",
+                  },
+                  phoneNumber: {
+                    type: "string",
+                    nullable: true,
+                    example: "+1234567890",
+                  },
+                  referralCode: {
+                    type: "string",
+                    nullable: true,
+                    example: "AGT-IW8JJJ2X",
+                  },
+                },
+              },
+            },
           },
         },
       },

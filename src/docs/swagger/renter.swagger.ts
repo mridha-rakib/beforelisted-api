@@ -5,9 +5,9 @@ export const renterPaths = {
   "/renter/register": {
     post: {
       tags: ["Renter Management"],
-      summary: "Register renter (auto-detect type)",
+      summary: "Register renter (referral required)",
       description:
-        "Register a renter and auto-detect flow (normal, agent referral, or admin referral).",
+        "Register a renter and auto-detect flow (agent referral or admin referral). Referral code is required.",
       operationId: "registerRenter",
       requestBody: {
         required: true,
@@ -19,28 +19,6 @@ export const renterPaths = {
       },
       responses: {
         "201": { description: "Renter registered successfully" },
-        "400": { description: "Invalid input" },
-        "409": { description: "Conflict - email already exists" },
-      },
-    },
-  },
-
-  "/renter/register/normal": {
-    post: {
-      tags: ["Renter Management"],
-      summary: "Register normal renter",
-      description: "Register renter without referral code.",
-      operationId: "registerNormalRenter",
-      requestBody: {
-        required: true,
-        content: {
-          "application/json": {
-            schema: { $ref: "#/components/schemas/NormalRenterRegisterRequest" },
-          },
-        },
-      },
-      responses: {
-        "201": { description: "Normal renter registered successfully" },
         "400": { description: "Invalid input" },
         "409": { description: "Conflict - email already exists" },
       },

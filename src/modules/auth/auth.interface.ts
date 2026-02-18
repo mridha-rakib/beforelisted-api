@@ -13,6 +13,7 @@ export interface IRegisterRequest {
 export interface ILoginRequest {
   email: string;
   password: string;
+  referralCode?: string;
 }
 
 export interface IVerifyEmailRequest {

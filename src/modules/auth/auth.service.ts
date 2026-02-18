@@ -16,7 +16,10 @@ import {
   UserType,
 } from "../email-verification/email-verification.types";
 import { PasswordResetService } from "../password/password.service";
+import { ReferralService } from "../referral/referral.service";
 import { AgentProfileRepository } from "../agent/agent.repository";
+import type { IAgentProfile } from "../agent/agent.interface";
+import type { AgentProfileResponse } from "../agent/agent.type";
 import type { IUser } from "../user/user.interface";
 import { UserService } from "../user/user.service";
 import type {
@@ -35,6 +38,7 @@ export class AuthService {
   private emailVerificationService: EmailVerificationService;
   private emailService: EmailService;
   private renterRepository: RenterRepository;
+  private referralService: ReferralService;
 
   constructor() {
     this.userService = new UserService();
@@ -42,6 +46,7 @@ export class AuthService {
     this.emailService = new EmailService();
     this.emailVerificationService = new EmailVerificationService();
     this.renterRepository = new RenterRepository();
+    this.referralService = new ReferralService();
   }
 
   /**
@@ -51,6 +56,7 @@ export class AuthService {
     const user = await this.userService.getUserByEmailWithPassword(
       payload.email
     );
+    let agentProfile: AgentProfileResponse | undefined;
 
     if (!user) {
       throw new UnauthorizedException(MESSAGES.AUTH.INVALID_CREDENTIALS);
@@ -69,10 +75,11 @@ export class AuthService {
 
     if (user.role === ROLES.AGENT) {
       const agentRepository = new AgentProfileRepository();
-      const agentProfile = await agentRepository.findByUserId(user._id);
-      if (!agentProfile || agentProfile.isActive === false) {
+      const profile = await agentRepository.findByUserId(user._id);
+      if (!profile || profile.isActive === false) {
         throw new UnauthorizedException(MESSAGES.AUTH.ACCOUNT_INACTIVE);
       }
+      agentProfile = this.toAgentProfileResponse(profile);
     }
 
     // Verify password
@@ -89,28 +96,96 @@ export class AuthService {
       throw new UnauthorizedException(MESSAGES.AUTH.INVALID_CREDENTIALS);
     }
 
-    // Update last login
-    await this.userService.updateLastLogin(user._id.toString());
-
-    // Generate tokens
-    const tokens = this.generateTokens(user);
-
     let referralInfo: ReferralInfo | undefined;
 
     if (user.role === ROLES.RENTER) {
-      const renter = await this.renterRepository.findRenterWithReferrer(
+      let renter = await this.renterRepository.findRenterWithReferrer(
         user._id.toString()
       );
+
+      if (!renter) {
+        throw new NotFoundException("Renter profile not found");
+      }
+
+      const hasReferrer = Boolean(
+        renter.referredByAgentId || renter.referredByAdminId
+      );
+
+      if (!hasReferrer) {
+        if (!payload.referralCode) {
+          throw new UnauthorizedException(
+            "No referral is associated with your account. Please provide a valid agent or admin referral code to continue."
+          );
+        }
+
+        const referrer = await this.referralService.validateReferralCode(
+          payload.referralCode
+        );
+
+        const registrationType =
+          referrer.role === ROLES.ADMIN ? "admin_referral" : "agent_referral";
+
+        await this.renterRepository.assignReferralByUserId(user._id.toString(), {
+          registrationType,
+          referrerId: referrer._id.toString(),
+        });
+        await this.referralService.recordReferral(referrer._id.toString());
+
+        logger.info(
+          {
+            renterUserId: user._id.toString(),
+            referrerId: referrer._id.toString(),
+            registrationType,
+          },
+          "Renter referral was reassigned during login"
+        );
+
+        renter = await this.renterRepository.findRenterWithReferrer(
+          user._id.toString()
+        );
+        if (!renter) {
+          throw new NotFoundException("Renter profile not found");
+        }
+      } else if (payload.referralCode) {
+        const currentReferrer =
+          renter.registrationType === "agent_referral"
+            ? (renter.referredByAgentId as any)
+            : renter.registrationType === "admin_referral"
+              ? (renter.referredByAdminId as any)
+              : null;
+        const currentReferralCode =
+          currentReferrer && typeof currentReferrer === "object"
+            ? currentReferrer.referralCode || null
+            : null;
+
+        if (!currentReferralCode || currentReferralCode !== payload.referralCode) {
+          throw new BadRequestException(
+            "Your account already has a referral. You cannot login with a different referral code."
+          );
+        }
+      }
 
       if (renter?.registrationType === "agent_referral") {
         const referrer = renter.referredByAgentId as any;
         if (referrer) {
+          const referrerId =
+            referrer?._id?.toString?.() ??
+            (typeof referrer === "string" ? referrer : null);
+          let referrerTitle: string | null = null;
+
+          if (referrerId) {
+            const agentRepository = new AgentProfileRepository();
+            const agentProfile = await agentRepository.findByUserId(referrerId);
+            referrerTitle = agentProfile?.title ?? null;
+          }
+
           referralInfo = {
             registrationType: "agent_referral",
             referrer: {
-              id: referrer._id?.toString() ?? String(referrer),
+              id: referrerId ?? String(referrer),
               role: "Agent",
               fullName: referrer.fullName ?? null,
+              title: referrerTitle,
               email: referrer.email ?? null,
               phoneNumber: referrer.phoneNumber ?? null,
               referralCode: referrer.referralCode ?? null,
@@ -135,10 +210,17 @@ export class AuthService {
       }
     }
 
+    // Update last login only after all renter-specific access checks pass
+    await this.userService.updateLastLogin(user._id.toString());
+
+    // Generate tokens
+    const tokens = this.generateTokens(user);
+
     return {
       user: this.userService.toUserResponse(user),
       tokens,
       mustChangePassword: user.mustChangePassword || false,
+      ...(agentProfile ? { agentProfile } : {}),
       ...(referralInfo ? { referralInfo } : {}),
     };
   }
@@ -623,5 +705,34 @@ export class AuthService {
       hour: "numeric",
       minute: "2-digit",
     });
+  }
+
+  private toAgentProfileResponse(agent: IAgentProfile): AgentProfileResponse {
+    return {
+      _id: agent._id?.toString() ?? "",
+      userInfo:
+        agent.userId && (agent.userId as any)._id
+          ? agent.userId
+          : (agent.userId?.toString() ?? ""),
+      licenseNumber: agent.licenseNumber,
+      brokerageName: agent.brokerageName,
+      title: agent.title,
+      isActive: agent.isActive,
+      activeAt: agent.activeAt,
+      activationLink: agent.activationLink,
+      totalRentersReferred: agent.totalRentersReferred,
+      activeReferrals: agent.activeReferrals,
+      emailSubscriptionEnabled: agent.emailSubscriptionEnabled !== false,
+      acceptingRequests: agent.acceptingRequests !== false,
+      acceptingRequestsToggledAt: agent.acceptingRequestsToggledAt,
+      hasGrantAccess: agent.hasGrantAccess,
+      lastAccessToggleAt: agent.lastAccessToggleAt,
+      grantAccessCount: agent.grantAccessCount,
+      totalMatches: agent.totalMatches,
+      successfulMatches: agent.successfulMatches,
+      profileImageUrl: (agent.userId as any)?.profileImageUrl ?? null,
+      createdAt: agent.createdAt,
+      updatedAt: agent.updatedAt,
+    };
   }
 }

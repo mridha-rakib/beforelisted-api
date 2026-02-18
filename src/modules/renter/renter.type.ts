@@ -20,20 +20,14 @@ export type RenterQuestionnaireRecord = RenterQuestionnairePayload & {
 };
 
 /**
- * Normal Renter Registration Payload
+ * Agent Referral Renter Registration Payload
  */
-export type NormalRenterRegisterPayload = {
+export type AgentReferralRenterRegisterPayload = {
   email: string;
   password: string;
   fullName: string;
   phoneNumber?: string;
   questionnaire?: RenterQuestionnairePayload;
-};
-
-/**
- * Agent Referral Renter Registration Payload
- */
-export type AgentReferralRenterRegisterPayload = NormalRenterRegisterPayload & {
   referralCode: string; // AGT-xxxxx
 };
 
@@ -52,7 +46,6 @@ export type AdminReferralRenterRegisterPayload = {
  * Union type for all registration payloads
  */
 export type RenterRegisterPayload =
-  | NormalRenterRegisterPayload
   | AgentReferralRenterRegisterPayload
   | AdminReferralRenterRegisterPayload;
 
@@ -88,7 +81,7 @@ export type RenterRegistrationResponse = {
     refreshToken: string;
     expiresIn: string;
   };
-  registrationType: "normal" | "agent_referral" | "admin_referral";
+  registrationType: "agent_referral" | "admin_referral";
   temporaryPassword?: string; // For admin referral only
   mustChangePassword?: boolean; // For admin referral only
   emailSent?: boolean;
@@ -176,7 +169,7 @@ export type RenterControllerResponse = {
   renter: RenterResponse;
   accessToken: string; // Only in JSON response
   expiresIn: string;
-  registrationType: "normal" | "agent_referral" | "admin_referral";
+  registrationType: "agent_referral" | "admin_referral";
   temporaryPassword?: string; // For admin referral
   mustChangePassword?: boolean; // For admin referral
 };

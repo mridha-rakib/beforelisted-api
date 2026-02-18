@@ -12,6 +12,21 @@ export const ROLES = {
   RENTER: "Renter",
 } as const;
 
+export const SYSTEM_DEFAULT_ADMIN = {
+  email: "admin@beforelisted.com",
+  fullName: "Tuval Mor",
+} as const;
+
+export const SYSTEM_DEFAULT_AGENT = {
+  email: "tmor@corcoran.com",
+  phoneNumber: "6463421757",
+  fullName: "Tuval Mor",
+  role: ROLES.AGENT,
+  licenseNumber: "40M01147584",
+  brokerageName: "Corcoran",
+  title: "Licensed Real Estate Salesperson",
+} as const;
+
 export const ACCOUNT_STATUS = {
   PENDING: "pending",
   ACTIVE: "active",

@@ -241,6 +241,40 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
   }
 
   /**
+   * Assign or re-assign renter referral source.
+   * Used for login-time referral attachment when renter has no referrer.
+   */
+  async assignReferralByUserId(
+    userId: string | Types.ObjectId,
+    payload: {
+      registrationType: "agent_referral" | "admin_referral";
+      referrerId: string | Types.ObjectId;
+    }
+  ): Promise<IRenterModel | null> {
+    const setData: Record<string, any> = {
+      registrationType: payload.registrationType,
+    };
+    const unsetData: Record<string, any> = {};
+
+    if (payload.registrationType === "agent_referral") {
+      setData.referredByAgentId = payload.referrerId;
+      unsetData.referredByAdminId = "";
+    } else {
+      setData.referredByAdminId = payload.referrerId;
+      unsetData.referredByAgentId = "";
+    }
+
+    return this.model.findOneAndUpdate(
+      { userId, isDeleted: false },
+      {
+        $set: setData,
+        $unset: unsetData,
+      },
+      { new: true }
+    );
+  }
+
+  /**
    * Add questionnaire data (for admin referral renters)
    */
   async addQuestionnaire(

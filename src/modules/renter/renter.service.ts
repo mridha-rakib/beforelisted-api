@@ -1,6 +1,6 @@
 // file: src/modules/renter/renter.service.ts
 
-import { ROLES } from "@/constants/app.constants";
+import { ROLES, SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 import { EmailService } from "@/services/email.service";
 import { ExcelService } from "@/services/excel.service";
@@ -20,8 +20,6 @@ import { RenterRepository } from "./renter.repository";
 import type {
   AdminReferralRenterRegisterPayload,
   AgentReferralRenterRegisterPayload,
-  NormalRenterRegisterPayload,
-  RenterQuestionnaireRecord,
   RenterRegistrationResponse,
   RenterResponse,
   ResetPasswordPayload,
@@ -74,81 +72,11 @@ export class RenterService {
         throw new BadRequestException("Invalid referral code format");
       }
     } else {
-      return this.registerNormalRenter(payload as NormalRenterRegisterPayload);
+      throw new BadRequestException(
+        "Referral code is required. Renters must register using an agent or admin referral code."
+      );
     }
   }
-
-  /**
-   * 1️⃣ NORMAL RENTER REGISTRATION
-   * Standard flow: email + password + email verification required
-   */
-  private async registerNormalRenter(
-    payload: NormalRenterRegisterPayload
-  ): Promise<RenterRegistrationResponse> {
-    const existingUser = await this.userService.getUserByEmail(payload.email);
-    if (existingUser) {
-      throw new ConflictException("Email already registered");
-    }
-
-    const hashedPassword = await hashPassword(payload.password);
-
-    const questionnaire: RenterQuestionnaireRecord | undefined =
-      payload.questionnaire && Object.keys(payload.questionnaire).length > 0
-        ? ({ ...payload.questionnaire, _id: false } as RenterQuestionnaireRecord)
-        : undefined;
-
-    const registrationType = RenterUtil.shouldTreatAsAdminReferralFromQuestionnaire(
-      questionnaire
-    )
-      ? "admin_referral"
-      : "normal";
-
-    const user = await this.userService.create({
-      email: payload.email,
-      password: hashedPassword,
-      fullName: payload.fullName,
-      phoneNumber: payload.phoneNumber,
-      role: ROLES.RENTER,
-      emailVerified: false,
-      accountStatus: "pending",
-    });
-
-    await this.emailVerificationService.createOTP({
-      userId: user._id.toString(),
-      email: user.email,
-      userType: ROLES.RENTER,
-      userName: user.fullName,
-    });
-
-    const renterProfile = await this.repository.createRenter({
-      userId: user._id,
-      email: user.email,
-      fullName: user.fullName,
-      phoneNumber: payload.phoneNumber,
-      registrationType,
-      questionnaire,
-      accountStatus: "pending",
-    });
-
-    const tokens = this.generateTokens(
-      user._id.toString(),
-      user.email,
-      user.role,
-      user.accountStatus
-    );
-
-    this.updateRenterConsolidatedExcel().catch((error) => {
-      logger.error(error, "Error updating renter consolidated Excel");
-    });
-
-    return {
-      user: this.userService.toUserResponse(user),
-      renter: this.toRenterResponse(renterProfile),
-      tokens,
-      registrationType: "normal",
-    };
-  }
-
   private async registerAgentReferralRenter(
     payload: AgentReferralRenterRegisterPayload
   ): Promise<RenterRegistrationResponse> {
@@ -232,6 +160,7 @@ export class RenterService {
     const adminId = await this.validateAndGetAdminFromReferralCode(
       payload.referralCode
     );
+    const assignedAgentId = await this.getDefaultAssignedAgentId();
 
     await this.referralService.recordReferral(adminId);
 
@@ -255,6 +184,7 @@ export class RenterService {
       phoneNumber: payload.phoneNumber,
       registrationType: "admin_referral",
       referredByAdminId: adminId,
+      referredByAgentId: assignedAgentId,
       accountStatus: "active",
       questionnaire: payload.questionnaire
         ? { ...payload.questionnaire, _id: false }
@@ -597,6 +527,20 @@ export class RenterService {
   ): Promise<string> {
     const referrer = await this.referralService.validateReferralCode(code);
     return referrer._id.toString();
+  }
+
+  private async getDefaultAssignedAgentId(): Promise<string> {
+    const defaultAgent = await this.userService.getUserByEmail(
+      SYSTEM_DEFAULT_AGENT.email
+    );
+
+    if (!defaultAgent || defaultAgent.role !== ROLES.AGENT) {
+      throw new NotFoundException(
+        "Default assigned agent is not configured. Please contact support."
+      );
+    }
+
+    return defaultAgent._id.toString();
   }
 
   async getAllRenters(

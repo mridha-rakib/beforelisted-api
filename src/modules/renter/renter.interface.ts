@@ -13,19 +13,13 @@ import type { Types } from "mongoose";
 // ============================================
 
 /**
- * Normal Renter Registration Payload
+ * Agent Referral Renter Registration Payload
  */
-export interface INormalRenterRegistration {
+export interface IAgentReferralRenterRegistration {
   email: string;
   password: string;
   fullName: string;
   phoneNumber?: string;
-}
-
-/**
- * Agent Referral Renter Registration Payload
- */
-export interface IAgentReferralRenterRegistration extends INormalRenterRegistration {
   referralCode: string; // AGT-xxxxxxxx
 }
 
@@ -56,7 +50,7 @@ export interface IRenterRegistrationResponse {
     renterId: string;
     email: string;
     fullName: string;
-    registrationType: "normal" | "agent_referral" | "admin_referral";
+    registrationType: "agent_referral" | "admin_referral";
     emailVerified: boolean;
     accountStatus: string;
   };

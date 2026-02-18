@@ -112,13 +112,21 @@ export class AgentController {
 
       // Get referral stats from service
       const stats = await this.service.getReferralStats(userId);
+      const referralCode = stats.referralCode;
+      const referralLink = referralCode
+        ? `https://beforelisted.com/signup?ref=${referralCode}`
+        : null;
+      const loginLink = referralCode
+        ? `https://beforelisted.com/signin?ref=${referralCode}`
+        : null;
 
       // Return formatted response
       ApiResponse.success(
         res,
         {
-          referralCode: stats.referralCode,
-          referralLink: `${stats.referralLink}`,
+          referralCode,
+          referralLink,
+          loginLink,
           totalReferrals: stats.totalReferrals,
           referredUsersCount: stats.referredUsers?.length || 0,
           referredUsers: stats.referredUsers,

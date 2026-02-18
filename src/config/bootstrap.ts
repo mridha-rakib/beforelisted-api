@@ -2,6 +2,7 @@
 
 import { logger } from "@/middlewares/pino-logger";
 import { AdminSeeder } from "@/seeders/admin.seeder";
+import { AgentSeeder } from "@/seeders/agent.seeder";
 import { NoticeSeeder } from "@/seeders/notice.seeder";
 import { startPreMarketExpirationJob } from "@/jobs/pre-market-expiration.job";
 
@@ -10,6 +11,7 @@ export async function bootstrapApplication(): Promise<void> {
   try {
     logger.info("🚀 Bootstrapping application...");
     await AdminSeeder.run();
+    await AgentSeeder.run();
     await NoticeSeeder.run();
     startPreMarketExpirationJob();
 

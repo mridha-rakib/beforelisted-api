@@ -9,8 +9,6 @@ const controller = new RenterController();
 
 router.post("/register", controller.registerRenter);
 
-router.post("/register/normal", controller.registerNormalRenter);
-
 router.post("/register/agent-referral", controller.registerAgentReferralRenter);
 
 router.post("/register/admin-referral", controller.registerAdminReferralRenter);

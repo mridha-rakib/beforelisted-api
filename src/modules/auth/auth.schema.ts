@@ -111,6 +111,13 @@ export const loginSchema = z.object({
   body: z.object({
     email: z.string().email(MESSAGES.VALIDATION.INVALID_EMAIL),
     password: z.string().min(1, "Password is required"),
+    referralCode: z
+      .string()
+      .regex(
+        /^(AGT|ADM)-[A-Z0-9]{8}$/,
+        "Invalid referral code format (must start with AGT- or ADM-)"
+      )
+      .optional(),
   }),
 });
 

@@ -1,9 +1,17 @@
 // file: src/modules/user/user.service.ts (ENHANCED VERSION)
 
-import { MESSAGES, ROLES } from "@/constants/app.constants";
+import {
+  MESSAGES,
+  ROLES,
+  SYSTEM_DEFAULT_ADMIN,
+  SYSTEM_DEFAULT_AGENT,
+} from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 import { EmailService } from "@/services/email.service";
-import { NotFoundException } from "@/utils/app-error.utils";
+import {
+  ForbiddenException,
+  NotFoundException,
+} from "@/utils/app-error.utils";
 import { ReferralService } from "../referral/referral.service";
 import type { IUser } from "./user.interface";
 import { PreMarketService } from "../pre-market/pre-market.service";
@@ -213,6 +221,7 @@ export class UserService {
     if (!user) {
       throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
     }
+    this.assertSystemUserDeletable(user);
 
     if (user.role === ROLES.RENTER) {
       await this.preMarketService.deleteRequestsByRenterId(userId);
@@ -298,6 +307,7 @@ export class UserService {
     if (!user) {
       throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
     }
+    this.assertSystemUserDeletable(user);
 
     let referredRenters: any[] = [];
     if (user.role === ROLES.AGENT) {
@@ -451,5 +461,19 @@ export class UserService {
     }
 
     return user;
+  }
+
+  private assertSystemUserDeletable(user: IUser): void {
+    const email = (user.email || "").toLowerCase();
+
+    if (email === SYSTEM_DEFAULT_ADMIN.email.toLowerCase()) {
+      throw new ForbiddenException("Default admin account cannot be deleted");
+    }
+
+    if (email === SYSTEM_DEFAULT_AGENT.email.toLowerCase()) {
+      throw new ForbiddenException(
+        "Default assigned agent account cannot be deleted"
+      );
+    }
   }
 }

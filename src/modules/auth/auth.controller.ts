@@ -45,6 +45,7 @@ export class AuthController {
         accessToken: result.tokens.accessToken,
         expiresIn: result.tokens.expiresIn,
         mustChangePassword: result.mustChangePassword,
+        ...(result.agentProfile ? { agentProfile: result.agentProfile } : {}),
         ...(result.referralInfo ? { referralInfo: result.referralInfo } : {}),
       };
 

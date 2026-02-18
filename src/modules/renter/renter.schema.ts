@@ -9,18 +9,6 @@ import { z } from "zod";
 // ============================================
 
 /**
- * Normal Renter Registration Schema
- */
-export const normalRenterRegisterSchema = z.object({
-  body: z.object({
-    email: z.email(MESSAGES.VALIDATION.INVALID_EMAIL),
-    password: z.string().min(8, MESSAGES.VALIDATION.PASSWORD_TOO_SHORT),
-    fullName: z.string().min(2).max(100),
-    phoneNumber: z.string().optional(),
-  }),
-});
-
-/**
  * Agent Referral Renter Registration Schema
  */
 export const agentReferralRenterRegisterSchema = z.object({
@@ -84,7 +72,7 @@ export const adminReferralRenterRegisterSchema = z.object({
 });
 
 /**
- * Generic Renter Registration Schema (Detects registration type)
+ * Generic Renter Registration Schema (Referral required)
  */
 export const renterRegisterSchema = z.object({
   body: z
@@ -96,7 +84,9 @@ export const renterRegisterSchema = z.object({
         .optional(),
       fullName: z.string().min(2).max(100),
       phoneNumber: z.string().optional(),
-      referralCode: z.string().optional(),
+      referralCode: z
+        .string()
+        .min(1, "Referral code is required for renter registration"),
       questionnaire: z
         .object({
           lookingToPurchase: z.boolean().optional(),
@@ -110,45 +100,32 @@ export const renterRegisterSchema = z.object({
       const ReferralParser =
         require("@/utils/referral-parser.utils").ReferralParser;
 
-      if (data.referralCode) {
-        const validation = ReferralParser.validate(data.referralCode);
+      const validation = ReferralParser.validate(data.referralCode);
 
-        logger.warn(validation, "Validation debugging.");
-        if (!validation.isValid) {
-          ctx.addIssue({
-            code: "custom",
-            message: validation.error || "Invalid referral code format",
-            path: ["referralCode"],
-          });
-          return;
-        }
+      logger.warn(validation, "Validation debugging.");
+      if (!validation.isValid) {
+        ctx.addIssue({
+          code: "custom",
+          message: validation.error || "Invalid referral code format",
+          path: ["referralCode"],
+        });
+        return;
+      }
 
-        if (validation.type === "agent_referral") {
-          // Agent referral: password REQUIRED
-          if (!data.password) {
-            ctx.addIssue({
-              code: "custom",
-              message: "Password is required for agent referral registration",
-              path: ["password"],
-            });
-          }
-        } else if (validation.type === "admin_referral") {
-          // Admin referral: password NOT allowed (will be auto-generated)
-          if (data.password) {
-            ctx.addIssue({
-              code: "custom", // ✅ FIX 2
-              message:
-                "Password should not be provided for admin referral registration",
-              path: ["password"],
-            });
-          }
-        }
-      } else {
-        // Normal registration - password is required
+      if (validation.type === "agent_referral") {
         if (!data.password) {
           ctx.addIssue({
             code: "custom",
-            message: "Password is required for normal registration",
+            message: "Password is required for agent referral registration",
+            path: ["password"],
+          });
+        }
+      } else if (validation.type === "admin_referral") {
+        if (data.password) {
+          ctx.addIssue({
+            code: "custom",
+            message:
+              "Password should not be provided for admin referral registration",
             path: ["password"],
           });
         }

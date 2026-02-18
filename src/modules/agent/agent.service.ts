@@ -1,6 +1,6 @@
 // file: src/modules/agent/agent.service.ts
 
-import { ROLES } from "@/constants/app.constants";
+import { ROLES, SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 
 import { EmailService } from "@/services/email.service";
@@ -9,6 +9,7 @@ import { S3Service } from "@/services/s3.service";
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from "@/utils/app-error.utils";
 import { hashPassword } from "@/utils/password.utils";
@@ -798,6 +799,16 @@ export class AgentService {
         ? (profile.userId as { fullName?: string; email?: string })
         : null;
     const agentEmail = agentUser?.email;
+
+    if (
+      agentEmail &&
+      agentEmail.toLowerCase() === SYSTEM_DEFAULT_AGENT.email.toLowerCase()
+    ) {
+      throw new ForbiddenException(
+        "Default assigned agent account cannot be deleted",
+      );
+    }
+
     const agentName = agentUser?.fullName || agentEmail;
     const referredRenters = await this.renterRepository.findRentersByAgent(
       userId,

@@ -11,7 +11,6 @@ import {
   adminReferralRenterRegisterSchema,
   agentReferralRenterRegisterSchema,
   getRenterProfileSchema,
-  normalRenterRegisterSchema,
   renterListSchema,
   renterRegisterSchema,
   updateRenterProfileSchema,
@@ -21,7 +20,7 @@ import { RenterService } from "./renter.service";
 /**
  * Renter Controller
  * ✅ Handles HTTP requests for renter authentication and profile
- * ✅ Supports three registration flows
+ * ✅ Supports referral-based registration flows
  */
 export class RenterController {
   private service: RenterService;
@@ -35,9 +34,9 @@ export class RenterController {
   // ============================================
 
   /**
-   * PUBLIC: Register as Renter (All Types)
+   * PUBLIC: Register as Renter (Referral required)
    * POST /renter/register
-   * ✅ Auto-detects: Normal, Agent Referral, or Admin Referral
+   * ✅ Auto-detects: Agent Referral or Admin Referral
    */
   registerRenter = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
@@ -54,23 +53,6 @@ export class RenterController {
       ApiResponse.created(res, result, "Renter registered successfully");
     }
   );
-
-  /**
-   * PUBLIC: Register as Normal Renter (Explicit)
-   * POST /renter/register/normal
-   */
-  registerNormalRenter = asyncHandler(async (req: Request, res: Response) => {
-    const validated = await zParse(normalRenterRegisterSchema, req);
-    const result = await this.service.registerRenter(validated.body);
-
-    res.cookie(
-      COOKIE_CONFIG.REFRESH_TOKEN.name,
-      result.tokens.refreshToken,
-      COOKIE_CONFIG.REFRESH_TOKEN.options
-    );
-
-    ApiResponse.created(res, result, "Normal renter registered successfully");
-  });
 
   /**
    * PUBLIC: Register with Agent Referral (Explicit)

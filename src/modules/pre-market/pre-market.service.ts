@@ -1,6 +1,7 @@
 // file: src/modules/pre-market/pre-market.service.ts
 
 import { env } from "@/env";
+import { SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 import { NotificationService } from "@/modules/notification/notification.service";
 
@@ -51,9 +52,9 @@ type AgentGrantAccessStatus =
   | "free"
   | "rejected";
 
-const DEFAULT_REGISTERED_AGENT_EMAIL = "tmor@corcoran.com";
-const DEFAULT_REGISTERED_AGENT_NAME = "Tuval";
-const DEFAULT_REFERRAL_AGENT_NAME = "Tuval Mor";
+const DEFAULT_REGISTERED_AGENT_EMAIL = SYSTEM_DEFAULT_AGENT.email;
+const DEFAULT_REGISTERED_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
+const DEFAULT_REFERRAL_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
 
 export class PreMarketService {
   private readonly preMarketRepository: PreMarketRepository;
@@ -2485,7 +2486,7 @@ export class PreMarketService {
     const registeredAgentEmail =
       typeof registeredAgentInfo === "object" && registeredAgentInfo?.email
         ? registeredAgentInfo.email
-        : "tmor@corcoran.com";
+        : SYSTEM_DEFAULT_AGENT.email;
 
     const buildCcList = (
       emails: Array<string | undefined>,

@@ -44,7 +44,8 @@ export const authPaths = {
     post: {
       tags: ["Authentication"],
       summary: "Login user",
-      description: "Authenticate user with email and password. Sets refresh token in httpOnly cookie.",
+      description:
+        "Authenticate user with email and password. For renters with no referral association, a referralCode can be provided to re-associate. Sets refresh token in httpOnly cookie.",
       operationId: "loginUser",
       requestBody: {
         required: true,

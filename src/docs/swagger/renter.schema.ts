@@ -8,7 +8,7 @@ export const renterSchemas = {
 
   RenterRegisterRequest: {
     type: "object",
-    required: ["email", "fullName"],
+    required: ["email", "fullName", "referralCode"],
     properties: {
       email: {
         type: "string",
@@ -22,7 +22,7 @@ export const renterSchemas = {
         example: "SecurePassword123!",
         nullable: true,
         description:
-          "Required for normal and agent referral, not allowed for admin referral",
+          "Required for agent referral, not allowed for admin referral",
       },
       fullName: {
         type: "string",
@@ -38,7 +38,6 @@ export const renterSchemas = {
       referralCode: {
         type: "string",
         example: "AGT-ILTFDRTU",
-        nullable: true,
         description: "Agent (AGT-) or Admin (ADM-) referral code",
       },
       questionnaire: {
@@ -63,35 +62,6 @@ export const renterSchemas = {
             example: true,
           },
         },
-      },
-    },
-  },
-
-  NormalRenterRegisterRequest: {
-    type: "object",
-    required: ["email", "password", "fullName"],
-    properties: {
-      email: {
-        type: "string",
-        format: "email",
-        example: "renter@example.com",
-      },
-      password: {
-        type: "string",
-        format: "password",
-        minLength: 8,
-        example: "SecurePassword123!",
-      },
-      fullName: {
-        type: "string",
-        minLength: 2,
-        maxLength: 100,
-        example: "Jane Doe",
-      },
-      phoneNumber: {
-        type: "string",
-        example: "+1234567890",
-        nullable: true,
       },
     },
   },

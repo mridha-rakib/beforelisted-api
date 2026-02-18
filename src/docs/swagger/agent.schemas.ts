@@ -254,7 +254,12 @@ export const agentSchemas = {
           referralLink: {
             type: "string",
             format: "uri",
-            example: "https://beforelisted.com/join?ref=AGT-ILTFDRTU",
+            example: "https://beforelisted.com/signup?ref=AGT-ILTFDRTU",
+          },
+          loginLink: {
+            type: "string",
+            format: "uri",
+            example: "https://beforelisted.com/signin?ref=AGT-ILTFDRTU",
           },
           totalReferrals: {
             type: "integer",
