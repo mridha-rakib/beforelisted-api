@@ -1537,7 +1537,7 @@ export class EmailTemplates {
       : "Your Registered Agent Is No Longer Active on BeforeListed";
     const headerTitle = isDeletedNotice
       ? "Agent no longer participating"
-      : "Your Registered Agent Is No Longer Active";
+      : "Your Registered Agent Is No Longer Active on BeforeListed";
     const referralLoginLink =
       defaultAgentReferralLoginLink || "https://beforelisted.com/signin";
     const contentHtml = isDeletedNotice
@@ -1566,9 +1566,7 @@ export class EmailTemplates {
       : `
             <p>We're writing to inform you that your previously registered agent is no longer active on the BeforeListed&trade; platform.</p>
 
-            <div class="notice-box">
-                <p>Your renter account and any active request have not been deleted. Your request remains private and will not be shared with any other agents unless and until you choose how to proceed.</p>
-            </div>
+            <p>Your renter account and any active request have not been deleted. Your request remains private and will not be shared with any other agents unless and until you choose how to proceed.</p>
 
             <p>You may choose to continue working with your previous agent outside of the BeforeListed&trade; platform.</p>
 

@@ -331,6 +331,7 @@ export class UserService {
                 {
                   to: renter.email,
                   renterName: renter.fullName || "Renter",
+                  notificationReason: "deleted",
                 },
               );
 
