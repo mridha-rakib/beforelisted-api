@@ -141,7 +141,7 @@ userSchema.virtual("referralLink").get(function (this: IUser) {
 
   return this.role === ROLES.ADMIN
     ? `${baseUrl}/mor-team-form?ref=${this.referralCode}`
-    : `${baseUrl}/signup?ref=${this.referralCode}`;
+    : `${baseUrl}/signup/renter?ref=${this.referralCode}`;
 });
 
 userSchema.virtual("loginLink").get(function (this: IUser) {
