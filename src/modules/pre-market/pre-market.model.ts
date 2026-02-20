@@ -237,8 +237,6 @@ preMarketSchema.index({ locations: 1 });
 preMarketSchema.index({ "priceRange.min": 1, "priceRange.max": 1 });
 preMarketSchema.index({ "viewedBy.grantAccessAgents": 1 });
 preMarketSchema.index({ "viewedBy.normalAgents": 1 });
-preMarketSchema.index({ referralAgentId: 1 });
-preMarketSchema.index({ visibility: 1 });
 preMarketSchema.index({ referralAgentId: 1, visibility: 1, createdAt: -1 });
 preMarketSchema.index({ visibility: 1, lockedByAgentId: 1, createdAt: -1 });
 

@@ -1207,6 +1207,8 @@ export class PreMarketService {
 
     await this.deleteGrantAccessRecords(requestId);
 
+    await this.markRequestsAsDeletedInConsolidatedExcel([request.requestId]);
+
     logger.info({ renterId }, `Pre-market request deleted: ${requestId}`);
 
     this.notifyRegisteredAgentRequestClosed(
@@ -1218,10 +1220,6 @@ export class PreMarketService {
         { error, requestId: request._id },
         "Failed to send request closed alert (non-blocking)",
       );
-    });
-
-    this.updateConsolidatedExcel().catch((error) => {
-      logger.error({ error }, "Consolidated Excel update failed");
     });
   }
 
@@ -1235,6 +1233,9 @@ export class PreMarketService {
     const requestIds = requests
       .map((request) => request._id?.toString())
       .filter((id): id is string => Boolean(id));
+    const requestExcelIds = requests
+      .map((request) => request.requestId)
+      .filter((id): id is string => Boolean(id));
 
     if (requestIds.length === 0) {
       return;
@@ -1243,17 +1244,12 @@ export class PreMarketService {
     await this.preMarketRepository.deleteManyByIds(requestIds);
     await this.grantAccessRepository.deleteByPreMarketRequestIds(requestIds);
 
+    await this.markRequestsAsDeletedInConsolidatedExcel(requestExcelIds);
+
     logger.info(
       { renterId, deletedCount: requestIds.length },
       "Deleted pre-market requests after renter account deletion",
     );
-
-    this.updateConsolidatedExcel().catch((error) => {
-      logger.error(
-        { error, renterId },
-        "Failed to update consolidated Excel after renter cleanup",
-      );
-    });
   }
 
   async deleteAgentMatchHistory(agentId: string): Promise<void> {
@@ -1363,6 +1359,7 @@ export class PreMarketService {
 
     let deletedCount = 0;
     let failedCount = 0;
+    const deletedRequestExcelIds: string[] = [];
 
     for (const request of expiredRequests) {
       const requestId = request._id?.toString();
@@ -1386,6 +1383,9 @@ export class PreMarketService {
         await this.deleteGrantAccessRecords(requestId);
 
         deletedCount += 1;
+        if (request.requestId) {
+          deletedRequestExcelIds.push(request.requestId);
+        }
 
         const closedAt = new Date();
         this.notifyRenterRequestExpired(request).catch((error) => {
@@ -1414,10 +1414,10 @@ export class PreMarketService {
       }
     }
 
-    if (deletedCount > 0) {
-      this.updateConsolidatedExcel().catch((error) => {
-        logger.error({ error }, "Consolidated Excel update failed");
-      });
+    if (deletedRequestExcelIds.length > 0) {
+      await this.markRequestsAsDeletedInConsolidatedExcel(
+        deletedRequestExcelIds,
+      );
     }
 
     return {
@@ -2672,6 +2672,7 @@ export class PreMarketService {
     // Delete the request (hard delete)
     await this.preMarketRepository.deleteById(requestId);
     await this.deleteGrantAccessRecords(requestId);
+    await this.markRequestsAsDeletedInConsolidatedExcel([request.requestId]);
 
     logger.warn(
       { requestId, renterId: request.renterId },
@@ -2694,10 +2695,6 @@ export class PreMarketService {
         { error, requestId: request._id },
         "Failed to notify renter about admin deletion (non-blocking)",
       );
-    });
-
-    this.updateConsolidatedExcel().catch((error) => {
-      logger.error({ error }, "Consolidated Excel update failed");
     });
   }
 
@@ -3116,10 +3113,44 @@ export class PreMarketService {
     };
   }
 
+  private async markRequestsAsDeletedInConsolidatedExcel(
+    requestIds: string[],
+  ): Promise<void> {
+    const normalizedRequestIds = requestIds
+      .map((requestId) => requestId?.trim())
+      .filter((requestId): requestId is string => Boolean(requestId));
+
+    if (normalizedRequestIds.length === 0) {
+      return;
+    }
+
+    try {
+      const updatedCount =
+        await this.excelService.updateConsolidatedPreMarketStatuses(
+          normalizedRequestIds.map((requestId) => ({
+            requestId,
+            status: "Deleted",
+          })),
+        );
+
+      if (updatedCount === 0) {
+        logger.warn(
+          { requestIds: normalizedRequestIds },
+          "No consolidated Excel rows were updated for deleted requests",
+        );
+      }
+    } catch (error) {
+      logger.error(
+        { error, requestIds: normalizedRequestIds },
+        "Failed to mark requests as deleted in consolidated Excel",
+      );
+    }
+  }
+
   private async updateConsolidatedExcel(): Promise<void> {
     const buffer = await this.excelService.generateConsolidatedPreMarketExcel();
 
-    const { url, fileName } =
+    const { url, fileName, key } =
       await this.excelService.uploadConsolidatedExcel(buffer);
 
     // 3. Get current total count
@@ -3134,6 +3165,7 @@ export class PreMarketService {
       type: "pre_market",
       fileName,
       fileUrl: url,
+      key,
       lastUpdated: new Date(),
       totalRequests,
       version,
@@ -3141,7 +3173,7 @@ export class PreMarketService {
     });
 
     logger.info(
-      { url, fileName, version, totalRequests },
+      { url, fileName, key, version, totalRequests },
       "Consolidated Excel updated",
     );
   }

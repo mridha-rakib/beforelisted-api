@@ -74,6 +74,34 @@ export class S3Service {
   }
 
   /**
+   * Upload file to a known S3 object key (overwrite).
+   */
+  async uploadFileToKey(
+    fileBuffer: Buffer,
+    key: string,
+    mimeType: string
+  ): Promise<{ url: string; key: string }> {
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      Body: fileBuffer,
+      ContentType: mimeType,
+      ACL: "public-read",
+      CacheControl: "no-store",
+    });
+
+    try {
+      await this.s3Client.send(command);
+      const url = `${this.endpoint}/${this.bucket}/${key}`;
+      logger.info({ key }, "File uploaded to S3 by key");
+      return { url, key };
+    } catch (error) {
+      logger.error({ error, key }, "S3 upload by key failed");
+      throw new BadRequestException("Failed to upload file to storage");
+    }
+  }
+
+  /**
    * Delete file from S3
    * @param key - File key to delete
    */
@@ -115,11 +143,71 @@ export class S3Service {
   }
 
   /**
+   * Download file content from S3 as Buffer
+   * @param key - File key
+   */
+  async getFileBuffer(key: string): Promise<Buffer> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+    });
+
+    try {
+      const response = await this.s3Client.send(command);
+      if (!response.Body) {
+        throw new BadRequestException("File body is empty");
+      }
+
+      const body = response.Body as {
+        transformToByteArray?: () => Promise<Uint8Array>;
+        [Symbol.asyncIterator]?: () => AsyncIterator<Uint8Array>;
+      };
+
+      if (typeof body.transformToByteArray === "function") {
+        const byteArray = await body.transformToByteArray();
+        return Buffer.from(byteArray);
+      }
+
+      if (typeof body[Symbol.asyncIterator] === "function") {
+        const chunks: Buffer[] = [];
+        for await (const chunk of body as AsyncIterable<Uint8Array>) {
+          chunks.push(Buffer.from(chunk));
+        }
+        return Buffer.concat(chunks);
+      }
+
+      throw new BadRequestException("Unsupported file stream format");
+    } catch (error) {
+      logger.error({ error, key }, "Failed to download file from S3");
+      throw new BadRequestException("Failed to download file from storage");
+    }
+  }
+
+  /**
    * Get public URL for file
    * @param key - File key
    * @returns Public URL
    */
   getPublicUrl(key: string): string {
     return `${this.endpoint}/${this.bucket}/${key}`;
+  }
+
+  /**
+   * Extract object key from a public URL.
+   */
+  extractKeyFromUrl(url: string): string | null {
+    try {
+      const parsed = new URL(url);
+      const path = parsed.pathname.replace(/^\/+/, "");
+      const bucketPrefix = `${this.bucket}/`;
+      if (!path.startsWith(bucketPrefix)) {
+        return null;
+      }
+      const key = path.slice(bucketPrefix.length);
+      return key.length > 0 ? decodeURIComponent(key) : null;
+    } catch (error) {
+      logger.warn({ error, url }, "Failed to parse S3 key from URL");
+      return null;
+    }
   }
 }

@@ -8,6 +8,12 @@ import ExcelJS from "exceljs";
 import { S3Service } from "./s3.service";
 
 export class ExcelService {
+  private static readonly EXCEL_MIME_TYPE =
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  private static readonly CONSOLIDATED_SHEET_NAME = "All Requests";
+  private static readonly REQUEST_ID_HEADER = "Request ID";
+  private static readonly STATUS_HEADER = "Status";
+
   private s3Service: S3Service;
   private preMarketRepository: PreMarketRepository;
   private agentRepository: AgentProfileRepository;
@@ -321,7 +327,7 @@ export class ExcelService {
    */
   async uploadConsolidatedExcel(
     buffer: Buffer
-  ): Promise<{ url: string; fileName: string }> {
+  ): Promise<{ url: string; fileName: string; key: string }> {
     try {
       // Generate filename with date
       const date = new Date();
@@ -332,23 +338,162 @@ export class ExcelService {
 
       logger.info({ fileName, folder }, "Uploading consolidated Excel to S3");
 
-      const url = await this.s3Service.uploadFile(
+      const uploaded = await this.s3Service.uploadFile(
         buffer,
         fileName,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ExcelService.EXCEL_MIME_TYPE,
         folder
       );
 
       logger.info(
-        { url, fileName },
+        { url: uploaded.url, fileName, key: uploaded.key },
         "Consolidated Excel uploaded successfully"
       );
 
-      return { url, fileName } as any;
+      return { url: uploaded.url, fileName, key: uploaded.key };
     } catch (error) {
       logger.error({ error }, "Failed to upload Excel to S3");
       throw error;
     }
+  }
+
+  /**
+   * Update status values in the existing consolidated pre-market Excel file
+   * without generating a new file.
+   */
+  async updateConsolidatedPreMarketStatuses(
+    updates: Array<{ requestId: string; status: string }>
+  ): Promise<number> {
+    const normalizedUpdates = updates
+      .map((item) => ({
+        requestId: item.requestId?.trim(),
+        status: item.status?.trim(),
+      }))
+      .filter(
+        (
+          item
+        ): item is {
+          requestId: string;
+          status: string;
+        } => Boolean(item.requestId && item.status)
+      );
+
+    if (normalizedUpdates.length === 0) {
+      return 0;
+    }
+
+    const metadata = await this.preMarketRepository.getExcelMetadata();
+    if (!metadata?.fileUrl) {
+      logger.warn(
+        { updateCount: normalizedUpdates.length },
+        "Skipped consolidated Excel status update because metadata fileUrl is missing"
+      );
+      return 0;
+    }
+
+    const key =
+      typeof metadata.key === "string" && metadata.key.trim().length > 0
+        ? metadata.key.trim()
+        : this.s3Service.extractKeyFromUrl(metadata.fileUrl);
+
+    if (!key) {
+      logger.warn(
+        { fileUrl: metadata.fileUrl },
+        "Skipped consolidated Excel status update because file key could not be resolved"
+      );
+      return 0;
+    }
+
+    const sourceBuffer = await this.s3Service.getFileBuffer(key);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(sourceBuffer as unknown as any);
+
+    const worksheet =
+      workbook.getWorksheet(ExcelService.CONSOLIDATED_SHEET_NAME) ||
+      workbook.worksheets[0];
+
+    if (!worksheet) {
+      logger.warn("Skipped consolidated Excel status update: worksheet missing");
+      return 0;
+    }
+
+    const requestIdColumnIndex = this.findColumnIndexByHeader(
+      worksheet,
+      ExcelService.REQUEST_ID_HEADER
+    );
+    const statusColumnIndex = this.findColumnIndexByHeader(
+      worksheet,
+      ExcelService.STATUS_HEADER
+    );
+
+    if (!requestIdColumnIndex || !statusColumnIndex) {
+      logger.warn(
+        {
+          requestIdHeader: ExcelService.REQUEST_ID_HEADER,
+          statusHeader: ExcelService.STATUS_HEADER,
+        },
+        "Skipped consolidated Excel status update because required headers are missing"
+      );
+      return 0;
+    }
+
+    const updatesByRequestId = new Map<string, string>();
+    for (const item of normalizedUpdates) {
+      updatesByRequestId.set(item.requestId, item.status);
+    }
+
+    let updatedCount = 0;
+    for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
+      const row = worksheet.getRow(rowNumber);
+      const requestId = this.normalizeCellValue(
+        row.getCell(requestIdColumnIndex).value
+      );
+
+      if (!requestId) {
+        continue;
+      }
+
+      const nextStatus = updatesByRequestId.get(requestId);
+      if (!nextStatus) {
+        continue;
+      }
+
+      row.getCell(statusColumnIndex).value = nextStatus;
+      updatedCount += 1;
+    }
+
+    if (updatedCount === 0) {
+      logger.warn(
+        { requestIds: Array.from(updatesByRequestId.keys()) },
+        "No consolidated Excel rows matched the provided request IDs"
+      );
+      return 0;
+    }
+
+    const updatedBuffer = Buffer.from(
+      (await workbook.xlsx.writeBuffer()) as ArrayBuffer
+    );
+
+    const uploaded = await this.s3Service.uploadFileToKey(
+      updatedBuffer,
+      key,
+      ExcelService.EXCEL_MIME_TYPE
+    );
+
+    await this.preMarketRepository.updateExcelMetadata({
+      type: "pre_market",
+      fileUrl: uploaded.url,
+      key,
+      lastUpdated: new Date(),
+      version: (metadata?.version || 0) + 1,
+    });
+
+    logger.info(
+      { updatedCount, key, fileUrl: uploaded.url },
+      "Updated consolidated Excel statuses in-place"
+    );
+
+    return updatedCount;
   }
 
   private getRenterName(request: any): string {
@@ -829,6 +974,64 @@ export class ExcelService {
     } catch {
       return "N/A";
     }
+  }
+
+  private findColumnIndexByHeader(
+    worksheet: ExcelJS.Worksheet,
+    headerName: string
+  ): number | null {
+    const headerRow = worksheet.getRow(1);
+    for (let column = 1; column <= headerRow.cellCount; column += 1) {
+      const value = this.normalizeCellValue(headerRow.getCell(column).value);
+      if (value.toLowerCase() === headerName.toLowerCase()) {
+        return column;
+      }
+    }
+
+    return null;
+  }
+
+  private normalizeCellValue(value: unknown): string {
+    if (value === null || value === undefined) {
+      return "";
+    }
+
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
+      return String(value).trim();
+    }
+
+    if (value instanceof Date) {
+      return value.toISOString().split("T")[0];
+    }
+
+    if (typeof value === "object") {
+      const objectValue = value as {
+        text?: string;
+        richText?: Array<{ text?: string }>;
+        result?: unknown;
+      };
+
+      if (typeof objectValue.text === "string") {
+        return objectValue.text.trim();
+      }
+
+      if (Array.isArray(objectValue.richText)) {
+        return objectValue.richText
+          .map((part) => part.text || "")
+          .join("")
+          .trim();
+      }
+
+      if (objectValue.result !== undefined) {
+        return this.normalizeCellValue(objectValue.result);
+      }
+    }
+
+    return String(value).trim();
   }
 
   /**

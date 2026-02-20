@@ -116,7 +116,6 @@ userSchema.index({ email: 1, isDeleted: 1 });
 userSchema.index({ role: 1, accountStatus: 1, isDeleted: 1 });
 userSchema.index({ createdAt: -1, isDeleted: 1 });
 
-userSchema.index({ referralCode: 1 }, { sparse: true });
 userSchema.index({ referredBy: 1, referredByRole: 1 });
 userSchema.index({ role: 1, totalReferrals: -1 });
 

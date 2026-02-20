@@ -113,8 +113,6 @@ const renterSchema = BaseSchemaUtil.createSchema({
 });
 
 renterSchema.index({ registrationType: 1, createdAt: -1 });
-renterSchema.index({ referredByAgentId: 1 });
-renterSchema.index({ referredByAdminId: 1 });
 renterSchema.index({ accountStatus: 1 });
 
 renterSchema.pre(/^find/, function (this: Query<any, any>) {

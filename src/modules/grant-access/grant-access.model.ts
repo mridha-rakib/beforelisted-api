@@ -125,9 +125,6 @@ grantAccessSchema.index(
   { unique: true }
 );
 
-grantAccessSchema.index({ status: 1 });
-grantAccessSchema.index({ "payment.paymentStatus": 1 });
-
 export const GrantAccessRequestModel = model<IGrantAccessRequest>(
   "GrantAccessRequest",
   grantAccessSchema as any
