@@ -23,6 +23,7 @@ export type UserResponse = {
   // Referral fields
   referralCode?: string;
   referralLink?: string | null;
+  loginLink?: string | null;
   referredBy?: string;
   referredByRole?: "Admin" | "Agent";
   firstReferralUsedAt?: Date;

@@ -114,7 +114,7 @@ export class AgentController {
       const stats = await this.service.getReferralStats(userId);
       const referralCode = stats.referralCode;
       const referralLink = referralCode
-        ? `https://beforelisted.com/signup?ref=${referralCode}`
+        ? `https://beforelisted.com/signup/renter?ref=${referralCode}`
         : null;
       const loginLink = referralCode
         ? `https://beforelisted.com/signin?ref=${referralCode}`

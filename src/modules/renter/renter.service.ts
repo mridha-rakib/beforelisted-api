@@ -251,7 +251,7 @@ export class RenterService {
     });
 
     const userResponse = this.userService.toUserResponse(user);
-    const { referralLink, totalReferrals, ...restUser } = userResponse;
+    const { referralLink, loginLink, totalReferrals, ...restUser } = userResponse;
 
     return {
       user: restUser as UserResponse,

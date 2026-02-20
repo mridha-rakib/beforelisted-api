@@ -144,6 +144,14 @@ userSchema.virtual("referralLink").get(function (this: IUser) {
     : `${baseUrl}/signup?ref=${this.referralCode}`;
 });
 
+userSchema.virtual("loginLink").get(function (this: IUser) {
+  if (!this.referralCode) return null;
+
+  const baseUrl = env.CLIENT_URL || "https://app.rentersedge.com";
+
+  return `${baseUrl}/signin?ref=${this.referralCode}`;
+});
+
 userSchema.virtual("canRefer").get(function (this: IUser) {
   return this.role === ROLES.ADMIN || this.role === ROLES.AGENT;
 });

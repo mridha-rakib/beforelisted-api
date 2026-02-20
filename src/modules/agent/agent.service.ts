@@ -298,6 +298,7 @@ export class AgentService {
     referralCode: string | null;
     fullName: string | null;
     referralLink: string | null;
+    loginLink: string | null;
     totalReferrals: number;
     referredUsers: any[];
   }> {

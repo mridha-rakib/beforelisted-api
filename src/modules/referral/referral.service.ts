@@ -90,6 +90,7 @@ export class ReferralService {
     referredUsers: IUser[];
     referralCode: string | null;
     referralLink: string | null;
+    loginLink: string | null;
   }> {
     const user = await this.userRepository.findById(userId);
 
@@ -105,6 +106,7 @@ export class ReferralService {
       referredUsers,
       referralCode: user.referralCode || null,
       referralLink: user.referralLink || null,
+      loginLink: user.loginLink || null,
     };
   }
 

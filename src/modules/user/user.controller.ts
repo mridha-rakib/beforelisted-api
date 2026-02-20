@@ -99,6 +99,7 @@ export class UserController {
         {
           referralCode: stats.referralCode,
           referralLink: stats.referralLink,
+          loginLink: stats.loginLink,
           totalReferrals: stats.totalReferrals,
         },
         "Referral information retrieved successfully"

@@ -50,6 +50,6 @@ export class ReferralUtil {
    * Generate full referral link
    */
   static generateReferralLink(referralCode: string, baseUrl: string): string {
-    return `${baseUrl}/signup?ref=${referralCode}`;
+    return `${baseUrl}/signup/renter?ref=${referralCode}`;
   }
 }

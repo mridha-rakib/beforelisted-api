@@ -44,6 +44,7 @@ export interface IUser extends Document {
 
   // Virtual fields (computed, not stored)
   referralLink?: string | null;
+  loginLink?: string | null;
   canRefer?: boolean;
 
   // Instance methods (functions, not data)

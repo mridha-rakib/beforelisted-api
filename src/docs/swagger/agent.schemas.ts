@@ -254,7 +254,7 @@ export const agentSchemas = {
           referralLink: {
             type: "string",
             format: "uri",
-            example: "https://beforelisted.com/signup?ref=AGT-ILTFDRTU",
+            example: "https://beforelisted.com/signup/renter?ref=AGT-ILTFDRTU",
           },
           loginLink: {
             type: "string",
