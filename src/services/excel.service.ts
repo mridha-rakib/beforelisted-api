@@ -109,31 +109,9 @@ export class ExcelService {
       // Add data rows
       let rowCount = 1;
       for (const request of requests) {
-        const dataRow = worksheet.addRow([
-          request.requestId || "N/A",
-          this.getRenterName(request),
-          this.getRenterEmail(request),
-          this.getRenterPhone(request),
-          this.getQuestionnaireFlag(request, "lookingToPurchase"),
-          this.getQuestionnaireValue(request, "purchaseTimeline"),
-          this.getQuestionnaireFlag(request, "buyerSpecialistNeeded"),
-          this.getQuestionnaireFlag(request, "renterSpecialistNeeded"),
-          this.formatDate(request.movingDateRange?.earliest),
-          this.formatDate(request.movingDateRange?.latest),
-          request.priceRange?.min || 0,
-          request.priceRange?.max || 0,
-          this.getBorough(request),
-          this.getNeighborhoods(request),
-          request.bedrooms || "N/A",
-          request.bathrooms || "N/A",
-          this.formatUnitFeatures(request.unitFeatures),
-          this.formatBuildingFeatures(request.buildingFeatures),
-          this.formatPetPolicy(request.petPolicy),
-          this.formatGuarantorRequired(request.guarantorRequired),
-          request.preferences || "N/A",
-          request.status || "unknown",
-          this.formatDate(request.createdAt),
-        ]);
+        const dataRow = worksheet.addRow(
+          this.buildConsolidatedRequestRow(request)
+        );
 
         // Alternate row colors
         if (rowCount % 2 === 0) {
@@ -264,31 +242,7 @@ export class ExcelService {
 
         // Add requests for this month
         for (const request of monthRequests) {
-          worksheet.addRow([
-            request.requestId || "N/A",
-            this.getRenterName(request),
-            this.getRenterEmail(request),
-            this.getRenterPhone(request),
-            this.getQuestionnaireFlag(request, "lookingToPurchase"),
-            this.getQuestionnaireValue(request, "purchaseTimeline"),
-            this.getQuestionnaireFlag(request, "buyerSpecialistNeeded"),
-            this.getQuestionnaireFlag(request, "renterSpecialistNeeded"),
-            this.formatDate(request.movingDateRange?.earliest),
-            this.formatDate(request.movingDateRange?.latest),
-            request.priceRange?.min || 0,
-            request.priceRange?.max || 0,
-            this.getBorough(request),
-            this.getNeighborhoods(request),
-            request.bedrooms || "N/A",
-            request.bathrooms || "N/A",
-            this.formatUnitFeatures(request.unitFeatures),
-            this.formatBuildingFeatures(request.buildingFeatures),
-            this.formatPetPolicy(request.petPolicy),
-            this.formatGuarantorRequired(request.guarantorRequired),
-            request.preferences || "N/A",
-            request.status || "unknown",
-            this.formatDate(request.createdAt),
-          ]);
+          worksheet.addRow(this.buildConsolidatedRequestRow(request));
         }
 
         // Set column widths
@@ -382,23 +336,16 @@ export class ExcelService {
       return 0;
     }
 
-    const metadata = await this.preMarketRepository.getExcelMetadata();
-    if (!metadata?.fileUrl) {
-      logger.warn(
-        { updateCount: normalizedUpdates.length },
-        "Skipped consolidated Excel status update because metadata fileUrl is missing"
-      );
+    const metadata = await this.ensureConsolidatedExcelMetadataForStatusUpdates();
+    if (!metadata) {
       return 0;
     }
 
-    const key =
-      typeof metadata.key === "string" && metadata.key.trim().length > 0
-        ? metadata.key.trim()
-        : this.s3Service.extractKeyFromUrl(metadata.fileUrl);
+    const key = this.resolveConsolidatedExcelKey(metadata);
 
     if (!key) {
       logger.warn(
-        { fileUrl: metadata.fileUrl },
+        { metadata },
         "Skipped consolidated Excel status update because file key could not be resolved"
       );
       return 0;
@@ -443,6 +390,7 @@ export class ExcelService {
     }
 
     let updatedCount = 0;
+    const matchedRequestIds = new Set<string>();
     for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
       const row = worksheet.getRow(rowNumber);
       const requestId = this.normalizeCellValue(
@@ -459,10 +407,43 @@ export class ExcelService {
       }
 
       row.getCell(statusColumnIndex).value = nextStatus;
+      matchedRequestIds.add(requestId);
       updatedCount += 1;
     }
 
-    if (updatedCount === 0) {
+    const missingRequestIds = Array.from(updatesByRequestId.keys()).filter(
+      (requestId) => !matchedRequestIds.has(requestId)
+    );
+    let appendedCount = 0;
+
+    if (missingRequestIds.length > 0) {
+      const rowWidth = Math.max(
+        worksheet.getRow(1).cellCount,
+        worksheet.columnCount,
+        requestIdColumnIndex,
+        statusColumnIndex
+      );
+
+      for (const requestId of missingRequestIds) {
+        const status = updatesByRequestId.get(requestId);
+        if (!status) {
+          continue;
+        }
+
+        const rowValues = Array.from({ length: rowWidth }, () => "N/A");
+        rowValues[requestIdColumnIndex - 1] = requestId;
+        rowValues[statusColumnIndex - 1] = status;
+
+        const appendedRow = worksheet.addRow(rowValues);
+        appendedRow.getCell(statusColumnIndex).alignment = {
+          horizontal: "center",
+        };
+        appendedCount += 1;
+      }
+    }
+
+    const totalUpdated = updatedCount + appendedCount;
+    if (totalUpdated === 0) {
       logger.warn(
         { requestIds: Array.from(updatesByRequestId.keys()) },
         "No consolidated Excel rows matched the provided request IDs"
@@ -489,11 +470,135 @@ export class ExcelService {
     });
 
     logger.info(
-      { updatedCount, key, fileUrl: uploaded.url },
+      { updatedCount, appendedCount, key, fileUrl: uploaded.url },
       "Updated consolidated Excel statuses in-place"
     );
 
-    return updatedCount;
+    return totalUpdated;
+  }
+
+  private async ensureConsolidatedExcelMetadataForStatusUpdates(): Promise<any> {
+    const metadata = await this.preMarketRepository.getExcelMetadata();
+    if (this.resolveConsolidatedExcelKey(metadata)) {
+      return metadata;
+    }
+
+    logger.warn(
+      "Consolidated Excel metadata was missing or invalid; regenerating workbook before status update"
+    );
+
+    try {
+      const buffer = await this.generateConsolidatedPreMarketExcel();
+      const { url, fileName, key } = await this.uploadConsolidatedExcel(buffer);
+      const totalRequests = await this.preMarketRepository.count();
+      const version = (metadata?.version || 0) + 1;
+
+      const nextMetadata = {
+        type: "pre_market",
+        fileName,
+        fileUrl: url,
+        key,
+        lastUpdated: new Date(),
+        totalRequests,
+        version,
+        generatedAt: new Date(),
+      };
+
+      await this.preMarketRepository.updateExcelMetadata(nextMetadata);
+      return nextMetadata;
+    } catch (error) {
+      logger.error(
+        { error },
+        "Failed to bootstrap consolidated Excel metadata for status update"
+      );
+      return null;
+    }
+  }
+
+  private resolveConsolidatedExcelKey(metadata: any): string | null {
+    if (!metadata) {
+      return null;
+    }
+
+    if (typeof metadata.key === "string" && metadata.key.trim().length > 0) {
+      return metadata.key.trim();
+    }
+
+    if (typeof metadata.fileUrl === "string" && metadata.fileUrl.trim().length > 0) {
+      return this.s3Service.extractKeyFromUrl(metadata.fileUrl);
+    }
+
+    return null;
+  }
+
+  private buildConsolidatedRequestRow(request: any): Array<string | number> {
+    return [
+      request.requestId || request.requestCode || "N/A",
+      this.getRenterName(request),
+      this.getRenterEmail(request),
+      this.getRenterPhone(request),
+      this.getQuestionnaireFlag(request, [
+        "lookingToPurchase",
+        "isLookingToPurchase",
+      ]),
+      this.getQuestionnaireValue(request, [
+        "purchaseTimeline",
+        "purchaseTimeframe",
+      ]),
+      this.getQuestionnaireFlag(request, [
+        "buyerSpecialistNeeded",
+        "needBuyerSpecialist",
+      ]),
+      this.getQuestionnaireFlag(request, [
+        "renterSpecialistNeeded",
+        "needRenterSpecialist",
+      ]),
+      this.formatDate(this.getMoveDate(request, "earliest")),
+      this.formatDate(this.getMoveDate(request, "latest")),
+      this.getPriceValue(request, "min"),
+      this.getPriceValue(request, "max"),
+      this.getBorough(request),
+      this.getNeighborhoods(request),
+      this.formatListValue(
+        request.bedrooms ?? request.bedroomType ?? request.bedroom
+      ),
+      this.formatListValue(
+        request.bathrooms ?? request.bathroomType ?? request.bathroom
+      ),
+      this.formatUnitFeatures(
+        this.resolveFirstObject(request, [
+          "unitFeatures",
+          "unitFeaturePreferences",
+          "unitAmenities",
+        ])
+      ),
+      this.formatBuildingFeatures(
+        this.resolveFirstObject(request, [
+          "buildingFeatures",
+          "buildingFeaturePreferences",
+          "buildingAmenities",
+        ])
+      ),
+      this.formatPetPolicy(
+        this.resolveFirstObject(request, [
+          "petPolicy",
+          "petPreferences",
+          "petsPolicy",
+        ])
+      ),
+      this.formatGuarantorRequired(
+        this.resolveFirstObject(request, [
+          "guarantorRequired",
+          "guarantorRequirement",
+          "guarantor",
+        ])
+      ),
+      this.formatListValue(
+        request.preferences ?? request.preference ?? request.specialPreferences
+      ),
+      request.status || request.requestStatus || "unknown",
+      this.formatDate(request.createdAt),
+    ];
   }
 
   private getRenterName(request: any): string {
@@ -549,31 +654,75 @@ export class ExcelService {
     return "N/A";
   }
 
-  private getBorough(request: any): string {
-    if (!request.locations) return "N/A";
-    if (Array.isArray(request.locations)) {
-      const boroughs = request.locations
-        .map((loc: any) => loc.borough)
-        .filter(Boolean);
-      return boroughs.length > 0 ? boroughs.join(", ") : "N/A";
+  private getLocations(request: any): Array<Record<string, unknown>> {
+    const candidate =
+      request.locations || request.locationPreferences || request.location;
+
+    if (!candidate) {
+      return [];
     }
-    // Fallback for single object structure
-    return request.locations.borough || "N/A";
+
+    if (Array.isArray(candidate)) {
+      return candidate.filter(
+        (item) => item && typeof item === "object"
+      ) as Array<Record<string, unknown>>;
+    }
+
+    if (typeof candidate === "object") {
+      return [candidate as Record<string, unknown>];
+    }
+
+    return [];
+  }
+
+  private getBorough(request: any): string {
+    const locations = this.getLocations(request);
+    if (locations.length === 0) {
+      return "N/A";
+    }
+
+    const boroughs = locations
+      .map((loc: any) => loc.borough || loc.boroughName || loc.area)
+      .filter((value: unknown) => typeof value === "string" && value.trim())
+      .map((value: string) => value.trim());
+
+    return boroughs.length > 0
+      ? Array.from(new Set(boroughs)).join(", ")
+      : "N/A";
   }
 
   private getNeighborhoods(request: any): string {
-    if (!request.locations) return "N/A";
-
-    if (Array.isArray(request.locations)) {
-      const allNeighborhoods: string[] = [];
-      for (const loc of request.locations) {
-        if (loc.neighborhoods && Array.isArray(loc.neighborhoods)) {
-          allNeighborhoods.push(...loc.neighborhoods);
-        }
-      }
-      return allNeighborhoods.length > 0 ? allNeighborhoods.join(", ") : "N/A";
+    const locations = this.getLocations(request);
+    if (locations.length === 0) {
+      return "N/A";
     }
-    return request.locations.neighborhoods?.join(", ") || "N/A";
+
+    const allNeighborhoods: string[] = [];
+    for (const loc of locations) {
+      const neighborhoodValue =
+        (loc.neighborhoods as unknown) ||
+        (loc.neighborhood as unknown) ||
+        (loc.areas as unknown);
+
+      if (Array.isArray(neighborhoodValue)) {
+        allNeighborhoods.push(
+          ...neighborhoodValue
+            .filter(
+              (item) => typeof item === "string" && item.trim().length > 0
+            )
+            .map((item) => item.trim())
+        );
+      } else if (
+        typeof neighborhoodValue === "string" &&
+        neighborhoodValue.trim().length > 0
+      ) {
+        allNeighborhoods.push(neighborhoodValue.trim());
+      }
+    }
+
+    return allNeighborhoods.length > 0
+      ? Array.from(new Set(allNeighborhoods)).join(", ")
+      : "N/A";
   }
 
   private getRenterRegistrationType(request: any): string | undefined {
@@ -611,32 +760,47 @@ export class ExcelService {
 
   private getQuestionnaireFlag(
     request: any,
-    key: string
+    keys: string | string[]
   ): string {
     if (this.getRenterRegistrationType(request) !== "admin_referral") {
       return "N/A";
     }
 
     const questionnaire = this.getRenterQuestionnaire(request);
-    if (!questionnaire || typeof questionnaire[key] !== "boolean") {
+    if (!questionnaire) {
       return "N/A";
     }
 
-    return questionnaire[key] ? "Yes" : "No";
+    const keyList = Array.isArray(keys) ? keys : [keys];
+    for (const key of keyList) {
+      const value = questionnaire[key];
+      if (typeof value === "boolean") {
+        return value ? "Yes" : "No";
+      }
+    }
+
+    return "N/A";
   }
 
   private getQuestionnaireValue(
     request: any,
-    key: string
+    keys: string | string[]
   ): string {
     if (this.getRenterRegistrationType(request) !== "admin_referral") {
       return "N/A";
     }
 
     const questionnaire = this.getRenterQuestionnaire(request);
-    const value = questionnaire ? questionnaire[key] : undefined;
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value;
+    if (!questionnaire) {
+      return "N/A";
+    }
+
+    const keyList = Array.isArray(keys) ? keys : [keys];
+    for (const key of keyList) {
+      const value = questionnaire[key];
+      if (typeof value === "string" && value.trim().length > 0) {
+        return value.trim();
+      }
     }
 
     return "N/A";
@@ -976,6 +1140,134 @@ export class ExcelService {
     }
   }
 
+  private getMoveDate(
+    request: any,
+    key: "earliest" | "latest"
+  ): Date | undefined {
+    const aliases =
+      key === "earliest"
+        ? [
+            ["movingDateRange", "earliest"],
+            ["movingDateRange", "from"],
+            ["moveDateRange", "earliest"],
+            ["moveDateRange", "from"],
+            ["moveInDate", "earliest"],
+            ["moveInDate", "from"],
+          ]
+        : [
+            ["movingDateRange", "latest"],
+            ["movingDateRange", "to"],
+            ["moveDateRange", "latest"],
+            ["moveDateRange", "to"],
+            ["moveInDate", "latest"],
+            ["moveInDate", "to"],
+          ];
+
+    for (const path of aliases) {
+      const value = this.getValueByPath(request, path);
+      if (!value) {
+        continue;
+      }
+
+      const parsed = new Date(value as string | number | Date);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+
+    return undefined;
+  }
+
+  private getPriceValue(request: any, key: "min" | "max"): number {
+    const aliases =
+      key === "min"
+        ? [
+            ["priceRange", "min"],
+            ["budgetRange", "min"],
+            ["minPrice"],
+            ["priceMin"],
+            ["budgetMin"],
+          ]
+        : [
+            ["priceRange", "max"],
+            ["budgetRange", "max"],
+            ["maxPrice"],
+            ["priceMax"],
+            ["budgetMax"],
+          ];
+
+    for (const path of aliases) {
+      const value = this.getValueByPath(request, path);
+      const numeric =
+        typeof value === "number"
+          ? value
+          : typeof value === "string"
+          ? Number(value)
+          : NaN;
+
+      if (Number.isFinite(numeric)) {
+        return numeric;
+      }
+    }
+
+    return 0;
+  }
+
+  private getValueByPath(source: any, path: string[]): unknown {
+    let current: unknown = source;
+
+    for (const segment of path) {
+      if (!current || typeof current !== "object") {
+        return undefined;
+      }
+      current = (current as Record<string, unknown>)[segment];
+    }
+
+    return current;
+  }
+
+  private resolveFirstObject(
+    source: any,
+    keys: string[]
+  ): Record<string, unknown> | undefined {
+    for (const key of keys) {
+      const value = source[key];
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+      }
+    }
+
+    return undefined;
+  }
+
+  private formatListValue(value: unknown): string {
+    if (value === null || value === undefined) {
+      return "N/A";
+    }
+
+    if (Array.isArray(value)) {
+      const normalized = value
+        .map((item) => this.normalizeCellValue(item))
+        .filter((item) => item.length > 0);
+      return normalized.length > 0 ? normalized.join(", ") : "N/A";
+    }
+
+    if (typeof value === "string") {
+      return value.trim().length > 0 ? value.trim() : "N/A";
+    }
+
+    if (typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+
+    if (typeof value === "object") {
+      const normalized = this.normalizeCellValue(value);
+      return normalized.length > 0 ? normalized : "N/A";
+    }
+
+    return "N/A";
+  }
+
   private findColumnIndexByHeader(
     worksheet: ExcelJS.Worksheet,
     headerName: string
@@ -1051,55 +1343,92 @@ export class ExcelService {
 
   private formatFeatureFlags(
     source: Record<string, unknown> | undefined | null,
-    labels: Record<string, string>
+    features: Array<{ label: string; keys: string[] }>
   ): string {
     if (!source || typeof source !== "object") {
       return "N/A";
     }
 
-    const enabled = Object.keys(labels).filter((key) => source[key] === true);
+    const enabled = features
+      .filter(({ keys }) => keys.some((key) => this.isEnabledFlag(source[key])))
+      .map(({ label }) => label);
 
     if (enabled.length === 0) {
       return "N/A";
     }
 
-    return enabled.map((key) => labels[key]).join(", ");
+    return enabled.join(", ");
   }
 
   private formatUnitFeatures(source: Record<string, unknown> | undefined | null) {
-    return this.formatFeatureFlags(source, {
-      laundryInUnit: "Laundry in Unit",
-      privateOutdoorSpace: "Private Outdoor Space",
-      dishwasher: "Dishwasher",
-    });
+    return this.formatFeatureFlags(source, [
+      {
+        label: "Laundry in Unit",
+        keys: ["laundryInUnit", "inUnitLaundry", "hasLaundryInUnit"],
+      },
+      {
+        label: "Private Outdoor Space",
+        keys: ["privateOutdoorSpace", "outdoorSpace", "privateOutdoor"],
+      },
+      {
+        label: "Dishwasher",
+        keys: ["dishwasher", "hasDishwasher"],
+      },
+    ]);
   }
 
   private formatBuildingFeatures(
     source: Record<string, unknown> | undefined | null
   ) {
-    return this.formatFeatureFlags(source, {
-      doorman: "Doorman",
-      elevator: "Elevator",
-      laundryInBuilding: "Laundry in Building",
-    });
+    return this.formatFeatureFlags(source, [
+      { label: "Doorman", keys: ["doorman", "hasDoorman"] },
+      { label: "Elevator", keys: ["elevator", "hasElevator"] },
+      {
+        label: "Laundry in Building",
+        keys: ["laundryInBuilding", "buildingLaundry", "hasBuildingLaundry"],
+      },
+    ]);
   }
 
   private formatPetPolicy(
     source: Record<string, unknown> | undefined | null
   ) {
-    return this.formatFeatureFlags(source, {
-      catsAllowed: "catsAllowed",
-      dogsAllowed: "dogsAllowed",
-    });
+    return this.formatFeatureFlags(source, [
+      { label: "Cats Allowed", keys: ["catsAllowed", "allowCats", "catFriendly"] },
+      { label: "Dogs Allowed", keys: ["dogsAllowed", "allowDogs", "dogFriendly"] },
+    ]);
   }
 
   private formatGuarantorRequired(
     source: Record<string, unknown> | undefined | null
   ) {
-    return this.formatFeatureFlags(source, {
-      personalGuarantor: "Personal Guarantor",
-      thirdPartyGuarantor: "Third-Party Guarantor",
-    });
+    return this.formatFeatureFlags(source, [
+      {
+        label: "Personal Guarantor",
+        keys: ["personalGuarantor", "requiresPersonalGuarantor"],
+      },
+      {
+        label: "Third-Party Guarantor",
+        keys: ["thirdPartyGuarantor", "requiresThirdPartyGuarantor"],
+      },
+    ]);
+  }
+
+  private isEnabledFlag(value: unknown): boolean {
+    if (value === true) {
+      return true;
+    }
+
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      return normalized === "true" || normalized === "yes" || normalized === "1";
+    }
+
+    if (typeof value === "number") {
+      return value === 1;
+    }
+
+    return false;
   }
 
   /**
@@ -1245,8 +1574,8 @@ export class ExcelService {
           renter?.phone || "N/A",
           listing.priceRange?.min || 0,
           listing.priceRange?.max || 0,
-          listing.bedrooms || "N/A",
-          listing.bathrooms || "N/A",
+          this.formatListValue(listing.bedrooms),
+          this.formatListValue(listing.bathrooms),
           this.serializeLocations(listing.locations),
           listing.status || "N/A",
           grantAccessDetails, // ← Now with FULL details

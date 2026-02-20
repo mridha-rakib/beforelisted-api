@@ -220,6 +220,12 @@ export class AuthService {
       user: this.userService.toUserResponse(user),
       tokens,
       mustChangePassword: user.mustChangePassword || false,
+      ...(user.role === ROLES.AGENT
+        ? {
+            title: agentProfile?.title ?? null,
+            loginLink: `${env.CLIENT_URL}/login`,
+          }
+        : {}),
       ...(agentProfile ? { agentProfile } : {}),
       ...(referralInfo ? { referralInfo } : {}),
     };
@@ -230,7 +236,12 @@ export class AuthService {
    */
   async verifyEmail(
     payload: VerifyEmailPayload
-  ): Promise<{ message: string; user: UserResponse; role: string }> {
+  ): Promise<{
+    message: string;
+    user: UserResponse;
+    role: string;
+    title?: string | null;
+  }> {
     const result = await this.emailVerificationService.verifyOTP({
       email: payload.email,
       code: payload.code,
@@ -244,6 +255,7 @@ export class AuthService {
     const updatedUser =
       (await this.userService.markEmailAsVerified(result.userId)) || user;
     const userResponse = this.userService.toUserResponse(updatedUser);
+    let agentTitle: string | null = null;
 
     logger.info(
       { userId: result.userId, userType: result.userType },
@@ -251,6 +263,10 @@ export class AuthService {
     );
 
     if (result.userType === ROLES.AGENT) {
+      const agentRepository = new AgentProfileRepository();
+      const agentProfile = await agentRepository.findByUserId(user._id);
+      agentTitle = agentProfile?.title ?? null;
+
       const { NotificationService } = await import(
         "../notification/notification.service"
       );
@@ -366,6 +382,7 @@ export class AuthService {
       message: MESSAGES.AUTH.EMAIL_VERIFIED_SUCCESS,
       user: userResponse,
       role: userResponse.role,
+      ...(userResponse.role === ROLES.AGENT ? { title: agentTitle } : {}),
     };
   }
 

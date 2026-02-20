@@ -22,13 +22,16 @@ export class S3Service {
 
   constructor() {
     this.bucket = process.env.HETZNER_BUCKET_NAME || "before-listed-uploads";
-    this.endpoint =
+    this.endpoint = this.normalizeEndpoint(
       process.env.HETZNER_S3_ENDPOINT ||
-      "https://before-listed-uploads.hel1.your-objectstorage.com";
+        "https://hel1.your-objectstorage.com"
+    );
 
     this.s3Client = new S3Client({
       region: process.env.HETZNER_REGION || "eu-central",
       endpoint: this.endpoint,
+      // Path-style avoids invalid DNS hostnames when env endpoint is bucket-prefixed.
+      forcePathStyle: true,
       credentials: {
         accessKeyId: process.env.HETZNER_ACCESS_KEY!,
         secretAccessKey: process.env.HETZNER_SECRET_KEY!,
@@ -63,7 +66,7 @@ export class S3Service {
 
     try {
       await this.s3Client.send(command);
-      const url = `${this.endpoint}/${this.bucket}/${key}`;
+      const url = this.getPublicUrl(key);
 
       logger.info({ fileName, folder, key }, "File uploaded to S3");
       return { url, key };
@@ -92,7 +95,7 @@ export class S3Service {
 
     try {
       await this.s3Client.send(command);
-      const url = `${this.endpoint}/${this.bucket}/${key}`;
+      const url = this.getPublicUrl(key);
       logger.info({ key }, "File uploaded to S3 by key");
       return { url, key };
     } catch (error) {
@@ -189,7 +192,7 @@ export class S3Service {
    * @returns Public URL
    */
   getPublicUrl(key: string): string {
-    return `${this.endpoint}/${this.bucket}/${key}`;
+    return `${this.endpoint}/${this.bucket}/${this.encodeObjectKey(key)}`;
   }
 
   /**
@@ -198,16 +201,96 @@ export class S3Service {
   extractKeyFromUrl(url: string): string | null {
     try {
       const parsed = new URL(url);
-      const path = parsed.pathname.replace(/^\/+/, "");
-      const bucketPrefix = `${this.bucket}/`;
-      if (!path.startsWith(bucketPrefix)) {
-        return null;
+      const pathname = decodeURIComponent(parsed.pathname || "").replace(
+        /^\/+/,
+        ""
+      );
+      const bucketLower = this.bucket.toLowerCase();
+      const pathLower = pathname.toLowerCase();
+
+      // Path-style URL: /<bucket>/<key>
+      const bucketPrefix = `${bucketLower}/`;
+      if (pathLower.startsWith(bucketPrefix)) {
+        const key = pathname.slice(this.bucket.length + 1);
+        return key.length > 0 ? key : null;
       }
-      const key = path.slice(bucketPrefix.length);
-      return key.length > 0 ? decodeURIComponent(key) : null;
+
+      // Virtual-host style URL: https://<bucket>.<endpoint>/<key>
+      const hostLower = parsed.hostname.toLowerCase();
+      if (
+        hostLower === bucketLower ||
+        hostLower.startsWith(`${bucketLower}.`)
+      ) {
+        return pathname.length > 0 ? pathname : null;
+      }
+
+      // Fallback: accept bare key paths when host already points at object storage endpoint.
+      const endpointHost = this.safeHostname(this.endpoint);
+      if (endpointHost && hostLower === endpointHost.toLowerCase()) {
+        return pathname.length > 0 ? pathname : null;
+      }
+
+      return null;
     } catch (error) {
       logger.warn({ error, url }, "Failed to parse S3 key from URL");
       return null;
+    }
+  }
+
+  private encodeObjectKey(key: string): string {
+    return key
+      .split("/")
+      .map((segment) => encodeURIComponent(segment))
+      .join("/");
+  }
+
+  private safeHostname(url: string): string | null {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Normalize endpoint input so SDK always receives a base object-storage endpoint.
+   * Supports env values with/without protocol and with accidental bucket prefix/path.
+   */
+  private normalizeEndpoint(rawEndpoint: string): string {
+    const trimmed = rawEndpoint.trim();
+    const withProtocol = /^https?:\/\//i.test(trimmed)
+      ? trimmed
+      : `https://${trimmed}`;
+
+    try {
+      const parsed = new URL(withProtocol);
+      parsed.hash = "";
+      parsed.search = "";
+
+      const bucketPrefix = `${this.bucket.toLowerCase()}.`;
+      const hostname = parsed.hostname.toLowerCase();
+      if (hostname.startsWith(bucketPrefix)) {
+        parsed.hostname = parsed.hostname.slice(this.bucket.length + 1);
+      }
+
+      // Remove accidental "/<bucket>" suffix in endpoint env values.
+      const normalizedPath = parsed.pathname.replace(/^\/+|\/+$/g, "");
+      if (
+        normalizedPath.length === 0 ||
+        normalizedPath.toLowerCase() === this.bucket.toLowerCase()
+      ) {
+        parsed.pathname = "";
+      } else {
+        parsed.pathname = `/${normalizedPath}`;
+      }
+
+      return parsed.toString().replace(/\/+$/, "");
+    } catch (error) {
+      logger.warn(
+        { rawEndpoint, error },
+        "Invalid HETZNER_S3_ENDPOINT provided, using default endpoint"
+      );
+      return "https://hel1.your-objectstorage.com";
     }
   }
 }
