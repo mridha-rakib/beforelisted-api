@@ -917,7 +917,11 @@ export class PreMarketService {
           $and: [{ visibility: "PRIVATE" }, { referralAgentId: agentId }],
         },
         {
-          $and: [{ visibility: "SHARED" }, sharedLockFilter],
+          $and: [
+            { visibility: "SHARED" },
+            { shareConsent: true },
+            sharedLockFilter,
+          ],
         },
       ],
     };
@@ -929,7 +933,9 @@ export class PreMarketService {
   ): Promise<void> {
     const visibility =
       (request as unknown as { visibility?: string }).visibility ?? "PRIVATE";
-    if (visibility === "SHARED") {
+    const isSharedWithConsent =
+      visibility === "SHARED" && request.shareConsent === true;
+    if (isSharedWithConsent) {
       if (!this.isRequestLockedForOtherAgent(agentId, request)) {
         return;
       }
@@ -1287,12 +1293,6 @@ export class PreMarketService {
       );
     }
 
-    if (request.shareConsent !== true) {
-      throw new ForbiddenException(
-        "Renter consent is required to use share toggle for this request",
-      );
-    }
-
     const currentVisibility =
       (request as unknown as { visibility?: "PRIVATE" | "SHARED" }).visibility ??
       "PRIVATE";
@@ -1308,7 +1308,11 @@ export class PreMarketService {
     visibility: "PRIVATE" | "SHARED",
   ): Promise<IPreMarketRequest> {
     const request = await this.getRequestById(requestId);
-    if (this.isRequestLockedForOtherAgent(agentId, request)) {
+    const isLockedForOtherAgent = this.isRequestLockedForOtherAgent(
+      agentId,
+      request,
+    );
+    if (visibility === "SHARED" && isLockedForOtherAgent) {
       throw new ForbiddenException(
         "Visibility cannot be changed while another agent owns this request",
       );
@@ -1333,6 +1337,10 @@ export class PreMarketService {
       visibility === "SHARED" && request.shareConsent === true
         ? "SHARED"
         : "PRIVATE";
+
+    if (nextVisibility === "PRIVATE") {
+      await this.preMarketRepository.releaseRequestLock(requestId);
+    }
 
     const updated = await this.preMarketRepository.updateById(requestId, {
       visibility: nextVisibility,
