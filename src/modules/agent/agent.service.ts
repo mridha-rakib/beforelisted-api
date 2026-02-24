@@ -603,6 +603,37 @@ export class AgentService {
       );
     }
 
+    if (newStatus) {
+      try {
+        const dashboardLink =
+          updated.activationLink || agent.activationLink || `${env.CLIENT_URL}/login`;
+
+        const emailResult = await this.emailService.sendAgentActivatedByAdminEmail(
+          {
+            to: user.email,
+            agentName: user.fullName,
+            dashboardLink,
+          },
+        );
+
+        if (!emailResult.success) {
+          logger.warn(
+            { userId: resolvedUserId, email: user.email, error: emailResult.error },
+            "Agent activation email failed to send",
+          );
+        }
+      } catch (error) {
+        logger.error(
+          {
+            userId: resolvedUserId,
+            email: user.email,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Failed to send agent activation email",
+        );
+      }
+    }
+
     const message = newStatus
       ? `Agent activated successfully`
       : `Agent deactivated successfully`;
@@ -689,6 +720,34 @@ export class AgentService {
         logger.error(
           { error, userId: resolvedUserId },
           "Failed to send agent status notification",
+        );
+      }
+
+      try {
+        const dashboardLink = updated.activationLink || payload.activationLink;
+
+        const emailResult = await this.emailService.sendAgentActivatedByAdminEmail(
+          {
+            to: user.email,
+            agentName: user.fullName,
+            dashboardLink,
+          },
+        );
+
+        if (!emailResult.success) {
+          logger.warn(
+            { userId: resolvedUserId, email: user.email, error: emailResult.error },
+            "Agent activation email failed to send",
+          );
+        }
+      } catch (error) {
+        logger.error(
+          {
+            userId: resolvedUserId,
+            email: user.email,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Failed to send agent activation email",
         );
       }
     }

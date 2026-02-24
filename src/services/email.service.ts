@@ -5,6 +5,7 @@ import { logger } from "@/middlewares/pino-logger";
 import { createEmailTransporter } from "@/services/email.transporter";
 import {
   type IAccountDeletedPayload,
+  type IAgentActivatedByAdminEmailPayload,
   IAdminReferralEmailPayload,
   type IEmailOptions,
   type IEmailResult,
@@ -22,9 +23,9 @@ import {
   renterOpportunityFoundOtherAgentTemplate,
   renterOpportunityFoundRegisteredAgentTemplate,
   renterRegistrationVerifiedAdminTemplate,
-  renterRequestExpiredTemplate,
   renterRequestClosedAgentAlertTemplate,
   renterRequestConfirmationTemplate,
+  renterRequestExpiredTemplate,
   renterRequestUpdatedNotificationTemplate,
 } from "./email-notification.templates";
 import {
@@ -34,12 +35,12 @@ import {
   IPreMarketAdminNotificationPayload,
   IPreMarketAgentNotificationPayload,
   IRenterOpportunityFoundOtherAgentPayload,
-  IRenterRegisteredAgentInactivePayload,
   IRenterOpportunityFoundRegisteredAgentPayload,
+  IRenterRegisteredAgentInactivePayload,
   IRenterRegistrationVerifiedAdminPayload,
-  IRenterRequestExpiredNotificationPayload,
   IRenterRequestClosedAgentAlertPayload,
   IRenterRequestConfirmationPayload,
+  IRenterRequestExpiredNotificationPayload,
   IRenterRequestUpdatedNotificationPayload,
 } from "./email-notification.types";
 import { EmailTemplateFactory } from "./email-templates/email-template.factory";
@@ -202,7 +203,8 @@ export class EmailService {
       // Prepare email options
       const emailOptions: IEmailOptions = {
         to: { email: payload.to },
-        subject: `Confirm your email address – BeforeListed™`,
+        replyTo: "support@beforelisted.com",
+        subject: `Verification Code`,
         html,
       };
 
@@ -321,6 +323,7 @@ export class EmailService {
           payload.loginLink,
           this.config.logoUrl,
           this.config.brandColor,
+          payload.registeredAgent,
         );
         subject =
           resolvedUserType === "Agent"
@@ -331,6 +334,7 @@ export class EmailService {
       // Prepare email options
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.userName },
+        replyTo: "support@beforelisted.com",
         subject,
         html,
       };
@@ -344,6 +348,59 @@ export class EmailService {
           email: payload.to,
         },
         "Failed to send welcome email",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send agent activation email after admin activates account
+   */
+  async sendAgentActivatedByAdminEmail(
+    payload: IAgentActivatedByAdminEmailPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, dashboardLink: payload.dashboardLink },
+        "Sending agent activated by admin email",
+      );
+
+      const agentFirstName =
+        payload.agentName?.trim().split(/\s+/)[0] || "Agent";
+
+      const html = this.templates.agentActivatedByAdmin(
+        agentFirstName,
+        payload.dashboardLink,
+        this.config.logoUrl,
+        this.config.brandColor,
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.agentName },
+        replyTo: "support@beforelisted.com",
+        subject: "Your account is now active | BeforeListed\u2122",
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "AGENT_ACTIVATED_BY_ADMIN",
+        payload.to,
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send agent activated by admin email",
       );
 
       return {
@@ -505,7 +562,10 @@ export class EmailService {
     payload: IAccountDeletedPayload,
   ): Promise<IEmailResult> {
     try {
-      logger.debug({ email: payload.to }, "Sending agent account deleted email");
+      logger.debug(
+        { email: payload.to },
+        "Sending agent account deleted email",
+      );
 
       const html = this.templates.accountDeletedAgent(
         payload.userName,
@@ -731,13 +791,17 @@ export class EmailService {
 
       const html = renterRequestConfirmationTemplate(
         payload.renterName,
+        payload.taggedAgentFullName,
+        payload.taggedAgentTitle,
+        payload.taggedAgentBrokerage,
         this.config.logoUrl,
         this.config.brandColor,
       );
 
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
-        subject: `We received your BeforeListed™ request`,
+        replyTo: payload.taggedAgentEmail || "support@beforelisted.com",
+        subject: "Your request has been received - BeforeListed",
         html,
       };
 
@@ -1134,11 +1198,12 @@ export class EmailService {
       );
 
       const html = renterRegistrationVerifiedAdminTemplate(
-        payload.renterFirstName,
-        payload.renterLastName,
+        payload.renterName,
+        payload.renterPhone,
         payload.renterEmail,
         payload.registrationDate,
-        payload.referralTag,
+        payload.registeredAgentName,
+        payload.registeredAgentBrokerage,
         this.config.logoUrl,
         this.config.brandColor,
       );
@@ -1146,7 +1211,8 @@ export class EmailService {
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: "Admin" },
         cc: undefined,
-        subject: "BeforeListed™ - Renter Registration Verified",
+        replyTo: "support@beforelisted.com",
+        subject: "New Renter Registration Completed | BeforeListed\u2122",
         html,
       };
 
@@ -1654,3 +1720,4 @@ export async function cleanupEmailService(): Promise<void> {
     );
   }
 }
+

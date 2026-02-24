@@ -28,6 +28,10 @@ export interface IPreMarketAdminNotificationPayload {
 export interface IRenterRequestConfirmationPayload {
   to: string;
   renterName: string;
+  taggedAgentEmail: string;
+  taggedAgentFullName: string;
+  taggedAgentTitle: string;
+  taggedAgentBrokerage: string;
 }
 
 export interface IRenterRequestExpiredNotificationPayload {
@@ -96,11 +100,12 @@ export interface IAgentRegistrationVerifiedAdminPayload {
 
 export interface IRenterRegistrationVerifiedAdminPayload {
   to: string;
-  renterFirstName: string;
-  renterLastName: string;
+  renterName: string;
+  renterPhone: string;
   renterEmail: string;
   registrationDate: string;
-  referralTag: string;
+  registeredAgentName: string;
+  registeredAgentBrokerage: string;
 }
 
 export interface IRenterRegisteredAgentInactivePayload {

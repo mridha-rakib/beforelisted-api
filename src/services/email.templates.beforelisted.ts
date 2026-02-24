@@ -51,30 +51,46 @@ export class EmailTemplates {
     userType: "Agent" | "Renter",
     loginLink: string,
     logoUrl?: string,
-    brandColor?: string
+    brandColor?: string,
+    registeredAgent?: {
+      fullName?: string;
+      title?: string;
+      brokerage?: string;
+    }
   ): string {
     const logo = logoUrl || this.logoUrl;
     const color = brandColor || this.brandColor;
     const isRenter = userType === "Renter";
+    const firstName = userName?.trim().split(/\s+/)[0] || userName || "there";
+    const agentName = registeredAgent?.fullName?.trim();
+    const agentTitle = registeredAgent?.title?.trim();
+    const agentBrokerage = registeredAgent?.brokerage?.trim();
+    const registeredAgentLine = agentName
+      ? `Your renter account is currently registered with ${agentName}${agentTitle ? `, ${agentTitle}` : ""}${agentBrokerage ? ` with ${agentBrokerage}` : ""}. Rental requests you submit will be shared with this agent. They may begin assisting you with your search once all required agency disclosures and agreements are reviewed and completed.`
+      : "Your renter account is currently registered with your assigned licensed real estate agent. Rental requests you submit will be shared with this agent. They may begin assisting you with your search once all required agency disclosures and agreements are reviewed and completed.";
     const contentHtml = isRenter
       ? `
-            <h2>Hi ${userName},</h2>
-            <p>Welcome to BeforeListed. Your account has been successfully created and verified.</p>
+            <h2>Hi ${firstName},</h2>
+            <p>Welcome to BeforeListed&trade;. Your account has been successfully created and verified.</p>
 
-            <p>BeforeListed is designed to help renters submit rental requests and work with licensed real estate agents to attempt to explore potential upcoming rental opportunities that are not publicly advertised.</p>
+            <p>${registeredAgentLine}</p>
+
+            <p>BeforeListed is an intake-focused website designed to help licensed real estate agents collect and review renter-initiated requests and facilitate outreach based on renter criteria, including requests focused on opportunities that may not be publicly advertised.</p>
 
             <p><strong>You can now:</strong></p>
             <ul class="features-list">
-                <li>Submit your first rental request (you can have up to three active requests at a time)</li>
-                <li>Submit and manage additional rental requests</li>
-                <li>Track updates related to your requests from your registered agent</li>
-                <li>View matches if an agent identifies an opportunity that aligns with your request</li>
+                <li>Submit your first rental request.</li>
+                <li>Edit or delete your rental request at any time.</li>
+                <li>Track updates related to your requests from your registered agent.</li>
+                <li>Receive notifications if an agent identifies an opportunity that aligns with your request.</li>
+                <li>Receive notifications if another licensed agent may be able to further assist with your request, with your consent and required disclosures.</li>
+                <li>Access the monthly 15-Second NYC Rental Report, including market signals and trends, through the BeforeListed website.</li>
             </ul>
 
-            <p>If you have any questions or need assistance, you can reply to this email or contact us at <a href="mailto:${this.supportEmail}">${this.supportEmail}</a>.</p>
+            <p>If you have any questions or need assistance, you may reply directly to this email.</p>
 
             <p>We're glad to have you here.</p>
-            <p><strong>Best regards,<br>The BeforeListed Team</strong></p>
+            <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
         `
       : `
             <h2>Hi ${userName},</h2>
@@ -256,6 +272,185 @@ export class EmailTemplates {
         <div class="footer">
             <p>© ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
             <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
+            ${this.getFooterLinks(color)}
+        </div>
+    </div>
+</body>
+</html>
+    `;
+  }
+
+  /**
+   * Agent activation email sent when admin activates account
+   */
+  agentActivatedByAdmin(
+    agentFirstName: string,
+    dashboardLink: string,
+    logoUrl?: string,
+    brandColor?: string,
+  ): string {
+    const logo = logoUrl || this.logoUrl;
+    const color = brandColor || this.brandColor;
+
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your account is now active | BeforeListed&trade;</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: ${color};
+            padding: 40px 20px;
+            text-align: center;
+        }
+        ${this.getLogoStyles()}
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 32px 28px;
+        }
+        .content h2 {
+            color: #333333;
+            font-size: 22px;
+            margin: 0 0 18px 0;
+            font-weight: 600;
+        }
+        .content h3 {
+            color: #333333;
+            font-size: 18px;
+            margin: 24px 0 10px 0;
+            font-weight: 600;
+        }
+        .content p {
+            color: #666666;
+            font-size: 15px;
+            line-height: 1.65;
+            margin: 0 0 14px 0;
+        }
+        .features-list {
+            margin: 8px 0 18px 20px;
+            padding: 0;
+            color: #666666;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+        .features-list li {
+            margin: 8px 0;
+        }
+        .cta-wrap {
+            text-align: center;
+            margin: 18px 0 24px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: ${color};
+            color: #ffffff !important;
+            padding: 13px 34px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        .section-note {
+            background-color: #f7fbff;
+            border-left: 4px solid ${color};
+            padding: 14px;
+            border-radius: 4px;
+            margin: 16px 0;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 24px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+        }
+        .footer p {
+            color: #999999;
+            font-size: 13px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="${logo}" alt="BeforeListed Logo" class="logo">
+            <h1>Your account is now active</h1>
+        </div>
+
+        <div class="content">
+            <h2>Hi ${agentFirstName},</h2>
+
+            <p>Welcome to BeforeListed&trade;. Your agent account has been successfully activated, and you now have access to the platform.</p>
+
+            <h3>As an agent, you can now:</h3>
+            <ul class="features-list">
+                <li>Share your BeforeListed Renter Registration Link with potential renters.</li>
+                <li>Review renter requests associated with your registration link.</li>
+                <li>Review and match renter requests shared with you by other agents, when applicable.</li>
+                <li>Submit match requests through the platform, subject to required approvals and disclosures.</li>
+            </ul>
+
+            <p>If you cannot match renter requests immediately, your account may still be pending Grant Access configuration.</p>
+
+            <p>You can access your agent dashboard below:</p>
+            <div class="cta-wrap">
+                <a href="${dashboardLink}" class="cta-button">Go to Agent Dashboard</a>
+            </div>
+
+            <h3>Dashboard visibility toggle (you control)</h3>
+            <ul class="features-list">
+                <li>Private &mdash; The renter request is visible only to you. (Default)</li>
+                <li>Shared &mdash; If the renter has provided consent, the request may be shared with other licensed agents using BeforeListed, allowing them to review, match, and potentially assist.</li>
+            </ul>
+
+            <h3>Market scope</h3>
+            <ul class="features-list">
+                <li>All Market &mdash; The renter is seeking assistance throughout their full rental journey, including publicly advertised listings. In this scope, only one agent may be assigned.</li>
+                <li>Upcoming &mdash; Focuses on potential upcoming availability that may not yet be publicly advertised.</li>
+                <li>Upcoming (M) &mdash; The renter is already working with an agent on publicly advertised listings but remains open to assistance with opportunities that may not yet be publicly advertised.</li>
+            </ul>
+
+            <h3>When to click Match</h3>
+            <p>Click Match when you are able to assist with a renter's request, whether the request originated with you or was shared with you.</p>
+            <p>All matches are subject to applicable approvals and required agency disclosures.</p>
+            <p>Requests under the Upcoming market scope should be matched only after identifying opportunities that are not publicly advertised.</p>
+            <p>For clarity, "Publicly advertised" refers to rental listings marketed through StreetEasy, Zillow, or the REBNY Listing Service (RLS).</p>
+
+            <h3>Follow-up expectations</h3>
+            <p>Agents are encouraged to follow up every 2-3 weeks on their renter requests to confirm the renter's status and continued interest.</p>
+
+            <h3>Referral note</h3>
+            <p>When a renter request is matched with another agent through BeforeListed, that match is treated as a referral facilitated through the platform and is subject to the terms of the applicable agreement.</p>
+
+            <div class="section-note">
+                <p>If you have any questions or need assistance, please reply to this email.</p>
+            </div>
+
+            <p><strong>Best regards,<br>BeforeListed&trade; Support</strong></p>
+        </div>
+
+        <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
             ${this.getFooterLinks(color)}
         </div>
     </div>
@@ -519,7 +714,7 @@ export class EmailTemplates {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Confirm your email address – BeforeListed™</title>
+    <title>Verification Code - BeforeListed</title>
     <style>
         body {
             margin: 0;
@@ -584,22 +779,6 @@ export class EmailTemplates {
             letter-spacing: 6px;
             font-family: 'Courier New', monospace;
         }
-        .code-expiry {
-            font-size: 13px;
-            color: #999999;
-            margin-top: 10px;
-        }
-        .alert-info {
-            background-color: #e7f3ff;
-            border-left: 4px solid ${color};
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .alert-info p {
-            margin: 0;
-            color: #004085;
-        }
         .footer {
             background-color: #f9f9f9;
             padding: 30px;
@@ -622,13 +801,13 @@ export class EmailTemplates {
         <!-- Header -->
         <div class="header">
             <img src="${logo}" alt="BeforeListed Logo" class="logo">
-            <h1>Confirm your email address</h1>
+            <h1>Verification Code</h1>
         </div>
 
         <!-- Content -->
         <div class="content">
             <h2>Hi ${userName},</h2>
-            <p>To complete your registration on BeforeListed™, please confirm your email address.</p>
+            <p>To complete your registration on BeforeListed&trade;, please confirm your email address.</p>
             <p>Your verification code is:</p>
 
             <div class="code-box">
@@ -636,21 +815,18 @@ export class EmailTemplates {
                 <div class="code-value">${verificationCode}</div>
             </div>
 
-            <p>Enter this code on the confirmation screen to verify your email and continue.</p>
+            <p>Enter this code on the confirmation screen to continue.</p>
 
-            <p>This step helps ensure account security and enables important platform communications.</p>
+            <p>This verification helps protect your account.</p>
 
-            <div class="alert-info">
-                <p>If you did not initiate this request, you can safely ignore this email.</p>
-            </div>
+            <p>If you did not initiate this request, you can safely ignore this email.</p>
 
-            <p>Thank you,<br><strong>BeforeListed™ Support</strong></p>
+            <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>
 
         <!-- Footer -->
         <div class="footer">
-            <p>© ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
-            <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
+            <p>&copy; ${new Date().getFullYear()} BeforeListed&trade;. All rights reserved.</p>
             ${this.getFooterLinks(color)}
         </div>
     </div>

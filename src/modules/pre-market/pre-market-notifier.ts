@@ -59,6 +59,8 @@ export class PreMarketNotifier {
       renterPhone?: string;
       referringAgentEmail?: string;
       referringAgentName?: string;
+      referringAgentTitle?: string;
+      referringAgentBrokerage?: string;
     }
   ): Promise<void> {
     try {
@@ -353,6 +355,8 @@ export class PreMarketNotifier {
       renterEmail: string;
       referringAgentEmail?: string;
       referringAgentName?: string;
+      referringAgentTitle?: string;
+      referringAgentBrokerage?: string;
     }
   ): Promise<{ success: boolean; error?: string }> {
     try {
@@ -360,6 +364,14 @@ export class PreMarketNotifier {
         await emailService.sendPreMarketRequestConfirmationToRenter({
           to: renterData.renterEmail,
           renterName: renterData.renterName,
+          taggedAgentEmail:
+            renterData.referringAgentEmail || DEFAULT_REFERRAL_AGENT_EMAIL,
+          taggedAgentFullName:
+            renterData.referringAgentName || DEFAULT_REFERRAL_AGENT_NAME,
+          taggedAgentTitle:
+            renterData.referringAgentTitle || "Licensed Real Estate Agent",
+          taggedAgentBrokerage:
+            renterData.referringAgentBrokerage || "BeforeListed",
         });
 
       if (emailResult.success) {

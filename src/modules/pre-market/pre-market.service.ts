@@ -56,6 +56,8 @@ type AgentGrantAccessStatus =
 const DEFAULT_REGISTERED_AGENT_EMAIL = SYSTEM_DEFAULT_AGENT.email;
 const DEFAULT_REGISTERED_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
 const DEFAULT_REFERRAL_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
+const DEFAULT_REFERRAL_AGENT_TITLE = SYSTEM_DEFAULT_AGENT.title;
+const DEFAULT_REFERRAL_AGENT_BROKERAGE = SYSTEM_DEFAULT_AGENT.brokerageName;
 
 export class PreMarketService {
   private readonly preMarketRepository: PreMarketRepository;
@@ -464,18 +466,35 @@ export class PreMarketService {
       ? renter.userId._id.toString()
       : renter.userId.toString();
 
-    let referringAgentEmail: string | undefined;
-    let referringAgentName: string | undefined;
-    if (renter.registrationType === "agent_referral") {
-      const referredAgent = renter.referredByAgentId;
-      referringAgentEmail =
-        typeof referredAgent === "object" && referredAgent?.email
-          ? referredAgent.email
-          : undefined;
-      referringAgentName =
-        typeof referredAgent === "object" && referredAgent?.fullName
-          ? referredAgent.fullName
-          : undefined;
+    let referringAgentEmail: string = DEFAULT_REGISTERED_AGENT_EMAIL;
+    let referringAgentName: string = DEFAULT_REFERRAL_AGENT_NAME;
+    let referringAgentTitle: string = DEFAULT_REFERRAL_AGENT_TITLE;
+    let referringAgentBrokerage: string = DEFAULT_REFERRAL_AGENT_BROKERAGE;
+
+    const referredAgent = renter.referredByAgentId as any;
+    const referredAgentId =
+      referredAgent?._id?.toString?.() ??
+      (typeof renter.referredByAgentId === "string"
+        ? renter.referredByAgentId
+        : null);
+
+    if (typeof referredAgent === "object") {
+      if (referredAgent?.email) {
+        referringAgentEmail = referredAgent.email;
+      }
+      if (referredAgent?.fullName) {
+        referringAgentName = referredAgent.fullName;
+      }
+    }
+
+    if (referredAgentId) {
+      const agentProfile = await this.agentRepository.findByUserId(referredAgentId);
+      if (agentProfile?.title) {
+        referringAgentTitle = agentProfile.title;
+      }
+      if (agentProfile?.brokerageName) {
+        referringAgentBrokerage = agentProfile.brokerageName;
+      }
     }
 
     const renterData = {
@@ -485,6 +504,8 @@ export class PreMarketService {
       renterPhone: renter.phoneNumber,
       referringAgentEmail,
       referringAgentName,
+      referringAgentTitle,
+      referringAgentBrokerage,
     };
 
     await preMarketNotifier.notifyNewRequest(request, renterData);

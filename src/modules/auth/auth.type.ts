@@ -10,6 +10,7 @@ export type ReferralInfo = {
     role: "Agent" | "Admin";
     fullName: string | null;
     title?: string | null;
+    brokerageName?: string | null;
     email: string | null;
     phoneNumber: string | null;
     referralCode: string | null;
