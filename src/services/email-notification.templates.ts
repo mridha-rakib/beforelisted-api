@@ -723,6 +723,7 @@ export function agentRenterRequestConfirmationTemplate(
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = agentName?.trim().split(" ")[0] || agentName;
+  const safeFirstName = escapeHtml(firstName);
   const safeRequestId = escapeHtml(requestId);
   const safeBorough = escapeHtml(borough);
   const safeBedrooms = escapeHtml(bedrooms);
@@ -1306,6 +1307,7 @@ export function renterRequestUpdatedNotificationTemplate(
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = agentName?.trim().split(" ")[0] || agentName;
+  const safeFirstName = escapeHtml(firstName);
   const safeRequestId = escapeHtml(requestId);
   const safeUpdatedAt = escapeHtml(updatedAt);
   const safeFields = updatedFields.map((field) => escapeHtml(field));
