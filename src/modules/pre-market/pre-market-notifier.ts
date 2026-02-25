@@ -690,7 +690,11 @@ export class PreMarketNotifier {
         preMarketRequest.requestName || "Pre-Market Listing";
       const location =
         preMarketRequest.locations
-          ?.map((l) => l.borough)
+          ?.map((l) =>
+            l?.neighborhoods && l.neighborhoods.length > 0
+              ? `${l.borough} (${l.neighborhoods.join(", ")})`
+              : l.borough
+          )
           .filter(Boolean)
           .join(", ") || "Multiple Locations";
 

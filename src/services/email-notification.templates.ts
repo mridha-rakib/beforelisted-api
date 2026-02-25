@@ -1022,12 +1022,26 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
  */
 export function renterOpportunityFoundOtherAgentTemplate(
   renterName: string,
+  requestScope?: "Upcoming" | "All Market",
+  matchedAgentFullName?: string,
+  matchedAgentBrokerageName?: string,
+  matchedAgentEmail?: string,
+  matchedAgentPhone?: string,
   logoUrl?: string,
   brandColor: string = "#1890FF"
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = renterName?.trim().split(" ")[0] || renterName;
   const safeFirstName = escapeHtml(firstName);
+  const safeMatchedAgentFullName = escapeHtml(
+    matchedAgentFullName?.trim() || "N/A",
+  );
+  const safeMatchedAgentBrokerageName = escapeHtml(
+    matchedAgentBrokerageName?.trim() || "N/A",
+  );
+  const safeMatchedAgentEmail = escapeHtml(matchedAgentEmail?.trim() || "N/A");
+  const safeMatchedAgentPhone = escapeHtml(matchedAgentPhone?.trim() || "N/A");
+  const isAllMarket = requestScope === "All Market";
 
   return `
 <!DOCTYPE html>
@@ -1113,13 +1127,174 @@ export function renterOpportunityFoundOtherAgentTemplate(
                 Hi ${safeFirstName},
             </div>
 
-            <p>In this case, another licensed New York real estate agent has become aware of a possible upcoming rental opportunity through independent brokerage outreach or while working on behalf of a different renter. That agent is not representing the owner and is not acting on your behalf unless and until the appropriate agent disclosure is completed.</p>
+            ${
+              isAllMarket
+                ? `<p>Based on the preferences you selected when submitting your request on BeforeListed&trade;, including assistance with publicly listed apartments, a renter specialist has been identified who may be able to assist with your rental search.</p>
 
-            <p>If participation by this additional agent is required to proceed, the agent copied on this email will provide the required disclosure for your review and signature. Once any required disclosures are completed, your registered agent will follow up with additional details and next steps.</p>
+            <p>This may include guidance throughout the search process, landlord and building screening, scheduling and coordinating tours, negotiations, and support through the rental process, subject to completion of required agency disclosures.</p>
 
-            <p>As a reminder, you only pay a broker fee if you successfully rent an apartment presented to you by your agent, pursuant to the applicable agency and fee agreements.</p>
+            <p>For your reference, the agent&apos;s information is:</p>`
+                : `<p>Based on the preferences you selected when submitting your request on BeforeListed&trade;, an additional agent has been identified who may be able to assist with your request for rental opportunities that may not yet be publicly advertised.</p>
 
-            <p>If you have any questions, you may reply to this email.</p>
+            <p>For your reference, the additional agent&apos;s information is:</p>`
+            }
+
+            <p>
+              ${safeMatchedAgentFullName}<br>
+              ${safeMatchedAgentBrokerageName}<br>
+              Email: ${safeMatchedAgentEmail}<br>
+              Phone: ${safeMatchedAgentPhone}
+            </p>
+
+            ${
+              isAllMarket
+                ? `<p>The renter specialist ${safeMatchedAgentFullName} will provide the required agency disclosures for your review and signature. Once those disclosures are completed, they may begin assisting you in connection with your rental search, including assistance with publicly listed opportunities.</p>`
+                : `<p>The additional agent listed above will provide the required agency disclosures for your review and signature. Once those disclosures are completed, they may begin acting on your behalf in connection with outreach related to your request.</p>`
+            }
+
+            ${
+              isAllMarket
+                ? `<p>As a reminder, a broker fee is payable only if you successfully rent an apartment presented to you by a licensed agent assisting with your request, with all required disclosures provided.</p>`
+                : `<p>As a reminder, a broker fee is only payable if you successfully rent an apartment presented to you by a licensed agent assisting with your request, with all required disclosures provided.</p>`
+            }
+
+            ${
+              isAllMarket
+                ? `<p>If you have any questions, you may reply directly to this email. Your reply will be directed to your registered agent.</p>`
+                : `<p>If you have any questions, you may reply to this email. Your reply will be directed to your registered agent.</p>`
+            }
+
+            <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>
+            ${footerLinks(brandColor)}
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Email template acknowledging a non-registered agent match referral
+ */
+export function matchReferralAcknowledgmentToMatchingAgentTemplate(
+  matchedAgentName: string,
+  renterFullName: string,
+  registeredAgentFullName: string,
+  registeredAgentTitle: string,
+  registeredAgentBrokerage: string,
+  logoUrl?: string,
+  brandColor: string = "#1890FF"
+): string {
+  const currentYear = new Date().getFullYear();
+  const firstName = matchedAgentName?.trim().split(" ")[0] || matchedAgentName;
+  const safeFirstName = escapeHtml(firstName || "Agent");
+  const safeRenterFullName = escapeHtml(renterFullName || "N/A");
+  const safeRegisteredAgentFullName = escapeHtml(
+    registeredAgentFullName || "N/A",
+  );
+  const safeRegisteredAgentTitle = escapeHtml(registeredAgentTitle || "N/A");
+  const safeRegisteredAgentBrokerage = escapeHtml(
+    registeredAgentBrokerage || "N/A",
+  );
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Referral Acknowledgment</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: ${brandColor};
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .greeting {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .details {
+            background-color: #fafafa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .details p {
+            margin: 8px 0;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+        .footer a {
+            color: ${brandColor};
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            <h1>Referral Acknowledgment</h1>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                Hi ${safeFirstName},
+            </div>
+
+            <p>This email confirms a renter match facilitated through the BeforeListed service.</p>
+
+            <div class="details">
+                <p>Renter: ${safeRenterFullName}</p>
+                <p>Registered Agent: ${safeRegisteredAgentFullName}, ${safeRegisteredAgentTitle} with ${safeRegisteredAgentBrokerage}</p>
+                <p>Referral Facilitator: Tuval Mor, Licensed Real Estate Agent, The Corcoran Group</p>
+            </div>
+
+            <p>As outlined in the Agent Agreement, this match is recognized as a referral facilitated through BeforeListed.</p>
+
+            <p>If a transaction results from this referral, any applicable referral fees payable to the registered agent and the facilitating agent will be documented and processed through Corcoran&apos;s standard referral procedures, in accordance with the agreed-upon percentages and subject to brokerage procedures.</p>
+
+            <p>No action is required at this time. If and when a transaction proceeds, you will be responsible for completing and submitting the required Corcoran referral documentation in accordance with brokerage procedures.</p>
 
             <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>
@@ -1958,5 +2133,3 @@ function escapeHtml(value: string): string {
     }
   });
 }
-
-

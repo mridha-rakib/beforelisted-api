@@ -69,6 +69,22 @@ export interface IRenterOpportunityFoundOtherAgentPayload {
   to: string;
   renterName: string;
   cc?: string[];
+  replyTo?: string;
+  requestScope?: "Upcoming" | "All Market";
+  matchedAgentFullName?: string;
+  matchedAgentBrokerageName?: string;
+  matchedAgentEmail?: string;
+  matchedAgentPhone?: string;
+}
+
+export interface IMatchReferralAcknowledgmentToMatchingAgentPayload {
+  to: string;
+  matchedAgentName: string;
+  renterFullName: string;
+  registeredAgentFullName: string;
+  registeredAgentTitle: string;
+  registeredAgentBrokerage: string;
+  cc?: string[];
 }
 
 export interface IRenterRequestClosedAgentAlertPayload {

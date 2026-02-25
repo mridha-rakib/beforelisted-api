@@ -2517,8 +2517,11 @@ export class PreMarketService {
 
     const buildCcList = (
       emails: Array<string | undefined>,
+      excludedEmails: Array<string | undefined> = [renter.email],
     ): string[] | undefined => {
-      const renterEmail = renter.email.toLowerCase();
+      const excluded = excludedEmails
+        .filter((email): email is string => Boolean(email && email.trim()))
+        .map((email) => email.trim().toLowerCase());
       const unique: string[] = [];
 
       for (const email of emails) {
@@ -2529,7 +2532,7 @@ export class PreMarketService {
         if (!trimmed) {
           continue;
         }
-        if (trimmed.toLowerCase() === renterEmail) {
+        if (excluded.includes(trimmed.toLowerCase())) {
           continue;
         }
         if (
@@ -2557,11 +2560,53 @@ export class PreMarketService {
         cc: ccEmails,
       });
     } else {
+      const matchedAgentProfile = await this.agentRepository.findByUserId(agentId);
       const ccEmails = buildCcList([registeredAgentEmail, agent.email]);
       await emailService.sendRenterOpportunityFoundByOtherAgent({
         to: renter.email,
         renterName: renter.fullName,
         cc: ccEmails,
+        replyTo: registeredAgentEmail,
+        requestScope: preMarketRequest.scope,
+        matchedAgentFullName: agent.fullName || agent.email || "N/A",
+        matchedAgentBrokerageName: matchedAgentProfile?.brokerageName || "N/A",
+        matchedAgentEmail: agent.email,
+        matchedAgentPhone: agent.phoneNumber || "N/A",
+      });
+
+      let registeredAgentFullName: string = DEFAULT_REFERRAL_AGENT_NAME;
+      let registeredAgentTitle: string = DEFAULT_REFERRAL_AGENT_TITLE;
+      let registeredAgentBrokerage: string = DEFAULT_REFERRAL_AGENT_BROKERAGE;
+
+      if (
+        typeof registeredAgentInfo === "object" &&
+        registeredAgentInfo?.fullName
+      ) {
+        registeredAgentFullName = registeredAgentInfo.fullName;
+      }
+
+      if (registeredAgentId) {
+        const registeredAgentProfile =
+          await this.agentRepository.findByUserId(registeredAgentId);
+        registeredAgentTitle =
+          registeredAgentProfile?.title || DEFAULT_REFERRAL_AGENT_TITLE;
+        registeredAgentBrokerage =
+          registeredAgentProfile?.brokerageName ||
+          DEFAULT_REFERRAL_AGENT_BROKERAGE;
+      }
+
+      const agentAckCcEmails = buildCcList(
+        [registeredAgentEmail, env.ADMIN_EMAIL],
+        [agent.email],
+      );
+      await emailService.sendMatchReferralAcknowledgmentToMatchingAgent({
+        to: agent.email,
+        matchedAgentName: agent.fullName || agent.email || "Agent",
+        renterFullName: renter.fullName,
+        registeredAgentFullName,
+        registeredAgentTitle,
+        registeredAgentBrokerage,
+        cc: agentAckCcEmails,
       });
     }
 

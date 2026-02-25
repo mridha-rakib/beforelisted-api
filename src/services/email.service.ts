@@ -18,6 +18,7 @@ import {
   adminContactRequestTemplate,
   agentRegistrationVerifiedAdminTemplate,
   agentRenterRequestConfirmationTemplate,
+  matchReferralAcknowledgmentToMatchingAgentTemplate,
   preMarketAdminNotificationTemplate,
   preMarketAgentNotificationTemplate,
   renterOpportunityFoundOtherAgentTemplate,
@@ -32,6 +33,7 @@ import {
   IAdminContactRequestPayload,
   IAgentRegistrationVerifiedAdminPayload,
   IAgentRequestConfirmationPayload,
+  IMatchReferralAcknowledgmentToMatchingAgentPayload,
   IPreMarketAdminNotificationPayload,
   IPreMarketAgentNotificationPayload,
   IRenterOpportunityFoundOtherAgentPayload,
@@ -1046,14 +1048,24 @@ export class EmailService {
 
       const html = renterOpportunityFoundOtherAgentTemplate(
         payload.renterName,
+        payload.requestScope,
+        payload.matchedAgentFullName,
+        payload.matchedAgentBrokerageName,
+        payload.matchedAgentEmail,
+        payload.matchedAgentPhone,
         this.config.logoUrl,
         this.config.brandColor,
       );
+      const subject =
+        payload.requestScope === "All Market"
+          ? "A renter specialist may assist with your rental search – BeforeListed"
+          : "An additional agent may help your request – BeforeListed";
 
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
         cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
-        subject: `An additional agent has identified a possible opportunity for you`,
+        replyTo: payload.replyTo || "support@beforelisted.com",
+        subject,
         html,
       };
 
@@ -1069,6 +1081,60 @@ export class EmailService {
           email: payload.to,
         },
         "Failed to send other agent opportunity notification to renter",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send match referral acknowledgment to matching agent for non-registered matches
+   */
+  async sendMatchReferralAcknowledgmentToMatchingAgent(
+    payload: IMatchReferralAcknowledgmentToMatchingAgentPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to },
+        "Sending match referral acknowledgment to matching agent",
+      );
+
+      const html = matchReferralAcknowledgmentToMatchingAgentTemplate(
+        payload.matchedAgentName,
+        payload.renterFullName,
+        payload.registeredAgentFullName,
+        payload.registeredAgentTitle,
+        payload.registeredAgentBrokerage,
+        this.config.logoUrl,
+        this.config.brandColor,
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.matchedAgentName },
+        cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
+        replyTo: "support@beforelisted.com",
+        subject: "Beforelisted match – referral acknowledgment",
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "MATCH_REFERRAL_ACKNOWLEDGMENT",
+        payload.to,
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send match referral acknowledgment to matching agent",
       );
 
       return {
@@ -1492,6 +1558,7 @@ export class EmailService {
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: "Administrator" },
         cc: undefined,
+        replyTo: "support@beforelisted.com",
         subject: template.getSubject(),
         html: template.render(),
         priority: template.getEmailPriority(),
@@ -1720,4 +1787,3 @@ export async function cleanupEmailService(): Promise<void> {
     );
   }
 }
-
