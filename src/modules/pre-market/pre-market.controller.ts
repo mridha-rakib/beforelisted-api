@@ -860,6 +860,36 @@ export class PreMarketController {
     const agentId = req.user!.userId;
     const { requestId } = validated.params;
 
+    const agent = await this.agentRepository.findByUserId(agentId);
+    if (!agent) {
+      throw new ForbiddenException("Agent profile not found");
+    }
+
+    if (!agent.hasGrantAccess) {
+      const request = await this.preMarketService.getRequestById(requestId);
+      this.preMarketService.ensureAgentCanViewRequest(agent, request as any);
+      await this.preMarketService.ensureAgentCanViewRequestVisibility(
+        agentId,
+        request as any,
+      );
+
+      const pendingAccess = await this.grantAccessService.requestAccess(
+        agentId,
+        requestId,
+      );
+
+      logger.info(
+        { agentId, requestId, grantAccessId: pendingAccess._id },
+        "Agent without grant access attempted match; request sent for admin approval",
+      );
+
+      return ApiResponse.success(
+        res,
+        pendingAccess,
+        "Match request pending admin approval",
+      );
+    }
+
     const matchRecord = await this.preMarketService.matchRequestForAgent(
       agentId,
       requestId

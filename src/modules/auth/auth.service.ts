@@ -306,6 +306,13 @@ export class AuthService {
         const registrationDate = this.formatEasternTime(
           user.createdAt ? new Date(user.createdAt) : new Date()
         );
+        const agentTitleForAdminEmail = agentProfile?.title || "N/A";
+        const agentBrokerageForAdminEmail =
+          agentProfile?.brokerageName || "N/A";
+        const agentPhoneNumber = user.phoneNumber || "N/A";
+        const agentRegistrationLink = user.referralCode
+          ? `${env.CLIENT_URL}/signup/renter?ref=${encodeURIComponent(user.referralCode)}`
+          : "N/A";
 
         try {
           await this.emailService.sendAgentRegistrationVerifiedAdminNotification(
@@ -313,8 +320,12 @@ export class AuthService {
               to: adminEmail,
               agentFirstName,
               agentLastName,
+              agentTitle: agentTitleForAdminEmail,
+              agentBrokerage: agentBrokerageForAdminEmail,
               agentEmail: user.email,
+              agentPhoneNumber,
               registrationDate,
+              agentRegistrationLink,
             }
           );
         } catch (error) {

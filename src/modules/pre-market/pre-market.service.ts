@@ -58,6 +58,7 @@ const DEFAULT_REGISTERED_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
 const DEFAULT_REFERRAL_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
 const DEFAULT_REFERRAL_AGENT_TITLE = SYSTEM_DEFAULT_AGENT.title;
 const DEFAULT_REFERRAL_AGENT_BROKERAGE = SYSTEM_DEFAULT_AGENT.brokerageName;
+const DEFAULT_REFERRAL_AGENT_PHONE = SYSTEM_DEFAULT_AGENT.phoneNumber;
 
 export class PreMarketService {
   private readonly preMarketRepository: PreMarketRepository;
@@ -715,82 +716,159 @@ export class PreMarketService {
     return updated!;
   }
 
-  private async notifyRegisteredAgentRequestClosed(
+  private async notifyAssociatedAgentsRequestClosed(
     request: IPreMarketRequest,
     reason: string,
     closedAt: Date,
+    matchedAgentIds?: string[],
   ): Promise<void> {
+    const recipients = await this.getRegisteredAndMatchedAgentsForClosedAlert(
+      request,
+      matchedAgentIds,
+    );
+
+    if (recipients.length === 0) {
+      logger.info(
+        { requestId: request._id, reason },
+        "No registered or matched agents to notify about closed request",
+      );
+      return;
+    }
+
+    const requestId = request.requestId || request._id?.toString() || "";
+    const formattedClosedAt = this.formatEasternTime(closedAt);
+
+    for (const recipient of recipients) {
+      const shouldNotify = await this.isAgentEmailSubscriptionEnabled(
+        recipient.email,
+        recipient.userId,
+      );
+      if (!shouldNotify) {
+        logger.info(
+          { email: recipient.email, requestId },
+          "Agent email subscription disabled; skipping request closed alert",
+        );
+        continue;
+      }
+
+      await emailService.sendRenterRequestClosedAgentAlert({
+        to: recipient.email,
+        agentName: recipient.name,
+        requestId,
+        reason,
+        closedAt: formattedClosedAt,
+      });
+    }
+  }
+
+  private async getMatchedAgentIdsForClosedAlert(
+    preMarketRequestId: string,
+  ): Promise<string[]> {
+    try {
+      const matchedAccessRecords =
+        await this.grantAccessRepository.findByPreMarketRequestId(
+          preMarketRequestId,
+        );
+
+      return Array.from(
+        new Set(
+          matchedAccessRecords
+            .filter(
+              (record) => record.status === "free" || record.status === "paid",
+            )
+            .map((record) => record.agentId.toString()),
+        ),
+      );
+    } catch (error) {
+      logger.error(
+        { error, preMarketRequestId },
+        "Failed to load matched agents for closed request alert",
+      );
+      return [];
+    }
+  }
+
+  private async getRegisteredAndMatchedAgentsForClosedAlert(
+    request: IPreMarketRequest,
+    matchedAgentIds?: string[],
+  ): Promise<Array<{ name: string; email: string; userId?: string }>> {
+    const recipients = new Map<
+      string,
+      { name: string; email: string; userId?: string }
+    >();
+
     const renter = await this.renterRepository.findRenterWithReferrer(
       request.renterId.toString(),
     );
 
-    if (!renter) {
-      logger.warn(
-        { requestId: request._id },
-        "Renter not found for request closed alert",
-      );
-      return;
-    }
-
-    let agentEmail = DEFAULT_REGISTERED_AGENT_EMAIL;
-    let agentName = DEFAULT_REGISTERED_AGENT_NAME;
-
     if (
-      renter.registrationType === "agent_referral" &&
+      renter?.registrationType === "agent_referral" &&
       renter.referredByAgentId
     ) {
-      const referredAgent = renter.referredByAgentId;
-      if (typeof referredAgent === "object") {
-        if (referredAgent.email) {
-          agentEmail = referredAgent.email;
+      const referredAgent = renter.referredByAgentId as any;
+      const referredAgentId =
+        typeof referredAgent === "object" && referredAgent?._id
+          ? referredAgent._id.toString()
+          : typeof referredAgent === "string"
+            ? referredAgent
+            : undefined;
+
+      let referredAgentName =
+        typeof referredAgent === "object" ? referredAgent.fullName : undefined;
+      let referredAgentEmail =
+        typeof referredAgent === "object" ? referredAgent.email : undefined;
+
+      if (referredAgentId && (!referredAgentName || !referredAgentEmail)) {
+        const referredAgentUser = await this.userRepository.findById(referredAgentId);
+        if (referredAgentUser?.fullName) {
+          referredAgentName = referredAgentUser.fullName;
         }
-        if (referredAgent.fullName) {
-          agentName = referredAgent.fullName;
+        if (referredAgentUser?.email) {
+          referredAgentEmail = referredAgentUser.email;
         }
+      }
+
+      const email = referredAgentEmail?.trim();
+      if (email) {
+        recipients.set(email.toLowerCase(), {
+          name: referredAgentName || email,
+          email,
+          userId: referredAgentId,
+        });
       }
     }
 
-    const referredAgentId =
-      renter.registrationType === "agent_referral" &&
-      renter.referredByAgentId &&
-      typeof renter.referredByAgentId === "object" &&
-      "_id" in renter.referredByAgentId
-        ? renter.referredByAgentId._id.toString()
-        : undefined;
-    const shouldNotify = await this.isAgentEmailSubscriptionEnabled(
-      agentEmail,
-      referredAgentId,
+    const resolvedRequestId = request._id?.toString();
+    const matchedIds =
+      matchedAgentIds ||
+      (resolvedRequestId
+        ? await this.getMatchedAgentIdsForClosedAlert(resolvedRequestId)
+        : []);
+    const matchedAgentUsers = await Promise.all(
+      matchedIds.map((agentId) => this.userRepository.findById(agentId)),
     );
-    if (!shouldNotify) {
-      logger.info(
-        { email: agentEmail },
-        "Agent email subscription disabled; skipping request closed alert",
-      );
-      return;
+
+    for (const matchedAgentUser of matchedAgentUsers) {
+      if (!matchedAgentUser?.email) {
+        continue;
+      }
+
+      const email = matchedAgentUser.email.trim();
+      if (!email) {
+        continue;
+      }
+
+      const key = email.toLowerCase();
+      if (!recipients.has(key)) {
+        recipients.set(key, {
+          name: matchedAgentUser.fullName || email,
+          email,
+          userId: matchedAgentUser._id?.toString(),
+        });
+      }
     }
 
-    const adminEmail = env.ADMIN_EMAIL;
-    const ccEmails = [adminEmail]
-      .filter((email): email is string => Boolean(email))
-      .map((email) => email.trim())
-      .filter(
-        (email, index, items) =>
-          items.findIndex(
-            (item) => item.toLowerCase() === email.toLowerCase(),
-          ) === index,
-      )
-      .filter((email) => email.toLowerCase() !== agentEmail.toLowerCase());
-
-    const requestId = request.requestId || request._id?.toString() || "";
-
-    await emailService.sendRenterRequestClosedAgentAlert({
-      to: agentEmail,
-      agentName,
-      requestId,
-      reason,
-      closedAt: this.formatEasternTime(closedAt),
-      cc: ccEmails.length > 0 ? ccEmails : undefined,
-    });
+    return Array.from(recipients.values());
   }
 
   private async createRenterNotification(payload: {
@@ -1227,10 +1305,27 @@ export class PreMarketService {
       throw new BadRequestException("Cannot delete others' requests");
     }
 
+    const preMarketRequestId = request._id?.toString() || requestId;
+    const matchedAgentIds =
+      await this.getMatchedAgentIdsForClosedAlert(preMarketRequestId);
+    const closedAt = new Date();
+
     const deleted = await this.preMarketRepository.deleteById(requestId);
     if (!deleted) {
       throw new NotFoundException("Pre-market request not found");
     }
+
+    this.notifyAssociatedAgentsRequestClosed(
+      request,
+      "Deleted by renter",
+      closedAt,
+      matchedAgentIds,
+    ).catch((error) => {
+      logger.error(
+        { error, requestId: request._id },
+        "Failed to send request closed alert (non-blocking)",
+      );
+    });
 
     await this.deleteGrantAccessRecords(requestId);
 
@@ -1238,16 +1333,6 @@ export class PreMarketService {
 
     logger.info({ renterId }, `Pre-market request deleted: ${requestId}`);
 
-    this.notifyRegisteredAgentRequestClosed(
-      request,
-      "Deleted by Renter",
-      new Date(),
-    ).catch((error) => {
-      logger.error(
-        { error, requestId: request._id },
-        "Failed to send request closed alert (non-blocking)",
-      );
-    });
   }
 
   async deleteRequestsByRenterId(renterId: string): Promise<void> {
@@ -1402,6 +1487,8 @@ export class PreMarketService {
       }
 
       try {
+        const matchedAgentIds =
+          await this.getMatchedAgentIdsForClosedAlert(requestId);
         const deleted = await this.preMarketRepository.deleteById(requestId);
         if (!deleted) {
           failedCount += 1;
@@ -1424,10 +1511,11 @@ export class PreMarketService {
           );
         });
 
-        this.notifyRegisteredAgentRequestClosed(
+        this.notifyAssociatedAgentsRequestClosed(
           request,
-          "Request expired.",
+          "Expired",
           closedAt,
+          matchedAgentIds,
         ).catch((error) => {
           logger.error(
             { error, requestId },
@@ -2510,10 +2598,53 @@ export class PreMarketService {
           ? registeredAgentInfo
           : null;
 
-    const registeredAgentEmail =
+    let registeredAgentEmail =
       typeof registeredAgentInfo === "object" && registeredAgentInfo?.email
         ? registeredAgentInfo.email
         : SYSTEM_DEFAULT_AGENT.email;
+    let registeredAgentFullName: string = DEFAULT_REFERRAL_AGENT_NAME;
+    let registeredAgentTitle: string = DEFAULT_REFERRAL_AGENT_TITLE;
+    let registeredAgentBrokerage: string = DEFAULT_REFERRAL_AGENT_BROKERAGE;
+    let registeredAgentPhone: string = DEFAULT_REFERRAL_AGENT_PHONE || "N/A";
+
+    if (
+      typeof registeredAgentInfo === "object" &&
+      registeredAgentInfo?.fullName
+    ) {
+      registeredAgentFullName = registeredAgentInfo.fullName;
+    }
+
+    if (
+      typeof registeredAgentInfo === "object" &&
+      registeredAgentInfo?.phoneNumber
+    ) {
+      registeredAgentPhone = registeredAgentInfo.phoneNumber;
+    }
+
+    if (registeredAgentId) {
+      const [registeredAgentUser, registeredAgentProfile] = await Promise.all([
+        this.userRepository.findById(registeredAgentId),
+        this.agentRepository.findByUserId(registeredAgentId),
+      ]);
+
+      if (registeredAgentUser?.fullName) {
+        registeredAgentFullName = registeredAgentUser.fullName;
+      }
+
+      if (registeredAgentUser?.email) {
+        registeredAgentEmail = registeredAgentUser.email;
+      }
+
+      if (registeredAgentUser?.phoneNumber) {
+        registeredAgentPhone = registeredAgentUser.phoneNumber;
+      }
+
+      registeredAgentTitle =
+        registeredAgentProfile?.title || DEFAULT_REFERRAL_AGENT_TITLE;
+      registeredAgentBrokerage =
+        registeredAgentProfile?.brokerageName ||
+        DEFAULT_REFERRAL_AGENT_BROKERAGE;
+    }
 
     const buildCcList = (
       emails: Array<string | undefined>,
@@ -2553,11 +2684,14 @@ export class PreMarketService {
         agent.email.toLowerCase() === registeredAgentEmail.toLowerCase());
 
     if (isRegisteredAgentMatch) {
-      const ccEmails = buildCcList([registeredAgentEmail]);
       await emailService.sendRenterOpportunityFoundByRegisteredAgent({
         to: renter.email,
         renterName: renter.fullName,
-        cc: ccEmails,
+        registeredAgentFullName,
+        registeredAgentTitle,
+        registeredAgentBrokerage,
+        registeredAgentEmail,
+        registeredAgentPhone,
       });
     } else {
       const matchedAgentProfile = await this.agentRepository.findByUserId(agentId);
@@ -2573,27 +2707,6 @@ export class PreMarketService {
         matchedAgentEmail: agent.email,
         matchedAgentPhone: agent.phoneNumber || "N/A",
       });
-
-      let registeredAgentFullName: string = DEFAULT_REFERRAL_AGENT_NAME;
-      let registeredAgentTitle: string = DEFAULT_REFERRAL_AGENT_TITLE;
-      let registeredAgentBrokerage: string = DEFAULT_REFERRAL_AGENT_BROKERAGE;
-
-      if (
-        typeof registeredAgentInfo === "object" &&
-        registeredAgentInfo?.fullName
-      ) {
-        registeredAgentFullName = registeredAgentInfo.fullName;
-      }
-
-      if (registeredAgentId) {
-        const registeredAgentProfile =
-          await this.agentRepository.findByUserId(registeredAgentId);
-        registeredAgentTitle =
-          registeredAgentProfile?.title || DEFAULT_REFERRAL_AGENT_TITLE;
-        registeredAgentBrokerage =
-          registeredAgentProfile?.brokerageName ||
-          DEFAULT_REFERRAL_AGENT_BROKERAGE;
-      }
 
       const agentAckCcEmails = buildCcList(
         [registeredAgentEmail, env.ADMIN_EMAIL],
@@ -2743,6 +2856,11 @@ export class PreMarketService {
       throw new NotFoundException("Pre-market request not found");
     }
 
+    const preMarketRequestId = request._id?.toString() || requestId;
+    const matchedAgentIds =
+      await this.getMatchedAgentIdsForClosedAlert(preMarketRequestId);
+    const closedAt = new Date();
+
     // Delete the request (hard delete)
     await this.preMarketRepository.deleteById(requestId);
     await this.deleteGrantAccessRecords(requestId);
@@ -2753,10 +2871,11 @@ export class PreMarketService {
       "Admin deleted pre-market request",
     );
 
-    this.notifyRegisteredAgentRequestClosed(
+    this.notifyAssociatedAgentsRequestClosed(
       request,
-      "Deleted by Admin",
-      new Date(),
+      "Deleted by admin",
+      closedAt,
+      matchedAgentIds,
     ).catch((error) => {
       logger.error(
         { error, requestId: request._id },
@@ -2821,7 +2940,7 @@ export class PreMarketService {
 
     if (!isActive) {
       const reason = userRole === "Admin" ? "Closed by Admin" : "Expired";
-      this.notifyRegisteredAgentRequestClosed(
+      this.notifyAssociatedAgentsRequestClosed(
         listing,
         reason,
         new Date(),

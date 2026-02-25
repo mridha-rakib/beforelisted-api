@@ -43,7 +43,7 @@ export class GrantAccessRequestTemplate extends BaseEmailTemplate {
   }
 
   getSubject(): string {
-    return `Action required: agent match request pending approval | BeforeListedâ„¢`;
+    return `Action required: agent match request pending approval | BeforeListed™`;
   }
 
   getEmailPriority(): "high" | "normal" | "low" {
@@ -91,7 +91,7 @@ export class GrantAccessRequestTemplate extends BaseEmailTemplate {
         <div class="section-title">Next steps</div>
         <p>Please review the request in the Admin Dashboard and take one of the following actions:</p>
         <ul style="margin: 10px 0 0 0; padding-left: 20px;">
-          <li>Approve access for this specific request, or</li>
+          <li>Approve access for this specific renter request, or</li>
           <li>Enable Grant Access for the agent, if appropriate</li>
         </ul>
         <p style="margin-top: 16px;">Admin Dashboard: <a href="${this.adminDashboardLink}" style="color: ${this.brandColor};">${this.adminDashboardLink}</a></p>
@@ -111,3 +111,4 @@ export class GrantAccessRequestTemplate extends BaseEmailTemplate {
     return this.wrapInHTML(header, body);
   }
 }
+

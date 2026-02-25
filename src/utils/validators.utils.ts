@@ -5,7 +5,7 @@ import { ZodError, type ZodTypeAny } from "zod";
 
 export async function zParse<T extends ZodTypeAny>(
   schema: T,
-  req: Request
+  req: Request,
 ): Promise<z.infer<T>> {
   try {
     const result = await schema.parseAsync({

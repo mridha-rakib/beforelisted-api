@@ -9,6 +9,7 @@ import { ObjectId } from "mongoose";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { IGrantAccessRequest } from "../grant-access/grant-access.model";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
+import { RenterRepository } from "../renter/renter.repository";
 import { UserRepository } from "../user/user.repository";
 import { IPreMarketNotificationCreateResponse } from "./pre-market-notification.types";
 import { IPreMarketRequest } from "./pre-market.model";
@@ -45,6 +46,7 @@ export class PreMarketNotifier {
   private notificationService: NotificationService;
   private preMarketRepository = new PreMarketRepository();
   private userRepository = new UserRepository();
+  private renterRepository = new RenterRepository();
 
   constructor() {
     this.notificationService = new NotificationService();
@@ -134,7 +136,8 @@ export class PreMarketNotifier {
       await this.notifyRenterAboutNewRequest(payload, renterData);
       await this.notifyReferringAgentAboutNewRequest(
         preMarketRequest,
-        renterData
+        renterData,
+        payload.listingDescription,
       );
 
       await this.createInAppNotifications(preMarketRequest, {
@@ -165,14 +168,15 @@ export class PreMarketNotifier {
     updatedAt: Date
   ): Promise<void> {
     try {
-      const recipients = await this.getAgentsWithRenterAccess(
-        preMarketRequest._id?.toString() || ""
-      );
+      const { recipients, renterName } =
+        await this.getRegisteredAndMatchedAgentsForRequestUpdate(
+          preMarketRequest
+        );
 
       if (recipients.length === 0) {
         logger.info(
           { preMarketRequestId: preMarketRequest._id },
-          "No agents with renter access to notify about request update"
+          "No registered or matched agents to notify about request update"
         );
         return;
       }
@@ -189,6 +193,7 @@ export class PreMarketNotifier {
             to: recipient.email,
             agentName: recipient.name,
             requestId,
+            renterName,
             updatedFields: normalizedFields,
             updatedAt: formattedUpdatedAt,
           });
@@ -408,15 +413,23 @@ export class PreMarketNotifier {
     renterData: {
       renterName: string;
       renterEmail: string;
+      renterPhone?: string;
       referringAgentEmail?: string;
       referringAgentName?: string;
-    }
+    },
+    requestDescription: string,
   ): Promise<void> {
     try {
-      const agentEmail =
-        renterData.referringAgentEmail || DEFAULT_REFERRAL_AGENT_EMAIL;
-      const agentName =
-        renterData.referringAgentName || DEFAULT_REFERRAL_AGENT_NAME;
+      const agentEmail = renterData.referringAgentEmail?.trim();
+      if (!agentEmail) {
+        logger.info(
+          { requestId: preMarketRequest.requestId || preMarketRequest._id },
+          "No registered agent email available; skipping registered agent intake notification",
+        );
+        return;
+      }
+
+      const agentName = renterData.referringAgentName || DEFAULT_REFERRAL_AGENT_NAME;
       const shouldNotify = await this.isAgentEmailSubscriptionEnabledByEmail(
         agentEmail
       );
@@ -429,9 +442,6 @@ export class PreMarketNotifier {
       }
       const requestId =
         preMarketRequest.requestId || preMarketRequest._id?.toString() || "";
-      const borough = this.formatBorough(preMarketRequest.locations);
-      const bedrooms = this.formatBedrooms(preMarketRequest.bedrooms);
-      const maxRent = this.formatMaxRent(preMarketRequest.priceRange?.max);
       const submittedAt = this.formatEasternTime(
         new Date(preMarketRequest.createdAt ?? Date.now())
       );
@@ -440,10 +450,11 @@ export class PreMarketNotifier {
         await emailService.sendRenterRequestConfirmationToAgent({
           to: agentEmail,
           agentName,
+          renterName: renterData.renterName,
+          renterEmail: renterData.renterEmail,
+          renterPhoneNumber: renterData.renterPhone || "N/A",
           requestId,
-          borough,
-          bedrooms,
-          maxRent,
+          requestDescription,
           submittedAt,
         });
 
@@ -471,30 +482,59 @@ export class PreMarketNotifier {
     }
   }
 
-  private async getAgentsWithRenterAccess(
-    preMarketRequestId: string
-  ): Promise<Array<{ name: string; email: string }>> {
+  private async getRegisteredAndMatchedAgentsForRequestUpdate(
+    preMarketRequest: IPreMarketRequest
+  ): Promise<{ recipients: Array<{ name: string; email: string }>; renterName: string }> {
     const recipients = new Map<string, { name: string; email: string }>();
+    let renterName = "Renter";
 
-    const grantAccessAgents = await this.agentRepository.findActiveAgents();
-    for (const agent of grantAccessAgents) {
-      if (!agent.hasGrantAccess || !agent.email) {
-        continue;
+    const renterProfileId = preMarketRequest.renterId?.toString();
+    if (renterProfileId) {
+      const renterProfile =
+        await this.renterRepository.findByIdWithReferralInfo(renterProfileId);
+
+      if (renterProfile?.fullName) {
+        renterName = renterProfile.fullName;
       }
-      const name = agent.fullName || agent.email;
-      recipients.set(agent.email.toLowerCase(), {
-        name,
-        email: agent.email,
-      });
+
+      if (
+        renterProfile?.registrationType === "agent_referral" &&
+        renterProfile.referredByAgentId
+      ) {
+        const registeredAgentId =
+          typeof renterProfile.referredByAgentId === "string"
+            ? renterProfile.referredByAgentId
+            : renterProfile.referredByAgentId.toString();
+
+        const registeredAgentUser = await this.userRepository.findById(
+          registeredAgentId
+        );
+
+        if (registeredAgentUser?.email) {
+          const email = registeredAgentUser.email.trim();
+          if (email) {
+            recipients.set(email.toLowerCase(), {
+              name: registeredAgentUser.fullName || email,
+              email,
+            });
+          }
+        }
+      }
     }
 
-    const accessRecords =
+    const preMarketRequestId = preMarketRequest._id?.toString();
+    if (!preMarketRequestId) {
+      return { recipients: Array.from(recipients.values()), renterName };
+    }
+
+    const matchedAccessRecords =
       await this.grantAccessRepository.findByPreMarketRequestId(
         preMarketRequestId
       );
-    const eligibleAgentIds = Array.from(
+
+    const matchedAgentIds = Array.from(
       new Set(
-        accessRecords
+        matchedAccessRecords
           .filter(
             (record) => record.status === "free" || record.status === "paid"
           )
@@ -502,37 +542,30 @@ export class PreMarketNotifier {
       )
     );
 
-    for (const agentId of eligibleAgentIds) {
-      const agentProfile = await this.agentRepository.findByUserId(agentId);
-      if (!agentProfile) {
+    const matchedAgentUsers = await Promise.all(
+      matchedAgentIds.map((agentId) => this.userRepository.findById(agentId))
+    );
+
+    for (const agentUser of matchedAgentUsers) {
+      if (!agentUser?.email) {
         continue;
       }
 
-      if (agentProfile.isActive === false) {
-        continue;
-      }
-
-      if (agentProfile.emailSubscriptionEnabled === false) {
-        continue;
-      }
-
-      const userInfo = agentProfile.userId as {
-        fullName?: string;
-        email?: string;
-      };
-      const email = userInfo?.email;
+      const email = agentUser.email.trim();
       if (!email) {
         continue;
       }
 
-      const name = userInfo?.fullName || email;
       const key = email.toLowerCase();
       if (!recipients.has(key)) {
-        recipients.set(key, { name, email });
+        recipients.set(key, {
+          name: agentUser.fullName || email,
+          email,
+        });
       }
     }
 
-    return Array.from(recipients.values());
+    return { recipients: Array.from(recipients.values()), renterName };
   }
 
   private formatEasternTime(value: Date): string {
@@ -709,7 +742,9 @@ export class PreMarketNotifier {
         agentName: agentUser.fullName || "Agent",
         agentEmail: agentUser.email,
         agentCompany: agentProfile?.brokerageName || null,
-        preMarketRequestId: grantAccess.preMarketRequestId.toString(),
+        preMarketRequestId:
+          preMarketRequest.requestId ||
+          grantAccess.preMarketRequestId.toString(),
         propertyTitle,
         location,
         requestedAt: this.formatEasternTime(

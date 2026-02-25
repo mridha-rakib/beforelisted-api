@@ -148,7 +148,7 @@ export function preMarketAgentNotificationTemplate(
         <!-- Header -->
         <div class="header">
             ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
-            <h1>🔔 New Opportunity</h1>
+            <h1>ðŸ”” New Opportunity</h1>
         </div>
 
         <!-- Content -->
@@ -189,7 +189,7 @@ export function preMarketAgentNotificationTemplate(
 
         <!-- Footer -->
         <div class="footer">
-            <p style="margin: 0;">© ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 0;">Â© ${currentYear} BeforeListed. All rights reserved.</p>
             ${footerLinks(brandColor)}
         </div>
     </div>
@@ -364,7 +364,7 @@ export function preMarketAdminNotificationTemplate(
         <!-- Header -->
         <div class="header">
             ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
-            <h1>⚙️ Admin Notification</h1>
+            <h1>âš™ï¸ Admin Notification</h1>
         </div>
 
         <!-- Content -->
@@ -379,7 +379,7 @@ export function preMarketAdminNotificationTemplate(
 
             <!-- Listing Details Section -->
             <div class="section">
-                <h3>📋 Listing Details</h3>
+                <h3>ðŸ“‹ Listing Details</h3>
                 <table class="details-table">
                     <tr>
                         <td>Title</td>
@@ -402,7 +402,7 @@ export function preMarketAdminNotificationTemplate(
 
             <!-- Renter Information Section (ADMIN ONLY) -->
             <div class="section">
-                <h3>👤 Renter Information</h3>
+                <h3>ðŸ‘¤ Renter Information</h3>
                 <div class="renter-info-box">
                     <p>
                         <strong>Name:</strong> ${renterName}
@@ -418,7 +418,7 @@ export function preMarketAdminNotificationTemplate(
 
             <!-- Action Required -->
             <div class="section">
-                <h3>📌 Action Required</h3>
+                <h3>ðŸ“Œ Action Required</h3>
                 <p>Review this request and take appropriate action:</p>
                 <ul style="padding-left: 20px;">
                     <li>Monitor agent interest and match requests</li>
@@ -438,7 +438,7 @@ export function preMarketAdminNotificationTemplate(
 
         <!-- Footer -->
         <div class="footer">
-            <p style="margin: 0;">© ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 0;">Â© ${currentYear} BeforeListed. All rights reserved.</p>
             <p style="margin: 5px 0 0 0;">Admin Control Panel | Support | Settings</p>
             ${footerLinks(brandColor)}
         </div>
@@ -564,6 +564,8 @@ export function renterRequestConfirmationTemplate(
             <div class="greeting">
                 Hi ${safeFirstName},
             </div>
+
+            <p>A renter request associated with you has been updated.</p>
 
             <p>Thanks for submitting your request on BeforeListed&trade;.</p>
             <p>Based on the information you provided, your request has been forwarded to ${safeTaggedAgentFullName}, ${safeTaggedAgentTitle} with ${safeTaggedAgentBrokerage} for review.</p>
@@ -709,14 +711,15 @@ export function renterRequestExpiredTemplate(
 }
 
 /**
- * Email template for associated agent when renter submits a request
+ * Email template for registered/referral agent when renter submits a request
  */
 export function agentRenterRequestConfirmationTemplate(
   agentName: string,
+  renterName: string,
+  renterEmail: string,
+  renterPhoneNumber: string,
   requestId: string,
-  borough: string,
-  bedrooms: string,
-  maxRent: string,
+  requestDescription: string,
   submittedAt: string,
   logoUrl?: string,
   brandColor: string = "#1890FF"
@@ -724,11 +727,12 @@ export function agentRenterRequestConfirmationTemplate(
   const currentYear = new Date().getFullYear();
   const firstName = agentName?.trim().split(" ")[0] || agentName;
   const safeFirstName = escapeHtml(firstName);
-  const safeRequestId = escapeHtml(requestId);
-  const safeBorough = escapeHtml(borough);
-  const safeBedrooms = escapeHtml(bedrooms);
-  const safeMaxRent = escapeHtml(maxRent);
-  const safeSubmittedAt = escapeHtml(submittedAt);
+  const safeRenterName = escapeHtml(renterName || "N/A");
+  const safeRenterEmail = escapeHtml(renterEmail || "N/A");
+  const safeRenterPhoneNumber = escapeHtml(renterPhoneNumber || "N/A");
+  const safeRequestId = escapeHtml(requestId || "N/A");
+  const safeRequestDescription = escapeHtml(requestDescription || "N/A");
+  const safeSubmittedAt = escapeHtml(submittedAt || "N/A");
 
   return `
 <!DOCTYPE html>
@@ -736,7 +740,7 @@ export function agentRenterRequestConfirmationTemplate(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Renter Request Confirmation</title>
+    <title>New renter request submitted | BeforeListed&trade;</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -839,7 +843,7 @@ export function agentRenterRequestConfirmationTemplate(
     <div class="container">
         <div class="header">
             ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
-            <h1>New Renter Request</h1>
+            <h1>New renter request submitted</h1>
         </div>
 
         <div class="content">
@@ -847,22 +851,33 @@ export function agentRenterRequestConfirmationTemplate(
                 Hi ${safeFirstName},
             </div>
 
+            <p>A renter who registered with you has submitted a new intake request using the BeforeListed&trade; website.</p>
+
+            <div class="note-title">Renter contact information:</div>
+            <div class="details">
+                <p>
+                    <strong>Name:</strong><br>
+                    ${safeRenterName}
+                </p>
+                <p>
+                    <strong>Email:</strong><br>
+                    <a href="mailto:${safeRenterEmail}">${safeRenterEmail}</a>
+                </p>
+                <p>
+                    <strong>Phone:</strong><br>
+                    ${safeRenterPhoneNumber}
+                </p>
+            </div>
+
+            <div class="note-title">Request details:</div>
             <div class="details">
                 <p>
                     <strong>Request ID:</strong><br>
                     ${safeRequestId}
                 </p>
                 <p>
-                    <strong>Borough:</strong><br>
-                    ${safeBorough}
-                </p>
-                <p>
-                    <strong>Bedrooms Requested:</strong><br>
-                    ${safeBedrooms}
-                </p>
-                <p>
-                    <strong>Max Rent:</strong><br>
-                    ${safeMaxRent}
+                    <strong>Description:</strong><br>
+                    ${safeRequestDescription}
                 </p>
                 <p>
                     <strong>Submitted:</strong><br>
@@ -870,24 +885,21 @@ export function agentRenterRequestConfirmationTemplate(
                 </p>
             </div>
 
-            <p>You can review the renter's full request details by logging into the BeforeListed™ admin panel.</p>
+            <p>You may review full details in the BeforeListed&trade; Agent dashboard.</p>
 
             <div class="note-title">Please note:</div>
             <ul class="notes-list">
-                <li>BeforeListed&trade; is a renter-initiated intake website.</li>
-                <li>Requests focused on opportunities that may not be publicly advertised may take longer than on-market searches.</li>
-                <li>You will be notified if a relevant opportunity is identified.</li>
-                <li>Another licensed agent may be involved only with your consent and required disclosures.</li>
-                <li>A broker fee is payable only if you successfully rent an apartment presented by a licensed agent with required disclosures.</li>
+                <li>The request was renter-initiated.</li>
+                <li>Outreach may begin only after all required agency disclosures and agreements are completed.</li>
+                <li>Collaboration with another licensed agent requires renter consent and required disclosures.</li>
             </ul>
 
-            <p>If you have any questions or encounter an issue with the request, please contact support.</p>
+            <div class="note-title">Referral reminder:</div>
+            <p>If you choose to refer this renter to another licensed agent who uses the BeforeListed&trade; website, whether through or outside the website, and a transaction results, referral fees will apply as outlined in the BeforeListed&trade; Agent Agreement, subject to brokerage approval and payable only upon closing.</p>
 
-            <p>Thank you,<br><strong>BeforeListed™ Admin</strong></p>
+            <p>If you have any questions or need assistance, please reply to this email.</p>
 
-            <p class="footer-note">
-                You can manage or disable email notifications at any time in your BeforeListed™ dashboard settings.
-            </p>
+            <p>Best regards,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>
 
         <div class="footer">
@@ -905,12 +917,32 @@ export function agentRenterRequestConfirmationTemplate(
  */
 export function renterOpportunityFoundRegisteredAgentTemplate(
   renterName: string,
+  registeredAgentFullName: string,
+  registeredAgentTitle: string,
+  registeredAgentBrokerage: string,
+  registeredAgentEmail: string,
+  registeredAgentPhone: string,
   logoUrl?: string,
   brandColor: string = "#1890FF"
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = renterName?.trim().split(" ")[0] || renterName;
   const safeFirstName = escapeHtml(firstName);
+  const safeRegisteredAgentFullName = escapeHtml(
+    registeredAgentFullName?.trim() || "N/A"
+  );
+  const safeRegisteredAgentTitle = escapeHtml(
+    registeredAgentTitle?.trim() || "N/A"
+  );
+  const safeRegisteredAgentBrokerage = escapeHtml(
+    registeredAgentBrokerage?.trim() || "N/A"
+  );
+  const safeRegisteredAgentEmail = escapeHtml(
+    registeredAgentEmail?.trim() || "N/A"
+  );
+  const safeRegisteredAgentPhone = escapeHtml(
+    registeredAgentPhone?.trim() || "N/A"
+  );
 
   return `
 <!DOCTYPE html>
@@ -918,7 +950,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Opportunity Found</title>
+    <title>An opportunity matching your request has been identified &ndash; BeforeListed</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -959,17 +991,15 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
             margin-bottom: 20px;
             font-size: 16px;
         }
-        .notification-box {
-            background-color: #f0f8fa;
-            border-left: 4px solid ${brandColor};
+        .agent-details {
+            background-color: #fafafa;
             padding: 15px;
-            margin: 20px 0;
             border-radius: 4px;
+            margin: 20px 0;
         }
-        .notification-box h2 {
-            margin: 0 0 10px 0;
-            color: ${brandColor};
-            font-size: 18px;
+        .agent-details p {
+            margin: 8px 0;
+            font-size: 14px;
         }
         .footer {
             background-color: #f9f9f9;
@@ -996,13 +1026,23 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
                 Hi ${safeFirstName},
             </div>
 
+            <p>Your registered agent has indicated through the BeforeListed&trade; website that an opportunity related to your request has been identified.</p>
+
             <p>This opportunity is based on the criteria you submitted and may not be publicly advertised.</p>
 
-            <p>Your agent will follow up with additional details and next steps. No action is required from you at this time unless requested by your agent.</p>
+            <p>Your agent may reach out separately with additional details and next steps. No action is required from you at this time unless requested by your agent.</p>
 
-            <p>As a reminder, you only pay a broker fee if you successfully rent an apartment presented to you by your agent, pursuant to the applicable agency and fee agreements.</p>
+            <p>If you prefer, you may also contact your registered agent directly:</p>
 
-            <p>If you have any questions, you may reply to this email.</p>
+            <div class="agent-details">
+                <p>${safeRegisteredAgentFullName}, ${safeRegisteredAgentTitle} with ${safeRegisteredAgentBrokerage}</p>
+                <p>${safeRegisteredAgentEmail}</p>
+                <p>${safeRegisteredAgentPhone}</p>
+            </div>
+
+            <p>As a reminder, a broker fee is only payable if you successfully rent an apartment presented to you by your agent, pursuant to the applicable agency and fee agreements.</p>
+
+            <p>If you have any questions, you may reply directly to this email. Your reply will be delivered to your registered agent.</p>
 
             <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>
@@ -1322,10 +1362,10 @@ export function renterRequestClosedAgentAlertTemplate(
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = agentName?.trim().split(" ")[0] || agentName;
-  const safeFirstName = escapeHtml(firstName);
-  const safeRequestId = escapeHtml(requestId);
-  const safeReason = escapeHtml(reason);
-  const safeClosedAt = escapeHtml(closedAt);
+  const safeFirstName = escapeHtml(firstName || "Agent");
+  const safeRequestId = escapeHtml(requestId || "N/A");
+  const safeReason = escapeHtml(reason || "N/A");
+  const safeClosedAt = escapeHtml(closedAt || "N/A");
 
   return `
 <!DOCTYPE html>
@@ -1374,18 +1414,6 @@ export function renterRequestClosedAgentAlertTemplate(
             margin-bottom: 20px;
             font-size: 16px;
         }
-        .notification-box {
-            background-color: #f0f8fa;
-            border-left: 4px solid ${brandColor};
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .notification-box h2 {
-            margin: 0 0 10px 0;
-            color: ${brandColor};
-            font-size: 18px;
-        }
         .details {
             background-color: #fafafa;
             padding: 15px;
@@ -1400,11 +1428,6 @@ export function renterRequestClosedAgentAlertTemplate(
             color: ${brandColor};
             display: inline-block;
             min-width: 120px;
-        }
-        .footer-note {
-            font-size: 12px;
-            color: #777;
-            margin-top: 20px;
         }
         .footer {
             background-color: #f9f9f9;
@@ -1431,6 +1454,8 @@ export function renterRequestClosedAgentAlertTemplate(
                 Hi ${safeFirstName},
             </div>
 
+            <p>A renter intake request associated with you has been closed on BeforeListed&trade;.</p>
+
             <div class="details">
                 <p>
                     <strong>Request ID:</strong><br>
@@ -1448,15 +1473,9 @@ export function renterRequestClosedAgentAlertTemplate(
 
             <p>No further outreach is required for this request.</p>
 
-            <p>If the renter submits a new request in the future, you will be notified automatically.</p>
+            <p>If you believe this request was closed in error or have any questions, please contact BeforeListed&trade; Support or reply to this email.</p>
 
-            <p>If you believe this request was closed in error or have any questions, please contact support.</p>
-
-            <p>Thank you,<br><strong>BeforeListed™ Admin</strong></p>
-
-            <p class="footer-note">
-                You can manage or disable email notifications at any time in your BeforeListed™ dashboard settings.
-            </p>
+            <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>
 
         <div class="footer">
@@ -1475,6 +1494,7 @@ export function renterRequestClosedAgentAlertTemplate(
 export function renterRequestUpdatedNotificationTemplate(
   agentName: string,
   requestId: string,
+  renterName: string,
   updatedFields: string[],
   updatedAt: string,
   logoUrl?: string,
@@ -1483,15 +1503,12 @@ export function renterRequestUpdatedNotificationTemplate(
   const currentYear = new Date().getFullYear();
   const firstName = agentName?.trim().split(" ")[0] || agentName;
   const safeFirstName = escapeHtml(firstName);
-  const safeRequestId = escapeHtml(requestId);
-  const safeUpdatedAt = escapeHtml(updatedAt);
+  const safeRequestId = escapeHtml(requestId || "N/A");
+  const safeRenterName = escapeHtml(renterName || "N/A");
   const safeFields = updatedFields.map((field) => escapeHtml(field));
-  const fieldsHtml =
-    safeFields.length > 0
-      ? `<ul class="update-list">${safeFields
-          .map((field) => `<li>${field}</li>`)
-          .join("")}</ul>`
-      : `<p class="empty-text">Not specified</p>`;
+  const safeFieldsSummary =
+    safeFields.length > 0 ? safeFields.join(", ") : "Not specified";
+  const safeUpdatedAt = escapeHtml(updatedAt || "N/A");
 
   return `
 <!DOCTYPE html>
@@ -1499,7 +1516,7 @@ export function renterRequestUpdatedNotificationTemplate(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Request Updated</title>
+    <title>Renter request updated | BeforeListed&trade;</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -1540,18 +1557,6 @@ export function renterRequestUpdatedNotificationTemplate(
             margin-bottom: 20px;
             font-size: 16px;
         }
-        .notification-box {
-            background-color: #f0f8fa;
-            border-left: 4px solid ${brandColor};
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .notification-box h2 {
-            margin: 0 0 10px 0;
-            color: ${brandColor};
-            font-size: 18px;
-        }
         .details {
             background-color: #fafafa;
             padding: 15px;
@@ -1566,24 +1571,6 @@ export function renterRequestUpdatedNotificationTemplate(
             color: ${brandColor};
             display: inline-block;
             min-width: 120px;
-        }
-        .update-list {
-            margin: 8px 0 0 18px;
-            padding: 0;
-            color: #555;
-        }
-        .update-list li {
-            margin: 6px 0;
-        }
-        .empty-text {
-            margin: 8px 0 0 0;
-            color: #777;
-            font-size: 14px;
-        }
-        .footer-note {
-            font-size: 12px;
-            color: #777;
-            margin-top: 20px;
         }
         .footer {
             background-color: #f9f9f9;
@@ -1602,7 +1589,7 @@ export function renterRequestUpdatedNotificationTemplate(
     <div class="container">
         <div class="header">
             ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
-            <h1>Request Updated</h1>
+            <h1>Renter request updated</h1>
         </div>
 
         <div class="content">
@@ -1610,28 +1597,30 @@ export function renterRequestUpdatedNotificationTemplate(
                 Hi ${safeFirstName},
             </div>
 
+            <p>A renter request associated with you has been updated.</p>
+
             <div class="details">
                 <p>
                     <strong>Request ID:</strong><br>
                     ${safeRequestId}
                 </p>
                 <p>
-                    <strong>Updated fields:</strong><br>
-                    ${fieldsHtml}
+                    <strong>Renter name:</strong><br>
+                    ${safeRenterName}
                 </p>
                 <p>
-                    <strong>Updated:</strong><br>
+                    <strong>Updated fields:</strong><br>
+                    ${safeFieldsSummary}
+                </p>
+                <p>
+                    <strong>Updated on:</strong><br>
                     ${safeUpdatedAt}
                 </p>
             </div>
 
-            <p>Please review the updated request details in the BeforeListed™ admin panel before continuing outreach.</p>
+            <p>Please review the updated request details in the Agent Dashboard before continuing outreach.</p>
 
-            <p>Thank you,<br><strong>BeforeListed™ Admin</strong></p>
-
-            <p class="footer-note">
-                You can manage or disable email notifications at any time in your BeforeListed™ dashboard settings.
-            </p>
+            <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>
 
         <div class="footer">
@@ -1647,13 +1636,34 @@ export function renterRequestUpdatedNotificationTemplate(
 export function agentRegistrationVerifiedAdminTemplate(
   agentFirstName: string,
   agentLastName: string,
+  agentTitle: string,
+  agentBrokerage: string,
   agentEmail: string,
+  agentPhoneNumber: string,
   registrationDate: string,
+  agentRegistrationLink: string,
   logoUrl?: string,
   brandColor: string = "#1890FF"
 ): string {
   const currentYear = new Date().getFullYear();
   const displayName = [agentFirstName, agentLastName].filter(Boolean).join(" ");
+  const safeDisplayName = escapeHtml(displayName || "N/A");
+  const safeAgentTitle = escapeHtml(agentTitle || "N/A");
+  const safeAgentBrokerage = escapeHtml(agentBrokerage || "N/A");
+  const safeAgentEmail = escapeHtml(agentEmail || "N/A");
+  const safeAgentPhoneNumber = escapeHtml(agentPhoneNumber || "N/A");
+  const safeRegistrationDate = escapeHtml(registrationDate || "N/A");
+  const safeRegistrationLinkValue = (agentRegistrationLink || "").trim();
+  const safeRegistrationLink = safeRegistrationLinkValue
+    ? escapeHtml(safeRegistrationLinkValue)
+    : "N/A";
+  const hasValidRegistrationLink =
+    safeRegistrationLinkValue.length > 0 &&
+    /^https?:\/\//i.test(safeRegistrationLinkValue);
+  const registrationLinkMarkup =
+    hasValidRegistrationLink && safeRegistrationLink !== "N/A"
+      ? `<a href="${safeRegistrationLink}">${safeRegistrationLink}</a>`
+      : safeRegistrationLink;
 
   return `
 <!DOCTYPE html>
@@ -1760,44 +1770,60 @@ export function agentRegistrationVerifiedAdminTemplate(
     <div class="container">
         <div class="header">
             ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
-            <h1>BeforeListed™ - Agent Verification</h1>
+            <h1>BeforeListed&trade; - Agent Verification</h1>
         </div>
         <div class="content">
-            <div class="greeting">Hi,</div>
-            <p>A new agent has successfully completed registration and email verification on BeforeListed™.</p>
+            <div class="greeting">Hi Tuval,</div>
+            <p>A new agent has successfully completed registration and email verification on BeforeListed.</p>
 
             <div class="section">
                 <h2>Agent Details</h2>
                 <table class="details-table">
                     <tr>
                         <td>Name</td>
-                        <td>${displayName || "N/A"}</td>
+                        <td>${safeDisplayName}</td>
+                    </tr>
+                    <tr>
+                        <td>Title</td>
+                        <td>${safeAgentTitle}</td>
+                    </tr>
+                    <tr>
+                        <td>Brokerage</td>
+                        <td>${safeAgentBrokerage}</td>
                     </tr>
                     <tr>
                         <td>Email</td>
-                        <td><a href="mailto:${agentEmail}">${agentEmail}</a></td>
+                        <td><a href="mailto:${safeAgentEmail}">${safeAgentEmail}</a></td>
                     </tr>
                     <tr>
-                        <td>Registration Date</td>
-                        <td>${registrationDate}</td>
+                        <td>Phone number</td>
+                        <td>${safeAgentPhoneNumber}</td>
+                    </tr>
+                    <tr>
+                        <td>Registration date</td>
+                        <td>${safeRegistrationDate}</td>
+                    </tr>
+                    <tr>
+                        <td>Agent Registration Link</td>
+                        <td>${registrationLinkMarkup}</td>
                     </tr>
                 </table>
             </div>
 
             <div class="action-box">
                 <div class="action-title">Action required:</div>
-                <div>Please review and activate the agent profile in the admin dashboard.</div>
+                <div>Please review and activate the agent profile in the admin dashboard. You may also generate a QR code linked to the agent&apos;s registration link, if applicable.</div>
             </div>
 
             <ul class="info-list">
                 <li>Once activated, the agent will be able to log in to the agent dashboard.</li>
-                <li>Once Grant Access is enabled by the admin, the agent will be able to freely match with renter requests where they have identified an opportunity that aligns with the renter's criteria.</li>
+                <li>Once Grant Access is enabled, the agent will be able to submit matches for renter requests where they have identified an opportunity that aligns with the renter&apos;s criteria.</li>
                 <li>Until activation and Grant Access are completed, the agent will not have access to renter requests or matching functionality.</li>
             </ul>
 
             <p>If you have any questions or need assistance, please review the admin dashboard or reply to this email.</p>
 
-            <p>Thank you,<br><strong>The BeforeListed Team</strong></p>
+            <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>
         <div class="footer">
             <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>

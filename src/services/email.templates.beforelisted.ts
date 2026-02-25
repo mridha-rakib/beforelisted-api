@@ -400,14 +400,14 @@ export class EmailTemplates {
         <div class="content">
             <h2>Hi ${agentFirstName},</h2>
 
-            <p>Welcome to BeforeListed&trade;. Your agent account has been successfully activated, and you now have access to the platform.</p>
+            <p>Welcome to BeforeListed&trade;. Your agent account has been successfully activated, and you now have access to the website.</p>
 
             <h3>As an agent, you can now:</h3>
             <ul class="features-list">
                 <li>Share your BeforeListed Renter Registration Link with potential renters.</li>
                 <li>Review renter requests associated with your registration link.</li>
                 <li>Review and match renter requests shared with you by other agents, when applicable.</li>
-                <li>Submit match requests through the platform, subject to required approvals and disclosures.</li>
+                <li>Submit match requests through the website, subject to required approvals and disclosures.</li>
             </ul>
 
             <p>If you cannot match renter requests immediately, your account may still be pending Grant Access configuration.</p>
@@ -440,7 +440,7 @@ export class EmailTemplates {
             <p>Agents are encouraged to follow up every 2-3 weeks on their renter requests to confirm the renter's status and continued interest.</p>
 
             <h3>Referral note</h3>
-            <p>When a renter request is matched with another agent through BeforeListed, that match is treated as a referral facilitated through the platform and is subject to the terms of the applicable agreement.</p>
+            <p>When a renter request is matched with another agent through BeforeListed, that match is treated as a referral facilitated through the website and is subject to the terms of the applicable agreement.</p>
 
             <div class="section-note">
                 <p>If you have any questions or need assistance, please reply to this email.</p>

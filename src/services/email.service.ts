@@ -66,7 +66,7 @@ export class EmailService {
     try {
       const isConnected = await this.transporter.verify();
       if (isConnected) {
-        logger.info("📧 Email service initialized successfully");
+        logger.info("ðŸ“§ Email service initialized successfully");
       }
     } catch (error) {
       logger.error(
@@ -74,7 +74,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           note: "Service will attempt to send emails anyway",
         },
-        "⚠️  Email service initialization warning",
+        "âš ï¸  Email service initialization warning",
       );
     }
   }
@@ -258,7 +258,7 @@ export class EmailService {
           email: payload.to,
           messageId: result.messageId,
         },
-        "✅ Verification email resent",
+        "âœ… Verification email resent",
       );
 
       return result;
@@ -894,6 +894,7 @@ export class EmailService {
       const html = renterRequestUpdatedNotificationTemplate(
         payload.agentName,
         payload.requestId,
+        payload.renterName,
         payload.updatedFields,
         payload.updatedAt,
         this.config.logoUrl,
@@ -903,7 +904,8 @@ export class EmailService {
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.agentName },
         cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
-        subject: `Request Updated`,
+        replyTo: "support@beforelisted.com",
+        subject: "Renter request updated | BeforeListed\u2122",
         html,
       };
 
@@ -945,10 +947,11 @@ export class EmailService {
 
       const html = agentRenterRequestConfirmationTemplate(
         payload.agentName,
+        payload.renterName,
+        payload.renterEmail,
+        payload.renterPhoneNumber,
         payload.requestId,
-        payload.borough,
-        payload.bedrooms,
-        payload.maxRent,
+        payload.requestDescription,
         payload.submittedAt,
         this.config.logoUrl,
         this.config.brandColor,
@@ -957,7 +960,8 @@ export class EmailService {
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.agentName },
         cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
-        subject: `Renter Request Confirmation – BeforeListed™`,
+        replyTo: "support@beforelisted.com",
+        subject: "New renter request submitted | BeforeListed\u2122",
         html,
       };
 
@@ -999,14 +1003,20 @@ export class EmailService {
 
       const html = renterOpportunityFoundRegisteredAgentTemplate(
         payload.renterName,
+        payload.registeredAgentFullName,
+        payload.registeredAgentTitle,
+        payload.registeredAgentBrokerage,
+        payload.registeredAgentEmail,
+        payload.registeredAgentPhone,
         this.config.logoUrl,
         this.config.brandColor,
       );
 
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
-        cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
-        subject: `An opportunity matching your request has been identified`,
+        replyTo: payload.registeredAgentEmail || "support@beforelisted.com",
+        subject:
+          "An opportunity matching your request has been identified \u2013 BeforeListed",
         html,
       };
 
@@ -1058,8 +1068,8 @@ export class EmailService {
       );
       const subject =
         payload.requestScope === "All Market"
-          ? "A renter specialist may assist with your rental search – BeforeListed"
-          : "An additional agent may help your request – BeforeListed";
+          ? "A renter specialist may assist with your rental search \u2013 BeforeListed"
+          : "An additional agent may help your request \u2013 BeforeListed";
 
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
@@ -1119,7 +1129,7 @@ export class EmailService {
         to: { email: payload.to, name: payload.matchedAgentName },
         cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
         replyTo: "support@beforelisted.com",
-        subject: "Beforelisted match – referral acknowledgment",
+        subject: "Beforelisted match \u2013 referral acknowledgment",
         html,
       };
 
@@ -1171,7 +1181,8 @@ export class EmailService {
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.agentName },
         cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
-        subject: `BeforeListed™ – Renter Request Closed`,
+        replyTo: "support@beforelisted.com",
+        subject: "Renter Request Closed | BeforeListed\u2122",
         html,
       };
 
@@ -1214,8 +1225,12 @@ export class EmailService {
       const html = agentRegistrationVerifiedAdminTemplate(
         payload.agentFirstName,
         payload.agentLastName,
+        payload.agentTitle,
+        payload.agentBrokerage,
         payload.agentEmail,
+        payload.agentPhoneNumber,
         payload.registrationDate,
+        payload.agentRegistrationLink,
         this.config.logoUrl,
         this.config.brandColor,
       );
@@ -1223,7 +1238,8 @@ export class EmailService {
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: "Admin" },
         cc: undefined,
-        subject: "BeforeListed™ - Agent Registration Verified",
+        replyTo: "support@beforelisted.com",
+        subject: "Action Required: New Agent Registration Pending Activation | BeforeListed\u2122",
         html,
       };
 
@@ -1477,7 +1493,7 @@ export class EmailService {
             duration: `${duration}ms`,
             attempts: response.retries + 1,
           },
-          `❌ Email send failed: ${templateType}`,
+          `âŒ Email send failed: ${templateType}`,
         );
 
         return {
@@ -1495,7 +1511,7 @@ export class EmailService {
           email: recipientEmail,
           duration: `${duration}ms`,
         },
-        `✅ Email sent successfully: ${templateType}`,
+        `âœ… Email sent successfully: ${templateType}`,
       );
 
       return {
@@ -1511,7 +1527,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: recipientEmail,
         },
-        `❌ Unexpected error sending email: ${templateType}`,
+        `âŒ Unexpected error sending email: ${templateType}`,
       );
 
       return {
@@ -1742,7 +1758,7 @@ export class EmailService {
   async closeConnection(): Promise<void> {
     try {
       await this.transporter.close();
-      logger.info("✅ Email service connection closed");
+      logger.info("âœ… Email service connection closed");
     } catch (error) {
       logger.error(
         {
@@ -1763,7 +1779,7 @@ export const emailService = new EmailService();
 export async function initializeEmailService(): Promise<void> {
   try {
     await emailService.closeConnection();
-    logger.info("✅ Email service initialized");
+    logger.info("âœ… Email service initialized");
   } catch (error) {
     logger.error(
       {
@@ -1777,7 +1793,7 @@ export async function initializeEmailService(): Promise<void> {
 export async function cleanupEmailService(): Promise<void> {
   try {
     await emailService.closeConnection();
-    logger.info("✅ Email service cleanup completed");
+    logger.info("âœ… Email service cleanup completed");
   } catch (error) {
     logger.error(
       {
@@ -1787,3 +1803,4 @@ export async function cleanupEmailService(): Promise<void> {
     );
   }
 }
+

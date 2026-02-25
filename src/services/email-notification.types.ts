@@ -43,6 +43,7 @@ export interface IRenterRequestUpdatedNotificationPayload {
   to: string;
   agentName: string;
   requestId: string;
+  renterName: string;
   updatedFields: string[];
   updatedAt: string;
   cc?: string[];
@@ -51,10 +52,11 @@ export interface IRenterRequestUpdatedNotificationPayload {
 export interface IAgentRequestConfirmationPayload {
   to: string;
   agentName: string;
+  renterName: string;
+  renterEmail: string;
+  renterPhoneNumber: string;
   requestId: string;
-  borough: string;
-  bedrooms: string;
-  maxRent: string;
+  requestDescription: string;
   submittedAt: string;
   cc?: string[];
 }
@@ -62,7 +64,11 @@ export interface IAgentRequestConfirmationPayload {
 export interface IRenterOpportunityFoundRegisteredAgentPayload {
   to: string;
   renterName: string;
-  cc?: string[];
+  registeredAgentFullName: string;
+  registeredAgentTitle: string;
+  registeredAgentBrokerage: string;
+  registeredAgentEmail: string;
+  registeredAgentPhone: string;
 }
 
 export interface IRenterOpportunityFoundOtherAgentPayload {
@@ -110,8 +116,12 @@ export interface IAgentRegistrationVerifiedAdminPayload {
   to: string;
   agentFirstName: string;
   agentLastName: string;
+  agentTitle: string;
+  agentBrokerage: string;
   agentEmail: string;
+  agentPhoneNumber: string;
   registrationDate: string;
+  agentRegistrationLink: string;
 }
 
 export interface IRenterRegistrationVerifiedAdminPayload {
