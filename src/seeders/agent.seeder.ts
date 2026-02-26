@@ -115,6 +115,48 @@ export class AgentSeeder {
       }).exec();
 
       if (!profile) {
+        const conflictingProfile = await AgentProfile.findOne({
+          licenseNumber: SYSTEM_DEFAULT_AGENT.licenseNumber,
+        }).exec();
+
+        if (conflictingProfile) {
+          const seededUserId = seededAgentUser._id.toString();
+          const conflictingUserId = conflictingProfile.userId?.toString?.();
+
+          if (conflictingUserId !== seededUserId) {
+            const linkedUser = await User.findById(conflictingProfile.userId)
+              .select("_id email role")
+              .lean()
+              .exec();
+
+            if (!linkedUser) {
+              profile = await AgentProfile.findByIdAndUpdate(
+                conflictingProfile._id,
+                { $set: { userId: seededAgentUser._id } },
+                { new: true },
+              ).exec();
+
+              logger.warn(
+                {
+                  profileId: conflictingProfile._id?.toString?.(),
+                  previousUserId: conflictingUserId,
+                  newUserId: seededUserId,
+                  licenseNumber: SYSTEM_DEFAULT_AGENT.licenseNumber,
+                },
+                "Re-linked default agent profile to seeded user (stale user reference detected)",
+              );
+            } else {
+              throw new Error(
+                `Cannot seed default agent profile. License ${SYSTEM_DEFAULT_AGENT.licenseNumber} is already assigned to another user (${linkedUser.email ?? linkedUser._id?.toString?.()}).`,
+              );
+            }
+          } else {
+            profile = conflictingProfile;
+          }
+        }
+      }
+
+      if (!profile) {
         profile = new AgentProfile({
           userId: seededAgentUser._id,
           licenseNumber: SYSTEM_DEFAULT_AGENT.licenseNumber,
