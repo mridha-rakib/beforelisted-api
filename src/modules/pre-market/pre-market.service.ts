@@ -375,8 +375,8 @@ export class PreMarketService {
     }
 
     const requestNumber = activeListingCount + 1; // will be 1 when single limit enforced
-    const requestName = `BeforeListed-${requestNumber}`;
     const requestId = await this.generateUniqueRequestId();
+    const requestName = requestId;
     const shareConsent = payload.shareConsent === true;
     const scope = payload.scope ?? "Upcoming";
     const referralAgentId =
@@ -555,11 +555,20 @@ export class PreMarketService {
       visibilityFilter,
       cutoffFilter,
     ]);
+    const matchedRequestIds =
+      await this.grantAccessRepository.findMatchedPreMarketRequestIds();
 
-    const paginated = await this.preMarketRepository.findAllWithPagination(
-      query,
-      combinedFilters,
-    );
+    const paginated =
+      matchedRequestIds.length > 0
+        ? await this.preMarketRepository.findAllWithPaginationExcludingIds(
+            query,
+            matchedRequestIds,
+            combinedFilters,
+          )
+        : await this.preMarketRepository.findAllWithPagination(
+            query,
+            combinedFilters,
+          );
 
     const requestIds = paginated.data
       .map((request) => request._id?.toString())

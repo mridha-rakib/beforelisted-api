@@ -109,12 +109,6 @@ export class EmailTemplates {
 
             <p>If you do not see renter requests immediately, your account may still be pending admin activation or Grant Access.</p>
 
-            <p>You can access your agent dashboard below:</p>
-
-            <div style="text-align: center;">
-                <a href="${loginLink}" class="cta-button">Go to Agent Dashboard</a>
-            </div>
-
             <p>If you have any questions or need assistance, please reply to this email.</p>
 
             <p><strong>Best regards,<br>The BeforeListed Team</strong></p>
@@ -411,11 +405,6 @@ export class EmailTemplates {
             </ul>
 
             <p>If you cannot match renter requests immediately, your account may still be pending Grant Access configuration.</p>
-
-            <p>You can access your agent dashboard below:</p>
-            <div class="cta-wrap">
-                <a href="${dashboardLink}" class="cta-button">Go to Agent Dashboard</a>
-            </div>
 
             <h3>Dashboard visibility toggle (you control)</h3>
             <ul class="features-list">

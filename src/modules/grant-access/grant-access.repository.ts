@@ -269,6 +269,16 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       .exec() as unknown as Promise<IGrantAccessRequest[]>;
   }
 
+  async findMatchedPreMarketRequestIds(): Promise<string[]> {
+    const ids = await this.model.distinct("preMarketRequestId", {
+      status: { $in: ["free", "paid"] },
+    });
+
+    return ids
+      .map((id) => id?.toString?.() ?? "")
+      .filter((id): id is string => Boolean(id));
+  }
+
   async getAllWithPaymentInfo(filters?: {
     paymentStatus?: GrantAccessPaymentStatus;
     accessStatus?: GrantAccessStatus;

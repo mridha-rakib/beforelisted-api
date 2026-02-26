@@ -5,7 +5,7 @@ import { SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 import { NotificationService } from "@/modules/notification/notification.service";
 import { emailService } from "@/services/email.service";
-import { ObjectId } from "mongoose";
+import { type ObjectId } from "mongoose";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { IGrantAccessRequest } from "../grant-access/grant-access.model";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
@@ -131,7 +131,6 @@ export class PreMarketNotifier {
         listingUrl: `${env.CLIENT_URL}/listings/${preMarketRequest._id}`,
       };
 
-      await this.notifyAgentsAboutNewRequest(payload);
       await this.notifyAdminAboutNewRequest(payload);
       await this.notifyRenterAboutNewRequest(payload, renterData);
       await this.notifyReferringAgentAboutNewRequest(
@@ -222,77 +221,6 @@ export class PreMarketNotifier {
         },
         "Failed to notify agents about request update"
       );
-    }
-  }
-
-  private async notifyAgentsAboutNewRequest(
-    payload: IPreMarketNotificationPayload
-  ): Promise<{
-    agentsNotified: number;
-    emailsSent: number;
-    errors: string[];
-  }> {
-    const errors: string[] = [];
-    let agentsNotified = 0;
-    let emailsSent = 0;
-
-    try {
-      const agents = await this.getAllAgents();
-      agentsNotified = agents.length;
-
-      logger.debug(
-        {
-          agentCount: agents.length,
-          preMarketRequestId: payload.preMarketRequestId,
-        },
-        `Found ${agents.length} agents to notify`
-      );
-
-      for (const agent of agents) {
-        try {
-          const emailResult =
-          await emailService.sendPreMarketNotificationToAgent({
-            to: agent.email,
-            agentName: agent.name,
-            agentType: agent.hasGrantAccess ? "Grant Access" : "Normal",
-            listingTitle: payload.title,
-            listingDescription: payload.listingDescription,
-            location: payload.location,
-            serviceType: payload.serviceType,
-            listingUrl: payload.listingUrl,
-          });
-
-          if (emailResult.success) {
-            emailsSent++;
-            logger.debug(
-              { agentId: agent.id, email: agent.email },
-              "✅ Agent email sent"
-            );
-          } else {
-            const errorMsg = `Email failed for agent ${agent.id}: ${emailResult.error}`;
-            errors.push(errorMsg);
-            logger.warn(
-              { agentId: agent.id, error: emailResult.error },
-              "❌ Agent email failed"
-            );
-          }
-        } catch (error) {
-          const errorMsg = `Error notifying agent ${agent.id}: ${error instanceof Error ? error.message : String(error)}`;
-          errors.push(errorMsg);
-          logger.error(
-            { agentId: agent.id, error },
-            "❌ Error during agent notification"
-          );
-        }
-      }
-
-      return { agentsNotified, emailsSent, errors };
-    } catch (error) {
-      const errorMsg = `Failed to get agents list: ${error instanceof Error ? error.message : String(error)}`;
-      errors.push(errorMsg);
-      logger.error({ error }, "❌ Failed to retrieve agents");
-
-      return { agentsNotified: 0, emailsSent: 0, errors };
     }
   }
 
@@ -611,30 +539,6 @@ export class PreMarketNotifier {
     }
 
     return `$${Number(maxRent).toLocaleString("en-US")}`;
-  }
-
-  private async getAllAgents(): Promise<
-    Array<{
-      id: string;
-      name: string;
-      email: string;
-      hasGrantAccess: boolean;
-    }>
-  > {
-    try {
-      const agents =
-        await this.agentRepository.findActiveAgentsAcceptingRequests();
-
-      return agents.map((agent) => ({
-        id: agent._id.toString(),
-        name: agent.fullName,
-        email: agent.email,
-        hasGrantAccess: agent.hasGrantAccess || false,
-      }));
-    } catch (error) {
-      logger.error({ error }, "❌ Error fetching agents from database");
-      throw error;
-    }
   }
 
   private async getAdmin(): Promise<{
@@ -1057,7 +961,12 @@ export class PreMarketNotifier {
         "Creating in-app notifications for new pre-market listing"
       );
 
-      const agentIds = await this.preMarketRepository.getAllActiveAgentIds();
+      const referralAgentIdRaw = preMarketRequest.referralAgentId;
+      const referralAgentId =
+        typeof referralAgentIdRaw === "string"
+          ? referralAgentIdRaw
+          : referralAgentIdRaw?.toString?.() || null;
+      const agentIds = referralAgentId ? [referralAgentId] : [];
 
       const adminId =
         await this.preMarketRepository.getAdminIdForNotification();
@@ -1072,7 +981,7 @@ export class PreMarketNotifier {
       let agentNotificationsCreated = 0;
       let adminNotificationCreated = false;
 
-      // NOTIFY AGENTS
+      // NOTIFY ONLY THE REGISTERED/REFERRAL AGENT
       if (agentIds.length > 0) {
         try {
           const agentNotificationPromises = agentIds.map((agentId) =>
@@ -1111,6 +1020,11 @@ export class PreMarketNotifier {
             "Failed to create agent notifications"
           );
         }
+      } else {
+        logger.info(
+          { preMarketRequestId: preMarketRequest._id },
+          "No registered agent found for in-app notification"
+        );
       }
 
       // NOTIFY ADMIN

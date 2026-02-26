@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 
 export class TransactionHelper {
   static async withTransaction<T>(
-    callback: (session: ClientSession) => Promise<T>
+    callback: (session: ClientSession) => Promise<T>,
   ): Promise<T> {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -22,4 +22,3 @@ export class TransactionHelper {
     }
   }
 }
-
