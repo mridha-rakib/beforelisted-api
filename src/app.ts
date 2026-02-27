@@ -66,6 +66,11 @@ app.use(
   }),
 );
 
+// app.use(cors({
+//   origin: "true",
+//   credentials: true,
+// }))
+
 const captureRawBody = (
   req: any,
   res: any,

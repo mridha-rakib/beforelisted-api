@@ -157,6 +157,7 @@ export const errorHandler: ErrorRequestHandler = (
       errorCode: error.errorCode,
       requestId,
       timestamp: new Date().toISOString(),
+      ...(error.details ? { details: error.details } : {}),
     });
   }
 

@@ -1,6 +1,10 @@
 // file: src/modules/auth/auth.service.ts
 
-import { MESSAGES, ROLES } from "@/constants/app.constants";
+import {
+  MESSAGES,
+  ROLES,
+  SYSTEM_DEFAULT_AGENT,
+} from "@/constants/app.constants";
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import { EmailService } from "@/services/email.service";
@@ -10,6 +14,9 @@ import {
   UnauthorizedException,
 } from "@/utils/app-error.utils";
 import { comparePassword, hashPassword } from "@/utils/password.utils";
+import type { IAgentProfile } from "../agent/agent.interface";
+import { AgentProfileRepository } from "../agent/agent.repository";
+import type { AgentProfileResponse } from "../agent/agent.type";
 import { EmailVerificationService } from "../email-verification/email-verification.service";
 import {
   IResendOTPRequest,
@@ -17,20 +24,17 @@ import {
 } from "../email-verification/email-verification.types";
 import { PasswordResetService } from "../password/password.service";
 import { ReferralService } from "../referral/referral.service";
-import { AgentProfileRepository } from "../agent/agent.repository";
-import type { IAgentProfile } from "../agent/agent.interface";
-import type { AgentProfileResponse } from "../agent/agent.type";
+import { RenterRepository } from "../renter/renter.repository";
 import type { IUser } from "../user/user.interface";
 import { UserService } from "../user/user.service";
+import type { UserResponse } from "../user/user.type";
 import type {
   AuthServiceResponse,
   LoginPayload,
   ReferralInfo,
   VerifyEmailPayload,
 } from "./auth.type";
-import { RenterRepository } from "../renter/renter.repository";
 import { AuthUtil } from "./auth.utils";
-import type { UserResponse } from "../user/user.type";
 
 export class AuthService {
   private userService: UserService;
@@ -54,7 +58,7 @@ export class AuthService {
    */
   async login(payload: LoginPayload): Promise<AuthServiceResponse> {
     const user = await this.userService.getUserByEmailWithPassword(
-      payload.email
+      payload.email,
     );
     let agentProfile: AgentProfileResponse | undefined;
 
@@ -89,7 +93,7 @@ export class AuthService {
 
     const isPasswordValid = await comparePassword(
       payload.password,
-      user.password
+      user.password,
     );
 
     if (!isPasswordValid) {
@@ -100,7 +104,7 @@ export class AuthService {
 
     if (user.role === ROLES.RENTER) {
       let renter = await this.renterRepository.findRenterWithReferrer(
-        user._id.toString()
+        user._id.toString(),
       );
 
       if (!renter) {
@@ -108,27 +112,35 @@ export class AuthService {
       }
 
       const hasReferrer = Boolean(
-        renter.referredByAgentId || renter.referredByAdminId
+        renter.referredByAgentId || renter.referredByAdminId,
       );
 
       if (!hasReferrer) {
         if (!payload.referralCode) {
+          const defaultReferralAgent =
+            await this.getDefaultReferralAgentForError();
+
           throw new UnauthorizedException(
-            "No referral is associated with your account. Please provide a valid agent or admin referral code to continue."
+            "No referral is associated with your account. Please provide a valid agent or admin referral code to continue.",
+            undefined,
+            { defaultReferralAgent },
           );
         }
 
         const referrer = await this.referralService.validateReferralCode(
-          payload.referralCode
+          payload.referralCode,
         );
 
         const registrationType =
           referrer.role === ROLES.ADMIN ? "admin_referral" : "agent_referral";
 
-        await this.renterRepository.assignReferralByUserId(user._id.toString(), {
-          registrationType,
-          referrerId: referrer._id.toString(),
-        });
+        await this.renterRepository.assignReferralByUserId(
+          user._id.toString(),
+          {
+            registrationType,
+            referrerId: referrer._id.toString(),
+          },
+        );
         await this.referralService.recordReferral(referrer._id.toString());
 
         logger.info(
@@ -137,11 +149,11 @@ export class AuthService {
             referrerId: referrer._id.toString(),
             registrationType,
           },
-          "Renter referral was reassigned during login"
+          "Renter referral was reassigned during login",
         );
 
         renter = await this.renterRepository.findRenterWithReferrer(
-          user._id.toString()
+          user._id.toString(),
         );
         if (!renter) {
           throw new NotFoundException("Renter profile not found");
@@ -158,9 +170,12 @@ export class AuthService {
             ? currentReferrer.referralCode || null
             : null;
 
-        if (!currentReferralCode || currentReferralCode !== payload.referralCode) {
+        if (
+          !currentReferralCode ||
+          currentReferralCode !== payload.referralCode
+        ) {
           throw new BadRequestException(
-            "Your account already has a referral. You cannot login with a different referral code."
+            "Your account already has a referral. You cannot login with a different referral code.",
           );
         }
       }
@@ -237,9 +252,7 @@ export class AuthService {
   /**
    * Verify email
    */
-  async verifyEmail(
-    payload: VerifyEmailPayload
-  ): Promise<{
+  async verifyEmail(payload: VerifyEmailPayload): Promise<{
     message: string;
     user: UserResponse;
     role: string;
@@ -269,7 +282,7 @@ export class AuthService {
 
     logger.info(
       { userId: result.userId, userType: result.userType },
-      "Email verified and user marked"
+      "Email verified and user marked",
     );
 
     if (result.userType === ROLES.AGENT) {
@@ -277,9 +290,8 @@ export class AuthService {
       const agentProfile = await agentRepository.findByUserId(user._id);
       agentTitle = agentProfile?.title ?? null;
 
-      const { NotificationService } = await import(
-        "../notification/notification.service"
-      );
+      const { NotificationService } =
+        await import("../notification/notification.service");
       const notificationService = new NotificationService();
 
       try {
@@ -292,7 +304,7 @@ export class AuthService {
       } catch (error) {
         logger.error(
           { error, userId: user._id },
-          "Failed to send agent approval notification"
+          "Failed to send agent approval notification",
         );
       }
 
@@ -304,7 +316,7 @@ export class AuthService {
         const agentFirstName = nameParts?.[0] || user.fullName || "Agent";
         const agentLastName = nameParts?.slice(1).join(" ") || "";
         const registrationDate = this.formatEasternTime(
-          user.createdAt ? new Date(user.createdAt) : new Date()
+          user.createdAt ? new Date(user.createdAt) : new Date(),
         );
         const agentTitleForAdminEmail = agentProfile?.title || "N/A";
         const agentBrokerageForAdminEmail =
@@ -326,12 +338,12 @@ export class AuthService {
               agentPhoneNumber,
               registrationDate,
               agentRegistrationLink,
-            }
+            },
           );
         } catch (error) {
           logger.error(
             { error, userId: user._id },
-            "Failed to send agent registration verified email to admin"
+            "Failed to send agent registration verified email to admin",
           );
         }
       }
@@ -340,7 +352,7 @@ export class AuthService {
     if (result.userType === ROLES.RENTER) {
       try {
         const renter = await this.renterRepository.findRenterWithReferrer(
-          user._id.toString()
+          user._id.toString(),
         );
 
         const referredAgent = renter?.referredByAgentId as any;
@@ -352,7 +364,8 @@ export class AuthService {
 
         if (referredAgentId) {
           const agentRepository = new AgentProfileRepository();
-          const agentProfile = await agentRepository.findByUserId(referredAgentId);
+          const agentProfile =
+            await agentRepository.findByUserId(referredAgentId);
 
           renterRegisteredAgent = {
             fullName: referredAgent?.fullName || "Your Registered Agent",
@@ -363,7 +376,7 @@ export class AuthService {
       } catch (error) {
         logger.warn(
           { error, userId: user._id },
-          "Failed to resolve renter referral and registered agent details"
+          "Failed to resolve renter referral and registered agent details",
         );
       }
 
@@ -375,27 +388,27 @@ export class AuthService {
         const renterFirstName = nameParts?.[0] || user.fullName || "Renter";
         const renterLastName = nameParts?.slice(1).join(" ") || "";
         const registrationDate = this.formatEasternTime(
-          user.createdAt ? new Date(user.createdAt) : new Date()
+          user.createdAt ? new Date(user.createdAt) : new Date(),
         );
 
         try {
           await this.emailService.sendRenterRegistrationVerifiedAdminNotification(
             {
               to: adminEmail,
-              renterName: user.fullName || `${renterFirstName} ${renterLastName}`.trim(),
+              renterName:
+                user.fullName || `${renterFirstName} ${renterLastName}`.trim(),
               renterPhone: user.phoneNumber || "N/A",
               renterEmail: user.email,
               registrationDate,
-              registeredAgentName:
-                renterRegisteredAgent?.fullName || "N/A",
+              registeredAgentName: renterRegisteredAgent?.fullName || "N/A",
               registeredAgentBrokerage:
                 renterRegisteredAgent?.brokerage || "N/A",
-            }
+            },
           );
         } catch (error) {
           logger.error(
             { error, userId: user._id },
-            "Failed to send renter registration verified email to admin"
+            "Failed to send renter registration verified email to admin",
           );
         }
       }
@@ -424,7 +437,7 @@ export class AuthService {
    * Request password reset
    */
   async requestPasswordReset(
-    email: string
+    email: string,
   ): Promise<{ message: string; expiresAt?: Date; expiresInMinutes?: number }> {
     const user = await this.userService.getUserByEmail(email);
 
@@ -436,12 +449,12 @@ export class AuthService {
     const result = await this.passwordResetService.requestPasswordReset(
       user._id.toString(),
       user.email,
-      user.fullName
+      user.fullName,
     );
 
     logger.info(
       { userId: user._id, email: user.email },
-      "Password reset requested"
+      "Password reset requested",
     );
 
     return result;
@@ -452,7 +465,7 @@ export class AuthService {
    */
   async verifyPasswordOTP(
     email: string,
-    otp: string
+    otp: string,
   ): Promise<{ message: string }> {
     // Step 1: Find user
     const user = await this.userService.getUserByEmail(email);
@@ -464,7 +477,7 @@ export class AuthService {
     // Step 2: Verify OTP
     const result = await this.passwordResetService.verifyOTP(
       user._id.toString(),
-      otp
+      otp,
     );
 
     logger.info({ userId: user._id, email }, "Password reset OTP verified");
@@ -492,7 +505,7 @@ export class AuthService {
   async resetPassword(
     email: string,
     otp: string,
-    newPassword: string
+    newPassword: string,
   ): Promise<{ message: string }> {
     // Step 1: Find user
     const user = await this.userService.getUserByEmail(email);
@@ -519,12 +532,12 @@ export class AuthService {
     // Step 7: Send security notification email
     await this.emailService.sendPasswordResetConfirmation(
       user.fullName,
-      user.email
+      user.email,
     );
 
     logger.info(
       { userId: user._id, email },
-      "Password reset successfully completed"
+      "Password reset successfully completed",
     );
 
     // Step 8: Log out user from all devices (invalidate all tokens)
@@ -541,7 +554,7 @@ export class AuthService {
    * Resend password reset OTP
    */
   async resendPasswordOTP(
-    email: string
+    email: string,
   ): Promise<{ message: string; expiresAt?: Date; expiresInMinutes?: number }> {
     const user = await this.userService.getUserByEmail(email);
 
@@ -555,7 +568,7 @@ export class AuthService {
     const result = await this.passwordResetService.requestPasswordReset(
       user._id.toString(),
       user.email,
-      user.fullName
+      user.fullName,
     );
 
     logger.info({ userId: user._id, email }, "Password reset OTP resent");
@@ -567,7 +580,7 @@ export class AuthService {
    * Refresh access token
    */
   async refreshAccessToken(
-    refreshToken: string
+    refreshToken: string,
   ): Promise<{ accessToken: string }> {
     try {
       const payload = AuthUtil.verifyRefreshToken(refreshToken);
@@ -633,7 +646,7 @@ export class AuthService {
    * Resend verification code
    */
   async resendVerificationCode(
-    request: Partial<IResendOTPRequest>
+    request: Partial<IResendOTPRequest>,
   ): Promise<{ message: string }> {
     // Find user first
     const user = await this.userService.getUserByEmail(request.email!);
@@ -665,7 +678,7 @@ export class AuthService {
         userType,
         userId: user._id,
       },
-      "Verification code resend initiated"
+      "Verification code resend initiated",
     );
 
     return { message: result.message };
@@ -679,7 +692,7 @@ export class AuthService {
     try {
       logger.info(
         { userId, token: token.substring(0, 20) + "..." },
-        "User logged out"
+        "User logged out",
       );
 
       // [TODO]:
@@ -700,7 +713,7 @@ export class AuthService {
   async changePassword(
     userId: string,
     currentPassword: string,
-    newPassword: string
+    newPassword: string,
   ): Promise<{ message: string }> {
     // Step 1: Get user by ID (including password field)
     const user = await this.userService.getUserByIdWithPassword(userId);
@@ -712,13 +725,13 @@ export class AuthService {
     // Step 2: Verify current password matches
     const isPasswordValid = await comparePassword(
       currentPassword,
-      user.password!
+      user.password!,
     );
 
     if (!isPasswordValid) {
       logger.warn(
         { userId },
-        "Invalid current password attempt for password change"
+        "Invalid current password attempt for password change",
       );
       throw new UnauthorizedException("Current password is incorrect");
     }
@@ -736,7 +749,7 @@ export class AuthService {
     await this.userService.notifyPasswordChange(
       user.email,
       user.fullName,
-      new Date()
+      new Date(),
     );
 
     logger.info({ userId, email: user.email }, "Password changed successfully");
@@ -756,6 +769,81 @@ export class AuthService {
       hour: "numeric",
       minute: "2-digit",
     });
+  }
+
+  private async getDefaultReferralAgentForError(): Promise<{
+    id: string | null;
+    role: "Agent";
+    fullName: string | null;
+    title: string | null;
+    brokerageName: string | null;
+    email: string | null;
+    phoneNumber: string | null;
+    referralCode: string | null;
+    referralLink: string | null;
+    loginLink: string | null;
+  }> {
+    const baseUrl = env.CLIENT_URL || "https://app.rentersedge.com";
+    const buildReferralLink = (referralCode: string | null) =>
+      referralCode
+        ? `${baseUrl}/signup/renter?ref=${encodeURIComponent(referralCode)}`
+        : null;
+    const buildLoginLink = (referralCode: string | null) =>
+      referralCode
+        ? `${baseUrl}/signin?ref=${encodeURIComponent(referralCode)}`
+        : null;
+
+    const fallbackReferralCode = null;
+
+    const fallback = {
+      id: null,
+      role: "Agent" as const,
+      fullName: SYSTEM_DEFAULT_AGENT.fullName,
+      title: SYSTEM_DEFAULT_AGENT.title,
+      brokerageName: SYSTEM_DEFAULT_AGENT.brokerageName,
+      email: SYSTEM_DEFAULT_AGENT.email,
+      phoneNumber: SYSTEM_DEFAULT_AGENT.phoneNumber,
+      referralCode: fallbackReferralCode,
+      referralLink: buildReferralLink(fallbackReferralCode),
+      loginLink: buildLoginLink(fallbackReferralCode),
+    };
+
+    try {
+      const defaultAgentUser = await this.userService.getUserByEmail(
+        SYSTEM_DEFAULT_AGENT.email,
+      );
+
+      if (!defaultAgentUser || defaultAgentUser.role !== ROLES.AGENT) {
+        return fallback;
+      }
+
+      const agentRepository = new AgentProfileRepository();
+      const defaultAgentProfile = await agentRepository.findByUserId(
+        defaultAgentUser._id,
+      );
+
+      return {
+        id: defaultAgentUser._id?.toString() ?? null,
+        role: "Agent",
+        fullName: defaultAgentUser.fullName || SYSTEM_DEFAULT_AGENT.fullName,
+        title: defaultAgentProfile?.title || SYSTEM_DEFAULT_AGENT.title,
+        brokerageName:
+          defaultAgentProfile?.brokerageName ||
+          SYSTEM_DEFAULT_AGENT.brokerageName,
+        email: defaultAgentUser.email || SYSTEM_DEFAULT_AGENT.email,
+        phoneNumber:
+          defaultAgentUser.phoneNumber || SYSTEM_DEFAULT_AGENT.phoneNumber,
+        referralCode: defaultAgentUser.referralCode || null,
+        referralLink: buildReferralLink(defaultAgentUser.referralCode || null),
+        loginLink: buildLoginLink(defaultAgentUser.referralCode || null),
+      };
+    } catch (error) {
+      logger.warn(
+        { error },
+        "Failed to resolve default referral agent for no-referral login error",
+      );
+      return fallback;
+    }
   }
 
   private toAgentProfileResponse(agent: IAgentProfile): AgentProfileResponse {

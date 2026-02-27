@@ -9,15 +9,18 @@ import { ErrorCodeEnum } from "@/enums/error-code.enum";
 export class AppError extends Error {
   public statusCode: HttpStatusCodeType;
   public errorCode?: ErrorCodeEnumType;
+  public details?: Record<string, unknown>;
 
   constructor(
     message: string,
     statusCode = HTTPSTATUS.INTERNAL_SERVER_ERROR,
-    errorCode?: ErrorCodeEnumType
+    errorCode?: ErrorCodeEnumType,
+    details?: Record<string, unknown>
   ) {
     super(message);
     this.statusCode = statusCode;
     this.errorCode = errorCode;
+    this.details = details;
     Error.captureStackTrace(this, this.constructor);
   }
 }
@@ -66,11 +69,16 @@ export class BadRequestException extends AppError {
 }
 
 export class UnauthorizedException extends AppError {
-  constructor(message = "Unauthorized Access", errorCode?: ErrorCodeEnumType) {
+  constructor(
+    message = "Unauthorized Access",
+    errorCode?: ErrorCodeEnumType,
+    details?: Record<string, unknown>
+  ) {
     super(
       message,
       HTTPSTATUS.UNAUTHORIZED,
-      errorCode || ErrorCodeEnum.ACCESS_UNAUTHORIZED
+      errorCode || ErrorCodeEnum.ACCESS_UNAUTHORIZED,
+      details
     );
   }
 }
