@@ -66,7 +66,7 @@ export class EmailService {
     try {
       const isConnected = await this.transporter.verify();
       if (isConnected) {
-        logger.info("ðŸ“§ Email service initialized successfully");
+        logger.info("📧 Email service initialized successfully");
       }
     } catch (error) {
       logger.error(
@@ -74,7 +74,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           note: "Service will attempt to send emails anyway",
         },
-        "âš ï¸  Email service initialization warning",
+        "⚠️  Email service initialization warning",
       );
     }
   }
@@ -258,7 +258,7 @@ export class EmailService {
           email: payload.to,
           messageId: result.messageId,
         },
-        "âœ… Verification email resent",
+        "✅ Verification email resent",
       );
 
       return result;
@@ -1493,7 +1493,7 @@ export class EmailService {
             duration: `${duration}ms`,
             attempts: response.retries + 1,
           },
-          `âŒ Email send failed: ${templateType}`,
+          `❌ Email send failed: ${templateType}`,
         );
 
         return {
@@ -1511,7 +1511,7 @@ export class EmailService {
           email: recipientEmail,
           duration: `${duration}ms`,
         },
-        `âœ… Email sent successfully: ${templateType}`,
+        `✅ Email sent successfully: ${templateType}`,
       );
 
       return {
@@ -1527,7 +1527,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: recipientEmail,
         },
-        `âŒ Unexpected error sending email: ${templateType}`,
+        `❌ Unexpected error sending email: ${templateType}`,
       );
 
       return {
@@ -1758,7 +1758,7 @@ export class EmailService {
   async closeConnection(): Promise<void> {
     try {
       await this.transporter.close();
-      logger.info("âœ… Email service connection closed");
+      logger.info("✅ Email service connection closed");
     } catch (error) {
       logger.error(
         {
@@ -1779,7 +1779,7 @@ export const emailService = new EmailService();
 export async function initializeEmailService(): Promise<void> {
   try {
     await emailService.closeConnection();
-    logger.info("âœ… Email service initialized");
+    logger.info("✅ Email service initialized");
   } catch (error) {
     logger.error(
       {
@@ -1793,7 +1793,7 @@ export async function initializeEmailService(): Promise<void> {
 export async function cleanupEmailService(): Promise<void> {
   try {
     await emailService.closeConnection();
-    logger.info("âœ… Email service cleanup completed");
+    logger.info("✅ Email service cleanup completed");
   } catch (error) {
     logger.error(
       {
@@ -1803,4 +1803,3 @@ export async function cleanupEmailService(): Promise<void> {
     );
   }
 }
-
