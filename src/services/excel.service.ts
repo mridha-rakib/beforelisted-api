@@ -1694,7 +1694,7 @@ export class ExcelService {
    */
   async uploadPreMarketListingsExcel(
     buffer: Buffer
-  ): Promise<{ url: string; fileName: string }> {
+  ): Promise<{ url: string; fileName: string; key: string }> {
     try {
       // Generate filename with date and timestamp
       const date = new Date();
@@ -1708,7 +1708,7 @@ export class ExcelService {
         "Uploading Pre-Market Listings Excel to S3"
       );
 
-      const url = await this.s3Service.uploadFile(
+      const uploaded = await this.s3Service.uploadFile(
         buffer,
         fileName,
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1716,11 +1716,11 @@ export class ExcelService {
       );
 
       logger.info(
-        { url, fileName },
+        { url: uploaded.url, key: uploaded.key, fileName },
         "Pre-Market Listings Excel uploaded successfully"
       );
 
-      return { url, fileName } as any;
+      return { url: uploaded.url, fileName, key: uploaded.key };
     } catch (error) {
       logger.error(
         { error },

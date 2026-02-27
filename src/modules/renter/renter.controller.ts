@@ -4,6 +4,7 @@ import { COOKIE_CONFIG } from "@/config/cookie.config";
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
 import { BadRequestException } from "@/utils/app-error.utils";
+import { buildExcelDownloadResponse } from "@/utils/excel-response.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 import type { NextFunction, Request, Response } from "express";
@@ -209,19 +210,18 @@ export class RenterController {
 
   downloadRentersConsolidatedExcel = asyncHandler(
     async (req: Request, res: Response) => {
-      const adminId = req.user!.userId;
       const metadata = await this.service.getRentersConsolidatedExcel();
+      const data = buildExcelDownloadResponse({
+        fileName: metadata.fileName,
+        fileUrl: metadata.fileUrl,
+        key: metadata.key,
+        version: metadata.version,
+        lastUpdated: metadata.lastUpdated,
+      });
 
       ApiResponse.success(
         res,
-        {
-          fileName: metadata.fileName,
-          fileUrl: metadata.fileUrl,
-          totalAgents: metadata.totalAgents,
-          version: metadata.version,
-          lastUpdated: metadata.lastUpdated,
-          downloadUrl: metadata.fileUrl,
-        },
+        data,
         "Consolidated Renter Excel file info retrieved"
       );
     }

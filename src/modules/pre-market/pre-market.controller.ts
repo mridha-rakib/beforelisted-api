@@ -8,6 +8,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@/utils/app-error.utils";
+import { buildExcelDownloadResponse } from "@/utils/excel-response.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 import type { Request, Response } from "express";
@@ -1123,19 +1124,19 @@ export class PreMarketController {
       const adminId = req.user!.userId;
 
       const metadata = await this.preMarketService.getConsolidatedExcel();
+      const data = buildExcelDownloadResponse({
+        fileName: metadata.fileName,
+        fileUrl: metadata.fileUrl,
+        key: metadata.key,
+        version: metadata.version,
+        lastUpdated: metadata.lastUpdated,
+      });
 
       logger.info({ adminId }, "Admin downloaded Excel metadata");
 
       ApiResponse.success(
         res,
-        {
-          fileName: metadata.fileName,
-          fileUrl: metadata.fileUrl,
-          totalRequests: metadata.totalRequests,
-          version: metadata.version,
-          lastUpdated: metadata.lastUpdated,
-          downloadUrl: metadata.fileUrl, // Direct S3 link
-        },
+        data,
         "Consolidated Excel file info retrieved"
       );
     }
@@ -1212,22 +1213,26 @@ export class PreMarketController {
           await this.excelService.generatePreMarketListingsWithAgentsExcel();
 
         // Upload to S3 and get download link
-        const { url, fileName } =
+        const { url, fileName, key } =
           await this.excelService.uploadPreMarketListingsExcel(excelBuffer);
+        const generatedAt = new Date().toISOString();
+        const data = buildExcelDownloadResponse({
+          fileName,
+          fileUrl: url,
+          key,
+          version: null,
+          lastUpdated: generatedAt,
+        });
 
         logger.info(
-          { userId, fileName, url },
+          { userId, fileName, url, key },
           "Pre-Market Listings Excel generated and uploaded"
         );
 
         // Return download link in response
         return ApiResponse.success(
           res,
-          {
-            downloadUrl: url,
-            fileName: fileName,
-            generatedAt: new Date().toISOString(),
-          },
+          data,
           "Pre-Market Listings Excel exported successfully"
         );
       } catch (error) {
