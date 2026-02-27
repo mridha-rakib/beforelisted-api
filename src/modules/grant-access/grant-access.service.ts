@@ -327,6 +327,15 @@ export class GrantAccessService {
 
       await this.grantAccessRepository.updateById(grantAccessId, grantAccess);
       await this.notifier.notifyAgentOfApproval(grantAccess, true);
+      this.notifyRenterOpportunityForFreeMatch(
+        grantAccess,
+        preMarketRequest,
+      ).catch((error) => {
+        logger.error(
+          { error, grantAccessId },
+          "Failed to send renter opportunity email after free approval (non-blocking)",
+        );
+      });
 
       try {
         if (agent && preMarketRequest) {
@@ -680,5 +689,142 @@ export class GrantAccessService {
     );
 
     return paymentDetails;
+  }
+
+  private async notifyRenterOpportunityForFreeMatch(
+    grantAccess: IGrantAccessRequest,
+    preMarketRequest: IPreMarketRequest | null,
+  ): Promise<void> {
+    if (!preMarketRequest) {
+      return;
+    }
+
+    const renter = await this.renterRepository.findRenterWithReferrer(
+      preMarketRequest.renterId.toString(),
+    );
+    if (!renter?.email || !renter.fullName) {
+      return;
+    }
+
+    const matchingAgentId = grantAccess.agentId.toString();
+    const matchingAgentUser = await this.userRepository.findById(matchingAgentId);
+    if (!matchingAgentUser?.email) {
+      return;
+    }
+
+    const referredByAgent = renter.referredByAgentId as
+      | string
+      | { _id?: string; fullName?: string; email?: string; phoneNumber?: string }
+      | undefined;
+    const referralAgentFromRequest = preMarketRequest.referralAgentId as
+      | string
+      | { _id?: string }
+      | undefined;
+
+    let registeredAgentId: string | null = null;
+    if (typeof referralAgentFromRequest === "string") {
+      registeredAgentId = referralAgentFromRequest;
+    } else if (referralAgentFromRequest?._id) {
+      registeredAgentId = referralAgentFromRequest._id.toString();
+    } else if (typeof referredByAgent === "string") {
+      registeredAgentId = referredByAgent;
+    } else if (referredByAgent?._id) {
+      registeredAgentId = referredByAgent._id.toString();
+    }
+
+    const [registeredAgentUser, registeredAgentProfile] = await Promise.all([
+      registeredAgentId ? this.userRepository.findById(registeredAgentId) : null,
+      registeredAgentId ? this.agentRepository.findByUserId(registeredAgentId) : null,
+    ]);
+    const matchingAgentProfile =
+      await this.agentRepository.findByUserId(matchingAgentId);
+
+    const registeredAgentFullName =
+      registeredAgentUser?.fullName ||
+      (typeof referredByAgent === "object" ? referredByAgent?.fullName : "") ||
+      "Agent";
+    const registeredAgentEmail =
+      registeredAgentUser?.email ||
+      (typeof referredByAgent === "object" ? referredByAgent?.email : "") ||
+      "support@beforelisted.com";
+    const registeredAgentPhone =
+      registeredAgentUser?.phoneNumber ||
+      (typeof referredByAgent === "object" ? referredByAgent?.phoneNumber : "") ||
+      "N/A";
+    const registeredAgentTitle =
+      registeredAgentProfile?.title || "Licensed Real Estate Agent";
+    const registeredAgentBrokerage =
+      registeredAgentProfile?.brokerageName || "BeforeListed";
+    const isRegisteredAgentMatch =
+      (registeredAgentId && registeredAgentId === matchingAgentId) ||
+      (matchingAgentUser.email &&
+        registeredAgentEmail &&
+        matchingAgentUser.email.toLowerCase() ===
+          registeredAgentEmail.toLowerCase());
+
+    if (isRegisteredAgentMatch) {
+      const result =
+        await emailService.sendRenterOpportunityFoundByRegisteredAgent({
+          to: renter.email,
+          renterName: renter.fullName,
+          registeredAgentFullName,
+          registeredAgentTitle,
+          registeredAgentBrokerage,
+          registeredAgentEmail,
+          registeredAgentPhone,
+        });
+
+      if (!result.success) {
+        logger.warn(
+          {
+            grantAccessId: grantAccess._id,
+            renterEmail: renter.email,
+            error: result.error,
+          },
+          "Registered-agent opportunity email failed to send",
+        );
+      }
+      return;
+    }
+
+    // Template #6A applies only to Upcoming / Upcoming(M) flows.
+    if (preMarketRequest.scope === "All Market") {
+      return;
+    }
+
+    const ccEmails = [registeredAgentEmail, matchingAgentUser.email]
+      .filter((email): email is string => Boolean(email && email.trim()))
+      .map((email) => email.trim())
+      .filter(
+        (email, index, list) =>
+          list.findIndex((item) => item.toLowerCase() === email.toLowerCase()) ===
+          index,
+      )
+      .filter((email) => email.toLowerCase() !== renter.email.toLowerCase());
+
+    const otherAgentEmailResult =
+      await emailService.sendRenterOpportunityFoundByOtherAgent({
+        to: renter.email,
+        renterName: renter.fullName,
+        cc: ccEmails.length > 0 ? ccEmails : undefined,
+        replyTo: registeredAgentEmail || "support@beforelisted.com",
+        requestScope: "Upcoming",
+        matchedAgentFullName:
+          matchingAgentUser.fullName || matchingAgentUser.email || "N/A",
+        matchedAgentBrokerageName: matchingAgentProfile?.brokerageName || "N/A",
+        matchedAgentEmail: matchingAgentUser.email || "N/A",
+        matchedAgentPhone: matchingAgentUser.phoneNumber || "N/A",
+      });
+
+    if (!otherAgentEmailResult.success) {
+      logger.warn(
+        {
+          grantAccessId: grantAccess._id,
+          renterEmail: renter.email,
+          error: otherAgentEmailResult.error,
+        },
+        "Non-registered-agent opportunity email failed to send",
+      );
+    }
   }
 }
