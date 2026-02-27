@@ -148,7 +148,7 @@ export function preMarketAgentNotificationTemplate(
         <!-- Header -->
         <div class="header">
             ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
-            <h1>ðŸ”” New Opportunity</h1>
+            <h1>🔔 New Opportunity</h1>
         </div>
 
         <!-- Content -->
@@ -364,7 +364,7 @@ export function preMarketAdminNotificationTemplate(
         <!-- Header -->
         <div class="header">
             ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
-            <h1>âš™ï¸ Admin Notification</h1>
+            <h1>⚙️ Admin Notification</h1>
         </div>
 
         <!-- Content -->
@@ -379,7 +379,7 @@ export function preMarketAdminNotificationTemplate(
 
             <!-- Listing Details Section -->
             <div class="section">
-                <h3>ðŸ“‹ Listing Details</h3>
+                <h3>📋 Listing Details</h3>
                 <table class="details-table">
                     <tr>
                         <td>Title</td>
@@ -402,7 +402,7 @@ export function preMarketAdminNotificationTemplate(
 
             <!-- Renter Information Section (ADMIN ONLY) -->
             <div class="section">
-                <h3>ðŸ‘¤ Renter Information</h3>
+                <h3>👤 Renter Information</h3>
                 <div class="renter-info-box">
                     <p>
                         <strong>Name:</strong> ${renterName}
@@ -418,7 +418,7 @@ export function preMarketAdminNotificationTemplate(
 
             <!-- Action Required -->
             <div class="section">
-                <h3>ðŸ“Œ Action Required</h3>
+                <h3>📌 Action Required</h3>
                 <p>Review this request and take appropriate action:</p>
                 <ul style="padding-left: 20px;">
                     <li>Monitor agent interest and match requests</li>
