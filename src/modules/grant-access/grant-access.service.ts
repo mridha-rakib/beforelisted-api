@@ -68,9 +68,14 @@ export class GrantAccessService {
         renter.referredByAgentId.toString()
       );
       if (referrer) {
+        const referrerId = referrer._id?.toString();
+        const referrerAgentProfile = referrerId
+          ? await this.agentRepository.findByUserId(referrerId)
+          : null;
         referrerInfo = {
           referrerId: referrer._id?.toString(),
           referrerName: referrer.fullName,
+          activationLink: referrerAgentProfile?.activationLink || null,
           referrerRole: "Agent",
           referralType: "agent_referral",
         };
@@ -510,27 +515,60 @@ export class GrantAccessService {
       requirePayment: filters?.requirePayment ?? true,
     });
 
+    const agentUserIds = Array.from(
+      new Set(
+        result.data
+          .map((item: any) =>
+            typeof item.agentId === "object" && item.agentId !== null
+              ? item.agentId?._id?.toString?.() || item.agentId?.id?.toString?.()
+              : item.agentId?.toString?.(),
+          )
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+
+    const activationLinkByAgentId = new Map<string, string | null>();
+    await Promise.all(
+      agentUserIds.map(async (agentUserId) => {
+        const agentProfile = await this.agentRepository.findByUserId(agentUserId);
+        activationLinkByAgentId.set(
+          agentUserId,
+          agentProfile?.activationLink || null,
+        );
+      }),
+    );
+
     // Enrich with additional info
-    const enrichedData = result.data.map((item: any) => ({
-      id: item._id,
-      agentId: item.agentId?.id || item.agentId,
-      agentName: item.agentId?.fullName || "Unknown",
-      agentEmail: item.agentId?.email || "N/A",
-      agentPhone: item.agentId?.phoneNumber || "N/A",
-      preMarketRequestId:
-        item.preMarketRequestId?.id || item.preMarketRequestId,
-      listingRequestId: item.preMarketRequestId?.requestId || "N/A",
-      status: item.status, // pending, free, rejected, paid
-      paymentStatus: item.payment?.paymentStatus || "N/A", // pending, succeeded, failed
-      amount: item.payment?.amount || 0,
-      currency: item.payment?.currency || "USD",
-      isFree: item.adminDecision?.isFree || false,
-      failureCount: item.payment?.failureCount || 0,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-      decisionNotes: item.adminDecision?.notes || null,
-      decisionDate: item.adminDecision?.decidedAt || null,
-    }));
+    const enrichedData = result.data.map((item: any) => {
+      const resolvedAgentId =
+        typeof item.agentId === "object" && item.agentId !== null
+          ? item.agentId?._id?.toString?.() || item.agentId?.id?.toString?.() || ""
+          : item.agentId?.toString?.() || "";
+
+      return {
+        id: item._id,
+        agentId: resolvedAgentId,
+        agentName: item.agentId?.fullName || "Unknown",
+        agentEmail: item.agentId?.email || "N/A",
+        agentPhone: item.agentId?.phoneNumber || "N/A",
+        activationLink: resolvedAgentId
+          ? (activationLinkByAgentId.get(resolvedAgentId) ?? null)
+          : null,
+        preMarketRequestId:
+          item.preMarketRequestId?.id || item.preMarketRequestId,
+        listingRequestId: item.preMarketRequestId?.requestId || "N/A",
+        status: item.status, // pending, free, rejected, paid
+        paymentStatus: item.payment?.paymentStatus || "N/A", // pending, succeeded, failed
+        amount: item.payment?.amount || 0,
+        currency: item.payment?.currency || "USD",
+        isFree: item.adminDecision?.isFree || false,
+        failureCount: item.payment?.failureCount || 0,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        decisionNotes: item.adminDecision?.notes || null,
+        decisionDate: item.adminDecision?.decidedAt || null,
+      };
+    });
 
     logger.info(
       { count: enrichedData.length, total: result.pagination.total },
@@ -811,6 +849,8 @@ export class GrantAccessService {
         requestScope: "Upcoming",
         matchedAgentFullName:
           matchingAgentUser.fullName || matchingAgentUser.email || "N/A",
+        matchedAgentTitle:
+          matchingAgentProfile?.title || "Licensed Real Estate Agent",
         matchedAgentBrokerageName: matchingAgentProfile?.brokerageName || "N/A",
         matchedAgentEmail: matchingAgentUser.email || "N/A",
         matchedAgentPhone: matchingAgentUser.phoneNumber || "N/A",

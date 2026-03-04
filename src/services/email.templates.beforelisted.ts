@@ -65,15 +65,19 @@ export class EmailTemplates {
     const agentName = registeredAgent?.fullName?.trim();
     const agentTitle = registeredAgent?.title?.trim();
     const agentBrokerage = registeredAgent?.brokerage?.trim();
-    const registeredAgentLine = agentName
-      ? `Your renter account is currently registered with ${agentName}${agentTitle ? `, ${agentTitle}` : ""}${agentBrokerage ? ` with ${agentBrokerage}` : ""}. Rental requests you submit will be shared with this agent. They may begin assisting you with your search once all required agency disclosures and agreements are reviewed and completed.`
-      : "Your renter account is currently registered with your assigned licensed real estate agent. Rental requests you submit will be shared with this agent. They may begin assisting you with your search once all required agency disclosures and agreements are reviewed and completed.";
+    const registeredAgentIdentity = agentName
+      ? `<strong>${agentName}${agentTitle ? `, ${agentTitle}` : ""}${agentBrokerage ? ` with ${agentBrokerage}` : ""}</strong>`
+      : "<strong>your assigned licensed real estate agent</strong>";
+    const registeredAgentLine = `Your renter account is currently registered with ${registeredAgentIdentity}.`;
+    const registeredAgentSupportLine =
+      "Rental requests you submit will be shared with this agent. They may begin assisting you with your search once all required agency disclosures and agreements are reviewed and completed.";
     const contentHtml = isRenter
       ? `
             <h2>Hi ${firstName},</h2>
             <p>Welcome to BeforeListed&trade;. Your account has been successfully created and verified.</p>
 
             <p>${registeredAgentLine}</p>
+            <p>${registeredAgentSupportLine}</p>
 
             <p>BeforeListed is an intake-focused website designed to help licensed real estate agents collect and review renter-initiated requests and facilitate outreach based on renter criteria, including requests focused on opportunities that may not be publicly advertised.</p>
 
@@ -406,6 +410,11 @@ export class EmailTemplates {
 
             <p>If you cannot match renter requests immediately, your account may still be pending Grant Access configuration.</p>
 
+            <p>You can access your agent dashboard below:</p>
+            <div class="cta-wrap">
+                <a href="${dashboardLink}" class="cta-button">Go to Agent Dashboard</a>
+            </div>
+
             <h3>Dashboard visibility toggle (you control)</h3>
             <ul class="features-list">
                 <li>Private &mdash; The renter request is visible only to you. (Default)</li>
@@ -696,6 +705,7 @@ export class EmailTemplates {
   ): string {
     const logo = logoUrl || this.logoUrl;
     const color = brandColor || this.brandColor;
+    const firstName = userName?.trim().split(/\s+/)[0] || userName || "there";
 
     return `
 <!DOCTYPE html>
@@ -703,7 +713,7 @@ export class EmailTemplates {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verification Code - BeforeListed</title>
+    <title>Verification Code | BeforeListed</title>
     <style>
         body {
             margin: 0;
@@ -795,7 +805,7 @@ export class EmailTemplates {
 
         <!-- Content -->
         <div class="content">
-            <h2>Hi ${userName},</h2>
+            <h2>Hi ${firstName},</h2>
             <p>To complete your registration on BeforeListed&trade;, please confirm your email address.</p>
             <p>Your verification code is:</p>
 
@@ -1516,22 +1526,21 @@ export class EmailTemplates {
         <!-- Content -->
         <div class="content">
             <h2>Hi ${displayName},</h2>
-            <p>This email confirms that your BeforeListed account has been successfully deleted, as requested.</p>
+            <p>This email confirms that your BeforeListed&trade; account has been successfully deleted, as requested.</p>
 
             <div class="notice-box">
                 <p><strong>As a result:</strong></p>
             </div>
             <ul class="details-list">
-                <li>Your account access has been permanently removed</li>
-                <li>Any active requests associated with your account are no longer active</li>
-                <li>No further outreach will be made on your behalf through the platform</li>
+                <li>Your account access has been permanently removed.</li>
+                <li>Any active requests associated with your account are no longer active on the BeforeListed website.</li>
             </ul>
 
-            <p>If this deletion was made in error or you have questions about the process, you're welcome to reach out to us at <a href="mailto:${this.supportEmail}">${this.supportEmail}</a>.</p>
+            <p>If this deletion was made in error or if you have any questions about the process, you&apos;re welcome to reach out to our support team.</p>
 
             <p>Thank you for taking the time to try BeforeListed, and we wish you the best of luck with your housing search.</p>
 
-            <p>Best regards,<br><strong>BeforeListed Support</strong></p>
+            <p>Best regards,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>
 
         <!-- Footer -->
@@ -1654,23 +1663,27 @@ export class EmailTemplates {
         <!-- Content -->
         <div class="content">
             <h2>Hi ${displayName},</h2>
-            <p>This email confirms that your BeforeListed agent account has been successfully deleted, as requested.</p>
+            <p>This email confirms that your BeforeListed&trade; agent account has been successfully deleted.</p>
 
             <div class="notice-box">
                 <p><strong>As a result:</strong></p>
             </div>
             <ul class="details-list">
-                <li>Your agent account access has been permanently removed</li>
-                <li>You will no longer receive renter requests through the platform</li>
+                <li>Your agent account access has been permanently removed.</li>
+                <li>You will no longer receive renter requests through the website.</li>
                 <li>Any active matches or pending requests associated with your account have been closed.</li>
-                <li>No further action is required on your part.</li>
             </ul>
 
-            <p>If this deletion was made in error or you have questions about the process, you may contact us at <a href="mailto:${this.supportEmail}">${this.supportEmail}</a>.</p>
+            <p><strong>Renters previously registered under your account:</strong><br>
+            Renters who wish to continue using the BeforeListed website must be associated with an active licensed agent participating in the BeforeListed website in order to maintain access. Any related communication will be handled in accordance with the BeforeListed Agent Agreement.</p>
+
+            <p>No further action is required on your part.</p>
+
+            <p>If this deletion was made in error or if you have any questions about the process, you may contact our support team.</p>
 
             <p>Thank you for your time and participation with BeforeListed.</p>
 
-            <p>Best regards,<br><strong>BeforeListed Support</strong></p>
+            <p>Best regards,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>
 
         <!-- Footer -->
@@ -1696,50 +1709,23 @@ export class EmailTemplates {
     const color = brandColor || this.brandColor;
     const displayName =
       userName && userName.trim() ? userName.split(" ")[0] : "there";
-    const isDeletedNotice = notificationReason === "deleted";
-    const emailTitle = isDeletedNotice
-      ? "Agent no longer participating"
-      : "Your Registered Agent Is No Longer Active on BeforeListed";
-    const headerTitle = isDeletedNotice
-      ? "Agent no longer participating"
-      : "Your Registered Agent Is No Longer Active on BeforeListed";
+    const emailTitle = "Your Registered Agent Is No Longer Active on BeforeListed";
+    const headerTitle =
+      "Your Registered Agent Is No Longer Active on BeforeListed";
     const referralLoginLink =
       defaultAgentReferralLoginLink || "https://beforelisted.com/signin";
-    const contentHtml = isDeletedNotice
-      ? `
-            <p>Your originally registered agent is no longer participating in the BeforeListed intake service. You may contact that agent directly if you wish. Your request will remain private on BeforeListed and will not be shared with any other agents unless you choose to continue.</p>
+    const contentHtml = `
+            <p>Your originally registered agent is no longer participating in the BeforeListed intake service. You may contact that agent directly if you wish. Your request will remain private on the BeforeListed website and will not be shared with any other agents unless you choose to continue.</p>
 
-            <p>If you would like to continue using the service, you may request representation by Tuval Mor, a licensed New York real estate agent. If you proceed, you will be asked to review and sign the required Corcoran agency disclosures before any assistance begins.</p>
-
-            <p>If you are currently working with a different agent who uses the BeforeListed service, please log in using that agent's unique registration link.</p>
-
-            <div class="notice-box">
-                <p>Default agent referral login link:</p>
-            </div>
-            <div class="link-box">
-                <a href="${referralLoginLink}" style="color: ${color}; text-decoration: none;">${referralLoginLink}</a>
-            </div>
+            <p>If you would like to continue using the BeforeListed website, you may request representation by Tuval Mor, a licensed New York real estate agent and BeforeListed administrator. If you proceed, you will be asked to review and sign the required Corcoran agency disclosures before any assistance begins.</p>
 
             <div class="cta-wrap">
-                <a href="${referralLoginLink}" class="cta-button">Log in with Tuval Mor's referral link</a>
+                <a href="${referralLoginLink}" class="cta-button">Log in using Tuval Mor&apos;s registration link</a>
             </div>
 
-            <p>If you have any questions or need assistance, please feel free to reply to this email.</p>
+            <p>If you prefer to delete your BeforeListed account, you may log in at BeforeListed.com and select the account deletion option.</p>
 
-            <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
-        `
-      : `
-            <p>We're writing to inform you that your previously registered agent is no longer active on the BeforeListed&trade; platform.</p>
-
-            <p>Your renter account and any active request have not been deleted. Your request remains private and will not be shared with any other agents unless and until you choose how to proceed.</p>
-
-            <p>You may choose to continue working with your previous agent outside of the BeforeListed&trade; platform.</p>
-
-            <p>To continue using BeforeListed&trade;, you may do one of the following:</p>
-            <ul class="details-list">
-                <li>Log in to your account and associate your request with an available active licensed agent on the platform, or</li>
-                <li>If you are working with a different agent who uses the BeforeListed&trade; system, log in using that agent's registration link</li>
-            </ul>
+            <p>If you are currently working with a different agent who uses the BeforeListed service, please log in using that agent&apos;s unique registration link.</p>
 
             <p>If you have any questions or need assistance, please feel free to reply to this email.</p>
 
@@ -1871,7 +1857,6 @@ export class EmailTemplates {
 
         <div class="footer">
             <p>c ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
-            <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
             ${this.getFooterLinks(color)}
         </div>
     </div>

@@ -77,6 +77,7 @@ export interface AdminReferrerInfo {
   referrerId: string;
   referrerName: string;
   referrerType: "AGENT" | "ADMIN";
+  activationLink?: string | null;
   referralCode?: string | null;
   referrerEmail?: string | null;
   referrerPhoneNumber?: string | null;
@@ -128,6 +129,7 @@ export interface AgentRequestDetail {
     phoneNumber?: string;
     role: string;
     profileImageUrl?: string;
+    activationLink?: string | null;
   };
   status: "pending" | "approved" | "free" | "rejected" | "paid";
   requestedAt: Date;

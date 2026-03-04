@@ -759,9 +759,13 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
                 ? await userRepo.findById(referrerId)
                 : null;
               if (referrer) {
+                const referrerAgentProfile = referrerId
+                  ? await agentProfileRepo.findByUserId(referrerId)
+                  : null;
                 referrerInfo = {
                   referrerId: referrer._id?.toString(),
                   referrerName: referrer.fullName,
+                  activationLink: referrerAgentProfile?.activationLink || null,
                   referrerRole: "Agent",
                   referralType: "agent_referral",
                 };
@@ -847,6 +851,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
           brokerageName: agentProfile?.brokerageName || null,
           licenseNumber: agentProfile?.licenseNumber || null,
           title: agentProfile?.title || null,
+          activationLink: agentProfile?.activationLink || null,
           yearsOfExperience: agentProfile?.yearsOfExperience || null,
           hasGrantAccess: agentProfile?.hasGrantAccess || false,
           accountStatus: agentProfile?.accountStatus || "pending",

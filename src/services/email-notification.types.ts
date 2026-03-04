@@ -45,8 +45,24 @@ export interface IRenterRequestUpdatedNotificationPayload {
   requestId: string;
   renterName: string;
   updatedFields: string[];
+  updatedFieldValues: string[];
   updatedAt: string;
   cc?: string[];
+}
+
+export interface INonRegisteredAgentSharedRequestNotificationPayload {
+  to: string;
+  agentName: string;
+  requestId: string;
+  minPrice: string;
+  maxPrice: string;
+  bedrooms: string;
+  bathrooms: string;
+  moveDateRange: string;
+  location: string;
+  marketScope: string;
+  preferences: string;
+  submittedAt: string;
 }
 
 export interface IAgentRequestConfirmationPayload {
@@ -78,6 +94,7 @@ export interface IRenterOpportunityFoundOtherAgentPayload {
   replyTo?: string;
   requestScope?: "Upcoming" | "All Market";
   matchedAgentFullName?: string;
+  matchedAgentTitle?: string;
   matchedAgentBrokerageName?: string;
   matchedAgentEmail?: string;
   matchedAgentPhone?: string;

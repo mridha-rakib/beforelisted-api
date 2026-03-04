@@ -17,15 +17,15 @@ import { hashPassword } from "@/utils/password.utils";
 import type { Types } from "mongoose";
 import { AuthUtil } from "../auth/auth.utils";
 import { EmailVerificationService } from "../email-verification/email-verification.service";
-import { ReferralService } from "../referral/referral.service";
 import { PreMarketService } from "../pre-market/pre-market.service";
+import { ReferralService } from "../referral/referral.service";
 import { RenterRepository } from "../renter/renter.repository";
 import { UserService } from "../user/user.service";
 import type { IAgentProfile } from "./agent.interface";
 import { AgentProfileRepository } from "./agent.repository";
 import type {
-  AdminAgentMetricsResponse,
   ActivateAgentWithLinkPayload,
+  AdminAgentMetricsResponse,
   AgentProfileResponse,
   AgentRegisterPayload,
   AgentRegistrationResponse,
@@ -569,6 +569,19 @@ export class AgentService {
     }
 
     const previousStatus = agent.isActive;
+    const hasActivatedBefore =
+      Boolean(agent.isActive) ||
+      Boolean(agent.activeAt) ||
+      (agent.activationHistory || []).some(
+        (record) => record.action === "activated",
+      );
+
+    if (!previousStatus && !hasActivatedBefore) {
+      throw new BadRequestException(
+        "First-time activation must be done via activation link",
+      );
+    }
+
     const newStatus = !previousStatus;
     const accountStatus = newStatus ? "active" : "inactive";
 
@@ -605,20 +618,22 @@ export class AgentService {
 
     if (newStatus) {
       try {
-        const dashboardLink =
-          updated.activationLink || agent.activationLink || `${env.CLIENT_URL}/login`;
+        const dashboardLink = `${env.CLIENT_URL.replace(/\/+$/, "")}/agent/dashboard`;
 
-        const emailResult = await this.emailService.sendAgentActivatedByAdminEmail(
-          {
+        const emailResult =
+          await this.emailService.sendAgentActivatedByAdminEmail({
             to: user.email,
             agentName: user.fullName,
             dashboardLink,
-          },
-        );
+          });
 
         if (!emailResult.success) {
           logger.warn(
-            { userId: resolvedUserId, email: user.email, error: emailResult.error },
+            {
+              userId: resolvedUserId,
+              email: user.email,
+              error: emailResult.error,
+            },
             "Agent activation email failed to send",
           );
         }
@@ -724,19 +739,22 @@ export class AgentService {
       }
 
       try {
-        const dashboardLink = updated.activationLink || payload.activationLink;
+        const dashboardLink = `${env.CLIENT_URL.replace(/\/+$/, "")}/agent/dashboard`;
 
-        const emailResult = await this.emailService.sendAgentActivatedByAdminEmail(
-          {
+        const emailResult =
+          await this.emailService.sendAgentActivatedByAdminEmail({
             to: user.email,
             agentName: user.fullName,
             dashboardLink,
-          },
-        );
+          });
 
         if (!emailResult.success) {
           logger.warn(
-            { userId: resolvedUserId, email: user.email, error: emailResult.error },
+            {
+              userId: resolvedUserId,
+              email: user.email,
+              error: emailResult.error,
+            },
             "Agent activation email failed to send",
           );
         }
@@ -871,9 +889,8 @@ export class AgentService {
     }
 
     const agentName = agentUser?.fullName || agentEmail;
-    const referredRenters = await this.renterRepository.findRentersByAgent(
-      userId,
-    );
+    const referredRenters =
+      await this.renterRepository.findRentersByAgent(userId);
 
     await this.preMarketService.deleteAgentMatchHistory(userId);
 
@@ -883,10 +900,11 @@ export class AgentService {
     if (referralCleanup.renterUserIds.length > 0) {
       const { UserRepository } = await import("../user/user.repository");
       const userRepository = new UserRepository();
-      const userRefCleanupCount = await userRepository.clearAgentReferrerFromUsers(
-        userId,
-        referralCleanup.renterUserIds,
-      );
+      const userRefCleanupCount =
+        await userRepository.clearAgentReferrerFromUsers(
+          userId,
+          referralCleanup.renterUserIds,
+        );
 
       logger.info(
         {
@@ -997,8 +1015,8 @@ export class AgentService {
 
     const resolvedDefaultAgentReferralLoginLink =
       notificationReason === "deleted"
-        ? defaultAgentReferralLoginLink ??
-          (await this.getDefaultAgentReferralLoginLink())
+        ? (defaultAgentReferralLoginLink ??
+          (await this.getDefaultAgentReferralLoginLink()))
         : undefined;
 
     await Promise.all(

@@ -81,10 +81,7 @@ const envSchema = z.object({
     .string()
     .nonempty("Stripe webhook secret is required."),
 
-  CLIENT_URL: z
-    .string()
-    .url()
-    .default("https://rental-pennymore-frontend.vercel.app"),
+  CLIENT_URL: z.string().url().default("https://beforelisted.com"),
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .default("info"),

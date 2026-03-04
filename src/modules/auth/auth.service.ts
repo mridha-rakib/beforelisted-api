@@ -194,21 +194,38 @@ export class AuthService {
             const agentProfile = await agentRepository.findByUserId(referrerId);
             referrerTitle = agentProfile?.title ?? null;
             referrerBrokerageName = agentProfile?.brokerageName ?? null;
-          }
+            const referrerActivationLink = agentProfile?.activationLink ?? null;
 
-          referralInfo = {
-            registrationType: "agent_referral",
-            referrer: {
-              id: referrerId ?? String(referrer),
-              role: "Agent",
-              fullName: referrer.fullName ?? null,
-              title: referrerTitle,
-              brokerageName: referrerBrokerageName,
-              email: referrer.email ?? null,
-              phoneNumber: referrer.phoneNumber ?? null,
-              referralCode: referrer.referralCode ?? null,
-            },
-          };
+            referralInfo = {
+              registrationType: "agent_referral",
+              referrer: {
+                id: referrerId ?? String(referrer),
+                role: "Agent",
+                fullName: referrer.fullName ?? null,
+                title: referrerTitle,
+                brokerageName: referrerBrokerageName,
+                activationLink: referrerActivationLink,
+                email: referrer.email ?? null,
+                phoneNumber: referrer.phoneNumber ?? null,
+                referralCode: referrer.referralCode ?? null,
+              },
+            };
+          } else {
+            referralInfo = {
+              registrationType: "agent_referral",
+              referrer: {
+                id: referrerId ?? String(referrer),
+                role: "Agent",
+                fullName: referrer.fullName ?? null,
+                title: referrerTitle,
+                brokerageName: referrerBrokerageName,
+                activationLink: null,
+                email: referrer.email ?? null,
+                phoneNumber: referrer.phoneNumber ?? null,
+                referralCode: referrer.referralCode ?? null,
+              },
+            };
+          }
         }
       } else if (renter?.registrationType === "admin_referral") {
         const referrer = renter.referredByAdminId as any;
@@ -241,6 +258,7 @@ export class AuthService {
       ...(user.role === ROLES.AGENT
         ? {
             title: agentProfile?.title ?? null,
+            activationLink: agentProfile?.activationLink ?? null,
             loginLink: `${env.CLIENT_URL}/login`,
           }
         : {}),
@@ -257,6 +275,7 @@ export class AuthService {
     user: UserResponse;
     role: string;
     title?: string | null;
+    activationLink?: string | null;
   }> {
     const result = await this.emailVerificationService.verifyOTP({
       email: payload.email,
@@ -272,6 +291,7 @@ export class AuthService {
       (await this.userService.markEmailAsVerified(result.userId)) || user;
     const userResponse = this.userService.toUserResponse(updatedUser);
     let agentTitle: string | null = null;
+    let agentActivationLink: string | null = null;
     let renterRegisteredAgent:
       | {
           fullName?: string;
@@ -289,6 +309,7 @@ export class AuthService {
       const agentRepository = new AgentProfileRepository();
       const agentProfile = await agentRepository.findByUserId(user._id);
       agentTitle = agentProfile?.title ?? null;
+      agentActivationLink = agentProfile?.activationLink ?? null;
 
       const { NotificationService } =
         await import("../notification/notification.service");
@@ -429,7 +450,9 @@ export class AuthService {
       message: MESSAGES.AUTH.EMAIL_VERIFIED_SUCCESS,
       user: userResponse,
       role: userResponse.role,
-      ...(userResponse.role === ROLES.AGENT ? { title: agentTitle } : {}),
+      ...(userResponse.role === ROLES.AGENT
+        ? { title: agentTitle, activationLink: agentActivationLink }
+        : {}),
     };
   }
 
@@ -777,6 +800,7 @@ export class AuthService {
     fullName: string | null;
     title: string | null;
     brokerageName: string | null;
+    activationLink: string | null;
     email: string | null;
     phoneNumber: string | null;
     referralCode: string | null;
@@ -801,6 +825,7 @@ export class AuthService {
       fullName: SYSTEM_DEFAULT_AGENT.fullName,
       title: SYSTEM_DEFAULT_AGENT.title,
       brokerageName: SYSTEM_DEFAULT_AGENT.brokerageName,
+      activationLink: null,
       email: SYSTEM_DEFAULT_AGENT.email,
       phoneNumber: SYSTEM_DEFAULT_AGENT.phoneNumber,
       referralCode: fallbackReferralCode,
@@ -830,6 +855,7 @@ export class AuthService {
         brokerageName:
           defaultAgentProfile?.brokerageName ||
           SYSTEM_DEFAULT_AGENT.brokerageName,
+        activationLink: defaultAgentProfile?.activationLink || null,
         email: defaultAgentUser.email || SYSTEM_DEFAULT_AGENT.email,
         phoneNumber:
           defaultAgentUser.phoneNumber || SYSTEM_DEFAULT_AGENT.phoneNumber,

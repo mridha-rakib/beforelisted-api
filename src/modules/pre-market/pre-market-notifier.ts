@@ -164,6 +164,7 @@ export class PreMarketNotifier {
   async notifyAgentsAboutUpdatedRequest(
     preMarketRequest: IPreMarketRequest,
     changedFields: string[],
+    changedFieldNewValues: string[],
     updatedAt: Date
   ): Promise<void> {
     try {
@@ -185,6 +186,10 @@ export class PreMarketNotifier {
         preMarketRequest.requestId || preMarketRequest._id?.toString() || "";
       const normalizedFields =
         changedFields.length > 0 ? changedFields : ["Request details updated"];
+      const normalizedFieldValues =
+        changedFieldNewValues.length > 0
+          ? changedFieldNewValues
+          : ["Not specified"];
 
       for (const recipient of recipients) {
         const emailResult =
@@ -194,6 +199,7 @@ export class PreMarketNotifier {
             requestId,
             renterName,
             updatedFields: normalizedFields,
+            updatedFieldValues: normalizedFieldValues,
             updatedAt: formattedUpdatedAt,
           });
 

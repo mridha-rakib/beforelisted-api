@@ -569,6 +569,7 @@ export class RenterService {
               referredBy: populatedUser.role,
               referrerName: populatedUser.fullName,
               referrerEmail: populatedUser.email,
+              activationLink: agent.activationLink || null,
             };
           }
         }
@@ -629,6 +630,7 @@ export class RenterService {
           referredBy: populatedUser.role,
           referrerName: populatedUser.fullName,
           referrerEmail: populatedUser.email,
+          activationLink: agent.activationLink || null,
         };
       }
     }

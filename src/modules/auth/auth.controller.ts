@@ -46,6 +46,9 @@ export class AuthController {
         expiresIn: result.tokens.expiresIn,
         mustChangePassword: result.mustChangePassword,
         ...(typeof result.title !== "undefined" ? { title: result.title } : {}),
+        ...(typeof result.activationLink !== "undefined"
+          ? { activationLink: result.activationLink }
+          : {}),
         ...(result.loginLink ? { loginLink: result.loginLink } : {}),
         ...(result.agentProfile ? { agentProfile: result.agentProfile } : {}),
         ...(result.referralInfo ? { referralInfo: result.referralInfo } : {}),

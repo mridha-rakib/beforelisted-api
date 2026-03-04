@@ -1,7 +1,7 @@
 // file: src/modules/pre-market/pre-market.service.ts
 
 import { env } from "@/env";
-import { SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
+import { ACCOUNT_STATUS, ROLES, SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 import { NotificationService } from "@/modules/notification/notification.service";
 import { randomInt } from "crypto";
@@ -76,6 +76,7 @@ export class PreMarketService {
     fullName: string;
     email: string;
     phoneNumber: string | null;
+    activationLink: string | null;
     referralCode: string | null;
   };
 
@@ -96,6 +97,7 @@ export class PreMarketService {
     fullName: string;
     email: string;
     phoneNumber: string | null;
+    activationLink: string | null;
     referralCode: string | null;
   }> {
     if (this.defaultReferralAgentCache) {
@@ -107,6 +109,7 @@ export class PreMarketService {
       fullName: DEFAULT_REFERRAL_AGENT_NAME,
       email: DEFAULT_REGISTERED_AGENT_EMAIL,
       phoneNumber: null,
+      activationLink: null,
       referralCode: null,
     };
 
@@ -119,11 +122,16 @@ export class PreMarketService {
       return fallback;
     }
 
+    const agentProfile = await this.agentRepository.findByUserId(
+      user._id.toString(),
+    );
+
     const resolved = {
       id: user._id?.toString() || "",
       fullName: user.fullName || DEFAULT_REFERRAL_AGENT_NAME,
       email: user.email || DEFAULT_REGISTERED_AGENT_EMAIL,
       phoneNumber: user.phoneNumber ?? null,
+      activationLink: agentProfile?.activationLink || null,
       referralCode: user.referralCode ?? null,
     };
 
@@ -698,7 +706,7 @@ export class PreMarketService {
       }
     }
 
-    const changedFields = this.buildChangedFieldsSummary(request, payload);
+    const changedFieldDetails = this.buildChangedFieldsSummary(request, payload);
 
     // Update
     const updated = await this.preMarketRepository.updateById(
@@ -712,7 +720,8 @@ export class PreMarketService {
     this.notifier
       .notifyAgentsAboutUpdatedRequest(
         updated || request,
-        changedFields,
+        changedFieldDetails.summary,
+        changedFieldDetails.newValues,
         updatedAt,
       )
       .catch((error) => {
@@ -1167,7 +1176,7 @@ export class PreMarketService {
   private buildChangedFieldsSummary(
     request: IPreMarketRequest,
     payload: Record<string, unknown>,
-  ): string[] {
+  ): { summary: string[]; newValues: string[] } {
     const fieldLabels: Record<string, string> = {
       movingDateRange: "Move date range",
       priceRange: "Price range",
@@ -1182,21 +1191,143 @@ export class PreMarketService {
       description: "Description",
     };
 
-    const changedFields = Object.keys(payload).reduce<string[]>(
-      (accumulator, key) => {
-        const originalValue = (request as unknown as Record<string, unknown>)[
-          key
-        ];
-        const nextValue = payload[key];
-        if (!this.areValuesEqual(originalValue, nextValue)) {
-          accumulator.push(fieldLabels[key] || this.humanizeFieldName(key));
-        }
-        return accumulator;
-      },
-      [],
-    );
+    const summary: string[] = [];
+    const newValues: string[] = [];
 
-    return Array.from(new Set(changedFields));
+    Object.keys(payload).forEach((key) => {
+      const originalValue = (request as unknown as Record<string, unknown>)[key];
+      const nextValue = payload[key];
+      if (!this.areValuesEqual(originalValue, nextValue)) {
+        summary.push(fieldLabels[key] || this.humanizeFieldName(key));
+        newValues.push(this.formatChangedFieldValue(key, nextValue));
+      }
+    });
+
+    if (summary.length === 0) {
+      return {
+        summary: ["Request details updated"],
+        newValues: ["Not specified"],
+      };
+    }
+
+    return { summary, newValues };
+  }
+
+  private formatChangedFieldValue(key: string, value: unknown): string {
+    if (value === null || value === undefined) {
+      return "Not specified";
+    }
+
+    if (key === "priceRange" && this.isRecord(value)) {
+      const min = value.min;
+      const max = value.max;
+      if (typeof min === "number" && typeof max === "number") {
+        return `$${min} - $${max}`;
+      }
+    }
+
+    if (key === "movingDateRange" && this.isRecord(value)) {
+      const earliest = value.earliest;
+      const latest = value.latest;
+      if (earliest && latest) {
+        return `${this.formatDateValue(earliest)} - ${this.formatDateValue(latest)}`;
+      }
+    }
+
+    if (key === "locations" && Array.isArray(value)) {
+      const formattedLocations = value
+        .map((location) => {
+          if (!this.isRecord(location)) {
+            return this.formatSimpleValue(location);
+          }
+
+          const borough =
+            typeof location.borough === "string"
+              ? location.borough
+              : "Unknown borough";
+          const neighborhoods = Array.isArray(location.neighborhoods)
+            ? location.neighborhoods
+                .map((neighborhood) => this.formatSimpleValue(neighborhood))
+                .filter(Boolean)
+            : [];
+
+          return neighborhoods.length > 0
+            ? `${borough} (${neighborhoods.join(", ")})`
+            : borough;
+        })
+        .filter(Boolean);
+
+      return formattedLocations.length > 0
+        ? formattedLocations.join("; ")
+        : "Not specified";
+    }
+
+    return this.formatSimpleValue(value);
+  }
+
+  private formatSimpleValue(value: unknown): string {
+    if (value === null || value === undefined) {
+      return "Not specified";
+    }
+
+    if (value instanceof Date) {
+      return this.formatDateValue(value);
+    }
+
+    if (typeof value === "string") {
+      return value.trim() || "Not specified";
+    }
+
+    if (typeof value === "number") {
+      return String(value);
+    }
+
+    if (typeof value === "boolean") {
+      return value ? "Yes" : "No";
+    }
+
+    if (Array.isArray(value)) {
+      const normalized = value
+        .map((item) => this.formatSimpleValue(item))
+        .filter((item) => item !== "Not specified");
+      return normalized.length > 0 ? normalized.join(", ") : "Not specified";
+    }
+
+    if (this.isRecord(value)) {
+      const entries = Object.entries(value)
+        .map(([field, fieldValue]) => {
+          const formattedValue = this.formatSimpleValue(fieldValue);
+          if (formattedValue === "Not specified") {
+            return "";
+          }
+          return `${this.humanizeFieldName(field)}: ${formattedValue}`;
+        })
+        .filter(Boolean);
+
+      return entries.length > 0 ? entries.join(", ") : "Not specified";
+    }
+
+    return String(value);
+  }
+
+  private formatDateValue(value: unknown): string {
+    if (value instanceof Date) {
+      return value.toLocaleDateString("en-US");
+    }
+
+    if (typeof value === "string" || typeof value === "number") {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed.toLocaleDateString("en-US");
+      }
+      return String(value);
+    }
+
+    return this.formatSimpleValue(value);
+  }
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
   }
 
   private areValuesEqual(valueA: unknown, valueB: unknown): boolean {
@@ -1452,20 +1583,241 @@ export class PreMarketService {
       visibility === "SHARED" && request.shareConsent === true
         ? "SHARED"
         : "PRIVATE";
+    const shouldSendSharedVisibilityNotification =
+      nextVisibility === "SHARED" &&
+      !(
+        request as unknown as {
+          sharedVisibilityNotificationSentAt?: Date;
+        }
+      ).sharedVisibilityNotificationSentAt;
 
     if (nextVisibility === "PRIVATE") {
       await this.preMarketRepository.releaseRequestLock(requestId);
     }
 
-    const updated = await this.preMarketRepository.updateById(requestId, {
+    const updatePayload: Partial<IPreMarketRequest> = {
       visibility: nextVisibility,
-    } as Partial<IPreMarketRequest>);
+      ...(shouldSendSharedVisibilityNotification
+        ? { sharedVisibilityNotificationSentAt: new Date() }
+        : {}),
+    };
+
+    const updated = await this.preMarketRepository.updateById(
+      requestId,
+      updatePayload,
+    );
 
     if (!updated) {
       throw new NotFoundException("Pre-market request not found");
     }
 
+    if (shouldSendSharedVisibilityNotification) {
+      this.notifyNonRegisteredAgentsAboutSharedRequest(
+        updated,
+        registeredAgentId,
+      ).catch((error) => {
+        logger.error(
+          { error, requestId: updated._id?.toString() },
+          "Failed to send shared visibility notification to non-registered agents",
+        );
+      });
+    }
+
     return updated;
+  }
+
+  private async notifyNonRegisteredAgentsAboutSharedRequest(
+    request: IPreMarketRequest,
+    registeredAgentId: string,
+  ): Promise<void> {
+    const recipients =
+      await this.getNonRegisteredAgentRecipientsForSharedRequestNotification(
+        registeredAgentId,
+      );
+
+    if (recipients.length === 0) {
+      logger.info(
+        { requestId: request._id?.toString() },
+        "No non-registered agents eligible for shared request notification",
+      );
+      return;
+    }
+
+    const requestId = request.requestId || request._id?.toString() || "N/A";
+    const minPrice = this.formatCurrencyUSD(request.priceRange?.min);
+    const maxPrice = this.formatCurrencyUSD(request.priceRange?.max);
+    const bedrooms =
+      Array.isArray(request.bedrooms) && request.bedrooms.length > 0
+        ? request.bedrooms.join(", ")
+        : "N/A";
+    const bathrooms =
+      Array.isArray(request.bathrooms) && request.bathrooms.length > 0
+        ? request.bathrooms.join(", ")
+        : "N/A";
+    const moveDateRange = `${this.formatDateValue(request.movingDateRange?.earliest)} - ${this.formatDateValue(request.movingDateRange?.latest)}`;
+    const location = this.formatRequestLocations(request.locations);
+    const marketScope = request.scope || "Upcoming";
+    const preferences =
+      Array.isArray(request.preferences) && request.preferences.length > 0
+        ? request.preferences.map((value) => String(value)).join(", ")
+        : "N/A";
+    const submittedAt = this.formatEasternTime(
+      request.createdAt ? new Date(request.createdAt) : new Date(),
+    );
+
+    const sendResults = await Promise.allSettled(
+      recipients.map((recipient) =>
+        emailService.sendNonRegisteredAgentSharedRequestNotification({
+          to: recipient.email,
+          agentName: recipient.name,
+          requestId,
+          minPrice,
+          maxPrice,
+          bedrooms,
+          bathrooms,
+          moveDateRange,
+          location,
+          marketScope,
+          preferences,
+          submittedAt,
+        }),
+      ),
+    );
+
+    let sentCount = 0;
+    let failedCount = 0;
+
+    sendResults.forEach((result, index) => {
+      const recipient = recipients[index];
+
+      if (result.status === "rejected") {
+        failedCount += 1;
+        logger.warn(
+          {
+            email: recipient.email,
+            requestId,
+            error:
+              result.reason instanceof Error
+                ? result.reason.message
+                : String(result.reason),
+          },
+          "Failed to send shared request notification to non-registered agent",
+        );
+        return;
+      }
+
+      if (result.value.success) {
+        sentCount += 1;
+      } else {
+        failedCount += 1;
+        logger.warn(
+          {
+            email: recipient.email,
+            requestId,
+            error: result.value.error,
+          },
+          "Shared request notification returned unsuccessful result",
+        );
+      }
+    });
+
+    logger.info(
+      { requestId, sentCount, failedCount, recipientCount: recipients.length },
+      "Shared request notification dispatch completed",
+    );
+  }
+
+  private async getNonRegisteredAgentRecipientsForSharedRequestNotification(
+    registeredAgentId: string,
+  ): Promise<Array<{ userId: string; name: string; email: string }>> {
+    const profiles = await this.agentRepository.find({
+      isActive: true,
+      isSuspended: false,
+      emailSubscriptionEnabled: true,
+    } as any);
+
+    const candidateAgentIds = Array.from(
+      new Set(
+        profiles
+          .map((profile) => this.normalizeUserId(profile.userId))
+          .filter(
+            (agentId): agentId is string =>
+              Boolean(agentId) && agentId !== registeredAgentId,
+          ),
+      ),
+    );
+
+    if (candidateAgentIds.length === 0) {
+      return [];
+    }
+
+    const agentUsers = await Promise.all(
+      candidateAgentIds.map((agentId) => this.userRepository.findById(agentId)),
+    );
+
+    const recipients = new Map<string, { userId: string; name: string; email: string }>();
+    for (const user of agentUsers) {
+      if (!user?._id || !user.email) {
+        continue;
+      }
+      if (user.role !== ROLES.AGENT) {
+        continue;
+      }
+      if (user.accountStatus !== ACCOUNT_STATUS.ACTIVE) {
+        continue;
+      }
+      if (user.isDeleted) {
+        continue;
+      }
+
+      const email = user.email.trim();
+      if (!email) {
+        continue;
+      }
+
+      const key = email.toLowerCase();
+      if (!recipients.has(key)) {
+        recipients.set(key, {
+          userId: user._id.toString(),
+          name: user.fullName || email,
+          email,
+        });
+      }
+    }
+
+    return Array.from(recipients.values());
+  }
+
+  private formatCurrencyUSD(value: number | undefined): string {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return "N/A";
+    }
+
+    return `$${value.toLocaleString("en-US")}`;
+  }
+
+  private formatRequestLocations(
+    locations: Array<{ borough: string; neighborhoods: string[] }> | undefined,
+  ): string {
+    if (!Array.isArray(locations) || locations.length === 0) {
+      return "N/A";
+    }
+
+    const formatted = locations
+      .map((location) => {
+        if (!location) {
+          return "";
+        }
+        const borough = location.borough || "N/A";
+        const neighborhoods =
+          Array.isArray(location.neighborhoods) && location.neighborhoods.length > 0
+            ? ` (${location.neighborhoods.join(", ")})`
+            : "";
+        return `${borough}${neighborhoods}`;
+      })
+      .filter(Boolean);
+
+    return formatted.length > 0 ? formatted.join("; ") : "N/A";
   }
 
   async expireRequests(): Promise<{
@@ -1879,9 +2231,14 @@ export class PreMarketService {
         renter.referredByAgentId.toString(),
       );
       if (referrer) {
+        const referrerId = referrer._id?.toString();
+        const referrerAgentProfile = referrerId
+          ? await this.agentRepository.findByUserId(referrerId)
+          : null;
         referrerInfo = {
           referrerId: referrer._id,
           referrerName: referrer.fullName,
+          activationLink: referrerAgentProfile?.activationLink || null,
           referrerRole: "Agent",
           referralType: "agent_referral",
         };
@@ -1904,6 +2261,7 @@ export class PreMarketService {
       referrerInfo = {
         referrerId: defaultAgent.id,
         referrerName: defaultAgent.fullName,
+        activationLink: defaultAgent.activationLink,
         referrerRole: "Agent",
         referralType: "agent_referral",
       };
@@ -2049,9 +2407,14 @@ export class PreMarketService {
             );
 
       if (referrer) {
+        const referrerId = referrer._id?.toString() || "";
+        const referrerAgentProfile = referrerId
+          ? await this.agentRepository.findByUserId(referrerId)
+          : null;
         renterInfo.referralInfo = {
-          referrerId: referrer._id?.toString() || "",
+          referrerId,
           referrerName: referrer.fullName || referrer.name || "Unknown",
+          activationLink: referrerAgentProfile?.activationLink || null,
           referrerEmail: referrer.email || null,
           referrerPhoneNumber: referrer.phoneNumber || null,
           referralCode: referrer.referralCode || null,
@@ -2086,6 +2449,7 @@ export class PreMarketService {
       renterInfo.referralInfo = {
         referrerId: defaultAgent.id,
         referrerName: defaultAgent.fullName,
+        activationLink: defaultAgent.activationLink,
         referrerEmail: defaultAgent.email,
         referrerPhoneNumber: defaultAgent.phoneNumber,
         referralCode: defaultAgent.referralCode,
@@ -2112,9 +2476,11 @@ export class PreMarketService {
     const requestsWithAgents = await Promise.all(
       allRequests.map(async (req: any) => {
         // Get agent user details
-        const agent = await this.userRepository.findById(
-          req.agentId.toString(),
-        );
+        const agentUserId = req.agentId?.toString() || "";
+        const [agent, agentProfile] = await Promise.all([
+          this.userRepository.findById(agentUserId),
+          agentUserId ? this.agentRepository.findByUserId(agentUserId) : null,
+        ]);
 
         // Build agent object with proper types
         const agentInfo = agent
@@ -2124,16 +2490,18 @@ export class PreMarketService {
               email: agent.email || "",
               phoneNumber: agent.phoneNumber || undefined,
               role: (agent.role as string) || "Agent",
+              activationLink: agentProfile?.activationLink || null,
               profileImageUrl: (agent.profileImageUrl || undefined) as
                 | string
                 | undefined,
             }
           : {
-              agentId: req.agentId?.toString() || "",
+              agentId: agentUserId,
               fullName: "Unknown Agent",
               email: "",
               phoneNumber: undefined,
               role: "Agent",
+              activationLink: agentProfile?.activationLink || null,
               profileImageUrl: undefined,
             };
 
@@ -2282,12 +2650,17 @@ export class PreMarketService {
             );
 
       if (referrer) {
+        const referrerId = referrer._id?.toString();
+        const referrerAgentProfile = referrerId
+          ? await this.agentRepository.findByUserId(referrerId)
+          : null;
         referrerInfo = {
           referrerId: referrer._id?.toString(),
           referrerName: referrer.fullName || referrer.name || "Unknown",
           referrerEmail: referrer.email ?? null,
           referrerPhoneNumber: referrer.phoneNumber ?? null,
           referralCode: referrer.referralCode ?? null,
+          activationLink: referrerAgentProfile?.activationLink || null,
           referrerRole: "Agent",
           referralType: "agent_referral",
         };
@@ -2323,6 +2696,7 @@ export class PreMarketService {
         referrerEmail: defaultAgent.email,
         referrerPhoneNumber: defaultAgent.phoneNumber,
         referralCode: defaultAgent.referralCode,
+        activationLink: defaultAgent.activationLink,
         referrerRole: "Agent",
         referralType: "agent_referral",
       };
@@ -2712,6 +3086,8 @@ export class PreMarketService {
         replyTo: registeredAgentEmail,
         requestScope: preMarketRequest.scope,
         matchedAgentFullName: agent.fullName || agent.email || "N/A",
+        matchedAgentTitle:
+          matchedAgentProfile?.title || "Licensed Real Estate Agent",
         matchedAgentBrokerageName: matchedAgentProfile?.brokerageName || "N/A",
         matchedAgentEmail: agent.email,
         matchedAgentPhone: agent.phoneNumber || "N/A",
@@ -3106,6 +3482,7 @@ export class PreMarketService {
                     phoneNumber: agentUser.phoneNumber || null,
                     licenseNumber: agentProfile.licenseNumber,
                     title: agentProfile.title || null,
+                    activationLink: agentProfile.activationLink || null,
                     profileImageUrl: agentUser.profileImageUrl || null,
                     accessStatus,
                     ...(hasGrantAccess && { hasGrantAccess }),
@@ -3190,12 +3567,16 @@ export class PreMarketService {
         referredAgent ||
         (referrerId ? await this.userRepository.findById(referrerId) : null);
       if (referrer) {
+        const referrerAgentProfile = referrerId
+          ? await this.agentRepository.findByUserId(referrerId)
+          : null;
         referrerInfo = {
           referrerId: referrer._id?.toString(),
           referrerName: referrer.fullName,
           referrerEmail: referrer.email ?? null,
           referrerPhoneNumber: referrer.phoneNumber ?? null,
           referralCode: referrer.referralCode ?? null,
+          activationLink: referrerAgentProfile?.activationLink || null,
           referrerType: "AGENT",
         };
       }
@@ -3229,6 +3610,7 @@ export class PreMarketService {
         referrerEmail: defaultAgent.email,
         referrerPhoneNumber: defaultAgent.phoneNumber,
         referralCode: defaultAgent.referralCode,
+        activationLink: defaultAgent.activationLink,
         referrerType: "AGENT",
       };
     }
@@ -3274,6 +3656,7 @@ export class PreMarketService {
           referrerEmail: defaultAgent.email,
           referrerPhoneNumber: defaultAgent.phoneNumber,
           referralCode: defaultAgent.referralCode,
+          activationLink: defaultAgent.activationLink,
           referrerType: "Agent",
         },
       };
@@ -3301,6 +3684,11 @@ export class PreMarketService {
         : null;
     const referrerType =
       registrationType === "agent_referral" ? "Agent" : "Admin";
+    const referrerActivationLink =
+      registrationType === "agent_referral" && referrerId
+        ? (await this.agentRepository.findByUserId(referrerId))
+            ?.activationLink || null
+        : null;
 
     return {
       registrationType,
@@ -3310,6 +3698,7 @@ export class PreMarketService {
         referrerEmail,
         referrerPhoneNumber,
         referralCode: referrerCode,
+        activationLink: referrerType === "Agent" ? referrerActivationLink : null,
         referrerType,
       },
     };

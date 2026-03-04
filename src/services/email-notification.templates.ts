@@ -565,8 +565,6 @@ export function renterRequestConfirmationTemplate(
                 Hi ${safeFirstName},
             </div>
 
-            <p>A renter request associated with you has been updated.</p>
-
             <p>Thanks for submitting your request on BeforeListed&trade;.</p>
             <p>Based on the information you provided, your request has been forwarded to ${safeTaggedAgentFullName}, ${safeTaggedAgentTitle} with ${safeTaggedAgentBrokerage} for review.</p>
             <p>You may hear from your agent once they review your criteria and, if applicable, once required disclosures or agreements are completed.</p>
@@ -725,6 +723,7 @@ export function agentRenterRequestConfirmationTemplate(
   brandColor: string = "#1890FF"
 ): string {
   const currentYear = new Date().getFullYear();
+  const dashboardLink = `${(process.env.CLIENT_URL || "https://beforelisted.com").replace(/\/+$/, "")}/agent/dashboard`;
   const firstName = agentName?.trim().split(" ")[0] || agentName;
   const safeFirstName = escapeHtml(firstName);
   const safeRenterName = escapeHtml(renterName || "N/A");
@@ -821,6 +820,19 @@ export function agentRenterRequestConfirmationTemplate(
         .notes-list li {
             margin: 8px 0;
         }
+        .cta-wrap {
+            text-align: center;
+            margin: 14px 0 20px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background: ${brandColor};
+            color: #ffffff !important;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 12px 24px;
+            border-radius: 6px;
+        }
         .footer-note {
             font-size: 12px;
             color: #777;
@@ -886,6 +898,9 @@ export function agentRenterRequestConfirmationTemplate(
             </div>
 
             <p>You may review full details in the BeforeListed&trade; Agent dashboard.</p>
+            <div class="cta-wrap">
+                <a href="${dashboardLink}" class="cta-button">Go to Agent Dashboard</a>
+            </div>
 
             <div class="note-title">Please note:</div>
             <ul class="notes-list">
@@ -1064,6 +1079,7 @@ export function renterOpportunityFoundOtherAgentTemplate(
   renterName: string,
   requestScope?: "Upcoming" | "All Market",
   matchedAgentFullName?: string,
+  matchedAgentTitle?: string,
   matchedAgentBrokerageName?: string,
   matchedAgentEmail?: string,
   matchedAgentPhone?: string,
@@ -1075,6 +1091,9 @@ export function renterOpportunityFoundOtherAgentTemplate(
   const safeFirstName = escapeHtml(firstName);
   const safeMatchedAgentFullName = escapeHtml(
     matchedAgentFullName?.trim() || "N/A",
+  );
+  const safeMatchedAgentTitle = escapeHtml(
+    matchedAgentTitle?.trim() || "Licensed Real Estate Agent",
   );
   const safeMatchedAgentBrokerageName = escapeHtml(
     matchedAgentBrokerageName?.trim() || "N/A",
@@ -1180,8 +1199,11 @@ export function renterOpportunityFoundOtherAgentTemplate(
             }
 
             <p>
-              ${safeMatchedAgentFullName}<br>
-              ${safeMatchedAgentBrokerageName}<br>
+              ${
+                isAllMarket
+                  ? `${safeMatchedAgentFullName}, ${safeMatchedAgentTitle} with ${safeMatchedAgentBrokerageName}`
+                  : `${safeMatchedAgentFullName}, ${safeMatchedAgentTitle} with ${safeMatchedAgentBrokerageName}`
+              }<br>
               Email: ${safeMatchedAgentEmail}<br>
               Phone: ${safeMatchedAgentPhone}
             </p>
@@ -1195,7 +1217,7 @@ export function renterOpportunityFoundOtherAgentTemplate(
             ${
               isAllMarket
                 ? `<p>As a reminder, a broker fee is payable only if you successfully rent an apartment presented to you by a licensed agent assisting with your request, with all required disclosures provided.</p>`
-                : `<p>As a reminder, a broker fee is only payable if you successfully rent an apartment presented to you by a licensed agent assisting with your request, with all required disclosures provided.</p>`
+                : `<p>As a reminder, a broker fee is only payable to Corcoran if you successfully rent an apartment presented to you by the agent assisting with your request. The commission is paid only once and does not change based on the number of agents assisting you.</p>`
             }
 
             ${
@@ -1496,6 +1518,7 @@ export function renterRequestUpdatedNotificationTemplate(
   requestId: string,
   renterName: string,
   updatedFields: string[],
+  updatedFieldValues: string[],
   updatedAt: string,
   logoUrl?: string,
   brandColor: string = "#1890FF"
@@ -1508,6 +1531,9 @@ export function renterRequestUpdatedNotificationTemplate(
   const safeFields = updatedFields.map((field) => escapeHtml(field));
   const safeFieldsSummary =
     safeFields.length > 0 ? safeFields.join(", ") : "Not specified";
+  const safeFieldValues = updatedFieldValues.map((value) => escapeHtml(value));
+  const safeFieldValuesSummary =
+    safeFieldValues.length > 0 ? safeFieldValues.join(", ") : "Not specified";
   const safeUpdatedAt = escapeHtml(updatedAt || "N/A");
 
   return `
@@ -1610,7 +1636,7 @@ export function renterRequestUpdatedNotificationTemplate(
                 </p>
                 <p>
                     <strong>Updated fields:</strong><br>
-                    ${safeFieldsSummary}
+                    ${safeFieldsSummary} - ${safeFieldValuesSummary}
                 </p>
                 <p>
                     <strong>Updated on:</strong><br>
@@ -1621,6 +1647,160 @@ export function renterRequestUpdatedNotificationTemplate(
             <p>Please review the updated request details in the Agent Dashboard before continuing outreach.</p>
 
             <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>
+            ${footerLinks(brandColor)}
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Email template for non-registered agents when a request is shared publicly
+ */
+export function nonRegisteredAgentSharedRequestNotificationTemplate(
+  agentName: string,
+  requestId: string,
+  minPrice: string,
+  maxPrice: string,
+  bedrooms: string,
+  bathrooms: string,
+  moveDateRange: string,
+  location: string,
+  marketScope: string,
+  preferences: string,
+  submittedAt: string,
+  logoUrl?: string,
+  brandColor: string = "#1890FF"
+): string {
+  const currentYear = new Date().getFullYear();
+  const firstName = agentName?.trim().split(" ")[0] || agentName;
+  const safeFirstName = escapeHtml(firstName || "there");
+  const safeRequestId = escapeHtml(requestId || "N/A");
+  const safeMinPrice = escapeHtml(minPrice || "N/A");
+  const safeMaxPrice = escapeHtml(maxPrice || "N/A");
+  const safeBedrooms = escapeHtml(bedrooms || "N/A");
+  const safeBathrooms = escapeHtml(bathrooms || "N/A");
+  const safeMoveDateRange = escapeHtml(moveDateRange || "N/A");
+  const safeLocation = escapeHtml(location || "N/A");
+  const safeMarketScope = escapeHtml(marketScope || "N/A");
+  const safePreferences = escapeHtml(preferences || "N/A");
+  const safeSubmittedAt = escapeHtml(submittedAt || "N/A");
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Shared Renter Request</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: ${brandColor};
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .snapshot-title {
+            color: ${brandColor};
+            font-weight: 600;
+            margin: 20px 0 10px 0;
+            font-size: 16px;
+        }
+        .snapshot-list {
+            margin: 0 0 16px 18px;
+            padding: 0;
+            color: #555;
+        }
+        .snapshot-list li {
+            margin: 6px 0;
+        }
+        .preferences-box {
+            background-color: #fafafa;
+            border-left: 4px solid ${brandColor};
+            border-radius: 4px;
+            padding: 12px;
+            margin: 8px 0 16px 0;
+            color: #555;
+            font-size: 14px;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+        .footer a {
+            color: ${brandColor};
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            <h1>New Renter Request Shared</h1>
+        </div>
+
+        <div class="content">
+            <p>Hi ${safeFirstName},</p>
+
+            <p>A new renter request has been made public and may be relevant to your outreach to owners.</p>
+
+            <div class="snapshot-title">Request Snapshot</div>
+            <ul class="snapshot-list">
+                <li>Request ID: ${safeRequestId}</li>
+                <li>Budget: ${safeMinPrice} - ${safeMaxPrice}</li>
+                <li>Bedrooms: ${safeBedrooms}</li>
+                <li>Bathrooms: ${safeBathrooms}</li>
+                <li>Move Date: ${safeMoveDateRange}</li>
+                <li>Location: ${safeLocation}</li>
+                <li>Market Scope: ${safeMarketScope}</li>
+            </ul>
+
+            <div class="snapshot-title">Preferences:</div>
+            <div class="preferences-box">${safePreferences}</div>
+
+            <p>Submitted: ${safeSubmittedAt}</p>
+
+            <p>This notification was sent because you have opted in to receive alerts for shared renter requests. You may update your notification preferences at any time in your profile settings.</p>
+
+            <p>Best regards,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>
 
         <div class="footer">

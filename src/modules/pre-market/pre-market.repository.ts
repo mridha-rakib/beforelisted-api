@@ -792,12 +792,39 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
             .lean()
             .exec();
 
+          const agentIdsForListing = Array.from(
+            new Set(
+              [...confirmedAccess, ...pending, ...rejected]
+                .map((item: any) => item.agentId?._id?.toString())
+                .filter((id): id is string => Boolean(id)),
+            ),
+          );
+
+          const agentProfiles =
+            agentIdsForListing.length > 0
+              ? await AgentProfile.find({
+                  userId: { $in: agentIdsForListing },
+                })
+                  .select("userId activationLink")
+                  .lean()
+                  .exec()
+              : [];
+
+          const activationLinkByUserId = new Map<string, string | null>(
+            agentProfiles.map((profile: any) => [
+              profile.userId?.toString(),
+              profile.activationLink || null,
+            ]),
+          );
+
           // Format confirmed access agents
           const formattedConfirmed = confirmedAccess.map((item: any) => ({
             agentId: item.agentId?._id?.toString(),
             name: item.agentId?.fullName,
             email: item.agentId?.email,
             phone: item.agentId?.phoneNumber,
+            activationLink:
+              activationLinkByUserId.get(item.agentId?._id?.toString()) || null,
             accessType: item.status === "free" ? "free" : "paid",
             paymentAmount: item.payment?.amount || null,
             paymentStatus: item.payment?.paymentStatus || null,
@@ -809,6 +836,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
               name: agent.userId?.fullName,
               email: agent.userId?.email,
               phone: agent.userId?.phoneNumber,
+              activationLink: agent.activationLink || null,
               accessType: "grant_access",
               paymentAmount: null,
               paymentStatus: null,
@@ -825,6 +853,8 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
             agentId: item.agentId?._id?.toString(),
             name: item.agentId?.fullName,
             email: item.agentId?.email,
+            activationLink:
+              activationLinkByUserId.get(item.agentId?._id?.toString()) || null,
             status: "pending",
             requestedAt: item.createdAt,
           }));
@@ -834,6 +864,8 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
             agentId: item.agentId?._id?.toString(),
             name: item.agentId?.fullName,
             email: item.agentId?.email,
+            activationLink:
+              activationLinkByUserId.get(item.agentId?._id?.toString()) || null,
             status: "rejected",
             rejectionReason: item.adminDecision?.notes || null,
           }));

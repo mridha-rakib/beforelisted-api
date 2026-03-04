@@ -4,9 +4,9 @@ import { emailConfig } from "@/config/email.config";
 import { logger } from "@/middlewares/pino-logger";
 import { createEmailTransporter } from "@/services/email.transporter";
 import {
+  IAdminReferralEmailPayload,
   type IAccountDeletedPayload,
   type IAgentActivatedByAdminEmailPayload,
-  IAdminReferralEmailPayload,
   type IEmailOptions,
   type IEmailResult,
   type IEmailVerificationPayload,
@@ -19,6 +19,7 @@ import {
   agentRegistrationVerifiedAdminTemplate,
   agentRenterRequestConfirmationTemplate,
   matchReferralAcknowledgmentToMatchingAgentTemplate,
+  nonRegisteredAgentSharedRequestNotificationTemplate,
   preMarketAdminNotificationTemplate,
   preMarketAgentNotificationTemplate,
   renterOpportunityFoundOtherAgentTemplate,
@@ -34,6 +35,7 @@ import {
   IAgentRegistrationVerifiedAdminPayload,
   IAgentRequestConfirmationPayload,
   IMatchReferralAcknowledgmentToMatchingAgentPayload,
+  INonRegisteredAgentSharedRequestNotificationPayload,
   IPreMarketAdminNotificationPayload,
   IPreMarketAgentNotificationPayload,
   IRenterOpportunityFoundOtherAgentPayload,
@@ -206,7 +208,7 @@ export class EmailService {
       const emailOptions: IEmailOptions = {
         to: { email: payload.to },
         replyTo: "support@beforelisted.com",
-        subject: `Verification Code`,
+        subject: `Verification Code | BeforeListed`,
         html,
       };
 
@@ -532,6 +534,7 @@ export class EmailService {
 
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.userName },
+        replyTo: "support@beforelisted.com",
         subject: "Your BeforeListed Account Has Been Deleted",
         html,
       };
@@ -580,6 +583,7 @@ export class EmailService {
         cc: this.config.adminEmail
           ? { email: this.config.adminEmail, name: "Admin" }
           : undefined,
+        replyTo: "support@beforelisted.com",
         subject: "Your BeforeListed Agent Account Has Been Deleted",
         html,
       };
@@ -630,10 +634,7 @@ export class EmailService {
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
         replyTo: "support@beforelisted.com",
-        subject:
-          notificationReason === "deleted"
-            ? "Agent no longer participating"
-            : "Your Registered Agent Is No Longer Active on BeforeListed",
+        subject: "Your Registered Agent Is No Longer Active on BeforeListed",
         html,
       };
 
@@ -701,6 +702,62 @@ export class EmailService {
           email: payload.to,
         },
         "Failed to send pre-market agent notification",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  async sendNonRegisteredAgentSharedRequestNotification(
+    payload: INonRegisteredAgentSharedRequestNotificationPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, requestId: payload.requestId },
+        "Sending shared renter request notification to non-registered agent",
+      );
+
+      const html = nonRegisteredAgentSharedRequestNotificationTemplate(
+        payload.agentName,
+        payload.requestId,
+        payload.minPrice,
+        payload.maxPrice,
+        payload.bedrooms,
+        payload.bathrooms,
+        payload.moveDateRange,
+        payload.location,
+        payload.marketScope,
+        payload.preferences,
+        payload.submittedAt,
+        this.config.logoUrl,
+        this.config.brandColor,
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.agentName },
+        replyTo: "support@beforelisted.com",
+        subject: `New Renter Request shared – ${payload.marketScope} – ${payload.bedrooms} – Up to ${payload.maxPrice} | BeforeListed\u2122`,
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "NON_REGISTERED_AGENT_SHARED_REQUEST_NOTIFICATION",
+        payload.to,
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send shared renter request notification to non-registered agent",
       );
 
       return {
@@ -896,6 +953,7 @@ export class EmailService {
         payload.requestId,
         payload.renterName,
         payload.updatedFields,
+        payload.updatedFieldValues,
         payload.updatedAt,
         this.config.logoUrl,
         this.config.brandColor,
@@ -1060,6 +1118,7 @@ export class EmailService {
         payload.renterName,
         payload.requestScope,
         payload.matchedAgentFullName,
+        payload.matchedAgentTitle,
         payload.matchedAgentBrokerageName,
         payload.matchedAgentEmail,
         payload.matchedAgentPhone,
@@ -1129,7 +1188,7 @@ export class EmailService {
         to: { email: payload.to, name: payload.matchedAgentName },
         cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
         replyTo: "support@beforelisted.com",
-        subject: "Beforelisted match \u2013 referral acknowledgment",
+        subject: "Match Referral Acknowledgment | BeforeListed\u2122",
         html,
       };
 
@@ -1239,7 +1298,8 @@ export class EmailService {
         to: { email: payload.to, name: "Admin" },
         cc: undefined,
         replyTo: "support@beforelisted.com",
-        subject: "Action Required: New Agent Registration Pending Activation | BeforeListed\u2122",
+        subject:
+          "Action Required: New Agent Registration Pending Activation | BeforeListed\u2122",
         html,
       };
 
@@ -1480,7 +1540,6 @@ export class EmailService {
     const startTime = Date.now();
 
     try {
-      // Send via transporter
       const response = await this.transporter.send(options);
 
       const duration = Date.now() - startTime;

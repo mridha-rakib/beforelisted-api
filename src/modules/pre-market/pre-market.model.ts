@@ -53,6 +53,7 @@ export interface IPreMarketRequest extends Document {
   shareConsent: boolean;
   scope: "Upcoming" | "All Market";
   visibility: "PRIVATE" | "SHARED";
+  sharedVisibilityNotificationSentAt?: Date;
   referralAgentId?: Types.ObjectId | string;
   lockedByAgentId?: Types.ObjectId | string;
   lockedAt?: Date;
@@ -194,6 +195,10 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
     type: String,
     enum: ["PRIVATE", "SHARED"],
     default: "PRIVATE",
+    index: true,
+  } as any,
+  sharedVisibilityNotificationSentAt: {
+    type: Date,
     index: true,
   } as any,
   referralAgentId: {
