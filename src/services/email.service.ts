@@ -26,6 +26,7 @@ import {
   renterOpportunityFoundRegisteredAgentTemplate,
   renterRegistrationVerifiedAdminTemplate,
   renterRequestClosedAgentAlertTemplate,
+  renterRequestClosedRenterNotificationTemplate,
   renterRequestConfirmationTemplate,
   renterRequestExpiredTemplate,
   renterRequestUpdatedNotificationTemplate,
@@ -43,6 +44,7 @@ import {
   IRenterRegisteredAgentInactivePayload,
   IRenterRegistrationVerifiedAdminPayload,
   IRenterRequestClosedAgentAlertPayload,
+  IRenterRequestClosedRenterNotificationPayload,
   IRenterRequestConfirmationPayload,
   IRenterRequestExpiredNotificationPayload,
   IRenterRequestUpdatedNotificationPayload,
@@ -331,7 +333,7 @@ export class EmailService {
         );
         subject =
           resolvedUserType === "Agent"
-            ? "Welcome to BeforeListed - Agent Access Confirmed"
+            ? "Thank You for Registering \u2013 Account Pending Activation | BeforeListed\u2122"
             : "Welcome to BeforeListed";
       }
 
@@ -1009,6 +1011,7 @@ export class EmailService {
         payload.renterEmail,
         payload.renterPhoneNumber,
         payload.requestId,
+        payload.marketScope,
         payload.requestDescription,
         payload.submittedAt,
         this.config.logoUrl,
@@ -1257,6 +1260,58 @@ export class EmailService {
           email: payload.to,
         },
         "Failed to send renter request closed alert to agent",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send renter notification when their request is closed
+   */
+  async sendRenterRequestClosedRenterNotification(
+    payload: IRenterRequestClosedRenterNotificationPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, requestId: payload.requestId },
+        "Sending renter request closed notification",
+      );
+
+      const html = renterRequestClosedRenterNotificationTemplate(
+        payload.renterFirstName,
+        payload.requestId,
+        payload.reason,
+        payload.closedAt,
+        this.config.logoUrl,
+        this.config.brandColor,
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.renterFirstName },
+        replyTo: "support@beforelisted.com",
+        subject: "Your request has been closed \u2013 BeforeListed",
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "RENTER_REQUEST_CLOSED_RENTER_NOTIFICATION",
+        payload.to,
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send renter request closed notification",
       );
 
       return {

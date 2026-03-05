@@ -97,25 +97,20 @@ export class EmailTemplates {
             <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
         `
       : `
-            <h2>Hi ${userName},</h2>
-            <p>Welcome to BeforeListed. Your agent account has been successfully created and verified.</p>
+            <h2>Hi ${firstName},</h2>
+            <p>Thank you for registering at BeforeListed&trade;. Your agent account email has been successfully created and verified.</p>
 
-            <p>BeforeListed is a renter-initiated platform designed to support proactive rental outreach beyond publicly advertised listings. Renters submit requests based on their search criteria, and agents may identify potential upcoming not publicly advertised opportunities that align with those requests.</p>
+            <p>BeforeListed&trade; is a renter-initiated intake and marketing tool for licensed real estate agents, designed to support more efficient work with renters by collecting renter criteria upfront and providing a structured notification website that facilitates agent collaboration when appropriate.</p>
 
-            <p>Please note that your account may require admin activation and/or Grant Access before you can view renter requests or submit matches.</p>
+            <p>The website supports agents working with renters whose searches may focus on opportunities that are not yet publicly advertised, while also accommodating renters who are open to working with an agent on publicly listed rentals.</p>
 
-            <p><strong>As an agent, you can now:</strong></p>
-            <ul class="features-list">
-                <li>View renter requests associated with your referral link</li>
-                <li>Review request criteria and determine whether you may be able to assist</li>
-                <li>When you identify a potential opportunity that matches a renter request, you may submit a match request, subject to applicable approvals and disclosures.</li>
-            </ul>
+            <p>At this stage, your account is pending admin review and activation and/or Grant Access. Once activated, you will be able to view renter requests and submit matches through the website.</p>
 
-            <p>If you do not see renter requests immediately, your account may still be pending admin activation or Grant Access.</p>
+            <p>No action is required from you at this time. You will receive a follow-up email once your account has been activated.</p>
 
-            <p>If you have any questions or need assistance, please reply to this email.</p>
+            <p>If you have any questions, you may reply directly to this email.</p>
 
-            <p><strong>Best regards,<br>The BeforeListed Team</strong></p>
+            <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
 
         `;
 

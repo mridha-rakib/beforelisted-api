@@ -72,6 +72,7 @@ export interface IAgentRequestConfirmationPayload {
   renterEmail: string;
   renterPhoneNumber: string;
   requestId: string;
+  marketScope: string;
   requestDescription: string;
   submittedAt: string;
   cc?: string[];
@@ -117,6 +118,14 @@ export interface IRenterRequestClosedAgentAlertPayload {
   reason: string;
   closedAt: string;
   cc?: string[];
+}
+
+export interface IRenterRequestClosedRenterNotificationPayload {
+  to: string;
+  renterFirstName: string;
+  requestId: string;
+  reason: string;
+  closedAt: string;
 }
 
 export interface IAdminContactRequestPayload {

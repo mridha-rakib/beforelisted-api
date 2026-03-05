@@ -388,6 +388,7 @@ export class PreMarketNotifier {
           renterEmail: renterData.renterEmail,
           renterPhoneNumber: renterData.renterPhone || "N/A",
           requestId,
+          marketScope: preMarketRequest.scope || "Upcoming",
           requestDescription,
           submittedAt,
         });
@@ -422,10 +423,11 @@ export class PreMarketNotifier {
     const recipients = new Map<string, { name: string; email: string }>();
     let renterName = "Renter";
 
-    const renterProfileId = preMarketRequest.renterId?.toString();
-    if (renterProfileId) {
+    const renterUserId = preMarketRequest.renterId?.toString();
+    if (renterUserId) {
+      // NOTE: preMarketRequest.renterId stores renter userId, not renter document _id.
       const renterProfile =
-        await this.renterRepository.findByIdWithReferralInfo(renterProfileId);
+        await this.renterRepository.findRenterWithReferrer(renterUserId);
 
       if (renterProfile?.fullName) {
         renterName = renterProfile.fullName;
@@ -435,23 +437,37 @@ export class PreMarketNotifier {
         renterProfile?.registrationType === "agent_referral" &&
         renterProfile.referredByAgentId
       ) {
+        const referredAgent = renterProfile.referredByAgentId as any;
         const registeredAgentId =
-          typeof renterProfile.referredByAgentId === "string"
-            ? renterProfile.referredByAgentId
-            : renterProfile.referredByAgentId.toString();
+          typeof referredAgent === "object" && referredAgent?._id
+            ? referredAgent._id.toString()
+            : typeof referredAgent === "string"
+              ? referredAgent
+              : undefined;
 
-        const registeredAgentUser = await this.userRepository.findById(
-          registeredAgentId
-        );
+        let registeredAgentName =
+          typeof referredAgent === "object" ? referredAgent.fullName : undefined;
+        let registeredAgentEmail =
+          typeof referredAgent === "object" ? referredAgent.email : undefined;
 
-        if (registeredAgentUser?.email) {
-          const email = registeredAgentUser.email.trim();
-          if (email) {
-            recipients.set(email.toLowerCase(), {
-              name: registeredAgentUser.fullName || email,
-              email,
-            });
+        if (registeredAgentId && (!registeredAgentName || !registeredAgentEmail)) {
+          const registeredAgentUser = await this.userRepository.findById(
+            registeredAgentId
+          );
+          if (registeredAgentUser?.fullName) {
+            registeredAgentName = registeredAgentUser.fullName;
           }
+          if (registeredAgentUser?.email) {
+            registeredAgentEmail = registeredAgentUser.email;
+          }
+        }
+
+        const email = registeredAgentEmail?.trim();
+        if (email) {
+          recipients.set(email.toLowerCase(), {
+            name: registeredAgentName || email,
+            email,
+          });
         }
       }
     }

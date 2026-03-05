@@ -717,6 +717,7 @@ export function agentRenterRequestConfirmationTemplate(
   renterEmail: string,
   renterPhoneNumber: string,
   requestId: string,
+  marketScope: string,
   requestDescription: string,
   submittedAt: string,
   logoUrl?: string,
@@ -730,6 +731,7 @@ export function agentRenterRequestConfirmationTemplate(
   const safeRenterEmail = escapeHtml(renterEmail || "N/A");
   const safeRenterPhoneNumber = escapeHtml(renterPhoneNumber || "N/A");
   const safeRequestId = escapeHtml(requestId || "N/A");
+  const safeMarketScope = escapeHtml(marketScope || "N/A");
   const safeRequestDescription = escapeHtml(requestDescription || "N/A");
   const safeSubmittedAt = escapeHtml(submittedAt || "N/A");
 
@@ -812,6 +814,14 @@ export function agentRenterRequestConfirmationTemplate(
             margin: 20px 0 10px 0;
             color: ${brandColor};
         }
+        .referral-note-title {
+            font-weight: 600;
+            margin: 20px 0 10px 0;
+            color: #777;
+        }
+        .referral-note-text {
+            color: #777;
+        }
         .notes-list {
             margin: 0 0 20px 18px;
             padding: 0;
@@ -888,6 +898,10 @@ export function agentRenterRequestConfirmationTemplate(
                     ${safeRequestId}
                 </p>
                 <p>
+                    <strong>Market Scope:</strong><br>
+                    ${safeMarketScope}
+                </p>
+                <p>
                     <strong>Description:</strong><br>
                     ${safeRequestDescription}
                 </p>
@@ -909,8 +923,8 @@ export function agentRenterRequestConfirmationTemplate(
                 <li>Collaboration with another licensed agent requires renter consent and required disclosures.</li>
             </ul>
 
-            <div class="note-title">Referral reminder:</div>
-            <p>If you choose to refer this renter to another licensed agent who uses the BeforeListed&trade; website, whether through or outside the website, and a transaction results, referral fees will apply as outlined in the BeforeListed&trade; Agent Agreement, subject to brokerage approval and payable only upon closing.</p>
+            <div class="referral-note-title">Referral reminder:</div>
+            <p class="referral-note-text">If you choose to refer this renter to another licensed agent who uses the BeforeListed&trade; website, whether through or outside the website, and a transaction results, referral fees will apply as outlined in the BeforeListed&trade; Agent Agreement, subject to brokerage approval and payable only upon closing.</p>
 
             <p>If you have any questions or need assistance, please reply to this email.</p>
 
@@ -1511,6 +1525,148 @@ export function renterRequestClosedAgentAlertTemplate(
 }
 
 /**
+ * Email template for renter when their request is closed
+ */
+export function renterRequestClosedRenterNotificationTemplate(
+  renterFirstName: string,
+  requestId: string,
+  reason: string,
+  closedAt: string,
+  logoUrl?: string,
+  brandColor: string = "#1890FF"
+): string {
+  const currentYear = new Date().getFullYear();
+  const safeFirstName = escapeHtml(renterFirstName || "Renter");
+  const safeRequestId = escapeHtml(requestId || "N/A");
+  const safeReason = escapeHtml(reason || "N/A");
+  const safeClosedAt = escapeHtml(closedAt || "N/A");
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your request has been closed</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: ${brandColor};
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .greeting {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .details {
+            background-color: #fafafa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .details p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        .details strong {
+            color: ${brandColor};
+            display: inline-block;
+            min-width: 150px;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+        .footer a {
+            color: ${brandColor};
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            <h1>Your Request Has Been Closed</h1>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                Hi ${safeFirstName},
+            </div>
+
+            <p>This email is to inform you that your BeforeListed&trade; renter request has been closed.</p>
+
+            <p><strong>Request details:</strong></p>
+
+            <div class="details">
+                <p>
+                    <strong>Request ID:</strong><br>
+                    ${safeRequestId}
+                </p>
+                <p>
+                    <strong>Reason for closure:</strong><br>
+                    ${safeReason}
+                </p>
+                <p>
+                    <strong>Date closed:</strong><br>
+                    ${safeClosedAt}
+                </p>
+            </div>
+
+            <p>This request is no longer active, and any assisting agent(s) have been notified. If you believe this request was closed in error or if you have any questions, please contact our support team.</p>
+
+            <p>If you are still searching for an apartment, you are welcome to submit a new request at any time.</p>
+
+            <p>Thank you for using BeforeListed.</p>
+
+            <p>Best regards,<br><strong>BeforeListed&trade; Support</strong></p>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>
+            ${footerLinks(brandColor)}
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
+/**
  * Email template for agents when a renter updates a request
  */
 export function renterRequestUpdatedNotificationTemplate(
@@ -1529,11 +1685,13 @@ export function renterRequestUpdatedNotificationTemplate(
   const safeRequestId = escapeHtml(requestId || "N/A");
   const safeRenterName = escapeHtml(renterName || "N/A");
   const safeFields = updatedFields.map((field) => escapeHtml(field));
-  const safeFieldsSummary =
-    safeFields.length > 0 ? safeFields.join(", ") : "Not specified";
   const safeFieldValues = updatedFieldValues.map((value) => escapeHtml(value));
-  const safeFieldValuesSummary =
-    safeFieldValues.length > 0 ? safeFieldValues.join(", ") : "Not specified";
+  const safeFieldPairs = safeFields.map((field, index) => {
+    const value = safeFieldValues[index] || "Not specified";
+    return `${field} - ${value}`;
+  });
+  const safeUpdatedFieldsSummary =
+    safeFieldPairs.length > 0 ? safeFieldPairs.join(", ") : "Not specified";
   const safeUpdatedAt = escapeHtml(updatedAt || "N/A");
 
   return `
@@ -1636,7 +1794,7 @@ export function renterRequestUpdatedNotificationTemplate(
                 </p>
                 <p>
                     <strong>Updated fields:</strong><br>
-                    ${safeFieldsSummary} - ${safeFieldValuesSummary}
+                    ${safeUpdatedFieldsSummary}
                 </p>
                 <p>
                     <strong>Updated on:</strong><br>

@@ -1073,6 +1073,54 @@ export class PreMarketService {
     throw new ForbiddenException("This request is not available");
   }
 
+  private async notifyRenterRequestClosed(
+    request: IPreMarketRequest,
+    reason: string,
+    closedAt: Date,
+  ): Promise<void> {
+    const renterIdValue =
+      typeof request.renterId === "string"
+        ? request.renterId
+        : request.renterId?.toString();
+
+    if (!renterIdValue) {
+      logger.warn(
+        { requestId: request._id },
+        "Invalid renter ID for request closed notification",
+      );
+      return;
+    }
+
+    const renter =
+      await this.renterRepository.findRenterWithReferrer(renterIdValue);
+    if (!renter) {
+      logger.warn(
+        { renterId: renterIdValue },
+        "Renter not found for request closed notification",
+      );
+      return;
+    }
+
+    if (!renter.email) {
+      logger.warn(
+        { renterId: renterIdValue, requestId: request._id },
+        "Renter email missing for request closed notification",
+      );
+      return;
+    }
+
+    const renterFirstName = renter.fullName?.trim().split(" ")[0] || "Renter";
+    const requestIdentifier = request.requestId || request._id?.toString() || "N/A";
+
+    await emailService.sendRenterRequestClosedRenterNotification({
+      to: renter.email,
+      renterFirstName,
+      requestId: requestIdentifier,
+      reason,
+      closedAt: this.formatEasternTime(closedAt),
+    });
+  }
+
   private async notifyRenterAboutAdminDeletion(
     request: IPreMarketRequest,
   ): Promise<void> {
@@ -1466,6 +1514,15 @@ export class PreMarketService {
         "Failed to send request closed alert (non-blocking)",
       );
     });
+
+    this.notifyRenterRequestClosed(request, "Deleted by renter", closedAt).catch(
+      (error) => {
+        logger.error(
+          { error, requestId: request._id },
+          "Failed to send renter request closed notification (non-blocking)",
+        );
+      },
+    );
 
     await this.deleteGrantAccessRecords(requestId);
 
@@ -3267,6 +3324,15 @@ export class PreMarketService {
         "Failed to send request closed alert (non-blocking)",
       );
     });
+
+    this.notifyRenterRequestClosed(request, "Deleted by admin", closedAt).catch(
+      (error) => {
+        logger.error(
+          { error, requestId: request._id },
+          "Failed to send renter request closed notification (non-blocking)",
+        );
+      },
+    );
 
     this.notifyRenterAboutAdminDeletion(request).catch((error) => {
       logger.error(
