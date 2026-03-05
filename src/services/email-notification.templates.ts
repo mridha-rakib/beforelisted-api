@@ -1686,12 +1686,12 @@ export function renterRequestUpdatedNotificationTemplate(
   const safeRenterName = escapeHtml(renterName || "N/A");
   const safeFields = updatedFields.map((field) => escapeHtml(field));
   const safeFieldValues = updatedFieldValues.map((value) => escapeHtml(value));
-  const safeFieldPairs = safeFields.map((field, index) => {
-    const value = safeFieldValues[index] || "Not specified";
-    return `${field} - ${value}`;
-  });
+  const safeChangedFieldsSummary =
+    safeFields.length > 0 ? safeFields.join(", ") : "Not specified";
+  const safeChangedFieldsNewValues =
+    safeFieldValues.length > 0 ? safeFieldValues.join(", ") : "Not specified";
   const safeUpdatedFieldsSummary =
-    safeFieldPairs.length > 0 ? safeFieldPairs.join(", ") : "Not specified";
+    `${safeChangedFieldsSummary} - ${safeChangedFieldsNewValues}`;
   const safeUpdatedAt = escapeHtml(updatedAt || "N/A");
 
   return `
@@ -1785,19 +1785,19 @@ export function renterRequestUpdatedNotificationTemplate(
 
             <div class="details">
                 <p>
-                    <strong>Request ID:</strong><br>
+                    <strong>Request ID:</strong>
                     ${safeRequestId}
                 </p>
                 <p>
-                    <strong>Renter name:</strong><br>
+                    <strong>Renter name:</strong>
                     ${safeRenterName}
                 </p>
                 <p>
-                    <strong>Updated fields:</strong><br>
+                    <strong>Updated fields:</strong>
                     ${safeUpdatedFieldsSummary}
                 </p>
                 <p>
-                    <strong>Updated on:</strong><br>
+                    <strong>Updated on:</strong>
                     ${safeUpdatedAt}
                 </p>
             </div>

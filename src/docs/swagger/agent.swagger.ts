@@ -336,7 +336,9 @@ export const agentPaths = {
         },
       },
       responses: {
-        "200": { description: "Agent activated and link attached successfully" },
+        "200": {
+          description: "Agent activated and link attached successfully",
+        },
         "401": { description: "Unauthorized" },
         "403": { description: "Forbidden - Admin role required" },
         "404": { description: "Agent not found" },

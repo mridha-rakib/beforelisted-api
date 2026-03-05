@@ -107,6 +107,25 @@ export class PreMarketNotifier {
           parts.push(`Location: ${locParts.join(", ")}`);
         }
 
+        // Unit features
+        const selectedUnitFeatures: string[] = [];
+        if (request.unitFeatures?.laundryInUnit) {
+          selectedUnitFeatures.push("Laundry in unit");
+        }
+        if (request.unitFeatures?.privateOutdoorSpace) {
+          selectedUnitFeatures.push("Private outdoor space");
+        }
+        if (request.unitFeatures?.dishwasher) {
+          selectedUnitFeatures.push("Dishwasher");
+        }
+        parts.push(
+          `Unit Features: ${
+            selectedUnitFeatures.length > 0
+              ? selectedUnitFeatures.join(", ")
+              : "Not specified"
+          }`
+        );
+
         // Preferences
         if (request.preferences && request.preferences.length > 0) {
           parts.push(`Preferences: ${request.preferences.join(", ")}`);
@@ -131,7 +150,6 @@ export class PreMarketNotifier {
         listingUrl: `${env.CLIENT_URL}/listings/${preMarketRequest._id}`,
       };
 
-      await this.notifyAdminAboutNewRequest(payload);
       await this.notifyRenterAboutNewRequest(payload, renterData);
       await this.notifyReferringAgentAboutNewRequest(
         preMarketRequest,

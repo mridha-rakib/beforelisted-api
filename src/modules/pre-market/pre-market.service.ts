@@ -622,6 +622,9 @@ export class PreMarketService {
             : hasRequestedAccess
               ? "requested"
               : request.status;
+        const displayStatus = grantAccess
+          ? accessSummary.grantAccessStatus
+          : request.status;
         const referralInfo = request.renterId
           ? await this.getReferralInfoForRenter(request.renterId.toString())
           : null;
@@ -629,7 +632,7 @@ export class PreMarketService {
         return {
           ...request,
           referralInfo,
-          status: accessSummary.grantAccessStatus,
+          status: displayStatus,
           listingStatus,
           grantAccessStatus: accessSummary.grantAccessStatus,
           grantAccessId: accessSummary.grantAccessId,
