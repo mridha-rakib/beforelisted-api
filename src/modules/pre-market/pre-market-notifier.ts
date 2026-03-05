@@ -126,6 +126,57 @@ export class PreMarketNotifier {
           }`
         );
 
+        // Building features
+        const selectedBuildingFeatures: string[] = [];
+        if (request.buildingFeatures?.doorman) {
+          selectedBuildingFeatures.push("Doorman");
+        }
+        if (request.buildingFeatures?.elevator) {
+          selectedBuildingFeatures.push("Elevator");
+        }
+        if (request.buildingFeatures?.laundryInBuilding) {
+          selectedBuildingFeatures.push("Laundry in building");
+        }
+        parts.push(
+          `Building Features: ${
+            selectedBuildingFeatures.length > 0
+              ? selectedBuildingFeatures.join(", ")
+              : "Not specified"
+          }`
+        );
+
+        // Pet policy
+        const selectedPetPolicy: string[] = [];
+        if (request.petPolicy?.catsAllowed) {
+          selectedPetPolicy.push("Cats allowed");
+        }
+        if (request.petPolicy?.dogsAllowed) {
+          selectedPetPolicy.push("Dogs allowed");
+        }
+        parts.push(
+          `Pet Policy: ${
+            selectedPetPolicy.length > 0
+              ? selectedPetPolicy.join(", ")
+              : "Not specified"
+          }`
+        );
+
+        // Guarantor requirement
+        const selectedGuarantorOptions: string[] = [];
+        if (request.guarantorRequired?.personalGuarantor) {
+          selectedGuarantorOptions.push("Personal guarantor");
+        }
+        if (request.guarantorRequired?.thirdPartyGuarantor) {
+          selectedGuarantorOptions.push("Third party guarantor");
+        }
+        parts.push(
+          `Guarantor Required: ${
+            selectedGuarantorOptions.length > 0
+              ? selectedGuarantorOptions.join(", ")
+              : "Not specified"
+          }`
+        );
+
         // Preferences
         if (request.preferences && request.preferences.length > 0) {
           parts.push(`Preferences: ${request.preferences.join(", ")}`);
