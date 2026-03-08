@@ -30,6 +30,51 @@ const controller = new PreMarketController();
 //   })
 // );
 
+// app.use(
+//   cors({
+//     origin: (origin, callback) => {
+//       if (!origin) {
+//         callback(null, true);
+//         return;
+//       }
+
+//       const allowedOrigins = new Set([
+//         "https://beforelisted.com",
+//         "https://www.beforelisted.com",
+//         "https://dashboard.beforelisted.com",
+//         "http://localhost:3000",
+//         "http://localhost:3001",
+//         "*",
+//       ]);
+
+//       if (allowedOrigins.has(origin)) {
+//         callback(null, true);
+//         return;
+//       }
+
+//       callback(new Error(`CORS blocked for origin: ${origin}`));
+//     },
+//     credentials: true,
+//     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+//     allowedHeaders: [
+//       "Content-Type",
+//       "Authorization",
+//       "X-Requested-With",
+//       "Accept",
+//       "Origin",
+//     ],
+//   }),
+// );
+
+const allowedOrigins = new Set([
+  env.CLIENT_URL,
+  "https://beforelisted.com",
+  "https://www.beforelisted.com",
+  "https://dashboard.beforelisted.com",
+  "http://localhost:3000",
+  "http://localhost:3001",
+]);
+
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -37,15 +82,6 @@ app.use(
         callback(null, true);
         return;
       }
-
-      const allowedOrigins = new Set([
-        "https://beforelisted.com",
-        "https://www.beforelisted.com",
-        "https://dashboard.beforelisted.com",
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "*",
-      ]);
 
       if (allowedOrigins.has(origin)) {
         callback(null, true);
@@ -65,11 +101,6 @@ app.use(
     ],
   }),
 );
-
-// app.use(cors({
-//   origin: "true",
-//   credentials: true,
-// }))
 
 const captureRawBody = (
   req: any,

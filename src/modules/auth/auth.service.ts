@@ -174,8 +174,14 @@ export class AuthService {
           !currentReferralCode ||
           currentReferralCode !== payload.referralCode
         ) {
-          throw new BadRequestException(
-            "Your account already has a referral. You cannot login with a different referral code.",
+          logger.info(
+            {
+              renterUserId: user._id.toString(),
+              existingReferralCode: currentReferralCode,
+              suppliedReferralCode: payload.referralCode,
+              registrationType: renter.registrationType,
+            },
+            "Skipping supplied renter referral code because the account already has a referral",
           );
         }
       }
