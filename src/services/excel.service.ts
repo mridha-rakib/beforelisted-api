@@ -46,6 +46,7 @@ export class ExcelService {
         "Renter Name",
         "Email",
         "Phone",
+        "Tag",
         "Looking to Purchase",
         "Purchase Timeline",
         "Buyer Specialist Needed",
@@ -63,6 +64,7 @@ export class ExcelService {
         "Pet Policy",
         "Guarantor Required",
         "Preferences",
+        "Market Scope",
         "Status",
         "Created Date",
       ];
@@ -123,8 +125,8 @@ export class ExcelService {
         }
 
         // Center align status and dates
-        dataRow.getCell(22).alignment = { horizontal: "center" };
-        dataRow.getCell(23).alignment = { horizontal: "center" };
+        dataRow.getCell(24).alignment = { horizontal: "center" };
+        dataRow.getCell(25).alignment = { horizontal: "center" };
 
         rowCount++;
       }
@@ -135,6 +137,7 @@ export class ExcelService {
         15, // Renter Name
         20, // Email
         15, // Phone
+        26, // Tag
         18, // Looking to Purchase
         18, // Purchase Timeline
         20, // Buyer Specialist Needed
@@ -152,6 +155,7 @@ export class ExcelService {
         12, // Pet Policy
         15, // Guarantor
         20, // Preferences
+        14, // Market Scope
         12, // Status
         15, // Created Date
       ];
@@ -164,7 +168,7 @@ export class ExcelService {
       if (requests.length > 0) {
         worksheet.autoFilter = {
           from: "A1",
-          to: `W${requests.length + 1}`,
+          to: `Y${requests.length + 1}`,
         };
       }
 
@@ -211,6 +215,7 @@ export class ExcelService {
           "Renter Name",
           "Email",
           "Phone",
+          "Tag",
           "Looking to Purchase",
           "Purchase Timeline",
           "Buyer Specialist Needed",
@@ -228,6 +233,7 @@ export class ExcelService {
           "Pet Policy",
           "Guarantor Required",
           "Preferences",
+          "Market Scope",
           "Status",
           "Created Date",
         ];
@@ -247,8 +253,8 @@ export class ExcelService {
 
         // Set column widths
         worksheet.columns = [
-          18, 15, 20, 15, 18, 18, 20, 20, 15, 15, 12, 12, 15, 25, 10, 10, 20,
-          20, 12, 15, 20, 12, 15,
+          18, 15, 20, 15, 26, 18, 18, 20, 20, 15, 15, 12, 12, 15, 25, 10, 10,
+          20, 20, 12, 15, 20, 14, 12, 15,
         ].map((width) => ({ width }));
       }
 
@@ -537,6 +543,7 @@ export class ExcelService {
       this.getRenterName(request),
       this.getRenterEmail(request),
       this.getRenterPhone(request),
+      this.getReferralTag(request),
       this.getQuestionnaireFlag(request, [
         "lookingToPurchase",
         "isLookingToPurchase",
@@ -596,6 +603,7 @@ export class ExcelService {
       this.formatListValue(
         request.preferences ?? request.preference ?? request.specialPreferences
       ),
+      this.getMarketScope(request),
       request.status || request.requestStatus || "unknown",
       this.formatDate(request.createdAt),
     ];
@@ -652,6 +660,46 @@ export class ExcelService {
 
     if (request.renterPhone) return request.renterPhone;
     return "N/A";
+  }
+
+  private getReferralTag(request: any): string {
+    const directReferralInfo = request.renterInfo?.referralInfo;
+    if (
+      directReferralInfo &&
+      (directReferralInfo.referrerName || directReferralInfo.referrerEmail)
+    ) {
+      return this.formatNameEmail(
+        directReferralInfo.referrerName,
+        directReferralInfo.referrerEmail
+      );
+    }
+
+    const registrationType = this.getRenterRegistrationType(request);
+    const referrer =
+      registrationType === "admin_referral"
+        ? request.referredByAdminInfo ??
+          request.renterInfo?.referredByAdmin ??
+          request.renterId?.referredByAdminId
+        : registrationType === "agent_referral"
+          ? request.referredByAgentInfo ??
+            request.renterInfo?.referredByAgent ??
+            request.renterId?.referredByAgentId
+          : request.referredByAdminInfo ??
+            request.renterInfo?.referredByAdmin ??
+            request.referredByAgentInfo ??
+            request.renterInfo?.referredByAgent;
+
+    return this.formatNameEmail(
+      referrer?.fullName ?? referrer?.referrerName,
+      referrer?.email ?? referrer?.referrerEmail
+    );
+  }
+
+  private getMarketScope(request: any): string {
+    const scope = request.scope ?? request.marketScope;
+    return typeof scope === "string" && scope.trim().length > 0
+      ? scope.trim()
+      : "N/A";
   }
 
   private getLocations(request: any): Array<Record<string, unknown>> {
@@ -801,6 +849,30 @@ export class ExcelService {
       if (typeof value === "string" && value.trim().length > 0) {
         return value.trim();
       }
+    }
+
+    return "N/A";
+  }
+
+  private formatNameEmail(
+    name: unknown,
+    email: unknown
+  ): string {
+    const normalizedName =
+      typeof name === "string" && name.trim().length > 0 ? name.trim() : "";
+    const normalizedEmail =
+      typeof email === "string" && email.trim().length > 0 ? email.trim() : "";
+
+    if (normalizedName && normalizedEmail) {
+      return `${normalizedName} | ${normalizedEmail}`;
+    }
+
+    if (normalizedName) {
+      return normalizedName;
+    }
+
+    if (normalizedEmail) {
+      return normalizedEmail;
     }
 
     return "N/A";

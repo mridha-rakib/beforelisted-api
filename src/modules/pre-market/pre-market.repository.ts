@@ -553,6 +553,66 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
             },
           },
         },
+        {
+          $lookup: {
+            from: "users",
+            let: {
+              referrerId: "$renterInfo.referredByAgentId",
+            },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: ["$_id", "$$referrerId"],
+                  },
+                },
+              },
+              {
+                $project: {
+                  _id: 1,
+                  fullName: 1,
+                  email: 1,
+                },
+              },
+            ],
+            as: "referredByAgentInfo",
+          },
+        },
+        {
+          $lookup: {
+            from: "users",
+            let: {
+              referrerId: "$renterInfo.referredByAdminId",
+            },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: ["$_id", "$$referrerId"],
+                  },
+                },
+              },
+              {
+                $project: {
+                  _id: 1,
+                  fullName: 1,
+                  email: 1,
+                },
+              },
+            ],
+            as: "referredByAdminInfo",
+          },
+        },
+        {
+          $addFields: {
+            referredByAgentInfo: {
+              $arrayElemAt: ["$referredByAgentInfo", 0],
+            },
+            referredByAdminInfo: {
+              $arrayElemAt: ["$referredByAdminInfo", 0],
+            },
+          },
+        },
 
         {
           $project: {
