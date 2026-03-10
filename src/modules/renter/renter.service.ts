@@ -190,6 +190,9 @@ export class RenterService {
         ? { ...payload.questionnaire, _id: false }
         : undefined,
     });
+    const registeredAgent = await this.getAssignedAgentWelcomeDetails(
+      assignedAgentId
+    );
 
     let emailResult: any = null;
     try {
@@ -214,6 +217,81 @@ export class RenterService {
           },
           "✅ Admin referral email sent successfully"
         );
+
+        const adminEmail = process.env.ADMIN_EMAIL;
+        if (!adminEmail) {
+          logger.warn("ADMIN_EMAIL not configured in environment");
+        } else {
+          try {
+            await this.emailService.sendRenterRegistrationVerifiedAdminNotification(
+              {
+                to: adminEmail,
+                renterName: user.fullName || "N/A",
+                renterPhone: user.phoneNumber || "N/A",
+                renterEmail: user.email,
+                registrationDate: this.formatEasternTime(
+                  user.createdAt ? new Date(user.createdAt) : new Date()
+                ),
+                registeredAgentName: registeredAgent.fullName || "N/A",
+                registeredAgentBrokerage: registeredAgent.brokerage || "N/A",
+              }
+            );
+          } catch (adminNotificationError) {
+            logger.error(
+              {
+                userId: user._id,
+                email: user.email,
+                error:
+                  adminNotificationError instanceof Error
+                    ? adminNotificationError.message
+                    : String(adminNotificationError),
+              },
+              "❌ Error sending admin notification for admin referral renter registration"
+            );
+          }
+        }
+
+        try {
+          const welcomeEmailResult = await this.emailService.sendWelcomeEmail({
+            to: user.email,
+            userName: user.fullName,
+            userType: ROLES.RENTER,
+            loginLink: `${process.env.CLIENT_URL}/login`,
+            registeredAgent,
+          });
+
+          if (welcomeEmailResult?.success) {
+            logger.info(
+              {
+                userId: user._id,
+                email: user.email,
+                messageId: welcomeEmailResult.messageId,
+              },
+              "✅ Admin referral renter welcome email sent successfully"
+            );
+          } else {
+            logger.warn(
+              {
+                userId: user._id,
+                email: user.email,
+                error: welcomeEmailResult?.error,
+              },
+              "⚠️ Welcome email send failed after admin referral password email"
+            );
+          }
+        } catch (welcomeEmailError) {
+          logger.error(
+            {
+              userId: user._id,
+              email: user.email,
+              error:
+                welcomeEmailError instanceof Error
+                  ? welcomeEmailError.message
+                  : String(welcomeEmailError),
+            },
+            "❌ Error sending admin referral renter welcome email"
+          );
+        }
       } else {
         logger.warn(
           {
@@ -541,6 +619,55 @@ export class RenterService {
     }
 
     return defaultAgent._id.toString();
+  }
+
+  private async getAssignedAgentWelcomeDetails(agentId: string): Promise<{
+    fullName: string;
+    title: string;
+    brokerage: string;
+  }> {
+    const fallbackAgent = {
+      fullName: SYSTEM_DEFAULT_AGENT.fullName,
+      title: SYSTEM_DEFAULT_AGENT.title,
+      brokerage: SYSTEM_DEFAULT_AGENT.brokerageName,
+    };
+
+    try {
+      const agent = await new AgentProfileRepository().findByUserId(agentId);
+      const populatedUser =
+        agent?.userId && typeof agent.userId === "object"
+          ? (agent.userId as { fullName?: string })
+          : null;
+
+      return {
+        fullName: populatedUser?.fullName || fallbackAgent.fullName,
+        title: agent?.title || fallbackAgent.title,
+        brokerage: agent?.brokerageName || fallbackAgent.brokerage,
+      };
+    } catch (error) {
+      logger.warn(
+        {
+          agentId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "Failed to resolve assigned agent details for renter welcome email"
+      );
+
+      return fallbackAgent;
+    }
+  }
+
+  private formatEasternTime(date: Date): string {
+    return date.toLocaleString("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZoneName: "short",
+    });
   }
 
   async getAllRenters(

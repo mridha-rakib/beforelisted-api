@@ -2309,8 +2309,8 @@ export function renterRegistrationVerifiedAdminTemplate(
                 </table>
             </div>
 
-            <p>The renter can now submit and manage rental requests through the platform.</p>
-            <p>No action is required unless you wish to review this registration.</p>
+            <p>The renter can now submit and manage rental requests through the website.</p>
+            <p>No action is required unless you wish to review this registration</p>
 
             <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>

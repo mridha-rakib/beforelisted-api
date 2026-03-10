@@ -240,6 +240,21 @@ export const authSchemas = {
                     description:
                       "Available for agent referrals; null for admin referrals",
                   },
+                  brokerageName: {
+                    type: "string",
+                    nullable: true,
+                    example: "Aufderhar and Sons",
+                    description:
+                      "For agent referrals, this is the referring agent brokerage. For admin referrals, this is the assigned default agent brokerage.",
+                  },
+                  activationLink: {
+                    type: "string",
+                    nullable: true,
+                    example:
+                      "https://powerforms.docusign.net/3d78f62d-edfc-4831-890c-5b4e9f71978d?env=na1&renter_name=Geramy%20pachoki&renter_email=tuvalmor1@gmail.com&renter_phone=6469998456&agent_name=Tiga%20Sphere",
+                    description:
+                      "For agent referrals, this is the referring agent activation link. For admin referrals, this is the assigned default agent activation link.",
+                  },
                   email: {
                     type: "string",
                     nullable: true,

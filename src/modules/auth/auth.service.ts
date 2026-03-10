@@ -236,12 +236,40 @@ export class AuthService {
       } else if (renter?.registrationType === "admin_referral") {
         const referrer = renter.referredByAdminId as any;
         if (referrer) {
+          let assignedAgentBrokerageName: string | null = null;
+          let assignedAgentActivationLink: string | null = null;
+          const assignedAgentId =
+            renter.referredByAgentId &&
+            typeof renter.referredByAgentId === "object"
+              ? renter.referredByAgentId._id?.toString?.() || null
+              : typeof renter.referredByAgentId === "string"
+                ? renter.referredByAgentId
+                : null;
+
+          if (assignedAgentId) {
+            const agentRepository = new AgentProfileRepository();
+            const assignedAgentProfile =
+              await agentRepository.findByUserId(assignedAgentId);
+
+            assignedAgentBrokerageName =
+              assignedAgentProfile?.brokerageName ||
+              SYSTEM_DEFAULT_AGENT.brokerageName;
+            assignedAgentActivationLink =
+              assignedAgentProfile?.activationLink || null;
+          } else {
+            const defaultAgent = await this.getDefaultReferralAgentForError();
+            assignedAgentBrokerageName = defaultAgent.brokerageName;
+            assignedAgentActivationLink = defaultAgent.activationLink;
+          }
+
           referralInfo = {
             registrationType: "admin_referral",
             referrer: {
               id: referrer._id?.toString() ?? String(referrer),
               role: "Admin",
               fullName: referrer.fullName ?? null,
+              brokerageName: assignedAgentBrokerageName,
+              activationLink: assignedAgentActivationLink,
               email: referrer.email ?? null,
               phoneNumber: referrer.phoneNumber ?? null,
               referralCode: referrer.referralCode ?? null,
