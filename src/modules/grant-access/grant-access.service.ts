@@ -149,16 +149,6 @@ export class GrantAccessService {
       );
     }
 
-    const lockClaimed = await this.preMarketRepository.claimRequestLock(
-      preMarketRequestId,
-      agentId,
-    );
-    if (!lockClaimed) {
-      throw new ConflictException(
-        "Another agent already matched or requested this listing",
-      );
-    }
-
     // Create grant access request
     let grantAccess: IGrantAccessRequest;
     try {
@@ -169,14 +159,6 @@ export class GrantAccessService {
         createdAt: new Date(),
       });
     } catch (error) {
-      await this.preMarketRepository
-        .releaseRequestLock(preMarketRequestId, agentId)
-        .catch((unlockError) => {
-          logger.error(
-            { unlockError, preMarketRequestId, agentId },
-            "Failed to release request lock after create failure",
-          );
-        });
       throw error;
     }
 

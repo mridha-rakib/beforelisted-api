@@ -563,14 +563,24 @@ export class PreMarketService {
       visibilityFilter,
       cutoffFilter,
     ]);
-    const matchedRequestIds =
-      await this.grantAccessRepository.findMatchedPreMarketRequestIds();
-
+    const agentOwnedAccessRecords =
+      await this.grantAccessRepository.findByAgentIdAndStatuses(agentId, [
+        "approved",
+        "free",
+        "paid",
+      ]);
+    const excludedRequestIds = Array.from(
+      new Set(
+        agentOwnedAccessRecords
+          .map((record) => record.preMarketRequestId?.toString())
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
     const paginated =
-      matchedRequestIds.length > 0
+      excludedRequestIds.length > 0
         ? await this.preMarketRepository.findAllWithPaginationExcludingIds(
             query,
-            matchedRequestIds,
+            excludedRequestIds,
             combinedFilters,
           )
         : await this.preMarketRepository.findAllWithPagination(
@@ -1004,44 +1014,16 @@ export class PreMarketService {
     return { $and: active };
   }
 
-  private buildLockVisibilityFilter(agentId: string): Record<string, any> {
-    return {
-      $or: [
-        { lockedByAgentId: { $exists: false } },
-        { lockedByAgentId: null },
-        { lockedByAgentId: agentId },
-      ],
-    };
-  }
-
-  private isRequestLockedForOtherAgent(
-    agentId: string,
-    request: IPreMarketRequest,
-  ): boolean {
-    const lockOwner = this.normalizeUserId(
-      (request as unknown as { lockedByAgentId?: string | Types.ObjectId })
-        .lockedByAgentId,
-    );
-
-    return Boolean(lockOwner && lockOwner !== agentId);
-  }
-
   private async buildRequestVisibilityFilterForAgent(
     agentId: string,
   ): Promise<Record<string, any>> {
-    const sharedLockFilter = this.buildLockVisibilityFilter(agentId);
-
     return {
       $or: [
         {
           $and: [{ visibility: "PRIVATE" }, { referralAgentId: agentId }],
         },
         {
-          $and: [
-            { visibility: "SHARED" },
-            { shareConsent: true },
-            sharedLockFilter,
-          ],
+          $and: [{ visibility: "SHARED" }, { shareConsent: true }],
         },
       ],
     };
@@ -1056,15 +1038,7 @@ export class PreMarketService {
     const isSharedWithConsent =
       visibility === "SHARED" && request.shareConsent === true;
     if (isSharedWithConsent) {
-      if (!this.isRequestLockedForOtherAgent(agentId, request)) {
-        return;
-      }
-
-      throw new ForbiddenException("This request is not available");
-    }
-
-    if (this.isRequestLockedForOtherAgent(agentId, request)) {
-      throw new ForbiddenException("This request is not available");
+      return;
     }
 
     const registeredAgentId =
@@ -1614,15 +1588,6 @@ export class PreMarketService {
     visibility: "PRIVATE" | "SHARED",
   ): Promise<IPreMarketRequest> {
     const request = await this.getRequestById(requestId);
-    const isLockedForOtherAgent = this.isRequestLockedForOtherAgent(
-      agentId,
-      request,
-    );
-    if (visibility === "SHARED" && isLockedForOtherAgent) {
-      throw new ForbiddenException(
-        "Visibility cannot be changed while another agent owns this request",
-      );
-    }
 
     const registeredAgentId =
       await this.resolveRegisteredAgentIdForRequest(request);
@@ -1991,16 +1956,17 @@ export class PreMarketService {
     }
 
     // ============================================
-    // AGENTS: See ONLY matched (free/paid) listings
+    // AGENTS: See agent-specific approved/matched listings
     // ============================================
     logger.info(
       { agentId, type: agent.hasGrantAccess ? "grant-access" : "normal" },
-      "Agent fetching matched pre-market listings",
+      "Agent fetching approved and matched pre-market listings",
     );
 
-    // Step 1: Get all GrantAccess records for this agent with access
+    // Step 1: Get agent-specific records that should live outside /pre-market/all
     const accessRecords =
       await this.grantAccessRepository.findByAgentIdAndStatuses(agentId, [
+        "approved",
         "free",
         "paid",
       ]);
@@ -2050,47 +2016,50 @@ export class PreMarketService {
       return timeB - timeA;
     });
 
-    const visibleListings: IPreMarketRequest[] = [];
-    for (const listing of sortedListings) {
-      if (this.isRequestLockedForOtherAgent(agentId, listing)) {
-        continue;
-      }
-
-      const visibility =
-        (listing as unknown as { visibility?: "PRIVATE" | "SHARED" }).visibility ??
-        "PRIVATE";
-
-      if (visibility === "SHARED") {
-        visibleListings.push(listing);
-        continue;
-      }
-
-      const registeredAgentId =
-        await this.resolveRegisteredAgentIdForRequest(listing);
-      if (registeredAgentId && registeredAgentId === agentId) {
-        visibleListings.push(listing);
-      }
-    }
-
     // Manual pagination - counts ONLY your filtered results
     const page = (query.page as number) || 1;
     const limit = (query.limit as number) || 10;
-    const total = visibleListings.length;
-    const pages = Math.ceil(total / limit);
+    const total = sortedListings.length;
     const startIndex = (page - 1) * limit;
-    const paginatedData = visibleListings.slice(startIndex, startIndex + limit);
+    const paginatedData = sortedListings.slice(startIndex, startIndex + limit);
+    const accessRecordByRequestId = new Map(
+      accessRecords.map((access) => [
+        access.preMarketRequestId.toString(),
+        access,
+      ]),
+    );
 
-    // Enrich with renter info
+    // Enrich with agent-specific access state
     const enrichedData = await Promise.all(
       paginatedData.map(async (request: any) => {
-        const renterInfo = await this.getRenterInfoForRequest(
-          request.renterId?.toString(),
+        const accessRecord = accessRecordByRequestId.get(
+          request._id?.toString() || "",
         );
+        const accessSummary = this.buildAgentAccessSummary(
+          accessRecord || null,
+          agent.hasGrantAccess === true,
+        );
+        const renterInfo = accessSummary.canSeeRenterInfo
+          ? await this.getRenterInfoForRequest(request.renterId?.toString())
+          : null;
+        const listingStatus =
+          accessSummary.grantAccessStatus === "approved"
+            ? "approved"
+            : "matched";
+
         return {
           ...request,
           renterInfo,
-          status: "matched",
-          listingStatus: "matched",
+          status: accessSummary.grantAccessStatus,
+          listingStatus,
+          grantAccessStatus: accessSummary.grantAccessStatus,
+          grantAccessId: accessSummary.grantAccessId,
+          accessType: accessSummary.accessType,
+          canRequestAccess: false,
+          chargeAmount: accessSummary.chargeAmount ?? null,
+          ...(accessSummary.showPayment && accessSummary.payment
+            ? { payment: accessSummary.payment }
+            : {}),
         };
       }),
     );
@@ -2173,16 +2142,6 @@ export class PreMarketService {
       );
     }
 
-    const lockClaimed = await this.preMarketRepository.claimRequestLock(
-      requestId,
-      agentId,
-    );
-    if (!lockClaimed) {
-      throw new ConflictException(
-        "Another agent already matched or requested this listing",
-      );
-    }
-
     const existing = await this.grantAccessRepository.findByAgentAndRequest(
       agentId,
       requestId,
@@ -2213,14 +2172,6 @@ export class PreMarketService {
         });
       }
     } catch (error) {
-      await this.preMarketRepository
-        .releaseRequestLock(requestId, agentId)
-        .catch((unlockError) => {
-          logger.error(
-            { unlockError, requestId, agentId },
-            "Failed to release request lock after match failure",
-          );
-        });
       throw error;
     }
 
