@@ -2168,9 +2168,10 @@ export class EmailTemplates {
 
       <!-- Admin Referral Badge -->
       <div class="admin-badge">
-        <div class="admin-badge-title">👤 ADMIN REFERRAL ACCOUNT</div>
+        <div class="admin-badge-title">Renters Edge Specification Complete</div>
         <p class="admin-badge-text">
-          You've been invited by an administrator to join BeforeListed as a ${accountType}.
+          Thank you for completing The Mor Team "Renters Edge" Specification Form.
+          Your BeforeListed account is now set up and ready for access.
         </p>
       </div>
 
