@@ -72,8 +72,9 @@ export const agentPaths = {
   "/agent/email-subscription/toggle": {
     post: {
       tags: ["Agent Management"],
-      summary: "Toggle agent email subscription",
-      description: "Enable or disable email notifications for the agent.",
+      summary: "Toggle shared-request email subscription",
+      description:
+        "Enable or disable the one-time agent email sent when another agent makes a renter request shared/public via /pre-market/:requestId/toggle-share.",
       operationId: "toggleAgentEmailSubscription",
       security: [{ bearerAuth: [] }],
       responses: {

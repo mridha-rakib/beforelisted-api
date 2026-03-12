@@ -73,6 +73,7 @@ const allowedOrigins = new Set([
   "https://dashboard.beforelisted.com",
   "http://localhost:3000",
   "http://localhost:3001",
+  "https://craps-work-mating-encouraging.trycloudflare.com",
 ]);
 
 app.use(

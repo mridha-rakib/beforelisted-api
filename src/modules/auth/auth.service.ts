@@ -14,6 +14,7 @@ import {
   UnauthorizedException,
 } from "@/utils/app-error.utils";
 import { comparePassword, hashPassword } from "@/utils/password.utils";
+import { resolveSharedRequestEmailSubscriptionEnabled } from "../agent/agent-email-subscription.utils";
 import type { IAgentProfile } from "../agent/agent.interface";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import type { AgentProfileResponse } from "../agent/agent.type";
@@ -907,6 +908,9 @@ export class AuthService {
   }
 
   private toAgentProfileResponse(agent: IAgentProfile): AgentProfileResponse {
+    const sharedRequestEmailSubscriptionEnabled =
+      resolveSharedRequestEmailSubscriptionEnabled(agent);
+
     return {
       _id: agent._id?.toString() ?? "",
       userInfo:
@@ -921,7 +925,8 @@ export class AuthService {
       activationLink: agent.activationLink,
       totalRentersReferred: agent.totalRentersReferred,
       activeReferrals: agent.activeReferrals,
-      emailSubscriptionEnabled: agent.emailSubscriptionEnabled !== false,
+      emailSubscriptionEnabled: sharedRequestEmailSubscriptionEnabled,
+      sharedRequestEmailSubscriptionEnabled,
       acceptingRequests: agent.acceptingRequests !== false,
       acceptingRequestsToggledAt: agent.acceptingRequestsToggledAt,
       hasGrantAccess: agent.hasGrantAccess,

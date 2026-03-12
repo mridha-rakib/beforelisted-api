@@ -21,6 +21,7 @@ import { PreMarketService } from "../pre-market/pre-market.service";
 import { ReferralService } from "../referral/referral.service";
 import { RenterRepository } from "../renter/renter.repository";
 import { UserService } from "../user/user.service";
+import { resolveSharedRequestEmailSubscriptionEnabled } from "./agent-email-subscription.utils";
 import type { IAgentProfile } from "./agent.interface";
 import { AgentProfileRepository } from "./agent.repository";
 import type {
@@ -196,8 +197,12 @@ export class AgentService {
     if (payload.brokerageName)
       agentPayload.brokerageName = payload.brokerageName;
     if (payload.title) agentPayload.title = payload.title;
-    if (payload.emailSubscriptionEnabled !== undefined) {
-      agentPayload.emailSubscriptionEnabled = payload.emailSubscriptionEnabled;
+    const sharedRequestEmailSubscriptionEnabled =
+      payload.sharedRequestEmailSubscriptionEnabled ??
+      payload.emailSubscriptionEnabled;
+    if (sharedRequestEmailSubscriptionEnabled !== undefined) {
+      agentPayload.sharedRequestEmailSubscriptionEnabled =
+        sharedRequestEmailSubscriptionEnabled;
     }
 
     if (Object.keys(agentPayload).length > 0) {
@@ -225,20 +230,24 @@ export class AgentService {
 
   async toggleEmailSubscription(userId: string): Promise<{
     emailSubscriptionEnabled: boolean;
+    sharedRequestEmailSubscriptionEnabled: boolean;
   }> {
     const profile = await this.repository.findByUserId(userId);
     if (!profile) {
       throw new NotFoundException("Agent profile not found");
     }
 
-    const current = profile.emailSubscriptionEnabled !== false;
+    const current = resolveSharedRequestEmailSubscriptionEnabled(profile);
     const nextValue = !current;
 
     await this.repository.updateProfile(userId, {
-      emailSubscriptionEnabled: nextValue,
+      sharedRequestEmailSubscriptionEnabled: nextValue,
     });
 
-    return { emailSubscriptionEnabled: nextValue };
+    return {
+      emailSubscriptionEnabled: nextValue,
+      sharedRequestEmailSubscriptionEnabled: nextValue,
+    };
   }
 
   async toggleAcceptingRequests(userId: string): Promise<{
@@ -835,6 +844,9 @@ export class AgentService {
   }
 
   private toResponse(agent: IAgentProfile): AgentProfileResponse {
+    const sharedRequestEmailSubscriptionEnabled =
+      resolveSharedRequestEmailSubscriptionEnabled(agent);
+
     return {
       _id: agent._id?.toString() ?? "",
       userInfo:
@@ -849,7 +861,8 @@ export class AgentService {
       activationLink: agent.activationLink,
       totalRentersReferred: agent.totalRentersReferred,
       activeReferrals: agent.activeReferrals,
-      emailSubscriptionEnabled: agent.emailSubscriptionEnabled !== false,
+      emailSubscriptionEnabled: sharedRequestEmailSubscriptionEnabled,
+      sharedRequestEmailSubscriptionEnabled,
       acceptingRequests: agent.acceptingRequests !== false,
       acceptingRequestsToggledAt: agent.acceptingRequestsToggledAt,
       hasGrantAccess: agent.hasGrantAccess,

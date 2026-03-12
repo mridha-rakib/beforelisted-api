@@ -49,7 +49,7 @@ router.delete(
 
 /**
  * POST /agent/email-subscription/toggle
- * Toggle email subscription ON/OFF
+ * Toggle shared-request email subscription ON/OFF
  */
 router.post(
   "/email-subscription/toggle",

@@ -18,6 +18,7 @@ import {
 } from "@/utils/app-error.utils";
 import { PaginationHelper } from "@/utils/pagination-helper";
 import { Types } from "mongoose";
+import { resolveSharedRequestEmailSubscriptionEnabled } from "../agent/agent-email-subscription.utils";
 import type { IAgentProfile } from "../agent/agent.interface";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import type { IGrantAccessRequest } from "../grant-access/grant-access.model";
@@ -1758,12 +1759,14 @@ export class PreMarketService {
     const profiles = await this.agentRepository.find({
       isActive: true,
       isSuspended: false,
-      emailSubscriptionEnabled: true,
     } as any);
 
     const candidateAgentIds = Array.from(
       new Set(
         profiles
+          .filter((profile) =>
+            resolveSharedRequestEmailSubscriptionEnabled(profile),
+          )
           .map((profile) => this.normalizeUserId(profile.userId))
           .filter(
             (agentId): agentId is string =>

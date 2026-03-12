@@ -76,7 +76,7 @@ export class AgentController {
       ApiResponse.success(
         res,
         result,
-        "Agent email subscription updated successfully"
+        "Shared request email subscription updated successfully"
       );
     }
   );

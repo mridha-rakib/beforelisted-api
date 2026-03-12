@@ -37,6 +37,7 @@ export const updateAgentProfileSchema = z.object({
     brokerageName: z.string().min(1).max(100).optional(),
     title: z.enum(AGENT_TITLES).optional(),
     emailSubscriptionEnabled: z.boolean().optional(),
+    sharedRequestEmailSubscriptionEnabled: z.boolean().optional(),
   }),
 });
 
