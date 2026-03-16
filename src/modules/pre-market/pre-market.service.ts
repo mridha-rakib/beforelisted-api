@@ -2112,9 +2112,14 @@ export class PreMarketService {
           accessSummary.grantAccessStatus === "approved"
             ? "approved"
             : "matched";
+        const responseScope =
+          listingStatus === "matched" && request.scope === "All Market"
+            ? "Upcoming (M)"
+            : request.scope;
 
         return {
           ...request,
+          scope: responseScope,
           renterInfo,
           status: accessSummary.grantAccessStatus,
           listingStatus,

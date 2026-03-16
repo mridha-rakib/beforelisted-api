@@ -1,5 +1,6 @@
 // src/services/excel.service.ts
 
+import { SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 import { AgentProfileRepository } from "@/modules/agent/agent.repository";
 import { PreMarketRepository } from "@/modules/pre-market/pre-market.repository";
@@ -47,7 +48,7 @@ export class ExcelService {
         "Email",
         "Phone",
         "Tag",
-        "Looking to Purchase",
+        "Are you looking to start a request",
         "Purchase Timeline",
         "Buyer Specialist Needed",
         "Renter Specialist Needed",
@@ -216,7 +217,7 @@ export class ExcelService {
           "Email",
           "Phone",
           "Tag",
-          "Looking to Purchase",
+          "Are you looking to start a request",
           "Purchase Timeline",
           "Buyer Specialist Needed",
           "Renter Specialist Needed",
@@ -663,6 +664,11 @@ export class ExcelService {
   }
 
   private getReferralTag(request: any): string {
+    const registrationType = this.getRenterRegistrationType(request);
+    if (registrationType === "admin_referral") {
+      return `${SYSTEM_DEFAULT_AGENT.fullName} | ${SYSTEM_DEFAULT_AGENT.email} (default agent)`;
+    }
+
     const directReferralInfo = request.renterInfo?.referralInfo;
     if (
       directReferralInfo &&
@@ -674,7 +680,6 @@ export class ExcelService {
       );
     }
 
-    const registrationType = this.getRenterRegistrationType(request);
     const referrer =
       registrationType === "admin_referral"
         ? request.referredByAdminInfo ??
