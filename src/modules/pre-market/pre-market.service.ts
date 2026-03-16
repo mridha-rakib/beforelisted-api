@@ -636,12 +636,21 @@ export class PreMarketService {
         const displayStatus = grantAccess
           ? accessSummary.grantAccessStatus
           : request.status;
+        const currentRegisteredAgentId =
+          await this.resolveRegisteredAgentIdForRequest(request);
         const referralInfo = request.renterId
           ? await this.getReferralInfoForRenter(request.renterId.toString())
           : null;
 
         return {
           ...request,
+          referralAgentId:
+            currentRegisteredAgentId ??
+            this.normalizeUserId(
+              (request as unknown as {
+                referralAgentId?: string | Types.ObjectId;
+              }).referralAgentId,
+            ),
           referralInfo,
           status: displayStatus,
           listingStatus,
@@ -1005,25 +1014,39 @@ export class PreMarketService {
     return defaultAgent.id || null;
   }
 
+  private async getCurrentAgentReferralRenterUserIds(
+    agentId: string,
+  ): Promise<string[]> {
+    const renters = await this.renterRepository.findRentersByAgent(agentId);
+
+    return Array.from(
+      new Set(
+        renters
+          .filter((renter) => renter.registrationType === "agent_referral")
+          .map((renter) => this.normalizeUserId(renter.userId))
+          .filter((userId): userId is string => Boolean(userId)),
+      ),
+    );
+  }
+
   private async resolveRegisteredAgentIdForRequest(
     request: IPreMarketRequest,
   ): Promise<string | null> {
-    const fromRequest = this.normalizeUserId(
-      (request as unknown as { referralAgentId?: string | Types.ObjectId })
-        .referralAgentId,
-    );
-    if (fromRequest) {
-      return fromRequest;
-    }
-
     const renter = await this.renterRepository.findRenterWithReferrer(
       request.renterId.toString(),
     );
-    if (!renter) {
-      return null;
+    if (renter) {
+      const currentRegisteredAgentId =
+        await this.resolveRegisteredAgentIdFromRenter(renter);
+      if (currentRegisteredAgentId) {
+        return currentRegisteredAgentId;
+      }
     }
 
-    return this.resolveRegisteredAgentIdFromRenter(renter);
+    return this.normalizeUserId(
+      (request as unknown as { referralAgentId?: string | Types.ObjectId })
+        .referralAgentId,
+    );
   }
 
   private mergeFilters(filters: Array<Record<string, any>>): Record<string, any> {
@@ -1042,11 +1065,27 @@ export class PreMarketService {
   private async buildRequestVisibilityFilterForAgent(
     agentId: string,
   ): Promise<Record<string, any>> {
+    const currentAgentReferralRenterIds =
+      await this.getCurrentAgentReferralRenterUserIds(agentId);
+
+    const privateVisibilityClauses: Record<string, any>[] = [
+      {
+        $and: [{ visibility: "PRIVATE" }, { referralAgentId: agentId }],
+      },
+    ];
+
+    if (currentAgentReferralRenterIds.length > 0) {
+      privateVisibilityClauses.push({
+        $and: [
+          { visibility: "PRIVATE" },
+          { renterId: { $in: currentAgentReferralRenterIds } },
+        ],
+      });
+    }
+
     return {
       $or: [
-        {
-          $and: [{ visibility: "PRIVATE" }, { referralAgentId: agentId }],
-        },
+        ...privateVisibilityClauses,
         {
           $and: [{ visibility: "SHARED" }, { shareConsent: true }],
         },

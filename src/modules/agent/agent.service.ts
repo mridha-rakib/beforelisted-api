@@ -927,6 +927,33 @@ export class AgentService {
         },
         "Cleared deleted agent referral linkage from referred renter profiles",
       );
+
+      const preMarketOwnershipSyncResults = await Promise.allSettled(
+        referralCleanup.renterUserIds.map((renterUserId) =>
+          this.preMarketService.syncRequestOwnershipForRenter(renterUserId),
+        ),
+      );
+
+      const preMarketOwnershipSyncFailures = preMarketOwnershipSyncResults
+        .filter((result) => result.status === "rejected")
+        .map((result) =>
+          result.status === "rejected"
+            ? result.reason instanceof Error
+              ? result.reason.message
+              : String(result.reason)
+            : "",
+        );
+
+      if (preMarketOwnershipSyncFailures.length > 0) {
+        logger.warn(
+          {
+            userId,
+            failedCount: preMarketOwnershipSyncFailures.length,
+            renterUserIds: referralCleanup.renterUserIds,
+          },
+          "Failed to synchronize pre-market request ownership for some renters after agent deletion",
+        );
+      }
     }
 
     // Remove agent profile
