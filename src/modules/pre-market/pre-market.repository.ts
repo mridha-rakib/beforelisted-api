@@ -493,6 +493,39 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       .lean() as Promise<IPreMarketRequest | null>;
   }
 
+  async syncRequestOwnershipForRenter(
+    renterId: string,
+    referralAgentId: string | null,
+  ): Promise<number> {
+    const setData: Record<string, any> = {
+      visibility: "PRIVATE",
+    };
+    const unsetData: Record<string, any> = {
+      lockedByAgentId: "",
+      lockedAt: "",
+      sharedVisibilityNotificationSentAt: "",
+    };
+
+    if (referralAgentId) {
+      setData.referralAgentId = referralAgentId;
+    } else {
+      unsetData.referralAgentId = "";
+    }
+
+    const result = await this.model.updateMany(
+      {
+        renterId,
+        isDeleted: false,
+      },
+      {
+        $set: setData,
+        $unset: unsetData,
+      },
+    );
+
+    return result.modifiedCount || 0;
+  }
+
   async findExpiredRequests(now: Date = new Date()): Promise<IPreMarketRequest[]> {
     return this.model
       .find({

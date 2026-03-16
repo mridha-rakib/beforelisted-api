@@ -667,6 +667,30 @@ export class PreMarketService {
     return result;
   }
 
+  async syncRequestOwnershipForRenter(renterId: string): Promise<void> {
+    const renter = await this.renterRepository.findRenterWithReferrer(renterId);
+    if (!renter) {
+      throw new NotFoundException("Renter not found");
+    }
+
+    const registeredAgentId =
+      await this.resolveRegisteredAgentIdFromRenter(renter);
+    const modifiedCount =
+      await this.preMarketRepository.syncRequestOwnershipForRenter(
+        renterId,
+        registeredAgentId,
+      );
+
+    logger.info(
+      {
+        renterId,
+        registeredAgentId,
+        modifiedCount,
+      },
+      "Synchronized pre-market request ownership for renter",
+    );
+  }
+
   async getRequestById(requestId: string): Promise<IPreMarketRequest> {
     const request = await this.preMarketRepository.findById(requestId);
 

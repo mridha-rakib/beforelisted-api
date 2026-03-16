@@ -24,6 +24,7 @@ import {
   UserType,
 } from "../email-verification/email-verification.types";
 import { PasswordResetService } from "../password/password.service";
+import { PreMarketService } from "../pre-market/pre-market.service";
 import { ReferralService } from "../referral/referral.service";
 import { RenterRepository } from "../renter/renter.repository";
 import type { IUser } from "../user/user.interface";
@@ -44,6 +45,7 @@ export class AuthService {
   private emailService: EmailService;
   private renterRepository: RenterRepository;
   private referralService: ReferralService;
+  private preMarketService: PreMarketService;
 
   constructor() {
     this.userService = new UserService();
@@ -52,6 +54,7 @@ export class AuthService {
     this.emailVerificationService = new EmailVerificationService();
     this.renterRepository = new RenterRepository();
     this.referralService = new ReferralService();
+    this.preMarketService = new PreMarketService();
   }
 
   /**
@@ -141,6 +144,9 @@ export class AuthService {
             registrationType,
             referrerId: referrer._id.toString(),
           },
+        );
+        await this.preMarketService.syncRequestOwnershipForRenter(
+          user._id.toString(),
         );
         await this.referralService.recordReferral(referrer._id.toString());
 
