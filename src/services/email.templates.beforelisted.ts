@@ -4,7 +4,6 @@ export class EmailTemplates {
   private logoUrl: string =
     "https://agi-prod-file-upload-public-main-use1.s3.amazonaws.com/d6a6bcf9-cea1-471c-a177-563559b38b29";
   private brandColor: string = "#1890FF";
-  private supportEmail: string = "support@beforelisted.com";
   private contactUrl: string = "mailto:support@beforelisted.com";
   private privacyUrl: string =
     "https://rental-pennymore-frontend.vercel.app/privacy-policy";
@@ -37,6 +36,10 @@ export class EmailTemplates {
                 <a href="${this.termsUrl}" style="color: ${color}; text-decoration: none;">Terms and Conditions</a>
             </p>
     `;
+  }
+
+  private getFooterCopyrightText(): string {
+    return `&copy; ${new Date().getFullYear()} BeforeListed&trade;. All rights reserved.`;
   }
 
   // ============================================
@@ -263,8 +266,7 @@ export class EmailTemplates {
 
         <!-- Footer -->
         <div class="footer">
-            <p>© ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
-            <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
+            <p>${this.getFooterCopyrightText()}</p>
             ${this.getFooterLinks(color)}
         </div>
     </div>
@@ -443,7 +445,7 @@ export class EmailTemplates {
         </div>
 
         <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
+            <p>${this.getFooterCopyrightText()}</p>
             ${this.getFooterLinks(color)}
         </div>
     </div>
@@ -677,8 +679,7 @@ export class EmailTemplates {
 
         <!-- Footer -->
         <div class="footer">
-            <p>© ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
-            <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
+            <p>${this.getFooterCopyrightText()}</p>
             ${this.getFooterLinks(color)}
         </div>
     </div>
@@ -820,7 +821,7 @@ export class EmailTemplates {
 
         <!-- Footer -->
         <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} BeforeListed&trade;. All rights reserved.</p>
+            <p>${this.getFooterCopyrightText()}</p>
             ${this.getFooterLinks(color)}
         </div>
     </div>
@@ -978,8 +979,7 @@ export class EmailTemplates {
 
         <!-- Footer -->
         <div class="footer">
-            <p>© ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
-            <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
+            <p>${this.getFooterCopyrightText()}</p>
             ${this.getFooterLinks(color)}
         </div>
     </div>
@@ -1155,8 +1155,7 @@ export class EmailTemplates {
 
         <!-- Footer -->
         <div class="footer">
-            <p>© ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
-            <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
+            <p>${this.getFooterCopyrightText()}</p>
             ${this.getFooterLinks(color)}
         </div>
     </div>
@@ -1285,7 +1284,7 @@ export class EmailTemplates {
     <!-- Footer -->
     <div class="footer">
       <div>
-        © ${new Date().getFullYear()} BeforeListed. All rights reserved.
+        ${this.getFooterCopyrightText()}
       </div>
       ${this.getFooterLinks(color)}
     </div>
@@ -1403,7 +1402,7 @@ export class EmailTemplates {
     <!-- Footer -->
     <div class="footer">
       <div>
-        © ${new Date().getFullYear()} BeforeListed. All rights reserved.
+        ${this.getFooterCopyrightText()}
       </div>
       ${this.getFooterLinks(color)}
     </div>
@@ -1540,8 +1539,7 @@ export class EmailTemplates {
 
         <!-- Footer -->
         <div class="footer">
-            <p>c ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
-            <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
+            <p>${this.getFooterCopyrightText()}</p>
             ${this.getFooterLinks(color)}
         </div>
     </div>
@@ -1683,8 +1681,7 @@ export class EmailTemplates {
 
         <!-- Footer -->
         <div class="footer">
-            <p>c ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
-            <p><a href="mailto:${this.supportEmail}">Contact Support</a></p>
+            <p>${this.getFooterCopyrightText()}</p>
             ${this.getFooterLinks(color)}
         </div>
     </div>
@@ -1851,7 +1848,7 @@ export class EmailTemplates {
         </div>
 
         <div class="footer">
-            <p>c ${new Date().getFullYear()} BeforeListed. All rights reserved.</p>
+            <p>${this.getFooterCopyrightText()}</p>
             ${this.getFooterLinks(color)}
         </div>
     </div>
@@ -2213,18 +2210,14 @@ export class EmailTemplates {
 
     <!-- Footer -->
     <div class="footer">
-      <p class="footer-text">
-        If you have any questions or didn't expect this account, please contact our support team.
+      <p class="footer-text" style="margin-top: 15px; font-size: 10px; color: #ccc;">
+        ${this.getFooterCopyrightText()}
       </p>
-      <p class="footer-text"><strong>The BeforeListed Team</strong></p>
       <div class="footer-links">
         <a href="${this.contactUrl}">Contact Us</a> |
         <a href="${this.privacyUrl}">Privacy Policy</a> |
         <a href="${this.termsUrl}">Terms and Conditions</a>
       </div>
-      <p class="footer-text" style="margin-top: 15px; font-size: 10px; color: #ccc;">
-        ${new Date().getFullYear()} BeforeListed. All rights reserved.
-      </p>
     </div>
   </div>
 </body>

@@ -148,7 +148,7 @@ export function preMarketAgentNotificationTemplate(
         <!-- Header -->
         <div class="header">
             ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
-            <h1>🔔 New Opportunity</h1>
+            <h1>&#128276; New Opportunity</h1>
         </div>
 
         <!-- Content -->
@@ -189,7 +189,7 @@ export function preMarketAgentNotificationTemplate(
 
         <!-- Footer -->
         <div class="footer">
-            <p style="margin: 0;">Â© ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
             ${footerLinks(brandColor)}
         </div>
     </div>
@@ -364,7 +364,7 @@ export function preMarketAdminNotificationTemplate(
         <!-- Header -->
         <div class="header">
             ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
-            <h1>⚙️ Admin Notification</h1>
+            <h1>&#9881;&#65039; Admin Notification</h1>
         </div>
 
         <!-- Content -->
@@ -379,7 +379,7 @@ export function preMarketAdminNotificationTemplate(
 
             <!-- Listing Details Section -->
             <div class="section">
-                <h3>📋 Listing Details</h3>
+                <h3>&#128203; Listing Details</h3>
                 <table class="details-table">
                     <tr>
                         <td>Title</td>
@@ -402,7 +402,7 @@ export function preMarketAdminNotificationTemplate(
 
             <!-- Renter Information Section (ADMIN ONLY) -->
             <div class="section">
-                <h3>👤 Renter Information</h3>
+                <h3>&#128100; Renter Information</h3>
                 <div class="renter-info-box">
                     <p>
                         <strong>Name:</strong> ${renterName}
@@ -418,7 +418,7 @@ export function preMarketAdminNotificationTemplate(
 
             <!-- Action Required -->
             <div class="section">
-                <h3>📌 Action Required</h3>
+                <h3>&#128204; Action Required</h3>
                 <p>Review this request and take appropriate action:</p>
                 <ul style="padding-left: 20px;">
                     <li>Monitor agent interest and match requests</li>
@@ -438,8 +438,7 @@ export function preMarketAdminNotificationTemplate(
 
         <!-- Footer -->
         <div class="footer">
-            <p style="margin: 0;">Â© ${currentYear} BeforeListed. All rights reserved.</p>
-            <p style="margin: 5px 0 0 0;">Admin Control Panel | Support | Settings</p>
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
             ${footerLinks(brandColor)}
         </div>
     </div>
@@ -584,7 +583,7 @@ export function renterRequestConfirmationTemplate(
         </div>
 
         <div class="footer">
-            <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
             ${footerLinks(brandColor)}
         </div>
     </div>
@@ -699,7 +698,7 @@ export function renterRequestExpiredTemplate(
         </div>
 
         <div class="footer">
-            <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
             ${footerLinks(brandColor)}
         </div>
     </div>
@@ -932,7 +931,7 @@ export function agentRenterRequestConfirmationTemplate(
         </div>
 
         <div class="footer">
-            <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
             ${footerLinks(brandColor)}
         </div>
     </div>
@@ -1077,7 +1076,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
         </div>
 
         <div class="footer">
-            <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
             ${footerLinks(brandColor)}
         </div>
     </div>
@@ -1244,7 +1243,7 @@ export function renterOpportunityFoundOtherAgentTemplate(
         </div>
 
         <div class="footer">
-            <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
             ${footerLinks(brandColor)}
         </div>
     </div>
@@ -1376,7 +1375,7 @@ export function matchReferralAcknowledgmentToMatchingAgentTemplate(
         </div>
 
         <div class="footer">
-            <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
             ${footerLinks(brandColor)}
         </div>
     </div>
@@ -1515,7 +1514,7 @@ export function renterRequestClosedAgentAlertTemplate(
         </div>
 
         <div class="footer">
-            <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
             ${footerLinks(brandColor)}
         </div>
     </div>
@@ -1657,7 +1656,7 @@ export function renterRequestClosedRenterNotificationTemplate(
         </div>
 
         <div class="footer">
-            <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
             ${footerLinks(brandColor)}
         </div>
     </div>
@@ -1808,7 +1807,7 @@ export function renterRequestUpdatedNotificationTemplate(
         </div>
 
         <div class="footer">
-            <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
             ${footerLinks(brandColor)}
         </div>
     </div>
@@ -1960,7 +1959,7 @@ export function nonRegisteredAgentSharedRequestNotificationTemplate(
         </div>
 
         <div class="footer">
-            <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
             ${footerLinks(brandColor)}
         </div>
     </div>
@@ -2162,7 +2161,7 @@ export function agentRegistrationVerifiedAdminTemplate(
             <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>
         <div class="footer">
-            <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
             ${footerLinks(brandColor)}
         </div>
     </div>
@@ -2313,7 +2312,7 @@ export function renterRegistrationVerifiedAdminTemplate(
             <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>
         <div class="footer">
-            <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
             ${footerLinks(brandColor)}
         </div>
     </div>
@@ -2468,7 +2467,7 @@ export function adminContactRequestTemplate(
             </div>
         </div>
         <div class="footer">
-            <p style="margin: 0;">&copy; ${currentYear} BeforeListed. All rights reserved.</p>
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
             ${footerLinks(brandColor)}
         </div>
     </div>
