@@ -65,10 +65,6 @@ export interface IAgentProfile extends Document {
   hasGrantAccess: boolean;
   grantAccessGivenBy?: Types.ObjectId | string;
   grantAccessDate?: Date;
-  isSuspended: boolean;
-  suspensionReason?: string;
-  suspendedAt?: Date;
-  suspendedBy?: Types.ObjectId | string;
   specializations?: string[];
   bio?: string;
   profileCompleted: boolean;
@@ -84,7 +80,6 @@ export interface IUserStats {
     totalRequests: number;
     grantAccessStatus: "pending" | "granted" | "denied";
     verificationStatus: "pending" | "verified" | "rejected";
-    isSuspended: boolean;
   };
   renterStats?: {
     activeRequests: number;

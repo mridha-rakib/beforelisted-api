@@ -57,9 +57,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
    * Find pending approval agents
    */
   async findPendingApprovalAgents(): Promise<IAgentProfile[]> {
-    return this.model
-      .find({ isApprovedByAdmin: false, isSuspended: false })
-      .exec();
+    return this.model.find({ isApprovedByAdmin: false }).exec();
   }
 
   /**

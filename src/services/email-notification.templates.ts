@@ -1956,8 +1956,6 @@ export function nonRegisteredAgentSharedRequestNotificationTemplate(
 
             <p>Submitted: ${safeSubmittedAt}</p>
 
-            <p>This notification was sent because you have opted in to receive alerts for shared renter requests. You may update your notification preferences at any time in your profile settings.</p>
-
             <p>Best regards,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>
 

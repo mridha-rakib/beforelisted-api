@@ -1821,7 +1821,6 @@ export class PreMarketService {
   ): Promise<Array<{ userId: string; name: string; email: string }>> {
     const profiles = await this.agentRepository.find({
       isActive: true,
-      isSuspended: false,
     } as any);
 
     const candidateAgentIds = Array.from(
