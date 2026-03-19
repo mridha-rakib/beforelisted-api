@@ -220,11 +220,16 @@ export class PreMarketController {
             request,
             userId
           );
+        const visibleScope = this.preMarketService.resolveAgentVisibleScope(
+          request.scope,
+          true
+        );
 
         return ApiResponse.success(
           res,
           {
             ...enriched,
+            scope: visibleScope,
             status: grantAccessStatus,
             listingStatus,
             grantAccessStatus,
@@ -270,6 +275,10 @@ export class PreMarketController {
           : hasRequestedAccess
             ? "requested"
             : request.status;
+    const visibleScope = this.preMarketService.resolveAgentVisibleScope(
+      request.scope,
+      listingStatus === "matched"
+    );
 
     await this.preMarketRepository.addAgentToViewedBy(
       requestId,
@@ -279,6 +288,7 @@ export class PreMarketController {
 
     let response: any = {
       ...request,
+      scope: visibleScope,
       status: accessSummary.grantAccessStatus,
       listingStatus,
       grantAccessStatus: accessSummary.grantAccessStatus,
@@ -752,6 +762,10 @@ export class PreMarketController {
             request,
             agentId
           );
+        const visibleScope = this.preMarketService.resolveAgentVisibleScope(
+          request.scope,
+          true
+        );
 
         await this.preMarketRepository.addAgentToViewedBy(
           requestId,
@@ -762,6 +776,7 @@ export class PreMarketController {
           res,
           {
             ...enriched,
+            scope: visibleScope,
             accessType: "admin-granted",
             status: "matched",
             listingStatus: "matched",
@@ -807,6 +822,10 @@ export class PreMarketController {
           request,
           agentId
         );
+      const visibleScope = this.preMarketService.resolveAgentVisibleScope(
+        request.scope,
+        paidAccess.status === "free" || paidAccess.status === "paid"
+      );
 
       logger.info(
         { agentId, requestId },
@@ -847,6 +866,7 @@ export class PreMarketController {
         res,
         {
           ...enriched,
+          scope: visibleScope,
           accessType: paidAccess.status,
           status: "matched",
           listingStatus: "matched",

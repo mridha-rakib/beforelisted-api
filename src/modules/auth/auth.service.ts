@@ -243,6 +243,7 @@ export class AuthService {
       } else if (renter?.registrationType === "admin_referral") {
         const referrer = renter.referredByAdminId as any;
         if (referrer) {
+          let assignedAgentTitle: string | null = null;
           let assignedAgentBrokerageName: string | null = null;
           let assignedAgentActivationLink: string | null = null;
           const assignedAgentId =
@@ -258,6 +259,8 @@ export class AuthService {
             const assignedAgentProfile =
               await agentRepository.findByUserId(assignedAgentId);
 
+            assignedAgentTitle =
+              assignedAgentProfile?.title || SYSTEM_DEFAULT_AGENT.title;
             assignedAgentBrokerageName =
               assignedAgentProfile?.brokerageName ||
               SYSTEM_DEFAULT_AGENT.brokerageName;
@@ -265,6 +268,7 @@ export class AuthService {
               assignedAgentProfile?.activationLink || null;
           } else {
             const defaultAgent = await this.getDefaultReferralAgentForError();
+            assignedAgentTitle = defaultAgent.title;
             assignedAgentBrokerageName = defaultAgent.brokerageName;
             assignedAgentActivationLink = defaultAgent.activationLink;
           }
@@ -275,6 +279,7 @@ export class AuthService {
               id: referrer._id?.toString() ?? String(referrer),
               role: "Admin",
               fullName: referrer.fullName ?? null,
+              title: assignedAgentTitle,
               brokerageName: assignedAgentBrokerageName,
               activationLink: assignedAgentActivationLink,
               email: referrer.email ?? null,

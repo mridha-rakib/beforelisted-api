@@ -266,6 +266,23 @@ export class PreMarketService {
     };
   }
 
+  private isSuccessfullyMatchedForAgent(
+    grantAccessStatus?: AgentGrantAccessStatus | null,
+  ): boolean {
+    return grantAccessStatus === "free" || grantAccessStatus === "paid";
+  }
+
+  public resolveAgentVisibleScope(
+    scope: string | undefined,
+    isSuccessfullyMatchedForAgent: boolean,
+  ): string {
+    if (scope === "All Market" && isSuccessfullyMatchedForAgent) {
+      return "Upcoming (M)";
+    }
+
+    return scope || "Upcoming";
+  }
+
   async getAgentAccessSummary(agentId: string, requestId: string) {
     const agent = await this.agentRepository.findByUserId(agentId);
     const hasGrantAccess = agent?.hasGrantAccess === true;
@@ -566,7 +583,6 @@ export class PreMarketService {
     ]);
     const agentOwnedAccessRecords =
       await this.grantAccessRepository.findByAgentIdAndStatuses(agentId, [
-        "approved",
         "free",
         "paid",
       ]);
@@ -2111,10 +2127,10 @@ export class PreMarketService {
           accessSummary.grantAccessStatus === "approved"
             ? "approved"
             : "matched";
-        const responseScope =
-          listingStatus === "matched" && request.scope === "All Market"
-            ? "Upcoming (M)"
-            : request.scope;
+        const responseScope = this.resolveAgentVisibleScope(
+          request.scope,
+          this.isSuccessfullyMatchedForAgent(accessSummary.grantAccessStatus),
+        );
 
         return {
           ...request,

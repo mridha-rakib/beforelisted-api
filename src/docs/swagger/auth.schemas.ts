@@ -238,7 +238,7 @@ export const authSchemas = {
                     nullable: true,
                     example: "Licensed Real Estate Salesperson",
                     description:
-                      "Available for agent referrals; null for admin referrals",
+                      "For agent referrals, this is the referring agent title. For admin referrals, this is the assigned default agent title.",
                   },
                   brokerageName: {
                     type: "string",
