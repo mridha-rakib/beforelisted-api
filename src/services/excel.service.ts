@@ -28,7 +28,8 @@ export class ExcelService {
   }
 
   /**
-   * Generate single Excel file with ALL pre-market requests
+   * Generate single Excel file with all registered renters and their latest
+   * pre-market request state, if any.
    */
   async generateConsolidatedPreMarketExcel(): Promise<Buffer> {
     try {
@@ -101,20 +102,18 @@ export class ExcelService {
         },
       ];
 
-      // Fetch ALL active requests from database
-      const requests = await this.preMarketRepository.findAll();
+      // Fetch all renters with their latest request, including inactive/deleted.
+      const rows = await this.renterRepository.findAllForPreMarketExcel();
 
       logger.info(
-        { totalRequests: requests.length },
-        "Fetched requests for Excel"
+        { totalRows: rows.length },
+        "Fetched renter/request rows for Excel"
       );
 
       // Add data rows
       let rowCount = 1;
-      for (const request of requests) {
-        const dataRow = worksheet.addRow(
-          this.buildConsolidatedRequestRow(request)
-        );
+      for (const row of rows) {
+        const dataRow = worksheet.addRow(this.buildConsolidatedRequestRow(row));
 
         // Alternate row colors
         if (rowCount % 2 === 0) {
@@ -165,20 +164,18 @@ export class ExcelService {
         width,
       }));
 
-      // FIX #1: Check if requests exist before setting autoFilter
-      if (requests.length > 0) {
+      if (rows.length > 0) {
         worksheet.autoFilter = {
           from: "A1",
-          to: `Y${requests.length + 1}`,
+          to: `Y${rows.length + 1}`,
         };
       }
 
-      // FIX #2: Proper Buffer conversion - assert type as unknown first
       const buffer = await workbook.xlsx.writeBuffer();
       const typedBuffer = buffer as unknown as Buffer;
 
       logger.info(
-        { size: typedBuffer.length, rows: requests.length },
+        { size: typedBuffer.length, rows: rows.length },
         "Excel buffer generated successfully"
       );
 
@@ -538,76 +535,105 @@ export class ExcelService {
     return null;
   }
 
-  private buildConsolidatedRequestRow(request: any): Array<string | number> {
+  private buildConsolidatedRequestRow(entry: any): Array<string | number> {
+    const latestRequest = entry.latestRequest || {};
+    const rowSource = {
+      ...latestRequest,
+      renterInfo: entry,
+      referredByAgentInfo: entry.referredByAgentInfo,
+      referredByAdminInfo: entry.referredByAdminInfo,
+    };
+
     return [
-      request.requestId || request.requestCode || "N/A",
-      this.getRenterName(request),
-      this.getRenterEmail(request),
-      this.getRenterPhone(request),
-      this.getReferralTag(request),
-      this.getQuestionnaireFlag(request, [
+      latestRequest.requestId || latestRequest.requestCode || "N/A",
+      this.getRenterName(rowSource),
+      this.getRenterEmail(rowSource),
+      this.getRenterPhone(rowSource),
+      this.getReferralTag(rowSource),
+      this.getQuestionnaireFlag(rowSource, [
         "lookingToPurchase",
         "isLookingToPurchase",
       ]),
-      this.getQuestionnaireValue(request, [
+      this.getQuestionnaireValue(rowSource, [
         "purchaseTimeline",
         "purchaseTimeframe",
       ]),
-      this.getQuestionnaireFlag(request, [
+      this.getQuestionnaireFlag(rowSource, [
         "buyerSpecialistNeeded",
         "needBuyerSpecialist",
       ]),
-      this.getQuestionnaireFlag(request, [
+      this.getQuestionnaireFlag(rowSource, [
         "renterSpecialistNeeded",
         "needRenterSpecialist",
       ]),
-      this.formatDate(this.getMoveDate(request, "earliest")),
-      this.formatDate(this.getMoveDate(request, "latest")),
-      this.getPriceValue(request, "min"),
-      this.getPriceValue(request, "max"),
-      this.getBorough(request),
-      this.getNeighborhoods(request),
+      this.formatDate(this.getMoveDate(rowSource, "earliest")),
+      this.formatDate(this.getMoveDate(rowSource, "latest")),
+      this.getPriceValue(rowSource, "min"),
+      this.getPriceValue(rowSource, "max"),
+      this.getBorough(rowSource),
+      this.getNeighborhoods(rowSource),
       this.formatListValue(
-        request.bedrooms ?? request.bedroomType ?? request.bedroom
+        rowSource.bedrooms ?? rowSource.bedroomType ?? rowSource.bedroom
       ),
       this.formatListValue(
-        request.bathrooms ?? request.bathroomType ?? request.bathroom
+        rowSource.bathrooms ?? rowSource.bathroomType ?? rowSource.bathroom
       ),
       this.formatUnitFeatures(
-        this.resolveFirstObject(request, [
+        this.resolveFirstObject(rowSource, [
           "unitFeatures",
           "unitFeaturePreferences",
           "unitAmenities",
         ])
       ),
       this.formatBuildingFeatures(
-        this.resolveFirstObject(request, [
+        this.resolveFirstObject(rowSource, [
           "buildingFeatures",
           "buildingFeaturePreferences",
           "buildingAmenities",
         ])
       ),
       this.formatPetPolicy(
-        this.resolveFirstObject(request, [
+        this.resolveFirstObject(rowSource, [
           "petPolicy",
           "petPreferences",
           "petsPolicy",
         ])
       ),
       this.formatGuarantorRequired(
-        this.resolveFirstObject(request, [
+        this.resolveFirstObject(rowSource, [
           "guarantorRequired",
           "guarantorRequirement",
           "guarantor",
         ])
       ),
       this.formatListValue(
-        request.preferences ?? request.preference ?? request.specialPreferences
+        rowSource.preferences ??
+          rowSource.preference ??
+          rowSource.specialPreferences
       ),
-      this.getMarketScope(request),
-      request.status || request.requestStatus || "unknown",
-      this.formatDate(request.createdAt),
+      this.getMarketScope(rowSource),
+      this.resolveConsolidatedRequestStatus(entry),
+      this.formatDate(latestRequest.createdAt ?? entry.createdAt),
     ];
+  }
+
+  private resolveConsolidatedRequestStatus(entry: any): string {
+    const latestRequest = entry.latestRequest;
+
+    if (!latestRequest) {
+      return "Registered";
+    }
+
+    if (latestRequest.isDeleted === true || latestRequest.isActive === false) {
+      return "Inactive";
+    }
+
+    const status = latestRequest.status || latestRequest.requestStatus;
+    if (typeof status === "string" && status.trim().length > 0) {
+      return status.trim();
+    }
+
+    return "Registered";
   }
 
   private getRenterName(request: any): string {
@@ -1255,7 +1281,7 @@ export class ExcelService {
     return undefined;
   }
 
-  private getPriceValue(request: any, key: "min" | "max"): number {
+  private getPriceValue(request: any, key: "min" | "max"): number | string {
     const aliases =
       key === "min"
         ? [
@@ -1287,7 +1313,7 @@ export class ExcelService {
       }
     }
 
-    return 0;
+    return "N/A";
   }
 
   private getValueByPath(source: any, path: string[]): unknown {

@@ -468,9 +468,13 @@ export class PreMarketService {
       );
     });
 
-    this.updateConsolidatedExcel().catch((error) => {
-      logger.error({ error }, "Consolidated Excel update failed");
-    });
+    this.scheduleConsolidatedExcelRefresh(
+      {
+        renterId,
+        requestId: request._id?.toString(),
+      },
+      "Consolidated Excel update failed after pre-market request creation",
+    );
 
     return request;
   }
@@ -793,6 +797,14 @@ export class PreMarketService {
           "Failed to send update notifications (non-blocking)",
         );
       });
+
+    this.scheduleConsolidatedExcelRefresh(
+      {
+        renterId,
+        requestId,
+      },
+      "Consolidated Excel update failed after pre-market request update",
+    );
 
     return updated!;
   }
@@ -1555,7 +1567,7 @@ export class PreMarketService {
       await this.getMatchedAgentIdsForClosedAlert(preMarketRequestId);
     const closedAt = new Date();
 
-    const deleted = await this.preMarketRepository.deleteById(requestId);
+    const deleted = await this.preMarketRepository.softDelete(requestId);
     if (!deleted) {
       throw new NotFoundException("Pre-market request not found");
     }
@@ -1583,14 +1595,23 @@ export class PreMarketService {
 
     await this.deleteGrantAccessRecords(requestId);
 
-    await this.markRequestsAsDeletedInConsolidatedExcel([request.requestId]);
+    this.scheduleConsolidatedExcelRefresh(
+      {
+        renterId,
+        requestId,
+      },
+      "Consolidated Excel update failed after pre-market request deletion",
+    );
 
     logger.info({ renterId }, `Pre-market request deleted: ${requestId}`);
 
   }
 
   async deleteRequestsByRenterId(renterId: string): Promise<void> {
-    const requests = await this.preMarketRepository.findAllByRenterId(renterId);
+    const requests = await this.preMarketRepository.findAllByRenterId(
+      renterId,
+      true,
+    );
 
     if (!requests || requests.length === 0) {
       return;
@@ -1599,18 +1620,12 @@ export class PreMarketService {
     const requestIds = requests
       .map((request) => request._id?.toString())
       .filter((id): id is string => Boolean(id));
-    const requestExcelIds = requests
-      .map((request) => request.requestId)
-      .filter((id): id is string => Boolean(id));
-
     if (requestIds.length === 0) {
       return;
     }
 
     await this.preMarketRepository.deleteManyByIds(requestIds);
     await this.grantAccessRepository.deleteByPreMarketRequestIds(requestIds);
-
-    await this.markRequestsAsDeletedInConsolidatedExcel(requestExcelIds);
 
     logger.info(
       { renterId, deletedCount: requestIds.length },
@@ -1940,7 +1955,6 @@ export class PreMarketService {
 
     let deletedCount = 0;
     let failedCount = 0;
-    const deletedRequestExcelIds: string[] = [];
 
     for (const request of expiredRequests) {
       const requestId = request._id?.toString();
@@ -1956,7 +1970,7 @@ export class PreMarketService {
       try {
         const matchedAgentIds =
           await this.getMatchedAgentIdsForClosedAlert(requestId);
-        const deleted = await this.preMarketRepository.deleteById(requestId);
+        const deleted = await this.preMarketRepository.softDelete(requestId);
         if (!deleted) {
           failedCount += 1;
           logger.warn({ requestId }, "Expired request not found during delete");
@@ -1966,9 +1980,6 @@ export class PreMarketService {
         await this.deleteGrantAccessRecords(requestId);
 
         deletedCount += 1;
-        if (request.requestId) {
-          deletedRequestExcelIds.push(request.requestId);
-        }
 
         const closedAt = new Date();
         this.notifyRenterRequestExpired(request).catch((error) => {
@@ -1998,10 +2009,15 @@ export class PreMarketService {
       }
     }
 
-    if (deletedRequestExcelIds.length > 0) {
-      await this.markRequestsAsDeletedInConsolidatedExcel(
-        deletedRequestExcelIds,
-      );
+    if (deletedCount > 0) {
+      try {
+        await this.refreshConsolidatedExcel();
+      } catch (error) {
+        logger.error(
+          { error, expiredRequestCount: deletedCount },
+          "Consolidated Excel update failed after expiring pre-market requests",
+        );
+      }
     }
 
     return {
@@ -3343,10 +3359,20 @@ export class PreMarketService {
       await this.getMatchedAgentIdsForClosedAlert(preMarketRequestId);
     const closedAt = new Date();
 
-    // Delete the request (hard delete)
-    await this.preMarketRepository.deleteById(requestId);
+    // Archive the request so the admin Excel can still reflect the latest state.
+    const deleted = await this.preMarketRepository.softDelete(requestId);
+    if (!deleted) {
+      throw new NotFoundException("Pre-market request not found");
+    }
     await this.deleteGrantAccessRecords(requestId);
-    await this.markRequestsAsDeletedInConsolidatedExcel([request.requestId]);
+
+    this.scheduleConsolidatedExcelRefresh(
+      {
+        requestId,
+        renterId: request.renterId?.toString(),
+      },
+      "Consolidated Excel update failed after admin deleted pre-market request",
+    );
 
     logger.warn(
       { requestId, renterId: request.renterId },
@@ -3442,6 +3468,16 @@ export class PreMarketService {
         );
       });
     }
+
+    this.scheduleConsolidatedExcelRefresh(
+      {
+        listingId,
+        userId,
+        userRole,
+        isActive,
+      },
+      "Consolidated Excel update failed after listing activation change",
+    );
 
     return updated;
   }
@@ -3850,29 +3886,32 @@ export class PreMarketService {
     const { url, fileName, key } =
       await this.excelService.uploadConsolidatedExcel(buffer);
 
-    // 3. Get current total count
+    const totalRenters = await this.renterRepository.count();
     const totalRequests = await this.preMarketRepository.count();
 
-    // 4. Get previous version number
     const previousMetadata = await this.preMarketRepository.getExcelMetadata();
     const version = (previousMetadata?.version || 0) + 1;
 
-    // 5. Update metadata in database
     await this.preMarketRepository.updateExcelMetadata({
       type: "pre_market",
       fileName,
       fileUrl: url,
       key,
       lastUpdated: new Date(),
+      totalRenters,
       totalRequests,
       version,
       generatedAt: new Date(),
     });
 
     logger.info(
-      { url, fileName, key, version, totalRequests },
+      { url, fileName, key, version, totalRenters, totalRequests },
       "Consolidated Excel updated",
     );
+  }
+
+  async refreshConsolidatedExcel(): Promise<void> {
+    await this.updateConsolidatedExcel();
   }
 
   /**
@@ -3880,12 +3919,26 @@ export class PreMarketService {
    * Can be called by admin to get download link
    */
   async getConsolidatedExcel(): Promise<any> {
-    const metadata = await this.preMarketRepository.getExcelMetadata();
+    let metadata = await this.preMarketRepository.getExcelMetadata();
+
+    if (!metadata) {
+      await this.refreshConsolidatedExcel();
+      metadata = await this.preMarketRepository.getExcelMetadata();
+    }
 
     if (!metadata) {
       throw new NotFoundException("No consolidated Excel file found");
     }
     return metadata;
+  }
+
+  private scheduleConsolidatedExcelRefresh(
+    context: Record<string, unknown>,
+    message: string,
+  ): void {
+    this.refreshConsolidatedExcel().catch((error) => {
+      logger.error({ error, ...context }, message);
+    });
   }
 
   public async getAllListingsWithAllData(): Promise<any> {

@@ -105,11 +105,17 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return PaginationHelper.buildResponse(data, total, page, limit);
   }
 
-  async findAllByRenterId(renterId: string): Promise<IPreMarketRequest[]> {
-    return this.model
-      .find({ renterId })
-      .lean<IPreMarketRequest[]>()
-      .exec();
+  async findAllByRenterId(
+    renterId: string,
+    includeDeleted: boolean = false
+  ): Promise<IPreMarketRequest[]> {
+    let queryBuilder = this.model.find({ renterId });
+
+    if (includeDeleted) {
+      queryBuilder = queryBuilder.setOptions({ includeDeleted: true });
+    }
+
+    return queryBuilder.lean<IPreMarketRequest[]>().exec();
   }
 
   async findByLocations(
@@ -208,6 +214,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
         isDeleted: true,
         deletedAt: new Date(),
         status: "deleted",
+        isActive: false,
       },
       { new: true }
     );
@@ -219,7 +226,8 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       {
         isDeleted: false,
         deletedAt: null,
-        status: "active",
+        status: "Available",
+        isActive: true,
       },
       { new: true }
     );

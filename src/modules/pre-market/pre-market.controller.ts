@@ -1143,6 +1143,7 @@ export class PreMarketController {
     async (req: Request, res: Response) => {
       const adminId = req.user!.userId;
 
+      await this.preMarketService.refreshConsolidatedExcel();
       const metadata = await this.preMarketService.getConsolidatedExcel();
       const data = buildExcelDownloadResponse({
         fileName: metadata.fileName,
@@ -1180,12 +1181,14 @@ export class PreMarketController {
     ApiResponse.success(
       res,
       {
-        totalRequests: metadata.totalRequests,
+        totalRenters: metadata.totalRenters ?? 0,
+        totalRequests: metadata.totalRequests ?? 0,
         version: metadata.version,
         lastUpdated: metadata.lastUpdated,
         fileName: metadata.fileName,
         fileSize: "Check S3 for actual size",
-        updateFrequency: "On every new request creation",
+        updateFrequency:
+          "On renter registration and request lifecycle changes",
         storageLocation: "uploads/pre-market/excel/master/",
       },
       "Excel statistics"

@@ -133,6 +133,13 @@ export class RenterService {
     this.updateRenterConsolidatedExcel().catch((error) => {
       logger.error(error, "Error updating renter consolidated Excel");
     });
+    this.schedulePreMarketConsolidatedExcelRefresh(
+      {
+        userId: user._id.toString(),
+        renterId: renterProfile._id?.toString(),
+      },
+      "Error updating pre-market consolidated Excel after renter registration",
+    );
 
     return {
       user: this.userService.toUserResponse(user),
@@ -327,6 +334,13 @@ export class RenterService {
     this.updateRenterConsolidatedExcel().catch((error) => {
       logger.error(error, "Error updating renter consolidated Excel");
     });
+    this.schedulePreMarketConsolidatedExcelRefresh(
+      {
+        userId: user._id.toString(),
+        renterId: renterProfile._id?.toString(),
+      },
+      "Error updating pre-market consolidated Excel after renter registration",
+    );
 
     const userResponse = this.userService.toUserResponse(user);
     const { referralLink, loginLink, totalReferrals, ...restUser } = userResponse;
@@ -458,6 +472,12 @@ export class RenterService {
     }
 
     const updatedRenter = await this.repository.findByUserId(userId);
+
+    this.schedulePreMarketConsolidatedExcelRefresh(
+      { userId },
+      "Error updating pre-market consolidated Excel after renter profile update",
+    );
+
     return this.toRenterResponse(updatedRenter || renter);
   }
 
@@ -482,6 +502,11 @@ export class RenterService {
     await userRepository.permanentlyDeleteUser(userId);
 
     logger.info({ userId }, "Renter profile and user account deleted");
+
+    this.schedulePreMarketConsolidatedExcelRefresh(
+      { userId },
+      "Error updating pre-market consolidated Excel after renter deletion",
+    );
 
     if (renterEmail) {
       try {
@@ -667,6 +692,15 @@ export class RenterService {
       minute: "2-digit",
       hour12: true,
       timeZoneName: "short",
+    });
+  }
+
+  private schedulePreMarketConsolidatedExcelRefresh(
+    context: Record<string, unknown>,
+    message: string
+  ): void {
+    this.preMarketService.refreshConsolidatedExcel().catch((error) => {
+      logger.error({ error, ...context }, message);
     });
   }
 

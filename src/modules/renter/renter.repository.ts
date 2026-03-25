@@ -486,6 +486,93 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
     }
   }
 
+  async findAllForPreMarketExcel(): Promise<any[]> {
+    try {
+      const result = await this.model.aggregate([
+        { $match: { isDeleted: false } },
+        {
+          $lookup: {
+            from: "premarketrequests",
+            let: { renterUserId: "$userId" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ["$renterId", "$$renterUserId"] },
+                },
+              },
+              { $sort: { createdAt: -1, updatedAt: -1 } },
+              { $limit: 1 },
+            ],
+            as: "latestRequestData",
+          },
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "referredByAgentId",
+            foreignField: "_id",
+            pipeline: [
+              {
+                $project: {
+                  _id: 1,
+                  fullName: 1,
+                  email: 1,
+                  phoneNumber: 1,
+                  referralCode: 1,
+                },
+              },
+            ],
+            as: "referredByAgentInfo",
+          },
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "referredByAdminId",
+            foreignField: "_id",
+            pipeline: [
+              {
+                $project: {
+                  _id: 1,
+                  fullName: 1,
+                  email: 1,
+                  phoneNumber: 1,
+                  referralCode: 1,
+                },
+              },
+            ],
+            as: "referredByAdminInfo",
+          },
+        },
+        {
+          $addFields: {
+            latestRequest: { $arrayElemAt: ["$latestRequestData", 0] },
+            referredByAgentInfo: {
+              $arrayElemAt: ["$referredByAgentInfo", 0],
+            },
+            referredByAdminInfo: {
+              $arrayElemAt: ["$referredByAdminInfo", 0],
+            },
+          },
+        },
+        {
+          $project: {
+            latestRequestData: 0,
+          },
+        },
+        { $sort: { createdAt: -1 } },
+      ]);
+
+      return result;
+    } catch (error) {
+      logger.error(
+        { error },
+        "Error in Renter findAllForPreMarketExcel aggregation",
+      );
+      throw error;
+    }
+  }
+
   async count(): Promise<number> {
     return await this.model.countDocuments({ isDeleted: false });
   }
