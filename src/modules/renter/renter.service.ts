@@ -241,6 +241,7 @@ export class RenterService {
                 ),
                 registeredAgentName: registeredAgent.fullName || "N/A",
                 registeredAgentBrokerage: registeredAgent.brokerage || "N/A",
+                registeredAgentEmail: registeredAgent.email,
               }
             );
           } catch (adminNotificationError) {
@@ -650,24 +651,28 @@ export class RenterService {
     fullName: string;
     title: string;
     brokerage: string;
+    email: string;
   }> {
     const fallbackAgent = {
       fullName: SYSTEM_DEFAULT_AGENT.fullName,
       title: SYSTEM_DEFAULT_AGENT.title,
       brokerage: SYSTEM_DEFAULT_AGENT.brokerageName,
+      email: SYSTEM_DEFAULT_AGENT.email,
     };
 
     try {
       const agent = await new AgentProfileRepository().findByUserId(agentId);
+      const agentUser = await this.userService.getById(agentId);
       const populatedUser =
         agent?.userId && typeof agent.userId === "object"
-          ? (agent.userId as { fullName?: string })
+          ? (agent.userId as { fullName?: string; email?: string })
           : null;
 
       return {
         fullName: populatedUser?.fullName || fallbackAgent.fullName,
         title: agent?.title || fallbackAgent.title,
         brokerage: agent?.brokerageName || fallbackAgent.brokerage,
+        email: populatedUser?.email || agentUser?.email || fallbackAgent.email,
       };
     } catch (error) {
       logger.warn(

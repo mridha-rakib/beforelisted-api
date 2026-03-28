@@ -65,6 +65,24 @@ export interface INonRegisteredAgentSharedRequestNotificationPayload {
   submittedAt: string;
 }
 
+export interface INonRegisteredAgentRequestSubmissionNotificationPayload {
+  to: string;
+  agentName: string;
+  renterFirstName: string;
+  requestId: string;
+  marketScope: string;
+  minPrice: string;
+  maxPrice: string;
+  earliestDate: string;
+  latestDate: string;
+  bedrooms: string;
+  bathrooms: string;
+  location: string;
+  features: string;
+  preferencesByOrder: string;
+  submittedAt: string;
+}
+
 export interface IAgentRequestConfirmationPayload {
   to: string;
   agentName: string;
@@ -73,7 +91,15 @@ export interface IAgentRequestConfirmationPayload {
   renterPhoneNumber: string;
   requestId: string;
   marketScope: string;
-  requestDescription: string;
+  minPrice: string;
+  maxPrice: string;
+  earliestDate: string;
+  latestDate: string;
+  bedrooms: string;
+  bathrooms: string;
+  location: string;
+  features: string;
+  preferencesByOrder: string;
   submittedAt: string;
   cc?: string[];
 }
@@ -158,6 +184,7 @@ export interface IRenterRegistrationVerifiedAdminPayload {
   registrationDate: string;
   registeredAgentName: string;
   registeredAgentBrokerage: string;
+  registeredAgentEmail?: string;
 }
 
 export interface IRenterRegisteredAgentInactivePayload {

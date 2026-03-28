@@ -343,6 +343,7 @@ export class AuthService {
           fullName?: string;
           title?: string;
           brokerage?: string;
+          email?: string;
         }
       | undefined;
 
@@ -433,11 +434,18 @@ export class AuthService {
           const agentRepository = new AgentProfileRepository();
           const agentProfile =
             await agentRepository.findByUserId(referredAgentId);
+          const agentUser = referredAgent?.email
+            ? null
+            : await this.userService.getById(referredAgentId);
 
           renterRegisteredAgent = {
-            fullName: referredAgent?.fullName || "Your Registered Agent",
+            fullName:
+              referredAgent?.fullName ||
+              agentUser?.fullName ||
+              "Your Registered Agent",
             title: agentProfile?.title || "Licensed Real Estate Agent",
             brokerage: agentProfile?.brokerageName || "BeforeListed",
+            email: referredAgent?.email || agentUser?.email || undefined,
           };
         }
       } catch (error) {
@@ -470,6 +478,7 @@ export class AuthService {
               registeredAgentName: renterRegisteredAgent?.fullName || "N/A",
               registeredAgentBrokerage:
                 renterRegisteredAgent?.brokerage || "N/A",
+              registeredAgentEmail: renterRegisteredAgent?.email,
             },
           );
         } catch (error) {

@@ -19,6 +19,7 @@ import {
   agentRegistrationVerifiedAdminTemplate,
   agentRenterRequestConfirmationTemplate,
   matchReferralAcknowledgmentToMatchingAgentTemplate,
+  nonRegisteredAgentRequestSubmissionNotificationTemplate,
   nonRegisteredAgentSharedRequestNotificationTemplate,
   preMarketAdminNotificationTemplate,
   preMarketAgentNotificationTemplate,
@@ -36,6 +37,7 @@ import {
   IAgentRegistrationVerifiedAdminPayload,
   IAgentRequestConfirmationPayload,
   IMatchReferralAcknowledgmentToMatchingAgentPayload,
+  INonRegisteredAgentRequestSubmissionNotificationPayload,
   INonRegisteredAgentSharedRequestNotificationPayload,
   IPreMarketAdminNotificationPayload,
   IPreMarketAgentNotificationPayload,
@@ -993,6 +995,65 @@ export class EmailService {
     }
   }
 
+  async sendNonRegisteredAgentRequestSubmissionNotification(
+    payload: INonRegisteredAgentRequestSubmissionNotificationPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, requestId: payload.requestId },
+        "Sending submitted renter request notification to non-registered agent",
+      );
+
+      const html = nonRegisteredAgentRequestSubmissionNotificationTemplate(
+        payload.agentName,
+        payload.renterFirstName,
+        payload.requestId,
+        payload.marketScope,
+        payload.minPrice,
+        payload.maxPrice,
+        payload.earliestDate,
+        payload.latestDate,
+        payload.bedrooms,
+        payload.bathrooms,
+        payload.location,
+        payload.features,
+        payload.preferencesByOrder,
+        payload.submittedAt,
+        this.config.logoUrl,
+        this.config.brandColor,
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.agentName },
+        replyTo: "support@beforelisted.com",
+        subject: `Shared Request: ${payload.bedrooms} up to ${payload.maxPrice} | ${payload.marketScope} | BeforeListed\u2122`,
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "NON_REGISTERED_AGENT_REQUEST_SUBMISSION_NOTIFICATION",
+        payload.to,
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send submitted renter request notification to non-registered agent",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
   /**
    * Send associated agent confirmation when renter submits a request
    */
@@ -1012,7 +1073,15 @@ export class EmailService {
         payload.renterPhoneNumber,
         payload.requestId,
         payload.marketScope,
-        payload.requestDescription,
+        payload.minPrice,
+        payload.maxPrice,
+        payload.earliestDate,
+        payload.latestDate,
+        payload.bedrooms,
+        payload.bathrooms,
+        payload.location,
+        payload.features,
+        payload.preferencesByOrder,
         payload.submittedAt,
         this.config.logoUrl,
         this.config.brandColor,
@@ -1405,9 +1474,17 @@ export class EmailService {
         this.config.brandColor,
       );
 
+      const registeredAgentEmail = payload.registeredAgentEmail?.trim();
+      const adminEmail = payload.to.trim().toLowerCase();
+      const cc =
+        registeredAgentEmail &&
+        registeredAgentEmail.toLowerCase() !== adminEmail
+          ? [registeredAgentEmail]
+          : undefined;
+
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: "Admin" },
-        cc: undefined,
+        cc,
         replyTo: "support@beforelisted.com",
         subject: "New Renter Registration Completed | BeforeListed\u2122",
         html,

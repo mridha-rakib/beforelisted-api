@@ -717,7 +717,15 @@ export function agentRenterRequestConfirmationTemplate(
   renterPhoneNumber: string,
   requestId: string,
   marketScope: string,
-  requestDescription: string,
+  minPrice: string,
+  maxPrice: string,
+  earliestDate: string,
+  latestDate: string,
+  bedrooms: string,
+  bathrooms: string,
+  location: string,
+  features: string,
+  preferencesByOrder: string,
   submittedAt: string,
   logoUrl?: string,
   brandColor: string = "#1890FF"
@@ -731,7 +739,17 @@ export function agentRenterRequestConfirmationTemplate(
   const safeRenterPhoneNumber = escapeHtml(renterPhoneNumber || "N/A");
   const safeRequestId = escapeHtml(requestId || "N/A");
   const safeMarketScope = escapeHtml(marketScope || "N/A");
-  const safeRequestDescription = escapeHtml(requestDescription || "N/A");
+  const safeMinPrice = escapeHtml(minPrice || "N/A");
+  const safeMaxPrice = escapeHtml(maxPrice || "N/A");
+  const safeEarliestDate = escapeHtml(earliestDate || "N/A");
+  const safeLatestDate = escapeHtml(latestDate || "N/A");
+  const safeBedrooms = escapeHtml(bedrooms || "N/A");
+  const safeBathrooms = escapeHtml(bathrooms || "N/A");
+  const safeLocation = escapeHtml(location || "N/A");
+  const safeFeatures = escapeHtml(features || "Not specified");
+  const safePreferencesByOrder = escapeHtml(
+    preferencesByOrder || "Not specified",
+  );
   const safeSubmittedAt = escapeHtml(submittedAt || "N/A");
 
   return `
@@ -901,8 +919,32 @@ export function agentRenterRequestConfirmationTemplate(
                     ${safeMarketScope}
                 </p>
                 <p>
-                    <strong>Description:</strong><br>
-                    ${safeRequestDescription}
+                    <strong>Budget:</strong><br>
+                    ${safeMinPrice} - ${safeMaxPrice}
+                </p>
+                <p>
+                    <strong>Move Date:</strong><br>
+                    ${safeEarliestDate} - ${safeLatestDate}
+                </p>
+                <p>
+                    <strong>Bedrooms:</strong><br>
+                    ${safeBedrooms}
+                </p>
+                <p>
+                    <strong>Bathrooms:</strong><br>
+                    ${safeBathrooms}
+                </p>
+                <p>
+                    <strong>Location:</strong><br>
+                    ${safeLocation}
+                </p>
+                <p>
+                    <strong>Features:</strong><br>
+                    ${safeFeatures}
+                </p>
+                <p>
+                    <strong>Preferences By Order:</strong><br>
+                    ${safePreferencesByOrder}
                 </p>
                 <p>
                     <strong>Submitted:</strong><br>
@@ -925,9 +967,8 @@ export function agentRenterRequestConfirmationTemplate(
             <div class="referral-note-title">Referral reminder:</div>
             <p class="referral-note-text">If you choose to refer this renter to another licensed agent who uses the BeforeListed&trade; website, whether through or outside the website, and a transaction results, referral fees will apply as outlined in the BeforeListed&trade; Agent Agreement, subject to brokerage approval and payable only upon closing.</p>
 
-            <p>If you have any questions or need assistance, please reply to this email.</p>
-
-            <p>Best regards,<br><strong>BeforeListed&trade; Support</strong></p>
+            <p>Thank you,</p>
+            <p><strong>BeforeListed&trade; Support</strong></p>
         </div>
 
         <div class="footer">
@@ -1199,6 +1240,8 @@ export function renterOpportunityFoundOtherAgentTemplate(
                 Hi ${safeFirstName},
             </div>
 
+            ${isAllMarket ? "" : "<p>Good news!</p>"}
+
             ${
               isAllMarket
                 ? `<p>Based on the preferences you selected when submitting your request on BeforeListed&trade;, including assistance with publicly listed apartments, a renter specialist has been identified who may be able to assist with your rental search.</p>
@@ -1230,7 +1273,7 @@ export function renterOpportunityFoundOtherAgentTemplate(
             ${
               isAllMarket
                 ? `<p>As a reminder, a broker fee is payable only if you successfully rent an apartment presented to you by a licensed agent assisting with your request, with all required disclosures provided.</p>`
-                : `<p>As a reminder, a broker fee is only payable to Corcoran if you successfully rent an apartment presented to you by the agent assisting with your request. The commission is paid only once and does not change based on the number of agents assisting you.</p>`
+                : `<p>As a reminder, a broker fee is only payable if you successfully rent an apartment presented to you by the agent assisting with your request. The fee is paid only once and does not change based on the number of agents assisting you.</p>`
             }
 
             ${
@@ -1968,6 +2011,184 @@ export function nonRegisteredAgentSharedRequestNotificationTemplate(
   `;
 }
 
+export function nonRegisteredAgentRequestSubmissionNotificationTemplate(
+  agentName: string,
+  renterFirstName: string,
+  requestId: string,
+  marketScope: string,
+  minPrice: string,
+  maxPrice: string,
+  earliestDate: string,
+  latestDate: string,
+  bedrooms: string,
+  bathrooms: string,
+  location: string,
+  features: string,
+  preferencesByOrder: string,
+  submittedAt: string,
+  logoUrl?: string,
+  brandColor: string = "#1890FF",
+): string {
+  const currentYear = new Date().getFullYear();
+  const dashboardLink = `${(process.env.CLIENT_URL || "https://beforelisted.com").replace(/\/+$/, "")}/agent/dashboard`;
+  const firstName = agentName?.trim().split(" ")[0] || agentName;
+  const safeFirstName = escapeHtml(firstName || "there");
+  const safeRenterFirstName = escapeHtml(renterFirstName || "Renter");
+  const safeRequestId = escapeHtml(requestId || "N/A");
+  const safeMarketScope = escapeHtml(marketScope || "N/A");
+  const safeMinPrice = escapeHtml(minPrice || "N/A");
+  const safeMaxPrice = escapeHtml(maxPrice || "N/A");
+  const safeEarliestDate = escapeHtml(earliestDate || "N/A");
+  const safeLatestDate = escapeHtml(latestDate || "N/A");
+  const safeBedrooms = escapeHtml(bedrooms || "N/A");
+  const safeBathrooms = escapeHtml(bathrooms || "N/A");
+  const safeLocation = escapeHtml(location || "N/A");
+  const safeFeatures = escapeHtml(features || "Not specified");
+  const safePreferencesByOrder = escapeHtml(
+    preferencesByOrder || "Not specified",
+  );
+  const safeSubmittedAt = escapeHtml(submittedAt || "N/A");
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared Request Notification | BeforeListed&trade;</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 640px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: ${brandColor};
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .details {
+            background-color: #fafafa;
+            padding: 16px;
+            border-radius: 6px;
+            border-left: 4px solid ${brandColor};
+            margin: 20px 0;
+        }
+        .details p {
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .details strong {
+            color: ${brandColor};
+        }
+        .cta-wrap {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background: ${brandColor};
+            color: #ffffff !important;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 12px 24px;
+            border-radius: 6px;
+        }
+        .referral-note-title {
+            font-weight: 600;
+            margin: 20px 0 10px 0;
+            color: #777;
+        }
+        .referral-note-text {
+            color: #777;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+        .footer a {
+            color: ${brandColor};
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            <h1>Shared Request Notification</h1>
+        </div>
+
+        <div class="content">
+            <p>Hi ${safeFirstName},</p>
+
+            <p>A renter who registered with another agent has chosen to share their request with participating BeforeListed&trade; agents.</p>
+
+            <div class="details">
+                <p><strong>${safeRenterFirstName} Request details:</strong></p>
+                <p><strong>Request ID:</strong><br>${safeRequestId}</p>
+                <p><strong>Market Scope:</strong><br>${safeMarketScope}</p>
+                <p><strong>Budget:</strong><br>${safeMinPrice} - ${safeMaxPrice}</p>
+                <p><strong>Move Date:</strong><br>${safeEarliestDate} - ${safeLatestDate}</p>
+                <p><strong>Bedrooms:</strong><br>${safeBedrooms}</p>
+                <p><strong>Bathrooms:</strong><br>${safeBathrooms}</p>
+                <p><strong>Location:</strong><br>${safeLocation}</p>
+                <p><strong>Features:</strong><br>${safeFeatures}</p>
+                <p><strong>Preferences By Order:</strong><br>${safePreferencesByOrder}</p>
+                <p><strong>Submitted:</strong><br>${safeSubmittedAt}</p>
+            </div>
+
+            <p>You may review full request details in the BeforeListed&trade; Agent dashboard.</p>
+
+            <div class="cta-wrap">
+                <a href="${dashboardLink}" class="cta-button">Go to Agent Dashboard</a>
+            </div>
+
+            <div class="referral-note-title">Referral reminder:</div>
+            <p class="referral-note-text">If you choose to assist this renter whether through or outside the website, and a transaction results, referral fees will apply as outlined in the BeforeListed&trade; Agent Agreement, subject to brokerage approval and payable only upon closing.</p>
+
+            <p>Thank you,</p>
+            <p><strong>BeforeListed&trade; Support</strong></p>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
+            ${footerLinks(brandColor)}
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
 export function agentRegistrationVerifiedAdminTemplate(
   agentFirstName: string,
   agentLastName: string,
@@ -2277,11 +2498,11 @@ export function renterRegistrationVerifiedAdminTemplate(
             <h1>BeforeListed&trade; - Renter Verification</h1>
         </div>
         <div class="content">
-            <div class="greeting">Hi Tuval,</div>
+            <div class="greeting">Hi,</div>
             <p>A new renter has successfully completed registration and email verification on BeforeListed.</p>
 
             <div class="section">
-                <h2>Renter Details</h2>
+                <h2>Renter details:</h2>
                 <table class="details-table">
                     <tr>
                         <td>Name</td>
@@ -2306,8 +2527,7 @@ export function renterRegistrationVerifiedAdminTemplate(
                 </table>
             </div>
 
-            <p>The renter can now submit and manage rental requests through the website.</p>
-            <p>No action is required unless you wish to review this registration</p>
+            <p>The renter is now active in the system and may submit a request.</p>
 
             <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>

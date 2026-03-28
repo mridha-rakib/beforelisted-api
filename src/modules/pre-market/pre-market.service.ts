@@ -537,6 +537,9 @@ export class PreMarketService {
       referringAgentName,
       referringAgentTitle,
       referringAgentBrokerage,
+      registrationType: renter.registrationType,
+      registeredAgentUserId:
+        renter.registrationType === "agent_referral" ? referredAgentId : null,
     };
 
     await preMarketNotifier.notifyNewRequest(request, renterData);
