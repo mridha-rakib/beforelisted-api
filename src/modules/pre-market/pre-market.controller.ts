@@ -180,9 +180,37 @@ export class PreMarketController {
    * Protected: Agents only
    */
   getRequestDetails = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.userId;
-    const { requestId } = req.params;
+    const response = await this.buildAgentRequestDetailsResponse(
+      req.user!.userId,
+      req.params.requestId,
+      false,
+    );
 
+    ApiResponse.success(res, response, "Pre-market request details");
+  });
+
+  /**
+   * Get pre-market request details with creator renter information
+   * GET /pre-market/:requestId
+   * Protected: Agents only
+   */
+  getRequestDetailsWithRenterInfo = asyncHandler(
+    async (req: Request, res: Response) => {
+      const response = await this.buildAgentRequestDetailsResponse(
+        req.user!.userId,
+        req.params.requestId,
+        true,
+      );
+
+      ApiResponse.success(res, response, "Pre-market request details");
+    },
+  );
+
+  private async buildAgentRequestDetailsResponse(
+    userId: string,
+    requestId: string,
+    includeCreatorRenterInfo: boolean,
+  ): Promise<any> {
     // Get agent profile
     const agent = await this.agentRepository.findByUserId(userId);
     if (!agent) {
@@ -200,6 +228,13 @@ export class PreMarketController {
       request as any,
     );
 
+    const enrichedCreatorRequest = includeCreatorRenterInfo
+      ? await this.preMarketService.enrichRequestWithFullRenterInfo(
+          request,
+          userId,
+        )
+      : null;
+
     if (agent.hasGrantAccess) {
       const matchRecord = await this.preMarketService.getMatchedAccessRecord(
         userId,
@@ -216,45 +251,42 @@ export class PreMarketController {
 
       if (matchRecord) {
         const enriched =
-          await this.preMarketService.enrichRequestWithFullRenterInfo(
+          enrichedCreatorRequest ||
+          (await this.preMarketService.enrichRequestWithFullRenterInfo(
             request,
-            userId
-          );
+            userId,
+          ));
         const visibleScope = this.preMarketService.resolveAgentVisibleScope(
           request.scope,
           true
         );
 
-        return ApiResponse.success(
-          res,
-          {
-            ...enriched,
-            scope: visibleScope,
-            status: grantAccessStatus,
-            listingStatus,
-            grantAccessStatus,
-            grantAccessId: matchRecord._id?.toString(),
-            accessType: "admin-granted",
-            canRequestAccess: false,
-          },
-          "Pre-market request details"
-        );
-      }
-
-      return ApiResponse.success(
-        res,
-        {
-          ...request,
-          renterInfo: null,
+        return {
+          ...enriched,
+          scope: visibleScope,
           status: grantAccessStatus,
           listingStatus,
           grantAccessStatus,
-          accessType: "none",
+          grantAccessId: matchRecord._id?.toString(),
+          accessType: "admin-granted",
           canRequestAccess: false,
-          message: "Match this request to view renter information",
-        },
-        "Pre-market request details"
-      );
+        };
+      }
+
+      return {
+        ...request,
+        renterInfo: includeCreatorRenterInfo
+          ? enrichedCreatorRequest?.renterInfo ?? null
+          : null,
+        status: grantAccessStatus,
+        listingStatus,
+        grantAccessStatus,
+        accessType: "none",
+        canRequestAccess: false,
+        ...(includeCreatorRenterInfo
+          ? {}
+          : { message: "Match this request to view renter information" }),
+      };
     }
 
     const accessSummary = await this.preMarketService.getAgentAccessSummary(
@@ -303,21 +335,29 @@ export class PreMarketController {
     }
 
     // Include renter info if agent has access
-    if (accessSummary.canSeeRenterInfo) {
+    if (accessSummary.canSeeRenterInfo || includeCreatorRenterInfo) {
       const enriched =
-        await this.preMarketService.enrichRequestWithFullRenterInfo(
+        enrichedCreatorRequest ||
+        (await this.preMarketService.enrichRequestWithFullRenterInfo(
           request,
-          userId
-        );
+          userId,
+        ));
       response = {
         ...response,
         renterInfo: enriched.renterInfo,
       };
 
-      logger.info(
-        { userId, requestId, accessType: accessSummary.accessType },
-        `Request accessed with ${accessSummary.accessType} renter info access`
-      );
+      if (accessSummary.canSeeRenterInfo) {
+        logger.info(
+          { userId, requestId, accessType: accessSummary.accessType },
+          `Request accessed with ${accessSummary.accessType} renter info access`
+        );
+      } else {
+        logger.info(
+          { userId, requestId },
+          "Request accessed with creator renter information via direct details route",
+        );
+      }
     } else {
       response = {
         ...response,
@@ -331,8 +371,8 @@ export class PreMarketController {
       );
     }
 
-    ApiResponse.success(res, response, "Pre-market request details");
-  });
+    return response;
+  }
 
   // ============================================
   // AGENT: REQUEST ACCESS

@@ -91,14 +91,13 @@ router.get(
 
 /**
  * GET /pre-market/:requestId
- * Normal Agents: View specific request details
- * Must request/pay for renter information
+ * Agents: View specific request details with creator renter information
  */
 router.get(
   "/:requestId",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Agent"),
-  controller.getRequestDetails.bind(controller),
+  controller.getRequestDetailsWithRenterInfo.bind(controller),
 );
 
 /**
