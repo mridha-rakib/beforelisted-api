@@ -353,10 +353,7 @@ export class PreMarketService {
       throw new NotFoundException("Renter not found");
     }
 
-    if (
-      renter.registrationType === "agent_referral" &&
-      renter.referredByAgentId
-    ) {
+    if (renter.referredByAgentId) {
       const referredAgent =
         typeof renter.referredByAgentId === "object"
           ? renter.referredByAgentId
