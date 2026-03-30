@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from "@/utils/app-error.utils";
 import { ReferralUtil } from "@/utils/referral.utils";
+import { AgentProfileRepository } from "../agent/agent.repository";
 import type { IUser } from "../user/user.interface";
 import { UserRepository } from "../user/user.repository";
 
@@ -16,9 +17,11 @@ import { UserRepository } from "../user/user.repository";
  */
 export class ReferralService {
   private userRepository: UserRepository;
+  private agentRepository: AgentProfileRepository;
 
   constructor() {
     this.userRepository = new UserRepository();
+    this.agentRepository = new AgentProfileRepository();
   }
 
   /**
@@ -52,6 +55,18 @@ export class ReferralService {
       referrer.role !== RolesEnum.AGENT
     ) {
       throw new BadRequestException("Invalid referrer role");
+    }
+
+    if (referrer.role === RolesEnum.AGENT) {
+      const agentProfile = await this.agentRepository.findByUserId(
+        referrer._id.toString(),
+      );
+
+      if (!agentProfile || agentProfile.isActive === false) {
+        throw new BadRequestException(
+          "This agent referral link is no longer active",
+        );
+      }
     }
 
     return referrer;

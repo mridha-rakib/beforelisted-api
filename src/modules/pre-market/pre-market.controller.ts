@@ -201,8 +201,16 @@ export class PreMarketController {
         req.params.requestId,
         true,
       );
+      const normalizedResponse =
+        response?.status === "free"
+          ? { ...response, status: "Available" }
+          : response;
 
-      ApiResponse.success(res, response, "Pre-market request details");
+      ApiResponse.success(
+        res,
+        normalizedResponse,
+        "Pre-market request details",
+      );
     },
   );
 

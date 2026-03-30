@@ -394,6 +394,19 @@ export class AgentController {
     ApiResponse.success(res, result, "Activation history retrieved");
   });
 
+  /**
+   * ADMIN: Delete agent profile and account
+   * DELETE /agent/admin/:userId
+   */
+  adminDeleteProfile = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(getAgentProfileSchema, req);
+    const result = await this.service.deleteAgentProfile(
+      validated.params.userId,
+    );
+
+    ApiResponse.success(res, result, "Agent profile deleted successfully");
+  });
+
   downloadAgentConsolidatedExcel = asyncHandler(
     async (req: Request, res: Response) => {
       const adminId = req.user!.userId;
@@ -419,7 +432,7 @@ export class AgentController {
 
   /**
    * DELETE /agent/profile
-   * Delete own agent profile (soft delete)
+   * Delete own agent profile (hard delete)
    */
   deleteProfile = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.userId;

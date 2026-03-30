@@ -133,6 +133,17 @@ router.get(
   controller.getSpecificAgent
 );
 
+/**
+ * DELETE /agent/admin/:userId
+ * Delete agent profile and account (admin only)
+ */
+router.delete(
+  "/admin/:userId",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize(ROLES.ADMIN),
+  controller.adminDeleteProfile
+);
+
 // /**
 //  * GET /agent/admin/:userId
 //  * Get specific agent profile (admin only)
