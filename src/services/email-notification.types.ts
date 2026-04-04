@@ -53,21 +53,6 @@ export interface IRenterRequestUpdatedNotificationPayload {
 export interface INonRegisteredAgentSharedRequestNotificationPayload {
   to: string;
   agentName: string;
-  requestId: string;
-  minPrice: string;
-  maxPrice: string;
-  bedrooms: string;
-  bathrooms: string;
-  moveDateRange: string;
-  location: string;
-  marketScope: string;
-  preferences: string;
-  submittedAt: string;
-}
-
-export interface INonRegisteredAgentRequestSubmissionNotificationPayload {
-  to: string;
-  agentName: string;
   renterFirstName: string;
   requestId: string;
   marketScope: string;
@@ -82,6 +67,9 @@ export interface INonRegisteredAgentRequestSubmissionNotificationPayload {
   preferencesByOrder: string;
   submittedAt: string;
 }
+
+export type INonRegisteredAgentRequestSubmissionNotificationPayload =
+  INonRegisteredAgentSharedRequestNotificationPayload;
 
 export interface IAgentRequestConfirmationPayload {
   to: string;

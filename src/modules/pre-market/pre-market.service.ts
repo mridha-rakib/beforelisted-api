@@ -1703,7 +1703,11 @@ export class PreMarketService {
       visibility === "SHARED" && request.shareConsent === true
         ? "SHARED"
         : "PRIVATE";
+    const currentVisibility =
+      (request as unknown as { visibility?: "PRIVATE" | "SHARED" }).visibility ??
+      "PRIVATE";
     const shouldSendSharedVisibilityNotification =
+      currentVisibility === "PRIVATE" &&
       nextVisibility === "SHARED" &&
       !(
         request as unknown as {
@@ -1763,24 +1767,34 @@ export class PreMarketService {
       return;
     }
 
+    const renter = request.renterId
+      ? await this.renterRepository.findRenterWithReferrer(
+          request.renterId.toString(),
+        )
+      : null;
     const requestId = request.requestId || request._id?.toString() || "N/A";
+    const renterFirstName = renter?.fullName?.trim().split(/\s+/)[0] || "Renter";
     const minPrice = this.formatCurrencyUSD(request.priceRange?.min);
     const maxPrice = this.formatCurrencyUSD(request.priceRange?.max);
     const bedrooms =
       Array.isArray(request.bedrooms) && request.bedrooms.length > 0
         ? request.bedrooms.join(", ")
-        : "N/A";
+        : "Any";
     const bathrooms =
       Array.isArray(request.bathrooms) && request.bathrooms.length > 0
         ? request.bathrooms.join(", ")
-        : "N/A";
-    const moveDateRange = `${this.formatDateValue(request.movingDateRange?.earliest)} - ${this.formatDateValue(request.movingDateRange?.latest)}`;
+        : "Any";
+    const earliestDate = this.formatDateValue(
+      request.movingDateRange?.earliest,
+    );
+    const latestDate = this.formatDateValue(request.movingDateRange?.latest);
     const location = this.formatRequestLocations(request.locations);
     const marketScope = request.scope || "Upcoming";
-    const preferences =
+    const features = this.formatSharedRequestFeatures(request);
+    const preferencesByOrder =
       Array.isArray(request.preferences) && request.preferences.length > 0
         ? request.preferences.map((value) => String(value)).join(", ")
-        : "N/A";
+        : "Not specified";
     const submittedAt = this.formatEasternTime(
       request.createdAt ? new Date(request.createdAt) : new Date(),
     );
@@ -1790,15 +1804,18 @@ export class PreMarketService {
         emailService.sendNonRegisteredAgentSharedRequestNotification({
           to: recipient.email,
           agentName: recipient.name,
+          renterFirstName,
           requestId,
+          marketScope,
           minPrice,
           maxPrice,
+          earliestDate,
+          latestDate,
           bedrooms,
           bathrooms,
-          moveDateRange,
           location,
-          marketScope,
-          preferences,
+          features,
+          preferencesByOrder,
           submittedAt,
         }),
       ),
@@ -1939,6 +1956,43 @@ export class PreMarketService {
       .filter(Boolean);
 
     return formatted.length > 0 ? formatted.join("; ") : "N/A";
+  }
+
+  private formatSharedRequestFeatures(request: IPreMarketRequest): string {
+    const features: string[] = [];
+
+    if (request.unitFeatures?.laundryInUnit) {
+      features.push("Laundry in Unit");
+    }
+    if (request.unitFeatures?.privateOutdoorSpace) {
+      features.push("Private Outdoor Space");
+    }
+    if (request.unitFeatures?.dishwasher) {
+      features.push("Dishwasher");
+    }
+    if (request.buildingFeatures?.doorman) {
+      features.push("Doorman");
+    }
+    if (request.buildingFeatures?.elevator) {
+      features.push("Elevator");
+    }
+    if (request.buildingFeatures?.laundryInBuilding) {
+      features.push("Laundry in Building");
+    }
+    if (request.petPolicy?.catsAllowed) {
+      features.push("Cats Allowed");
+    }
+    if (request.petPolicy?.dogsAllowed) {
+      features.push("Dogs Allowed");
+    }
+    if (request.guarantorRequired?.personalGuarantor) {
+      features.push("Personal Guarantor");
+    }
+    if (request.guarantorRequired?.thirdPartyGuarantor) {
+      features.push("Third-Party Guarantor");
+    }
+
+    return features.length > 0 ? features.join(", ") : "Not specified";
   }
 
   async expireRequests(): Promise<{

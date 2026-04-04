@@ -1864,151 +1864,40 @@ export function renterRequestUpdatedNotificationTemplate(
  */
 export function nonRegisteredAgentSharedRequestNotificationTemplate(
   agentName: string,
+  renterFirstName: string,
   requestId: string,
+  marketScope: string,
   minPrice: string,
   maxPrice: string,
+  earliestDate: string,
+  latestDate: string,
   bedrooms: string,
   bathrooms: string,
-  moveDateRange: string,
   location: string,
-  marketScope: string,
-  preferences: string,
+  features: string,
+  preferencesByOrder: string,
   submittedAt: string,
   logoUrl?: string,
-  brandColor: string = "#1890FF"
+  brandColor: string = "#1890FF",
 ): string {
-  const currentYear = new Date().getFullYear();
-  const firstName = agentName?.trim().split(" ")[0] || agentName;
-  const safeFirstName = escapeHtml(firstName || "there");
-  const safeRequestId = escapeHtml(requestId || "N/A");
-  const safeMinPrice = escapeHtml(minPrice || "N/A");
-  const safeMaxPrice = escapeHtml(maxPrice || "N/A");
-  const safeBedrooms = escapeHtml(bedrooms || "N/A");
-  const safeBathrooms = escapeHtml(bathrooms || "N/A");
-  const safeMoveDateRange = escapeHtml(moveDateRange || "N/A");
-  const safeLocation = escapeHtml(location || "N/A");
-  const safeMarketScope = escapeHtml(marketScope || "N/A");
-  const safePreferences = escapeHtml(preferences || "N/A");
-  const safeSubmittedAt = escapeHtml(submittedAt || "N/A");
-
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Shared Renter Request</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f5f5f5;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 600px;
-            margin: 20px auto;
-            background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-        .header {
-            background: ${brandColor};
-            color: #ffffff;
-            padding: 30px 20px;
-            text-align: center;
-        }
-        .logo {
-            max-width: 150px;
-            height: auto;
-            margin-bottom: 15px;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 600;
-        }
-        .content {
-            padding: 30px 20px;
-        }
-        .snapshot-title {
-            color: ${brandColor};
-            font-weight: 600;
-            margin: 20px 0 10px 0;
-            font-size: 16px;
-        }
-        .snapshot-list {
-            margin: 0 0 16px 18px;
-            padding: 0;
-            color: #555;
-        }
-        .snapshot-list li {
-            margin: 6px 0;
-        }
-        .preferences-box {
-            background-color: #fafafa;
-            border-left: 4px solid ${brandColor};
-            border-radius: 4px;
-            padding: 12px;
-            margin: 8px 0 16px 0;
-            color: #555;
-            font-size: 14px;
-        }
-        .footer {
-            background-color: #f9f9f9;
-            padding: 20px;
-            text-align: center;
-            font-size: 12px;
-            color: #999;
-        }
-        .footer a {
-            color: ${brandColor};
-            text-decoration: none;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
-            <h1>New Renter Request Shared</h1>
-        </div>
-
-        <div class="content">
-            <p>Hi ${safeFirstName},</p>
-
-            <p>A new renter request has been made public and may be relevant to your outreach to owners.</p>
-
-            <div class="snapshot-title">Request Snapshot</div>
-            <ul class="snapshot-list">
-                <li>Request ID: ${safeRequestId}</li>
-                <li>Budget: ${safeMinPrice} - ${safeMaxPrice}</li>
-                <li>Bedrooms: ${safeBedrooms}</li>
-                <li>Bathrooms: ${safeBathrooms}</li>
-                <li>Move Date: ${safeMoveDateRange}</li>
-                <li>Location: ${safeLocation}</li>
-                <li>Market Scope: ${safeMarketScope}</li>
-            </ul>
-
-            <div class="snapshot-title">Preferences:</div>
-            <div class="preferences-box">${safePreferences}</div>
-
-            <p>Submitted: ${safeSubmittedAt}</p>
-
-            <p>Best regards,<br><strong>BeforeListed&trade; Support</strong></p>
-        </div>
-
-        <div class="footer">
-            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
-            ${footerLinks(brandColor)}
-        </div>
-    </div>
-</body>
-</html>
-  `;
+  return nonRegisteredAgentRequestSubmissionNotificationTemplate(
+    agentName,
+    renterFirstName,
+    requestId,
+    marketScope,
+    minPrice,
+    maxPrice,
+    earliestDate,
+    latestDate,
+    bedrooms,
+    bathrooms,
+    location,
+    features,
+    preferencesByOrder,
+    submittedAt,
+    logoUrl,
+    brandColor,
+  );
 }
 
 export function nonRegisteredAgentRequestSubmissionNotificationTemplate(

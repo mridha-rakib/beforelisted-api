@@ -1,16 +1,11 @@
 // file: src/modules/pre-market/pre-market-notifier.ts
 
 import { env } from "@/env";
-import {
-  ACCOUNT_STATUS,
-  ROLES,
-  SYSTEM_DEFAULT_AGENT,
-} from "@/constants/app.constants";
+import { SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 import { NotificationService } from "@/modules/notification/notification.service";
 import { emailService } from "@/services/email.service";
 import { type ObjectId } from "mongoose";
-import { resolveSharedRequestEmailSubscriptionEnabled } from "../agent/agent-email-subscription.utils";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { IGrantAccessRequest } from "../grant-access/grant-access.model";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
@@ -210,10 +205,6 @@ export class PreMarketNotifier {
 
       await this.notifyRenterAboutNewRequest(payload, renterData);
       await this.notifyReferringAgentAboutNewRequest(
-        preMarketRequest,
-        renterData,
-      );
-      await this.notifyNonRegisteredAgentsAboutSubmittedRequest(
         preMarketRequest,
         renterData,
       );
@@ -521,131 +512,6 @@ export class PreMarketNotifier {
     }
   }
 
-  private async notifyNonRegisteredAgentsAboutSubmittedRequest(
-    preMarketRequest: IPreMarketRequest,
-    renterData: {
-      renterName: string;
-      registrationType?: string;
-      registeredAgentUserId?: string | null;
-    },
-  ): Promise<void> {
-    try {
-      const recipients =
-        await this.getNonRegisteredAgentRecipientsForSubmittedRequest(
-          renterData.registrationType === "agent_referral"
-            ? renterData.registeredAgentUserId
-            : null,
-        );
-
-      if (recipients.length === 0) {
-        logger.info(
-          { requestId: preMarketRequest.requestId || preMarketRequest._id },
-          "No non-registered agents eligible for request submission notification",
-        );
-        return;
-      }
-
-      const requestId =
-        preMarketRequest.requestId || preMarketRequest._id?.toString() || "N/A";
-      const renterFirstName =
-        renterData.renterName?.trim().split(/\s+/)[0] || "Renter";
-      const marketScope = preMarketRequest.scope || "Upcoming";
-      const minPrice = this.formatCurrency(preMarketRequest.priceRange?.min);
-      const maxPrice = this.formatCurrency(preMarketRequest.priceRange?.max);
-      const earliestDate = this.formatDate(
-        preMarketRequest.movingDateRange?.earliest,
-      );
-      const latestDate = this.formatDate(
-        preMarketRequest.movingDateRange?.latest,
-      );
-      const bedrooms = this.formatList(preMarketRequest.bedrooms, "Any");
-      const bathrooms = this.formatList(preMarketRequest.bathrooms, "Any");
-      const location = this.formatLocationWithNeighborhoods(
-        preMarketRequest.locations,
-      );
-      const features = this.formatRequestFeatures(preMarketRequest);
-      const preferencesByOrder = this.formatList(
-        preMarketRequest.preferences,
-        "Not specified",
-      );
-      const submittedAt = this.formatEasternTime(
-        new Date(preMarketRequest.createdAt ?? Date.now()),
-      );
-
-      const sendResults = await Promise.allSettled(
-        recipients.map((recipient) =>
-          emailService.sendNonRegisteredAgentRequestSubmissionNotification({
-            to: recipient.email,
-            agentName: recipient.name,
-            renterFirstName,
-            requestId,
-            marketScope,
-            minPrice,
-            maxPrice,
-            earliestDate,
-            latestDate,
-            bedrooms,
-            bathrooms,
-            location,
-            features,
-            preferencesByOrder,
-            submittedAt,
-          }),
-        ),
-      );
-
-      let sentCount = 0;
-      let failedCount = 0;
-
-      sendResults.forEach((result, index) => {
-        const recipient = recipients[index];
-
-        if (result.status === "rejected") {
-          failedCount += 1;
-          logger.warn(
-            {
-              email: recipient.email,
-              requestId,
-              error:
-                result.reason instanceof Error
-                  ? result.reason.message
-                  : String(result.reason),
-            },
-            "Failed to send request submission notification to non-registered agent",
-          );
-          return;
-        }
-
-        if (result.value.success) {
-          sentCount += 1;
-        } else {
-          failedCount += 1;
-          logger.warn(
-            {
-              email: recipient.email,
-              requestId,
-              error: result.value.error,
-            },
-            "Non-registered agent request submission notification returned unsuccessful result",
-          );
-        }
-      });
-
-      logger.info(
-        { requestId, sentCount, failedCount, recipientCount: recipients.length },
-        "Non-registered agent request submission notification dispatch completed",
-      );
-    } catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : String(error),
-          preMarketRequestId: preMarketRequest._id,
-        },
-        "Failed to notify non-registered agents about submitted request",
-      );
-    }
-  }
-
   private async getRegisteredAndMatchedAgentsForRequestUpdate(
     preMarketRequest: IPreMarketRequest
   ): Promise<{ recipients: Array<{ name: string; email: string }>; renterName: string }> {
@@ -837,76 +703,6 @@ export class PreMarketNotifier {
     }
 
     return agentProfile.emailSubscriptionEnabled !== false;
-  }
-
-  private async getNonRegisteredAgentRecipientsForSubmittedRequest(
-    excludedAgentUserId?: string | null,
-  ): Promise<Array<{ userId: string; name: string; email: string }>> {
-    const profiles = await this.agentRepository.find({
-      isActive: true,
-    } as any);
-
-    const candidateAgentIds = Array.from(
-      new Set(
-        profiles
-          .filter((profile) =>
-            resolveSharedRequestEmailSubscriptionEnabled(profile),
-          )
-          .map((profile) =>
-            typeof profile.userId === "string"
-              ? profile.userId
-              : profile.userId?.toString?.() || null,
-          )
-          .filter(
-            (agentId): agentId is string =>
-              Boolean(agentId) && agentId !== excludedAgentUserId,
-          ),
-      ),
-    );
-
-    if (candidateAgentIds.length === 0) {
-      return [];
-    }
-
-    const agentUsers = await Promise.all(
-      candidateAgentIds.map((agentId) => this.userRepository.findById(agentId)),
-    );
-
-    const recipients = new Map<
-      string,
-      { userId: string; name: string; email: string }
-    >();
-
-    for (const user of agentUsers) {
-      if (!user?._id || !user.email) {
-        continue;
-      }
-      if (user.role !== ROLES.AGENT) {
-        continue;
-      }
-      if (user.accountStatus !== ACCOUNT_STATUS.ACTIVE) {
-        continue;
-      }
-      if (user.isDeleted) {
-        continue;
-      }
-
-      const email = user.email.trim();
-      if (!email) {
-        continue;
-      }
-
-      const key = email.toLowerCase();
-      if (!recipients.has(key)) {
-        recipients.set(key, {
-          userId: user._id.toString(),
-          name: user.fullName || email,
-          email,
-        });
-      }
-    }
-
-    return Array.from(recipients.values());
   }
 
   private formatCurrency(value?: number): string {

@@ -729,15 +729,18 @@ export class EmailService {
 
       const html = nonRegisteredAgentSharedRequestNotificationTemplate(
         payload.agentName,
+        payload.renterFirstName,
         payload.requestId,
+        payload.marketScope,
         payload.minPrice,
         payload.maxPrice,
+        payload.earliestDate,
+        payload.latestDate,
         payload.bedrooms,
         payload.bathrooms,
-        payload.moveDateRange,
         payload.location,
-        payload.marketScope,
-        payload.preferences,
+        payload.features,
+        payload.preferencesByOrder,
         payload.submittedAt,
         this.config.logoUrl,
         this.config.brandColor,
@@ -746,7 +749,7 @@ export class EmailService {
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.agentName },
         replyTo: "support@beforelisted.com",
-        subject: `New Renter Request shared – ${payload.marketScope} – ${payload.bedrooms} – Up to ${payload.maxPrice} | BeforeListed\u2122`,
+        subject: `Shared Request: ${payload.bedrooms} up to ${payload.maxPrice} | ${payload.marketScope} | BeforeListed\u2122`,
         html,
       };
 
