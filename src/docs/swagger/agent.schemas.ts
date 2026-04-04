@@ -92,12 +92,6 @@ export const agentSchemas = {
         type: "boolean",
         example: true,
         description:
-          "Legacy alias for the shared-request email subscription toggle.",
-      },
-      sharedRequestEmailSubscriptionEnabled: {
-        type: "boolean",
-        example: true,
-        description:
           "Whether the agent receives the one-time email when another agent makes a renter request shared/public.",
       },
     },
@@ -618,12 +612,6 @@ export const agentSchemas = {
         example: 71.4,
       },
       emailSubscriptionEnabled: {
-        type: "boolean",
-        example: true,
-        description:
-          "Current shared-request email subscription status. This is kept as a compatibility alias.",
-      },
-      sharedRequestEmailSubscriptionEnabled: {
         type: "boolean",
         example: true,
         description:

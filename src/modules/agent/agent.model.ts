@@ -99,11 +99,6 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
     default: true,
     index: true,
   },
-  sharedRequestEmailSubscriptionEnabled: {
-    type: Boolean,
-    default: true,
-    index: true,
-  },
 
   acceptingRequests: {
     type: Boolean,

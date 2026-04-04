@@ -33,7 +33,6 @@ export type UpdateAgentProfilePayload = {
   brokerageName?: string;
   title?: AgentTitle;
   emailSubscriptionEnabled?: boolean;
-  sharedRequestEmailSubscriptionEnabled?: boolean;
 };
 
 export type ActivateAgentWithLinkPayload = {
@@ -57,7 +56,6 @@ export type AgentProfileResponse = {
   activeReferrals: number;
 
   emailSubscriptionEnabled: boolean;
-  sharedRequestEmailSubscriptionEnabled: boolean;
   acceptingRequests: boolean;
   acceptingRequestsToggledAt?: Date;
   hasGrantAccess: boolean;

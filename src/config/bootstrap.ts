@@ -1,6 +1,7 @@
 // file: src/config/bootstrap.ts
 
 import { logger } from "@/middlewares/pino-logger";
+import { AgentProfileRepository } from "@/modules/agent/agent.repository";
 import { AdminSeeder } from "@/seeders/admin.seeder";
 import { AgentSeeder } from "@/seeders/agent.seeder";
 import { NoticeSeeder } from "@/seeders/notice.seeder";
@@ -12,6 +13,14 @@ export async function bootstrapApplication(): Promise<void> {
     logger.info("🚀 Bootstrapping application...");
     await AdminSeeder.run();
     await AgentSeeder.run();
+    const migratedAgentEmailSubscriptionCount =
+      await new AgentProfileRepository().migrateLegacySharedRequestEmailSubscriptionField();
+    if (migratedAgentEmailSubscriptionCount > 0) {
+      logger.info(
+        { migratedAgentEmailSubscriptionCount },
+        "Migrated legacy shared request email subscriptions into emailSubscriptionEnabled",
+      );
+    }
     await NoticeSeeder.run();
     startPreMarketExpirationJob();
 

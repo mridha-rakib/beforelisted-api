@@ -186,6 +186,22 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
     );
   }
 
+  async migrateLegacySharedRequestEmailSubscriptionField(): Promise<number> {
+    const result = await this.model.collection.updateMany(
+      { sharedRequestEmailSubscriptionEnabled: { $exists: true } },
+      [
+        {
+          $set: {
+            emailSubscriptionEnabled: "$sharedRequestEmailSubscriptionEnabled",
+          },
+        },
+        { $unset: "sharedRequestEmailSubscriptionEnabled" },
+      ] as any,
+    );
+
+    return result.modifiedCount ?? 0;
+  }
+
   /**
    * Toggle agent access (grant/revoke)
    */

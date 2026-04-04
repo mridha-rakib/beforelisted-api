@@ -47,7 +47,6 @@ export interface IAgentProfile extends Document {
 
   // Access Management
   emailSubscriptionEnabled: boolean;
-  sharedRequestEmailSubscriptionEnabled?: boolean;
   acceptingRequests: boolean;
   acceptingRequestsToggledAt?: Date;
   hasGrantAccess: boolean;
