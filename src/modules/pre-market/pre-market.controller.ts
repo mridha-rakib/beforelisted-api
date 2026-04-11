@@ -242,13 +242,10 @@ export class PreMarketController {
           userId,
         )
       : null;
+    const shouldDisplayMatchedScope =
+      await this.preMarketService.shouldDisplayMatchedScopeForRequest(requestId);
 
     if (agent.hasGrantAccess) {
-      const agentAccessRecord =
-        await this.grantAccessRepository.findByAgentAndRequest(
-          userId,
-          requestId,
-        );
       const matchRecord = await this.preMarketService.getMatchedAccessRecord(
         userId,
         requestId
@@ -257,9 +254,7 @@ export class PreMarketController {
       const grantAccessStatus = "free";
       const visibleScope = this.preMarketService.resolveAgentVisibleScope(
         request.scope,
-        this.preMarketService.shouldDisplayMatchedScopeForAccessRecord(
-          agentAccessRecord,
-        ),
+        shouldDisplayMatchedScope,
       );
 
       await this.preMarketRepository.addAgentToViewedBy(
@@ -325,9 +320,7 @@ export class PreMarketController {
             : request.status;
     const visibleScope = this.preMarketService.resolveAgentVisibleScope(
       request.scope,
-      this.preMarketService.shouldDisplayMatchedScopeForAccessStatus(
-        accessSummary.grantAccessStatus,
-      ),
+      shouldDisplayMatchedScope,
     );
 
     await this.preMarketRepository.addAgentToViewedBy(
@@ -804,6 +797,10 @@ export class PreMarketController {
         agentId,
         request as any,
       );
+      const shouldDisplayMatchedScope =
+        await this.preMarketService.shouldDisplayMatchedScopeForRequest(
+          requestId,
+        );
 
       if (agent.hasGrantAccess === true) {
         const matchRecord = await this.preMarketService.getMatchedAccessRecord(
@@ -822,9 +819,7 @@ export class PreMarketController {
           );
         const visibleScope = this.preMarketService.resolveAgentVisibleScope(
           request.scope,
-          this.preMarketService.shouldDisplayMatchedScopeForAccessRecord(
-            matchRecord,
-          ),
+          shouldDisplayMatchedScope,
         );
 
         await this.preMarketRepository.addAgentToViewedBy(
@@ -884,9 +879,7 @@ export class PreMarketController {
         );
       const visibleScope = this.preMarketService.resolveAgentVisibleScope(
         request.scope,
-        this.preMarketService.shouldDisplayMatchedScopeForAccessRecord(
-          paidAccess,
-        ),
+        shouldDisplayMatchedScope,
       );
 
       logger.info(

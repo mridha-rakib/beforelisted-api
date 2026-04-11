@@ -122,6 +122,43 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       .exec() as unknown as Promise<IGrantAccessRequest[]>;
   }
 
+  async findByPreMarketRequestIdsAndStatuses(
+    preMarketRequestIds: Array<string | Types.ObjectId>,
+    statuses: GrantAccessStatus[]
+  ): Promise<IGrantAccessRequest[]> {
+    if (!preMarketRequestIds || preMarketRequestIds.length === 0) {
+      return [];
+    }
+
+    if (!statuses || statuses.length === 0) {
+      return [];
+    }
+
+    return this.model
+      .find({
+        preMarketRequestId: { $in: preMarketRequestIds },
+        status: { $in: statuses },
+      })
+      .lean()
+      .exec() as unknown as Promise<IGrantAccessRequest[]>;
+  }
+
+  async existsByPreMarketRequestIdAndStatuses(
+    preMarketRequestId: string | Types.ObjectId,
+    statuses: GrantAccessStatus[]
+  ): Promise<boolean> {
+    if (!statuses || statuses.length === 0) {
+      return false;
+    }
+
+    const existing = await this.model.exists({
+      preMarketRequestId,
+      status: { $in: statuses },
+    });
+
+    return Boolean(existing);
+  }
+
   async deleteByPreMarketRequestId(
     preMarketRequestId: string | Types.ObjectId
   ): Promise<{ deletedCount?: number }> {

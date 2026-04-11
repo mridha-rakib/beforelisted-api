@@ -53,6 +53,13 @@ type AgentGrantAccessStatus =
   | "free"
   | "rejected";
 
+const MATCHED_SCOPE_GRANT_ACCESS_STATUSES = [
+  "pending",
+  "approved",
+  "free",
+  "paid",
+] as const;
+
 const DEFAULT_REGISTERED_AGENT_EMAIL = SYSTEM_DEFAULT_AGENT.email;
 const DEFAULT_REGISTERED_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
 const DEFAULT_REFERRAL_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
@@ -276,19 +283,28 @@ export class PreMarketService {
     return scope || "Upcoming";
   }
 
-  public shouldDisplayMatchedScopeForAccessRecord(
-    grantAccess: IGrantAccessRequest | null | undefined,
-  ): boolean {
-    return Boolean(grantAccess && grantAccess.status !== "rejected");
+  private async getGlobalMatchedScopeRequestIdSet(
+    requestIds: string[],
+  ): Promise<Set<string>> {
+    const records =
+      await this.grantAccessRepository.findByPreMarketRequestIdsAndStatuses(
+        requestIds,
+        [...MATCHED_SCOPE_GRANT_ACCESS_STATUSES],
+      );
+
+    return new Set(
+      records
+        .map((record) => record.preMarketRequestId?.toString())
+        .filter((id): id is string => Boolean(id)),
+    );
   }
 
-  public shouldDisplayMatchedScopeForAccessStatus(
-    grantAccessStatus?: AgentGrantAccessStatus | null,
-  ): boolean {
-    return Boolean(
-      grantAccessStatus &&
-        grantAccessStatus !== "Available" &&
-        grantAccessStatus !== "rejected",
+  public async shouldDisplayMatchedScopeForRequest(
+    requestId: string | Types.ObjectId,
+  ): Promise<boolean> {
+    return this.grantAccessRepository.existsByPreMarketRequestIdAndStatuses(
+      requestId,
+      [...MATCHED_SCOPE_GRANT_ACCESS_STATUSES],
     );
   }
 
@@ -622,11 +638,14 @@ export class PreMarketService {
       .map((request) => request._id?.toString())
       .filter(Boolean);
 
-    const grantAccessRecords =
-      await this.grantAccessRepository.findByAgentIdAndRequestIds(
-        agentId,
-        requestIds as string[],
-      );
+    const [grantAccessRecords, globalMatchedScopeRequestIds] =
+      await Promise.all([
+        this.grantAccessRepository.findByAgentIdAndRequestIds(
+          agentId,
+          requestIds as string[],
+        ),
+        this.getGlobalMatchedScopeRequestIdSet(requestIds as string[]),
+      ]);
 
     const grantAccessByRequestId = new Map(
       grantAccessRecords.map((record) => [
@@ -667,7 +686,7 @@ export class PreMarketService {
           : request.status;
         const visibleScope = this.resolveAgentVisibleScope(
           request.scope,
-          this.shouldDisplayMatchedScopeForAccessRecord(grantAccess),
+          globalMatchedScopeRequestIds.has(request._id?.toString() || ""),
         );
         const currentRegisteredAgentId =
           await this.resolveRegisteredAgentIdForRequest(request);
@@ -2185,6 +2204,11 @@ export class PreMarketService {
     const total = sortedListings.length;
     const startIndex = (page - 1) * limit;
     const paginatedData = sortedListings.slice(startIndex, startIndex + limit);
+    const paginatedRequestIds = paginatedData
+      .map((request: any) => request._id?.toString())
+      .filter((id: string | undefined): id is string => Boolean(id));
+    const globalMatchedScopeRequestIds =
+      await this.getGlobalMatchedScopeRequestIdSet(paginatedRequestIds);
     const accessRecordByRequestId = new Map(
       accessRecords.map((access) => [
         access.preMarketRequestId.toString(),
@@ -2211,9 +2235,7 @@ export class PreMarketService {
             : "matched";
         const responseScope = this.resolveAgentVisibleScope(
           request.scope,
-          this.shouldDisplayMatchedScopeForAccessStatus(
-            accessSummary.grantAccessStatus,
-          ),
+          globalMatchedScopeRequestIds.has(request._id?.toString() || ""),
         );
 
         return {
