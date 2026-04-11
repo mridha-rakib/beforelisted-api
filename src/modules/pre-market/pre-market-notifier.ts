@@ -32,12 +32,20 @@ interface IPreMarketNotificationPayload {
   listingUrl: string;
 }
 
-interface INotificationResult {
-  success: boolean;
-  agentsNotified: number;
-  adminNotified: boolean;
-  emailsSent: number;
-  errors?: string[];
+type PreMarketRequestEmailStatus = "sent" | "failed" | "skipped";
+
+interface IPreMarketRequestEmailLog {
+  emailType:
+    | "PRE_MARKET_RENTER_CONFIRMATION"
+    | "PRE_MARKET_REQUEST_CONFIRMATION_AGENT";
+  recipientRole: "Renter" | "Registered Agent";
+  recipientEmail: string | null;
+  recipientName?: string;
+  triggered: boolean;
+  status: PreMarketRequestEmailStatus;
+  messageId?: string;
+  error?: string;
+  skipReason?: string;
 }
 
 export class PreMarketNotifier {
@@ -203,10 +211,22 @@ export class PreMarketNotifier {
         listingUrl: `${env.CLIENT_URL}/listings/${preMarketRequest._id}`,
       };
 
-      await this.notifyRenterAboutNewRequest(payload, renterData);
-      await this.notifyReferringAgentAboutNewRequest(
+      const emailNotifications: IPreMarketRequestEmailLog[] = [];
+
+      emailNotifications.push(
+        await this.notifyRenterAboutNewRequest(payload, renterData),
+      );
+      emailNotifications.push(
+        await this.notifyReferringAgentAboutNewRequest(
+          preMarketRequest,
+          renterData,
+        ),
+      );
+
+      this.logNewRequestEmailSummary(
         preMarketRequest,
         renterData,
+        emailNotifications,
       );
 
       await this.createInAppNotifications(preMarketRequest, {
@@ -367,7 +387,15 @@ export class PreMarketNotifier {
       referringAgentTitle?: string;
       referringAgentBrokerage?: string;
     }
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<IPreMarketRequestEmailLog> {
+    const emailLogBase = {
+      emailType: "PRE_MARKET_RENTER_CONFIRMATION" as const,
+      recipientRole: "Renter" as const,
+      recipientEmail: renterData.renterEmail,
+      recipientName: renterData.renterName,
+      triggered: true,
+    };
+
     try {
       const emailResult =
         await emailService.sendPreMarketRequestConfirmationToRenter({
@@ -388,7 +416,11 @@ export class PreMarketNotifier {
           { email: renterData.renterEmail, requestId: payload.requestId },
           "? Renter confirmation email sent"
         );
-        return { success: true };
+        return {
+          ...emailLogBase,
+          status: "sent",
+          messageId: emailResult.messageId,
+        };
       }
 
       const errorMessage =
@@ -400,7 +432,11 @@ export class PreMarketNotifier {
         "? Renter confirmation email failed"
       );
 
-      return { success: false, error: errorMessage };
+      return {
+        ...emailLogBase,
+        status: "failed",
+        error: errorMessage,
+      };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -408,7 +444,11 @@ export class PreMarketNotifier {
         { error: errorMessage, email: renterData.renterEmail },
         "? Failed to send renter confirmation email"
       );
-      return { success: false, error: errorMessage };
+      return {
+        ...emailLogBase,
+        status: "failed",
+        error: errorMessage,
+      };
     }
   }
 
@@ -421,18 +461,33 @@ export class PreMarketNotifier {
       referringAgentEmail?: string;
       referringAgentName?: string;
     },
-  ): Promise<void> {
+  ): Promise<IPreMarketRequestEmailLog> {
+    const requestId =
+      preMarketRequest.requestId || preMarketRequest._id?.toString() || "";
+    const agentEmail = renterData.referringAgentEmail?.trim() || null;
+    const agentName =
+      renterData.referringAgentName || DEFAULT_REFERRAL_AGENT_NAME;
+    const emailLogBase = {
+      emailType: "PRE_MARKET_REQUEST_CONFIRMATION_AGENT" as const,
+      recipientRole: "Registered Agent" as const,
+      recipientEmail: agentEmail,
+      recipientName: agentName,
+    };
+
     try {
-      const agentEmail = renterData.referringAgentEmail?.trim();
       if (!agentEmail) {
         logger.info(
           { requestId: preMarketRequest.requestId || preMarketRequest._id },
           "No registered agent email available; skipping registered agent intake notification",
         );
-        return;
+        return {
+          ...emailLogBase,
+          triggered: false,
+          status: "skipped",
+          skipReason: "No registered agent email available",
+        };
       }
 
-      const agentName = renterData.referringAgentName || DEFAULT_REFERRAL_AGENT_NAME;
       const shouldNotify = await this.isAgentEmailSubscriptionEnabledByEmail(
         agentEmail
       );
@@ -441,10 +496,13 @@ export class PreMarketNotifier {
           { email: agentEmail },
           "Agent email subscription disabled; skipping referral notification"
         );
-        return;
+        return {
+          ...emailLogBase,
+          triggered: false,
+          status: "skipped",
+          skipReason: "Agent email subscription disabled",
+        };
       }
-      const requestId =
-        preMarketRequest.requestId || preMarketRequest._id?.toString() || "";
       const minPrice = this.formatCurrency(preMarketRequest.priceRange?.min);
       const maxPrice = this.formatCurrency(preMarketRequest.priceRange?.max);
       const earliestDate = this.formatDate(
@@ -493,7 +551,12 @@ export class PreMarketNotifier {
           { email: agentEmail, requestId },
           "? Referring agent request confirmation sent"
         );
-        return;
+        return {
+          ...emailLogBase,
+          triggered: true,
+          status: "sent",
+          messageId: emailResult.messageId,
+        };
       }
 
       const errorMessage =
@@ -504,12 +567,70 @@ export class PreMarketNotifier {
         { email: agentEmail, error: errorMessage },
         "? Referring agent request confirmation failed"
       );
+      return {
+        ...emailLogBase,
+        triggered: true,
+        status: "failed",
+        error: errorMessage,
+      };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       logger.error(
-        { error, preMarketRequestId: preMarketRequest._id },
+        { error: errorMessage, preMarketRequestId: preMarketRequest._id },
         "? Failed to notify referring agent about new request"
       );
+      return {
+        ...emailLogBase,
+        triggered: Boolean(agentEmail),
+        status: "failed",
+        error: errorMessage,
+      };
     }
+  }
+
+  private logNewRequestEmailSummary(
+    preMarketRequest: IPreMarketRequest,
+    renterData: {
+      renterId: string | ObjectId;
+      renterEmail: string;
+    },
+    emailNotifications: IPreMarketRequestEmailLog[],
+  ): void {
+    const triggeredEmails = emailNotifications.filter(
+      (emailNotification) => emailNotification.triggered,
+    );
+    const sentEmails = emailNotifications.filter(
+      (emailNotification) => emailNotification.status === "sent",
+    );
+    const failedEmails = emailNotifications.filter(
+      (emailNotification) => emailNotification.status === "failed",
+    );
+    const skippedEmails = emailNotifications.filter(
+      (emailNotification) => emailNotification.status === "skipped",
+    );
+
+    logger.info(
+      {
+        preMarketRequestId: preMarketRequest._id?.toString(),
+        requestId: preMarketRequest.requestId,
+        renterId: renterData.renterId.toString(),
+        renterEmail: renterData.renterEmail,
+        triggeredEmailCount: triggeredEmails.length,
+        sentEmailCount: sentEmails.length,
+        failedEmailCount: failedEmails.length,
+        skippedEmailCount: skippedEmails.length,
+        recipients: sentEmails.map((emailNotification) => ({
+          emailType: emailNotification.emailType,
+          recipientRole: emailNotification.recipientRole,
+          recipientEmail: emailNotification.recipientEmail,
+          recipientName: emailNotification.recipientName,
+          messageId: emailNotification.messageId,
+        })),
+        emailNotifications,
+      },
+      "Pre-market request email notification summary",
+    );
   }
 
   private async getRegisteredAndMatchedAgentsForRequestUpdate(
