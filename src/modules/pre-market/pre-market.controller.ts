@@ -244,12 +244,23 @@ export class PreMarketController {
       : null;
 
     if (agent.hasGrantAccess) {
+      const agentAccessRecord =
+        await this.grantAccessRepository.findByAgentAndRequest(
+          userId,
+          requestId,
+        );
       const matchRecord = await this.preMarketService.getMatchedAccessRecord(
         userId,
         requestId
       );
       const listingStatus = matchRecord ? "matched" : request.status;
       const grantAccessStatus = "free";
+      const visibleScope = this.preMarketService.resolveAgentVisibleScope(
+        request.scope,
+        this.preMarketService.shouldDisplayMatchedScopeForAccessRecord(
+          agentAccessRecord,
+        ),
+      );
 
       await this.preMarketRepository.addAgentToViewedBy(
         requestId,
@@ -264,10 +275,6 @@ export class PreMarketController {
             request,
             userId,
           ));
-        const visibleScope = this.preMarketService.resolveAgentVisibleScope(
-          request.scope,
-          true
-        );
 
         return {
           ...enriched,
@@ -283,6 +290,7 @@ export class PreMarketController {
 
       return {
         ...request,
+        scope: visibleScope,
         renterInfo: includeCreatorRenterInfo
           ? enrichedCreatorRequest?.renterInfo ?? null
           : null,
@@ -317,7 +325,9 @@ export class PreMarketController {
             : request.status;
     const visibleScope = this.preMarketService.resolveAgentVisibleScope(
       request.scope,
-      listingStatus === "matched"
+      this.preMarketService.shouldDisplayMatchedScopeForAccessStatus(
+        accessSummary.grantAccessStatus,
+      ),
     );
 
     await this.preMarketRepository.addAgentToViewedBy(
@@ -812,7 +822,9 @@ export class PreMarketController {
           );
         const visibleScope = this.preMarketService.resolveAgentVisibleScope(
           request.scope,
-          true
+          this.preMarketService.shouldDisplayMatchedScopeForAccessRecord(
+            matchRecord,
+          ),
         );
 
         await this.preMarketRepository.addAgentToViewedBy(
@@ -872,7 +884,9 @@ export class PreMarketController {
         );
       const visibleScope = this.preMarketService.resolveAgentVisibleScope(
         request.scope,
-        paidAccess.status === "free" || paidAccess.status === "paid"
+        this.preMarketService.shouldDisplayMatchedScopeForAccessRecord(
+          paidAccess,
+        ),
       );
 
       logger.info(

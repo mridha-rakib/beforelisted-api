@@ -265,21 +265,31 @@ export class PreMarketService {
     };
   }
 
-  private isSuccessfullyMatchedForAgent(
-    grantAccessStatus?: AgentGrantAccessStatus | null,
-  ): boolean {
-    return grantAccessStatus === "free" || grantAccessStatus === "paid";
-  }
-
   public resolveAgentVisibleScope(
     scope: string | undefined,
-    isSuccessfullyMatchedForAgent: boolean,
+    shouldDisplayMatchedScope: boolean,
   ): string {
-    if (scope === "All Market" && isSuccessfullyMatchedForAgent) {
+    if (scope === "All Market" && shouldDisplayMatchedScope) {
       return "Upcoming (M)";
     }
 
     return scope || "Upcoming";
+  }
+
+  public shouldDisplayMatchedScopeForAccessRecord(
+    grantAccess: IGrantAccessRequest | null | undefined,
+  ): boolean {
+    return Boolean(grantAccess && grantAccess.status !== "rejected");
+  }
+
+  public shouldDisplayMatchedScopeForAccessStatus(
+    grantAccessStatus?: AgentGrantAccessStatus | null,
+  ): boolean {
+    return Boolean(
+      grantAccessStatus &&
+        grantAccessStatus !== "Available" &&
+        grantAccessStatus !== "rejected",
+    );
   }
 
   async getAgentAccessSummary(agentId: string, requestId: string) {
@@ -655,6 +665,10 @@ export class PreMarketService {
         const displayStatus = grantAccess
           ? accessSummary.grantAccessStatus
           : request.status;
+        const visibleScope = this.resolveAgentVisibleScope(
+          request.scope,
+          this.shouldDisplayMatchedScopeForAccessRecord(grantAccess),
+        );
         const currentRegisteredAgentId =
           await this.resolveRegisteredAgentIdForRequest(request);
         const referralInfo = request.renterId
@@ -663,6 +677,7 @@ export class PreMarketService {
 
         return {
           ...request,
+          scope: visibleScope,
           referralAgentId:
             currentRegisteredAgentId ??
             this.normalizeUserId(
@@ -2196,7 +2211,9 @@ export class PreMarketService {
             : "matched";
         const responseScope = this.resolveAgentVisibleScope(
           request.scope,
-          this.isSuccessfullyMatchedForAgent(accessSummary.grantAccessStatus),
+          this.shouldDisplayMatchedScopeForAccessStatus(
+            accessSummary.grantAccessStatus,
+          ),
         );
 
         return {
