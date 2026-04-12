@@ -152,6 +152,11 @@ export interface IWelcomeEmailPayload {
   registeredAgent?: IWelcomeRegisteredAgentDetails;
 }
 
+export interface IMovingDiscountCodesEmailPayload {
+  to: string;
+  renterName: string;
+}
+
 export interface IAgentActivatedByAdminEmailPayload {
   to: string;
   agentName: string;

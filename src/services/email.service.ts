@@ -10,6 +10,7 @@ import {
   type IEmailOptions,
   type IEmailResult,
   type IEmailVerificationPayload,
+  type IMovingDiscountCodesEmailPayload,
   type IPasswordChangedPayload,
   type IPasswordResetPayload,
   type IWelcomeEmailPayload,
@@ -356,6 +357,53 @@ export class EmailService {
           email: payload.to,
         },
         "Failed to send welcome email",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  async sendMovingDiscountCodesEmail(
+    payload: IMovingDiscountCodesEmailPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to },
+        "Sending moving discount codes email",
+      );
+
+      const html = this.templates.movingDiscountCodes(
+        payload.renterName,
+        this.config.logoUrl,
+        this.config.brandColor,
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.renterName },
+        replyTo: "support@beforelisted.com",
+        subject:
+          "Save on Your Move - Exclusive Discount Codes for BeforeListed\u2122 Users",
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "MOVING_DISCOUNT_CODES",
+        payload.to,
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send moving discount codes email",
       );
 
       return {

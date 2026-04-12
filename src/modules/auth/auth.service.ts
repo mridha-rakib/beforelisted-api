@@ -500,6 +500,13 @@ export class AuthService {
         result.userType === ROLES.RENTER ? renterRegisteredAgent : undefined,
     });
 
+    if (result.userType === ROLES.RENTER) {
+      await this.emailService.sendMovingDiscountCodesEmail({
+        to: user.email,
+        renterName: user.fullName,
+      });
+    }
+
     return {
       message: MESSAGES.AUTH.EMAIL_VERIFIED_SUCCESS,
       user: userResponse,

@@ -42,6 +42,162 @@ export class EmailTemplates {
     return `&copy; ${new Date().getFullYear()} BeforeListed&trade;. All rights reserved.`;
   }
 
+  /**
+   * Moving discount codes email for verified renters
+   */
+  movingDiscountCodes(
+    renterName: string,
+    logoUrl?: string,
+    brandColor?: string,
+  ): string {
+    const logo = logoUrl || this.logoUrl;
+    const color = brandColor || this.brandColor;
+    const displayName = renterName?.trim() || "there";
+
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Save on Your Move</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: ${color};
+            padding: 40px 20px;
+            text-align: center;
+        }
+        ${this.getLogoStyles()}
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .content h2 {
+            color: #333333;
+            font-size: 22px;
+            margin: 0 0 20px 0;
+            font-weight: 600;
+        }
+        .content p {
+            color: #666666;
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0 0 15px 0;
+        }
+        .discount-card {
+            background-color: #f8fbff;
+            border: 1px solid #d7e8ff;
+            border-radius: 8px;
+            padding: 18px;
+            margin: 20px 0;
+        }
+        .discount-card h3 {
+            color: #333333;
+            font-size: 18px;
+            margin: 0 0 10px 0;
+        }
+        .discount-card p,
+        .discount-card li {
+            color: #555555;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+        .discount-card ul {
+            margin: 10px 0 0 20px;
+            padding: 0;
+        }
+        .code {
+            color: ${color};
+            font-weight: 700;
+        }
+        a {
+            color: ${color};
+            text-decoration: none;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+        }
+        .footer p {
+            color: #999999;
+            font-size: 14px;
+            margin: 0;
+        }
+        @media (max-width: 600px) {
+            .content {
+                padding: 30px 20px;
+            }
+            .header h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="${logo}" alt="BeforeListed Logo" class="logo" />
+            <h1>Save on Your Move</h1>
+        </div>
+        <div class="content">
+            <h2>Hi ${displayName},</h2>
+
+            <p>Congratulations on registering with BeforeListed&trade;.</p>
+
+            <p>As a BeforeListed&trade; registered user, you have access to exclusive discounts with two highly recommended moving companies, whether you use my service or not.</p>
+
+            <p>These offers are available specifically to BeforeListed&trade; registered contacts:</p>
+
+            <div class="discount-card">
+                <h3>Piece of Cake Moving</h3>
+                <p><strong>Website:</strong> <a href="https://mypieceofcakemove.com">https://mypieceofcakemove.com</a></p>
+                <p><strong>Discount Code:</strong> <span class="code">BeforeListed</span></p>
+                <ul>
+                    <li>Local Moves (within 250 miles): 10% off</li>
+                    <li>Long Distance Moves (over 250 miles): 5% off</li>
+                </ul>
+            </div>
+
+            <div class="discount-card">
+                <h3>Imperial Moving</h3>
+                <p><strong>Website:</strong> <a href="https://www.imperialmovers.com">https://www.imperialmovers.com</a></p>
+                <p><strong>Discount Code:</strong> <span class="code">BeforeListed</span></p>
+            </div>
+
+            <p>To apply the discount, simply enter the code &ldquo;BeforeListed&rdquo; in the promo code field when submitting your request on their website.</p>
+
+            <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
+        </div>
+        <div class="footer">
+            <p>${this.getFooterCopyrightText()}</p>
+            ${this.getFooterLinks(color)}
+        </div>
+    </div>
+</body>
+</html>`;
+  }
+
   // ============================================
   // WELCOME EMAIL
   // ============================================
