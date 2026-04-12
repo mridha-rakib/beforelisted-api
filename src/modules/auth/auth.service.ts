@@ -501,10 +501,36 @@ export class AuthService {
     });
 
     if (result.userType === ROLES.RENTER) {
-      await this.emailService.sendMovingDiscountCodesEmail({
-        to: user.email,
-        renterName: user.fullName,
-      });
+      logger.info(
+        { userId: user._id, email: user.email },
+        "Triggering moving discount codes email after renter OTP verification",
+      );
+
+      const movingDiscountEmailResult =
+        await this.emailService.sendMovingDiscountCodesEmail({
+          to: user.email,
+          renterName: user.fullName,
+        });
+
+      if (movingDiscountEmailResult.success) {
+        logger.info(
+          {
+            userId: user._id,
+            email: user.email,
+            messageId: movingDiscountEmailResult.messageId,
+          },
+          "Moving discount codes email sent after renter OTP verification",
+        );
+      } else {
+        logger.warn(
+          {
+            userId: user._id,
+            email: user.email,
+            error: movingDiscountEmailResult.error,
+          },
+          "Moving discount codes email failed after renter OTP verification",
+        );
+      }
     }
 
     return {
