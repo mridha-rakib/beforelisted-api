@@ -383,6 +383,9 @@ export class EmailService {
         this.config.logoUrl,
         this.config.brandColor,
       );
+      const threadId = `moving-discount-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`;
 
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
@@ -390,6 +393,13 @@ export class EmailService {
         subject:
           "Save on Your Move - Exclusive Discount Codes for BeforeListed\u2122 Users",
         html,
+        headers: {
+          "X-Entity-Ref-ID": threadId,
+        },
+        metadata: {
+          template: "moving_discount_codes",
+          threadId,
+        },
       };
 
       return await this.sendEmail(
