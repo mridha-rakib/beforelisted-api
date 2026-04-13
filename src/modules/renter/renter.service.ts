@@ -324,6 +324,12 @@ export class RenterService {
       );
     }
 
+    await this.sendMovingDiscountCodesEmailForRenter(
+      user._id.toString(),
+      user.email,
+      user.fullName
+    );
+
     // Step 10: Generate JWT tokens
     const tokens = this.generateTokens(
       user._id.toString(),
@@ -391,6 +397,55 @@ export class RenterService {
     }
 
     return this.passwordResetService.verifyOTP(user._id.toString(), otp);
+  }
+
+  private async sendMovingDiscountCodesEmailForRenter(
+    userId: string,
+    email: string,
+    renterName: string
+  ): Promise<void> {
+    try {
+      logger.info(
+        { userId, email },
+        "Triggering moving discount codes email after renter registration"
+      );
+
+      const movingDiscountEmailResult =
+        await this.emailService.sendMovingDiscountCodesEmail({
+          to: email,
+          renterName,
+        });
+
+      if (movingDiscountEmailResult.success) {
+        logger.info(
+          {
+            userId,
+            email,
+            messageId: movingDiscountEmailResult.messageId,
+          },
+          "Moving discount codes email sent after renter registration"
+        );
+        return;
+      }
+
+      logger.warn(
+        {
+          userId,
+          email,
+          error: movingDiscountEmailResult.error,
+        },
+        "Moving discount codes email failed after renter registration"
+      );
+    } catch (error) {
+      logger.error(
+        {
+          userId,
+          email,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "Error sending moving discount codes email after renter registration"
+      );
+    }
   }
 
   /**
