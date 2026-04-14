@@ -77,6 +77,13 @@ router.patch(
   controller.toggleShareVisibility.bind(controller),
 );
 
+router.patch(
+  "/:requestId/registration-disclosure/confirm",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.confirmRegistrationDisclosure.bind(controller),
+);
+
 /**
  * GET /pre-market/all
  * Agents: View all visible requests

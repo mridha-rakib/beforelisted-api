@@ -693,6 +693,8 @@ export class PreMarketService {
         const referralInfo = request.renterId
           ? await this.getReferralInfoForRenter(request.renterId.toString())
           : null;
+        const registrationDisclosureStatus =
+          this.getRegistrationDisclosureStatus(request, agentId);
 
         return {
           ...request,
@@ -711,6 +713,7 @@ export class PreMarketService {
           grantAccessId: accessSummary.grantAccessId,
           accessType: accessSummary.accessType,
           canRequestAccess: accessSummary.canRequestAccess,
+          ...registrationDisclosureStatus,
         };
       }),
     );
@@ -1058,6 +1061,29 @@ export class PreMarketService {
     }
 
     return null;
+  }
+
+  private getRegistrationDisclosureStatus(
+    request: IPreMarketRequest | Record<string, any>,
+    agentId: string,
+  ): {
+    registrationDisclosureConfirmed: boolean;
+    registrationDisclosureConfirmedAt: Date | null;
+  } {
+    const confirmations = Array.isArray(
+      (request as any)?.registrationDisclosureConfirmations,
+    )
+      ? (request as any).registrationDisclosureConfirmations
+      : [];
+
+    const confirmation = confirmations.find((item: any) => {
+      return this.normalizeUserId(item?.agentId) === agentId;
+    });
+
+    return {
+      registrationDisclosureConfirmed: Boolean(confirmation),
+      registrationDisclosureConfirmedAt: confirmation?.confirmedAt ?? null,
+    };
   }
 
   private async resolveRegisteredAgentIdFromRenter(
@@ -1732,6 +1758,16 @@ export class PreMarketService {
       );
     }
 
+    if (
+      visibility === "SHARED" &&
+      !this.getRegistrationDisclosureStatus(request, agentId)
+        .registrationDisclosureConfirmed
+    ) {
+      throw new ForbiddenException(
+        "Registration / Disclosure confirmation is required before sharing this request",
+      );
+    }
+
     const nextVisibility =
       visibility === "SHARED" && request.shareConsent === true
         ? "SHARED"
@@ -1781,6 +1817,57 @@ export class PreMarketService {
     }
 
     return updated;
+  }
+
+  async confirmRegistrationDisclosure(
+    agentId: string,
+    requestId: string,
+  ): Promise<{
+    requestId: string;
+    registrationDisclosureConfirmed: boolean;
+    registrationDisclosureConfirmedAt: Date | null;
+  }> {
+    const agent = await this.agentRepository.findByUserId(agentId);
+    if (!agent) {
+      throw new ForbiddenException("Agent profile not found");
+    }
+
+    const request = await this.getRequestById(requestId);
+    this.ensureAgentCanViewRequest(agent, request as any);
+    await this.ensureAgentCanViewRequestVisibility(agentId, request as any);
+
+    const existingStatus = this.getRegistrationDisclosureStatus(
+      request,
+      agentId,
+    );
+
+    if (existingStatus.registrationDisclosureConfirmed) {
+      return {
+        requestId,
+        ...existingStatus,
+      };
+    }
+
+    const updated =
+      await this.preMarketRepository.confirmRegistrationDisclosure(
+        requestId,
+        agentId,
+      );
+    const latest = updated || (await this.getRequestById(requestId));
+
+    if (!latest) {
+      throw new NotFoundException("Pre-market request not found");
+    }
+
+    const confirmedStatus = this.getRegistrationDisclosureStatus(
+      latest,
+      agentId,
+    );
+
+    return {
+      requestId,
+      ...confirmedStatus,
+    };
   }
 
   private async notifyNonRegisteredAgentsAboutSharedRequest(

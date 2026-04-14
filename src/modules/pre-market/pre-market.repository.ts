@@ -4,7 +4,7 @@ import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import { PaginationHelper } from "@/utils/pagination-helper";
-import type { PopulateOptions, ProjectionType, SortOrder } from "mongoose";
+import { Types, type PopulateOptions, type ProjectionType, type SortOrder } from "mongoose";
 import { AgentProfile } from "../agent/agent.model";
 import { BaseRepository } from "../base/base.repository";
 import { GrantAccessRequestModel } from "../grant-access/grant-access.model";
@@ -450,6 +450,33 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
           },
         },
         { new: true }
+      )
+      .lean()
+      .exec() as Promise<IPreMarketRequest | null>;
+  }
+
+  async confirmRegistrationDisclosure(
+    requestId: string,
+    agentId: string,
+  ): Promise<IPreMarketRequest | null> {
+    const agentObjectId = new Types.ObjectId(agentId);
+
+    return this.model
+      .findOneAndUpdate(
+        {
+          _id: requestId,
+          isDeleted: { $ne: true },
+          "registrationDisclosureConfirmations.agentId": { $ne: agentObjectId },
+        },
+        {
+          $push: {
+            registrationDisclosureConfirmations: {
+              agentId: agentObjectId,
+              confirmedAt: new Date(),
+            },
+          },
+        },
+        { new: true },
       )
       .lean()
       .exec() as Promise<IPreMarketRequest | null>;

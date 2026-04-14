@@ -23,6 +23,7 @@ import {
   adminChargeSchema,
   adminRejectSchema,
   agentMatchRequestSchema,
+  confirmRegistrationDisclosureSchema,
   createPreMarketRequestSchema,
   preMarketListSchema,
   requestAccessSchema,
@@ -628,6 +629,25 @@ export class PreMarketController {
     const mode = updated.visibility === "SHARED" ? "ON (Shared)" : "OFF (Private)";
     ApiResponse.success(res, updated, `Share toggle updated: ${mode}`);
   });
+
+  confirmRegistrationDisclosure = asyncHandler(
+    async (req: Request, res: Response) => {
+      const validated = await zParse(confirmRegistrationDisclosureSchema, req);
+      const agentId = req.user!.userId;
+
+      const confirmation =
+        await this.preMarketService.confirmRegistrationDisclosure(
+          agentId,
+          validated.params.requestId,
+        );
+
+      ApiResponse.success(
+        res,
+        confirmation,
+        "Registration / Disclosure confirmation saved",
+      );
+    },
+  );
 
   // ============================================
   // ADMIN: GET ALL PRE-MARKET REQUESTS (FULL)
