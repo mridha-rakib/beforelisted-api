@@ -15,6 +15,8 @@ export interface IGrantAccessRequest extends Document<
   preMarketRequestId: Types.ObjectId | string;
   agentId: Types.ObjectId | string;
   status: "pending" | "approved" | "free" | "rejected" | "paid";
+  representation_type?: "owner_representation" | "renter_representation";
+  representationSelectedAt?: Date;
 
   payment?: {
     amount: number;
@@ -59,6 +61,16 @@ const grantAccessSchema = BaseSchemaUtil.createSchema({
     default: "pending",
     index: true,
   } as any,
+
+  representation_type: {
+    type: String,
+    enum: ["owner_representation", "renter_representation"],
+    index: true,
+  },
+
+  representationSelectedAt: {
+    type: Date,
+  },
 
   payment: {
     amount: {

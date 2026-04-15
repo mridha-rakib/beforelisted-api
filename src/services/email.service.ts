@@ -22,6 +22,7 @@ import {
   matchReferralAcknowledgmentToMatchingAgentTemplate,
   nonRegisteredAgentRequestSubmissionNotificationTemplate,
   nonRegisteredAgentSharedRequestNotificationTemplate,
+  ownerRepresentationMatchReferralAcknowledgmentTemplate,
   preMarketAdminNotificationTemplate,
   preMarketAgentNotificationTemplate,
   renterOpportunityFoundOtherAgentTemplate,
@@ -40,6 +41,7 @@ import {
   IMatchReferralAcknowledgmentToMatchingAgentPayload,
   INonRegisteredAgentRequestSubmissionNotificationPayload,
   INonRegisteredAgentSharedRequestNotificationPayload,
+  IOwnerRepresentationMatchReferralAcknowledgmentPayload,
   IPreMarketAdminNotificationPayload,
   IPreMarketAgentNotificationPayload,
   IRenterOpportunityFoundOtherAgentPayload,
@@ -1350,6 +1352,66 @@ export class EmailService {
     }
   }
 
+  async sendOwnerRepresentationMatchReferralAcknowledgment(
+    payload: IOwnerRepresentationMatchReferralAcknowledgmentPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to },
+        "Sending owner representation match referral acknowledgment",
+      );
+
+      const html = ownerRepresentationMatchReferralAcknowledgmentTemplate(
+        payload.registeredAgentFirstName,
+        payload.renterFullName,
+        payload.registeredAgentFullName,
+        payload.registeredAgentTitle,
+        payload.registeredAgentBrokerage,
+        payload.matchedAgentFullName,
+        payload.matchedAgentTitle,
+        payload.matchedAgentBrokerage,
+        payload.matchedAgentEmail,
+        payload.matchedAgentPhoneNumber,
+        this.config.logoUrl,
+        this.config.brandColor,
+      );
+
+      const emailOptions: IEmailOptions = {
+        to: {
+          email: payload.to,
+          name: payload.registeredAgentFullName,
+        },
+        cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
+        replyTo: "support@beforelisted.com",
+        subject:
+          "Match Referral Acknowledgment \u2013 owner agent matched| BeforeListed\u2122",
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "OWNER_REPRESENTATION_MATCH_REFERRAL_ACKNOWLEDGMENT",
+        payload.to,
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send owner representation match referral acknowledgment",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
   /**
    * Send agent alert when renter request is closed
    */
@@ -1763,6 +1825,9 @@ export class EmailService {
 
   private buildSimpleBeforeListedEmail(bodyHtml: string): string {
     const currentYear = new Date().getFullYear();
+    const brandColor = this.config.brandColor || "#1890FF";
+    const logoUrl = this.config.logoUrl;
+
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -1770,16 +1835,99 @@ export class EmailService {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BeforeListed</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f5f5f5;
+      color: #333333;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .header {
+      background: ${brandColor};
+      color: #ffffff;
+      padding: 40px 20px;
+      text-align: center;
+    }
+    .logo {
+      display: block;
+      max-width: 150px;
+      width: 100%;
+      height: auto;
+      margin: 0 auto 20px auto;
+    }
+    .header h1 {
+      color: #ffffff;
+      margin: 0;
+      font-size: 28px;
+      font-weight: 600;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .content p {
+      color: #666666;
+      font-size: 16px;
+      line-height: 1.6;
+      margin: 0 0 15px 0;
+    }
+    .content a {
+      color: ${brandColor};
+      text-decoration: none;
+    }
+    .footer {
+      background-color: #f9f9f9;
+      padding: 30px;
+      text-align: center;
+      border-top: 1px solid #e0e0e0;
+    }
+    .footer p {
+      color: #999999;
+      font-size: 14px;
+      margin: 0;
+    }
+    .footer a {
+      color: ${brandColor};
+      text-decoration: none;
+    }
+    @media (max-width: 600px) {
+      .content {
+        padding: 30px 20px;
+      }
+      .header h1 {
+        font-size: 24px;
+      }
+    }
+    @media (max-width: 480px) {
+      .logo {
+        max-width: 120px;
+      }
+    }
+  </style>
 </head>
-<body style="margin:0;padding:0;background:#f5f5f5;color:#333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;">
-  <div style="max-width:600px;margin:20px auto;background:#fff;border-radius:8px;overflow:hidden;">
-    <div style="background:${this.config.brandColor || "#1890FF"};color:#fff;padding:24px 20px;text-align:center;">
-      ${this.config.logoUrl ? `<img src="${this.config.logoUrl}" alt="BeforeListed" style="max-width:150px;height:auto;margin-bottom:12px;">` : ""}
-      <h1 style="font-size:22px;margin:0;">BeforeListed</h1>
+<body>
+  <div class="container">
+    <div class="header">
+      ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed Logo" class="logo">` : ""}
+      <h1>BeforeListed</h1>
     </div>
-    <div style="padding:30px 20px;">${bodyHtml}</div>
-    <div style="background:#f9f9f9;padding:20px;text-align:center;font-size:12px;color:#999;">
-      <p style="margin:0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
+    <div class="content">${bodyHtml}</div>
+    <div class="footer">
+      <p>&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
+      <p style="margin: 8px 0 0 0;">
+        <a href="mailto:support@beforelisted.com">Contact Us</a> |
+        <a href="https://rental-pennymore-frontend.vercel.app/privacy-policy">Privacy Policy</a> |
+        <a href="https://rental-pennymore-frontend.vercel.app/terms-conditions">Terms and Conditions</a>
+      </p>
     </div>
   </div>
 </body>

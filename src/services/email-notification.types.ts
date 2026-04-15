@@ -125,6 +125,21 @@ export interface IMatchReferralAcknowledgmentToMatchingAgentPayload {
   cc?: string[];
 }
 
+export interface IOwnerRepresentationMatchReferralAcknowledgmentPayload {
+  to: string;
+  registeredAgentFirstName: string;
+  renterFullName: string;
+  registeredAgentFullName: string;
+  registeredAgentTitle: string;
+  registeredAgentBrokerage: string;
+  matchedAgentFullName: string;
+  matchedAgentTitle: string;
+  matchedAgentBrokerage: string;
+  matchedAgentEmail: string;
+  matchedAgentPhoneNumber: string;
+  cc?: string[];
+}
+
 export interface IRenterRequestClosedAgentAlertPayload {
   to: string;
   agentName: string;

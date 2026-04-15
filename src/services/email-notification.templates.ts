@@ -1427,6 +1427,154 @@ export function matchReferralAcknowledgmentToMatchingAgentTemplate(
   `;
 }
 
+export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
+  registeredAgentFirstName: string,
+  renterFullName: string,
+  registeredAgentFullName: string,
+  registeredAgentTitle: string,
+  registeredAgentBrokerage: string,
+  matchedAgentFullName: string,
+  matchedAgentTitle: string,
+  matchedAgentBrokerage: string,
+  matchedAgentEmail: string,
+  matchedAgentPhoneNumber: string,
+  logoUrl?: string,
+  brandColor: string = "#1890FF",
+): string {
+  const currentYear = new Date().getFullYear();
+  const safeRegisteredAgentFirstName = escapeHtml(
+    registeredAgentFirstName || "Agent",
+  );
+  const safeRenterFullName = escapeHtml(renterFullName || "N/A");
+  const safeRegisteredAgentFullName = escapeHtml(
+    registeredAgentFullName || "N/A",
+  );
+  const safeRegisteredAgentTitle = escapeHtml(registeredAgentTitle || "N/A");
+  const safeRegisteredAgentBrokerage = escapeHtml(
+    registeredAgentBrokerage || "N/A",
+  );
+  const safeMatchedAgentFullName = escapeHtml(matchedAgentFullName || "N/A");
+  const safeMatchedAgentTitle = escapeHtml(matchedAgentTitle || "N/A");
+  const safeMatchedAgentBrokerage = escapeHtml(matchedAgentBrokerage || "N/A");
+  const safeMatchedAgentEmail = escapeHtml(matchedAgentEmail || "N/A");
+  const safeMatchedAgentPhoneNumber = escapeHtml(
+    matchedAgentPhoneNumber || "N/A",
+  );
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match Referral Acknowledgment</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: ${brandColor};
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .greeting {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .details {
+            background-color: #fafafa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .details p {
+            margin: 8px 0;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+        .footer a {
+            color: ${brandColor};
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            <h1>Match Referral Acknowledgment</h1>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                Hi ${safeRegisteredAgentFirstName},
+            </div>
+
+            <p>An agent has identified a potential apartment match for your renter and has indicated that they intend to represent the owner in this transaction.</p>
+
+            <p>This email confirms that a renter request you registered has been matched through the BeforeListed&trade; service.</p>
+
+            <div class="details">
+                <p>Renter: ${safeRenterFullName}</p>
+                <p>Registered Agent: ${safeRegisteredAgentFullName}, ${safeRegisteredAgentTitle} with ${safeRegisteredAgentBrokerage}</p>
+                <p>Referral Facilitator: Tuval Mor, Licensed Real Estate Salesperson, The Corcoran Group</p>
+                <p>Matched Agent (Owner Representation): ${safeMatchedAgentFullName}, ${safeMatchedAgentTitle} with ${safeMatchedAgentBrokerage}</p>
+                <p>Email: ${safeMatchedAgentEmail} Contact Number: ${safeMatchedAgentPhoneNumber}</p>
+            </div>
+
+            <p>As outlined in the Agent Agreement, this match is recognized as a referral facilitated through BeforeListed&trade;.</p>
+
+            <p>If a transaction results from this referral, any applicable referral fees will be processed through Corcoran&rsquo;s standard referral procedures, in accordance with the agreed-upon percentages and brokerage requirements.</p>
+
+            <p>No action is required at this time. If and when a transaction proceeds, you will be responsible for completing and submitting the required Corcoran referral documentation.</p>
+
+            <p>If you have any questions, you may reply directly to this email.</p>
+
+            <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
+            ${footerLinks(brandColor)}
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
 /**
  * Email template for agent when a renter request is closed
  */

@@ -156,6 +156,9 @@ export const updatePreMarketRequestSchema = z.object({
 export const requestAccessSchema = z.object({
   body: z.object({
     preMarketRequestId: z.string().min(24, "Invalid request ID"),
+    representation_type: z
+      .enum(["owner_representation", "renter_representation"])
+      .optional(),
   }),
 });
 
@@ -163,6 +166,14 @@ export const agentMatchRequestSchema = z.object({
   params: z.object({
     requestId: z.string().min(24, "Invalid request ID"),
   }),
+  body: z
+    .object({
+      representation_type: z
+        .enum(["owner_representation", "renter_representation"])
+        .optional(),
+    })
+    .optional()
+    .default({}),
 });
 
 export const adminApproveSchema = z.object({

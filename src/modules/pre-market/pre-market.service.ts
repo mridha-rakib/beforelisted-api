@@ -60,6 +60,9 @@ type AgentArchiveReason =
   | "client_placed";
 
 type AgentArchiveSource = "registered_agent" | "matched_agent";
+type MatchRepresentationType =
+  | "owner_representation"
+  | "renter_representation";
 
 const ARCHIVE_REASON_LABELS: Record<AgentArchiveReason, string> = {
   registration_missing: "Registration Missing",
@@ -281,6 +284,8 @@ export class PreMarketService {
       canRequestAccess: grantAccessStatus === "Available",
       canSeeRenterInfo: accessType !== "none",
       grantAccessId: grantAccess?._id?.toString(),
+      representation_type: grantAccess?.representation_type,
+      representationSelectedAt: grantAccess?.representationSelectedAt,
       chargeAmount,
       payment: paymentInfo,
       showPayment,
@@ -728,6 +733,8 @@ export class PreMarketService {
           listingStatus,
           grantAccessStatus: accessSummary.grantAccessStatus,
           grantAccessId: accessSummary.grantAccessId,
+          representation_type: accessSummary.representation_type,
+          representationSelectedAt: accessSummary.representationSelectedAt,
           accessType: accessSummary.accessType,
           canRequestAccess: accessSummary.canRequestAccess,
           ...registrationDisclosureStatus,
@@ -2135,6 +2142,8 @@ export class PreMarketService {
           listingStatus: grantAccess ? "matched" : request.status,
           grantAccessStatus: accessSummary.grantAccessStatus,
           grantAccessId: accessSummary.grantAccessId,
+          representation_type: accessSummary.representation_type,
+          representationSelectedAt: accessSummary.representationSelectedAt,
           accessType: grantAccess ? accessSummary.accessType : "none",
           canRequestAccess: false,
           isArchivedForAgent: archiveStatus.isArchivedForAgent,
@@ -2867,6 +2876,8 @@ export class PreMarketService {
           listingStatus,
           grantAccessStatus: accessSummary.grantAccessStatus,
           grantAccessId: accessSummary.grantAccessId,
+          representation_type: accessSummary.representation_type,
+          representationSelectedAt: accessSummary.representationSelectedAt,
           accessType: accessSummary.accessType,
           canRequestAccess: false,
           chargeAmount: accessSummary.chargeAmount ?? null,
@@ -2929,9 +2940,13 @@ export class PreMarketService {
   async matchRequestForAgent(
     agentId: string,
     requestId: string,
+    representationType: MatchRepresentationType = "renter_representation",
   ): Promise<IGrantAccessRequest> {
     const agent = await this.agentRepository.findByUserId(agentId);
-    if (!agent || !agent.hasGrantAccess) {
+    if (
+      !agent ||
+      (!agent.hasGrantAccess && representationType !== "owner_representation")
+    ) {
       throw new ForbiddenException(
         "You do not have permission to match requests",
       );
@@ -2965,6 +2980,11 @@ export class PreMarketService {
       !existing || (existing.status !== "free" && existing.status !== "paid");
 
     let matchRecord: IGrantAccessRequest;
+    const representationPayload = {
+      representation_type: representationType,
+      representationSelectedAt: new Date(),
+    };
+
     try {
       if (existing) {
         if (existing.status === "free" || existing.status === "paid") {
@@ -2973,7 +2993,7 @@ export class PreMarketService {
 
         const updated = await this.grantAccessRepository.updateById(
           existing._id.toString(),
-          { status: "free" },
+          { status: "free", ...representationPayload },
         );
 
         matchRecord = updated || existing;
@@ -2982,6 +3002,7 @@ export class PreMarketService {
           preMarketRequestId: requestId,
           agentId,
           status: "free",
+          ...representationPayload,
           createdAt: new Date(),
         });
       }
@@ -2989,7 +3010,17 @@ export class PreMarketService {
       throw error;
     }
 
-    if (shouldNotify) {
+    if (shouldNotify && representationType === "owner_representation") {
+      this.notifyRegisteredAgentAboutOwnerRepresentationMatch(
+        agentId,
+        listingActivationCheck,
+      ).catch((error) => {
+        logger.error(
+          { error, requestId, agentId },
+          "Failed to send owner representation match acknowledgment (non-blocking)",
+        );
+      });
+    } else if (shouldNotify) {
       this.notifyRenterAboutMatchedOpportunity(
         agentId,
         listingActivationCheck,
@@ -3767,6 +3798,73 @@ export class PreMarketService {
     }
 
     return null;
+  }
+
+  private async notifyRegisteredAgentAboutOwnerRepresentationMatch(
+    agentId: string,
+    preMarketRequest: IPreMarketRequest,
+  ): Promise<void> {
+    const renter = await this.renterRepository.findRenterWithReferrer(
+      preMarketRequest.renterId.toString(),
+    );
+
+    if (!renter?.fullName) {
+      logger.warn(
+        { requestId: preMarketRequest._id },
+        "Renter not found for owner representation match acknowledgment",
+      );
+      return;
+    }
+
+    const matchedAgent = await this.userRepository.findById(agentId);
+    if (!matchedAgent?.email) {
+      logger.warn(
+        { agentId, requestId: preMarketRequest._id },
+        "Matched agent not found for owner representation match acknowledgment",
+      );
+      return;
+    }
+
+    const registeredAgentId =
+      await this.resolveRegisteredAgentIdForRequest(preMarketRequest);
+    const registeredAgent =
+      await this.getArchiveAgentInfo(registeredAgentId);
+    const matchedAgentProfile = await this.agentRepository.findByUserId(agentId);
+
+    if (!registeredAgent.email) {
+      logger.warn(
+        { requestId: preMarketRequest._id, registeredAgentId },
+        "Registered agent email missing for owner representation match acknowledgment",
+      );
+      return;
+    }
+
+    const registeredAgentFirstName =
+      registeredAgent.fullName?.trim().split(/\s+/)[0] ||
+      registeredAgent.fullName ||
+      "Agent";
+    const cc = this.buildUniqueEmailList(
+      [env.ADMIN_EMAIL, matchedAgent.email],
+      [registeredAgent.email],
+    );
+
+    await emailService.sendOwnerRepresentationMatchReferralAcknowledgment({
+      to: registeredAgent.email,
+      registeredAgentFirstName,
+      renterFullName: renter.fullName,
+      registeredAgentFullName: registeredAgent.fullName,
+      registeredAgentTitle: registeredAgent.title,
+      registeredAgentBrokerage: registeredAgent.brokerage,
+      matchedAgentFullName:
+        matchedAgent.fullName || matchedAgent.email || "Matched Agent",
+      matchedAgentTitle:
+        matchedAgentProfile?.title || "Licensed Real Estate Salesperson",
+      matchedAgentBrokerage:
+        matchedAgentProfile?.brokerageName || "The Corcoran Group",
+      matchedAgentEmail: matchedAgent.email,
+      matchedAgentPhoneNumber: matchedAgent.phoneNumber || "N/A",
+      cc,
+    });
   }
 
   private async notifyRenterAboutMatchedOpportunity(

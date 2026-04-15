@@ -113,7 +113,10 @@ export class GrantAccessService {
 
   async requestAccess(
     agentId: string,
-    preMarketRequestId: string
+    preMarketRequestId: string,
+    representationType:
+      | "owner_representation"
+      | "renter_representation" = "renter_representation",
   ): Promise<IGrantAccessRequest> {
     const listingActivationCheck =
       await this.preMarketRepository.findByIdWithActivationStatus(
@@ -156,6 +159,8 @@ export class GrantAccessService {
         preMarketRequestId,
         agentId,
         status: "pending",
+        representation_type: representationType,
+        representationSelectedAt: new Date(),
         createdAt: new Date(),
       });
     } catch (error) {

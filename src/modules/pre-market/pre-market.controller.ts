@@ -411,7 +411,8 @@ export class PreMarketController {
 
     const grantAccess = await this.grantAccessService.requestAccess(
       userId,
-      validated.body.preMarketRequestId
+      validated.body.preMarketRequestId,
+      validated.body.representation_type ?? "renter_representation",
     );
 
     logger.info(
@@ -1001,13 +1002,15 @@ export class PreMarketController {
     const validated = await zParse(agentMatchRequestSchema, req);
     const agentId = req.user!.userId;
     const { requestId } = validated.params;
+    const representationType =
+      validated.body.representation_type ?? "renter_representation";
 
     const agent = await this.agentRepository.findByUserId(agentId);
     if (!agent) {
       throw new ForbiddenException("Agent profile not found");
     }
 
-    if (!agent.hasGrantAccess) {
+    if (!agent.hasGrantAccess && representationType !== "owner_representation") {
       const request = await this.preMarketService.getRequestById(requestId);
       this.preMarketService.ensureAgentCanViewRequest(agent, request as any);
       await this.preMarketService.ensureAgentCanViewRequestVisibility(
@@ -1018,6 +1021,7 @@ export class PreMarketController {
       const pendingAccess = await this.grantAccessService.requestAccess(
         agentId,
         requestId,
+        representationType,
       );
 
       logger.info(
@@ -1034,7 +1038,8 @@ export class PreMarketController {
 
     const matchRecord = await this.preMarketService.matchRequestForAgent(
       agentId,
-      requestId
+      requestId,
+      representationType,
     );
 
     logger.info({ agentId, requestId }, "Agent matched pre-market request");
