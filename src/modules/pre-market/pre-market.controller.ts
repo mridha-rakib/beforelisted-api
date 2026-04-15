@@ -20,6 +20,7 @@ import { PaymentService } from "../payment/payment.service";
 import { PreMarketRepository } from "./pre-market.repository";
 import {
   adminApproveSchema,
+  archiveRequestSchema,
   adminChargeSchema,
   adminRejectSchema,
   agentMatchRequestSchema,
@@ -29,6 +30,7 @@ import {
   requestAccessSchema,
   toggleShareVisibilitySchema,
   toggleListingActivationSchema,
+  unarchiveRequestSchema,
   updateRequestVisibilitySchema,
   updatePreMarketRequestSchema,
 } from "./pre-market.schema";
@@ -584,6 +586,25 @@ export class PreMarketController {
     );
   });
 
+  getArchivedRequestsForAgent = asyncHandler(
+    async (req: Request, res: Response) => {
+      const validated = await zParse(preMarketListSchema, req);
+      const agentId = req.user!.userId;
+
+      const requests = await this.preMarketService.getArchivedRequestsForAgent(
+        agentId,
+        validated.query,
+      );
+
+      ApiResponse.paginated(
+        res,
+        requests.data,
+        requests.pagination,
+        "Archived pre-market requests retrieved",
+      );
+    },
+  );
+
   getRequestForAgent = asyncHandler(async (req: Request, res: Response) => {
     const agentId = req.user!.userId;
     const { requestId } = req.params;
@@ -628,6 +649,31 @@ export class PreMarketController {
 
     const mode = updated.visibility === "SHARED" ? "ON (Shared)" : "OFF (Private)";
     ApiResponse.success(res, updated, `Share toggle updated: ${mode}`);
+  });
+
+  archiveRequest = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(archiveRequestSchema, req);
+    const agentId = req.user!.userId;
+
+    const result = await this.preMarketService.archiveRequestForAgent(
+      agentId,
+      validated.params.requestId,
+      validated.body.reason,
+    );
+
+    ApiResponse.success(res, result, "Request archived");
+  });
+
+  unarchiveRequest = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(unarchiveRequestSchema, req);
+    const agentId = req.user!.userId;
+
+    const result = await this.preMarketService.unarchiveRequestForAgent(
+      agentId,
+      validated.params.requestId,
+    );
+
+    ApiResponse.success(res, result, "Request unarchived");
   });
 
   confirmRegistrationDisclosure = asyncHandler(

@@ -40,6 +40,13 @@ router.get(
   controller.getAllRequestsForAgent.bind(controller),
 );
 
+router.get(
+  "/agent/archived-requests",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.getArchivedRequestsForAgent.bind(controller),
+);
+
 /**
  * GET /pre-market/agent/:requestId
  * Grant Access Agents: View SPECIFIC request with FULL renter info
@@ -75,6 +82,20 @@ router.patch(
   authMiddleware.verifyToken,
   authMiddleware.authorize("Agent"),
   controller.toggleShareVisibility.bind(controller),
+);
+
+router.patch(
+  "/:requestId/archive",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.archiveRequest.bind(controller),
+);
+
+router.patch(
+  "/:requestId/unarchive",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.unarchiveRequest.bind(controller),
 );
 
 router.patch(

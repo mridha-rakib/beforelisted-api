@@ -239,6 +239,26 @@ export const confirmRegistrationDisclosureSchema = z.object({
   }),
 });
 
+export const archiveRequestSchema = z.object({
+  params: z.object({
+    requestId: z.string().min(24, "Invalid request ID"),
+  }),
+  body: z.object({
+    reason: z.enum([
+      "registration_missing",
+      "disclosure_missing",
+      "search_inactive",
+      "client_placed",
+    ]),
+  }),
+});
+
+export const unarchiveRequestSchema = z.object({
+  params: z.object({
+    requestId: z.string().min(24, "Invalid request ID"),
+  }),
+});
+
 export const adminToggleListingStatusSchema = z.object({
   params: z.object({
     renterId: z.string().min(24, "Invalid renter ID"),

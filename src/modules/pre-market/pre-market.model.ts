@@ -58,6 +58,17 @@ export interface IPreMarketRequest extends Document {
     agentId: Types.ObjectId | string;
     confirmedAt: Date;
   }>;
+  agentArchives?: Array<{
+    agentId: Types.ObjectId | string;
+    archivedByAgentId: Types.ObjectId | string;
+    reason:
+      | "registration_missing"
+      | "disclosure_missing"
+      | "search_inactive"
+      | "client_placed";
+    source: "registered_agent" | "matched_agent";
+    archivedAt: Date;
+  }>;
   referralAgentId?: Types.ObjectId | string;
   lockedByAgentId?: Types.ObjectId | string;
   lockedAt?: Date;
@@ -219,6 +230,40 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
       _id: false,
     },
   ],
+  agentArchives: [
+    {
+      agentId: {
+        type: Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+      archivedByAgentId: {
+        type: Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+      reason: {
+        type: String,
+        enum: [
+          "registration_missing",
+          "disclosure_missing",
+          "search_inactive",
+          "client_placed",
+        ],
+        required: true,
+      },
+      source: {
+        type: String,
+        enum: ["registered_agent", "matched_agent"],
+        required: true,
+      },
+      archivedAt: {
+        type: Date,
+        required: true,
+      },
+      _id: false,
+    },
+  ],
   referralAgentId: {
     type: Types.ObjectId,
     ref: "User",
@@ -269,6 +314,7 @@ preMarketSchema.index({
   _id: 1,
   "registrationDisclosureConfirmations.agentId": 1,
 });
+preMarketSchema.index({ "agentArchives.agentId": 1, createdAt: -1 });
 
 // MIDDLEWARE
 

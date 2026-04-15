@@ -45,6 +45,7 @@ import {
   IRenterOpportunityFoundOtherAgentPayload,
   IRenterOpportunityFoundRegisteredAgentPayload,
   IRenterRegisteredAgentInactivePayload,
+  IRenterArchiveNotificationPayload,
   IRenterRegistrationVerifiedAdminPayload,
   IRenterRequestClosedAgentAlertPayload,
   IRenterRequestClosedRenterNotificationPayload,
@@ -1454,6 +1455,44 @@ export class EmailService {
     }
   }
 
+  async sendRenterArchiveNotification(
+    payload: IRenterArchiveNotificationPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, templateType: payload.templateType },
+        "Sending renter archive notification",
+      );
+
+      const html = this.buildSimpleBeforeListedEmail(payload.bodyHtml);
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.renterName },
+        cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
+        replyTo: payload.replyTo || "support@beforelisted.com",
+        subject: payload.subject,
+        html,
+      };
+
+      return await this.sendEmail(emailOptions, payload.templateType, payload.to);
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send renter archive notification",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
   /**
    * Send admin notification when agent completes registration and verification
    */
@@ -1721,6 +1760,31 @@ export class EmailService {
    * Send admin referral email with temporary password
    * Called during: Admin referral renter registration (passwordless flow)
    */
+
+  private buildSimpleBeforeListedEmail(bodyHtml: string): string {
+    const currentYear = new Date().getFullYear();
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeforeListed</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f5f5;color:#333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;">
+  <div style="max-width:600px;margin:20px auto;background:#fff;border-radius:8px;overflow:hidden;">
+    <div style="background:${this.config.brandColor || "#1890FF"};color:#fff;padding:24px 20px;text-align:center;">
+      ${this.config.logoUrl ? `<img src="${this.config.logoUrl}" alt="BeforeListed" style="max-width:150px;height:auto;margin-bottom:12px;">` : ""}
+      <h1 style="font-size:22px;margin:0;">BeforeListed</h1>
+    </div>
+    <div style="padding:30px 20px;">${bodyHtml}</div>
+    <div style="background:#f9f9f9;padding:20px;text-align:center;font-size:12px;color:#999;">
+      <p style="margin:0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+  }
 
   /**
    * Core method to send email via transporter

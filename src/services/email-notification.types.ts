@@ -142,6 +142,16 @@ export interface IRenterRequestClosedRenterNotificationPayload {
   closedAt: string;
 }
 
+export interface IRenterArchiveNotificationPayload {
+  to: string;
+  renterName: string;
+  subject: string;
+  bodyHtml: string;
+  cc?: string[];
+  replyTo?: string;
+  templateType: string;
+}
+
 export interface IAdminContactRequestPayload {
   to: string;
   senderEmail: string;

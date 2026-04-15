@@ -32,6 +32,24 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return PaginationHelper.formatResponse(result);
   }
 
+  async findArchivedForAgent(
+    agentId: string,
+    query: PaginationQuery,
+  ): Promise<PaginatedResponse<IPreMarketRequest>> {
+    const paginateOptions = PaginationHelper.parsePaginationParams(query);
+    const agentObjectId = new Types.ObjectId(agentId);
+
+    const result = await (this.model as any).paginate(
+      {
+        isDeleted: false,
+        "agentArchives.agentId": agentObjectId,
+      },
+      { ...paginateOptions, useEstimatedCount: false },
+    );
+
+    return PaginationHelper.formatResponse(result);
+  }
+
   async findAllWithPaginationExcludingIds(
     query: PaginationQuery,
     excludedIds: string[],
@@ -473,6 +491,74 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
             registrationDisclosureConfirmations: {
               agentId: agentObjectId,
               confirmedAt: new Date(),
+            },
+          },
+        },
+        { new: true },
+      )
+      .lean()
+      .exec() as Promise<IPreMarketRequest | null>;
+  }
+
+  async addAgentArchiveRecords(
+    requestId: string,
+    records: Array<{
+      agentId: string;
+      archivedByAgentId: string;
+      reason:
+        | "registration_missing"
+        | "disclosure_missing"
+        | "search_inactive"
+        | "client_placed";
+      source: "registered_agent" | "matched_agent";
+      archivedAt: Date;
+    }>,
+  ): Promise<number> {
+    let modifiedCount = 0;
+
+    for (const record of records) {
+      const agentObjectId = new Types.ObjectId(record.agentId);
+      const archivedByObjectId = new Types.ObjectId(record.archivedByAgentId);
+      const result = await this.model.updateOne(
+        {
+          _id: requestId,
+          isDeleted: { $ne: true },
+          "agentArchives.agentId": { $ne: agentObjectId },
+        },
+        {
+          $push: {
+            agentArchives: {
+              agentId: agentObjectId,
+              archivedByAgentId: archivedByObjectId,
+              reason: record.reason,
+              source: record.source,
+              archivedAt: record.archivedAt,
+            },
+          },
+        },
+      );
+
+      modifiedCount += result.modifiedCount || 0;
+    }
+
+    return modifiedCount;
+  }
+
+  async removeAgentArchiveRecord(
+    requestId: string,
+    agentId: string,
+  ): Promise<IPreMarketRequest | null> {
+    return this.model
+      .findOneAndUpdate(
+        {
+          _id: requestId,
+          isDeleted: { $ne: true },
+          "agentArchives.agentId": new Types.ObjectId(agentId),
+        },
+        {
+          $pull: {
+            agentArchives: {
+              agentId: new Types.ObjectId(agentId),
             },
           },
         },

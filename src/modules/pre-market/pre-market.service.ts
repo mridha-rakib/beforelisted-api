@@ -53,6 +53,21 @@ type AgentGrantAccessStatus =
   | "free"
   | "rejected";
 
+type AgentArchiveReason =
+  | "registration_missing"
+  | "disclosure_missing"
+  | "search_inactive"
+  | "client_placed";
+
+type AgentArchiveSource = "registered_agent" | "matched_agent";
+
+const ARCHIVE_REASON_LABELS: Record<AgentArchiveReason, string> = {
+  registration_missing: "Registration Missing",
+  disclosure_missing: "Disclosure Missing",
+  search_inactive: "Search Inactive",
+  client_placed: "Client Placed",
+};
+
 const MATCHED_SCOPE_GRANT_ACCESS_STATUSES = [
   "pending",
   "approved",
@@ -606,9 +621,11 @@ export class PreMarketService {
       agentId,
     );
     const cutoffFilter = this.buildAgentVisibilityFilter(agent);
+    const archiveFilter = this.buildAgentArchiveExclusionFilter(agentId);
     const combinedFilters = this.mergeFilters([
       visibilityFilter,
       cutoffFilter,
+      archiveFilter,
     ]);
     const agentOwnedAccessRecords =
       await this.grantAccessRepository.findByAgentIdAndStatuses(agentId, [
@@ -1086,6 +1103,33 @@ export class PreMarketService {
     };
   }
 
+  private getAgentArchiveStatus(
+    request: IPreMarketRequest | Record<string, any>,
+    agentId: string,
+  ): {
+    isArchivedForAgent: boolean;
+    archiveReason: AgentArchiveReason | null;
+    archiveReasonLabel: string | null;
+    archiveSource: AgentArchiveSource | null;
+    archivedAt: Date | null;
+  } {
+    const archives = Array.isArray((request as any)?.agentArchives)
+      ? (request as any).agentArchives
+      : [];
+    const archive = archives.find((item: any) => {
+      return this.normalizeUserId(item?.agentId) === agentId;
+    });
+    const reason = (archive?.reason ?? null) as AgentArchiveReason | null;
+
+    return {
+      isArchivedForAgent: Boolean(archive),
+      archiveReason: reason,
+      archiveReasonLabel: reason ? ARCHIVE_REASON_LABELS[reason] : null,
+      archiveSource: (archive?.source ?? null) as AgentArchiveSource | null,
+      archivedAt: archive?.archivedAt ?? null,
+    };
+  }
+
   private async resolveRegisteredAgentIdFromRenter(
     renter: any,
   ): Promise<string | null> {
@@ -1147,6 +1191,12 @@ export class PreMarketService {
       return active[0];
     }
     return { $and: active };
+  }
+
+  private buildAgentArchiveExclusionFilter(agentId: string): Record<string, any> {
+    return {
+      "agentArchives.agentId": { $ne: new Types.ObjectId(agentId) },
+    };
   }
 
   private async buildRequestVisibilityFilterForAgent(
@@ -1752,6 +1802,10 @@ export class PreMarketService {
       );
     }
 
+    if (this.getAgentArchiveStatus(request, agentId).isArchivedForAgent) {
+      throw new ForbiddenException("Archived requests cannot be shared");
+    }
+
     if (request.shareConsent !== true && visibility === "SHARED") {
       throw new ForbiddenException(
         "Renter consent is required to share this request",
@@ -1868,6 +1922,481 @@ export class PreMarketService {
       requestId,
       ...confirmedStatus,
     };
+  }
+
+  async archiveRequestForAgent(
+    agentId: string,
+    requestId: string,
+    reason: AgentArchiveReason,
+  ): Promise<{
+    requestId: string;
+    archivedAgents: number;
+    archiveReason: AgentArchiveReason;
+    archiveReasonLabel: string;
+  }> {
+    const agent = await this.agentRepository.findByUserId(agentId);
+    if (!agent) {
+      throw new ForbiddenException("Agent profile not found");
+    }
+
+    const request = await this.getRequestById(requestId);
+    this.ensureAgentCanViewRequest(agent, request as any);
+
+    const registeredAgentId =
+      await this.resolveRegisteredAgentIdForRequest(request);
+    const isRegisteredAgent = registeredAgentId === agentId;
+    const matchedAccess = await this.grantAccessRepository.findByAgentAndRequest(
+      agentId,
+      requestId,
+    );
+    const isMatchedAgent = Boolean(
+      matchedAccess &&
+        ["approved", "free", "paid"].includes(String(matchedAccess.status)),
+    );
+
+    if (!isRegisteredAgent && !isMatchedAgent) {
+      throw new ForbiddenException("You cannot archive this request");
+    }
+
+    if (
+      isRegisteredAgent &&
+      !["registration_missing", "search_inactive", "client_placed"].includes(
+        reason,
+      )
+    ) {
+      throw new BadRequestException("Invalid archive reason");
+    }
+
+    if (
+      !isRegisteredAgent &&
+      !["disclosure_missing", "search_inactive", "client_placed"].includes(
+        reason,
+      )
+    ) {
+      throw new BadRequestException("Invalid archive reason");
+    }
+
+    const source: AgentArchiveSource = isRegisteredAgent
+      ? "registered_agent"
+      : "matched_agent";
+    const matchedAgentIds = await this.getMatchedAgentIdsForArchive(requestId);
+    const affectsEveryone =
+      reason === "search_inactive" || reason === "client_placed";
+    const affectedAgentIds = affectsEveryone
+      ? Array.from(
+          new Set(
+            [registeredAgentId, ...matchedAgentIds].filter(
+              (id): id is string => Boolean(id),
+            ),
+          ),
+        )
+      : [agentId];
+    const archivedAt = new Date();
+
+    const archivedAgents = await this.preMarketRepository.addAgentArchiveRecords(
+      requestId,
+      affectedAgentIds.map((affectedAgentId) => ({
+        agentId: affectedAgentId,
+        archivedByAgentId: agentId,
+        reason,
+        source,
+        archivedAt,
+      })),
+    );
+
+    if (isRegisteredAgent || affectsEveryone) {
+      await this.preMarketRepository.releaseRequestLock(requestId);
+      await this.preMarketRepository.updateById(requestId, {
+        visibility: "PRIVATE",
+      });
+    }
+
+    this.sendArchiveNotification({
+      request,
+      actorAgentId: agentId,
+      registeredAgentId,
+      matchedAgentIds,
+      reason,
+      source,
+    }).catch((error) => {
+      logger.error(
+        { error, requestId, agentId, reason },
+        "Failed to send archive notification",
+      );
+    });
+
+    return {
+      requestId,
+      archivedAgents,
+      archiveReason: reason,
+      archiveReasonLabel: ARCHIVE_REASON_LABELS[reason],
+    };
+  }
+
+  async unarchiveRequestForAgent(
+    agentId: string,
+    requestId: string,
+  ): Promise<{
+    requestId: string;
+    archiveReason: AgentArchiveReason | null;
+    archiveReasonLabel: string | null;
+    isArchivedForAgent: boolean;
+  }> {
+    const agent = await this.agentRepository.findByUserId(agentId);
+    if (!agent) {
+      throw new ForbiddenException("Agent profile not found");
+    }
+
+    const request = await this.getRequestById(requestId);
+    const archiveStatus = this.getAgentArchiveStatus(request, agentId);
+
+    if (!archiveStatus.isArchivedForAgent) {
+      return {
+        requestId,
+        archiveReason: null,
+        archiveReasonLabel: null,
+        isArchivedForAgent: false,
+      };
+    }
+
+    await this.preMarketRepository.removeAgentArchiveRecord(requestId, agentId);
+
+    return {
+      requestId,
+      archiveReason: archiveStatus.archiveReason,
+      archiveReasonLabel: archiveStatus.archiveReasonLabel,
+      isArchivedForAgent: false,
+    };
+  }
+
+  async getArchivedRequestsForAgent(
+    agentId: string,
+    query: PaginationQuery,
+  ): Promise<PaginatedResponse<IPreMarketRequest>> {
+    const agent = await this.agentRepository.findByUserId(agentId);
+    if (!agent) {
+      throw new NotFoundException("Agent profile not found");
+    }
+
+    const paginated = await this.preMarketRepository.findArchivedForAgent(
+      agentId,
+      query,
+    );
+    const requestIds = paginated.data
+      .map((request) => request._id?.toString())
+      .filter((id): id is string => Boolean(id));
+    const [grantAccessRecords, globalMatchedScopeRequestIds] =
+      await Promise.all([
+        this.grantAccessRepository.findByAgentIdAndRequestIds(
+          agentId,
+          requestIds,
+        ),
+        this.getGlobalMatchedScopeRequestIdSet(requestIds),
+      ]);
+    const grantAccessByRequestId = new Map(
+      grantAccessRecords.map((record) => [
+        record.preMarketRequestId.toString(),
+        record,
+      ]),
+    );
+
+    const enrichedData = await Promise.all(
+      paginated.data.map(async (request) => {
+        const requestIdValue = request._id?.toString() || "";
+        const registeredAgentId =
+          await this.resolveRegisteredAgentIdForRequest(request);
+        const isRegisteredAgent = registeredAgentId === agentId;
+        const grantAccess = grantAccessByRequestId.get(requestIdValue) || null;
+        const accessSummary = this.buildAgentAccessSummary(
+          grantAccess,
+          agent.hasGrantAccess === true,
+        );
+        const referralInfo = request.renterId
+          ? await this.getReferralInfoForRenter(request.renterId.toString())
+          : null;
+        const archiveStatus = this.getAgentArchiveStatus(request, agentId);
+
+        return {
+          ...request,
+          scope: this.resolveAgentVisibleScope(
+            request.scope,
+            globalMatchedScopeRequestIds.has(requestIdValue),
+          ),
+          visibility: isRegisteredAgent ? "PRIVATE" : request.visibility,
+          referralAgentId:
+            registeredAgentId ??
+            this.normalizeUserId(
+              (request as unknown as {
+                referralAgentId?: string | Types.ObjectId;
+              }).referralAgentId,
+            ),
+          referralInfo,
+          status: accessSummary.grantAccessStatus || request.status,
+          listingStatus: grantAccess ? "matched" : request.status,
+          grantAccessStatus: accessSummary.grantAccessStatus,
+          grantAccessId: accessSummary.grantAccessId,
+          accessType: grantAccess ? accessSummary.accessType : "none",
+          canRequestAccess: false,
+          isArchivedForAgent: archiveStatus.isArchivedForAgent,
+          archiveReason: archiveStatus.archiveReason,
+          archiveReasonLabel: archiveStatus.archiveReasonLabel,
+          archiveSource: archiveStatus.archiveSource,
+          archivedAt: archiveStatus.archivedAt,
+        };
+      }),
+    );
+
+    return {
+      ...paginated,
+      data: enrichedData,
+    } as any;
+  }
+
+  private async getMatchedAgentIdsForArchive(
+    preMarketRequestId: string,
+  ): Promise<string[]> {
+    const records =
+      await this.grantAccessRepository.findByPreMarketRequestId(
+        preMarketRequestId,
+      );
+
+    return Array.from(
+      new Set(
+        records
+          .filter((record) =>
+            ["approved", "free", "paid"].includes(String(record.status)),
+          )
+          .map((record) => record.agentId.toString())
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+  }
+
+  private async getArchiveAgentInfo(agentId?: string | null): Promise<{
+    id: string;
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+    title: string;
+    brokerage: string;
+    activationLink: string | null;
+  }> {
+    if (!agentId) {
+      const defaultAgent = await this.getDefaultReferralAgent();
+      return {
+        id: defaultAgent.id,
+        fullName: defaultAgent.fullName,
+        email: defaultAgent.email,
+        phoneNumber: defaultAgent.phoneNumber || "N/A",
+        title: DEFAULT_REFERRAL_AGENT_TITLE,
+        brokerage: DEFAULT_REFERRAL_AGENT_BROKERAGE,
+        activationLink: defaultAgent.activationLink,
+      };
+    }
+
+    const [user, profile] = await Promise.all([
+      this.userRepository.findById(agentId),
+      this.agentRepository.findByUserId(agentId),
+    ]);
+
+    return {
+      id: agentId,
+      fullName: user?.fullName || user?.email || "Agent",
+      email: user?.email || "",
+      phoneNumber: user?.phoneNumber || "N/A",
+      title: profile?.title || DEFAULT_REFERRAL_AGENT_TITLE,
+      brokerage: profile?.brokerageName || DEFAULT_REFERRAL_AGENT_BROKERAGE,
+      activationLink: profile?.activationLink || null,
+    };
+  }
+
+  private buildUniqueEmailList(
+    emails: Array<string | undefined | null>,
+    excludedEmails: Array<string | undefined | null> = [],
+  ): string[] | undefined {
+    const excluded = new Set(
+      excludedEmails
+        .filter((email): email is string => Boolean(email?.trim()))
+        .map((email) => email.trim().toLowerCase()),
+    );
+    const unique: string[] = [];
+
+    for (const email of emails) {
+      const trimmed = email?.trim();
+      if (!trimmed || excluded.has(trimmed.toLowerCase())) {
+        continue;
+      }
+      if (unique.some((item) => item.toLowerCase() === trimmed.toLowerCase())) {
+        continue;
+      }
+      unique.push(trimmed);
+    }
+
+    return unique.length > 0 ? unique : undefined;
+  }
+
+  private escapeEmailHtml(value: string | undefined | null): string {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  private async sendArchiveNotification({
+    request,
+    actorAgentId,
+    registeredAgentId,
+    matchedAgentIds,
+    reason,
+    source,
+  }: {
+    request: IPreMarketRequest;
+    actorAgentId: string;
+    registeredAgentId: string | null;
+    matchedAgentIds: string[];
+    reason: AgentArchiveReason;
+    source: AgentArchiveSource;
+  }): Promise<void> {
+    const renter = await this.renterRepository.findRenterWithReferrer(
+      request.renterId.toString(),
+    );
+
+    if (!renter?.email) {
+      logger.warn(
+        { requestId: request._id?.toString() },
+        "Skipping archive email because renter email is missing",
+      );
+      return;
+    }
+
+    const [registeredAgent, actorAgent, matchedAgents] = await Promise.all([
+      this.getArchiveAgentInfo(registeredAgentId),
+      this.getArchiveAgentInfo(actorAgentId),
+      Promise.all(matchedAgentIds.map((id) => this.getArchiveAgentInfo(id))),
+    ]);
+    const firstName = this.escapeEmailHtml(
+      renter.fullName?.trim().split(/\s+/)[0] || renter.fullName || "there",
+    );
+    const registeredName = this.escapeEmailHtml(registeredAgent.fullName);
+    const registeredTitle = this.escapeEmailHtml(registeredAgent.title);
+    const registeredBrokerage = this.escapeEmailHtml(registeredAgent.brokerage);
+    const actorName = this.escapeEmailHtml(actorAgent.fullName);
+    const actorTitle = this.escapeEmailHtml(actorAgent.title);
+    const actorBrokerage = this.escapeEmailHtml(actorAgent.brokerage);
+    const registrationLink =
+      registeredAgent.activationLink || "Link unavailable";
+    const matchedDisclosureLink = actorAgent.activationLink || "Link unavailable";
+    const registrationLinkMarkup = registeredAgent.activationLink
+      ? `<a href="${this.escapeEmailHtml(registrationLink)}">Client Registration and Disclosure</a>`
+      : this.escapeEmailHtml(registrationLink);
+    const disclosureLinkMarkup = actorAgent.activationLink
+      ? `<a href="${this.escapeEmailHtml(matchedDisclosureLink)}">Agent Disclosure</a>`
+      : this.escapeEmailHtml(matchedDisclosureLink);
+    const matchedAgentEmails = matchedAgents.map((agent) => agent.email);
+    const registeredAgentEmail = registeredAgent.email;
+    const actorAgentEmail = actorAgent.email;
+    let subject = "";
+    let bodyHtml = "";
+    let cc: string[] | undefined;
+    let replyTo = "support@beforelisted.com";
+    let templateType = "RENTER_ARCHIVE_NOTIFICATION";
+
+    if (source === "registered_agent" && reason === "registration_missing") {
+      subject =
+        "Client registration missing, required to activate your request - BeforeListed";
+      replyTo = registeredAgentEmail || replyTo;
+      templateType = "ARCHIVE_REGISTERED_REGISTRATION_MISSING";
+      bodyHtml = `
+        <p>Hi ${firstName},</p>
+        <p>Thank you for submitting your request on BeforeListed&trade;.</p>
+        <p>Our system shows that the required client registration and disclosure document, which was needed during your submission, has not yet been signed.</p>
+        <p>Due to this, ${registeredName}, ${registeredTitle} with ${registeredBrokerage}, is not permitted to contact owners on your behalf until the registration is completed.</p>
+        <p>Your request is currently inactive.</p>
+        <p>To activate your request, please sign the document using the link below:</p>
+        <p>${registrationLinkMarkup}</p>
+        <p>Once the document is signed, your request may be reactivated.</p>
+        <p>If you have any questions, you may reply directly to this email.</p>
+        <p>Thank you,<br>BeforeListed&trade; Support</p>`;
+    } else if (source === "matched_agent" && reason === "disclosure_missing") {
+      subject =
+        "Agent disclosure missing, required before assisting with your request can begin - BeforeListed\u2122";
+      replyTo = actorAgentEmail || replyTo;
+      cc = this.buildUniqueEmailList([registeredAgentEmail], [renter.email]);
+      templateType = "ARCHIVE_MATCHED_DISCLOSURE_MISSING";
+      bodyHtml = `
+        <p>Hi ${firstName},</p>
+        <p>Our system shows that the required agent disclosure document for your assisting agent ${actorName}, ${actorTitle} with ${actorBrokerage}, has not yet been signed.</p>
+        <p>Please sign the document using the link below:</p>
+        <p>${disclosureLinkMarkup}</p>
+        <p>In the meantime, you may just email reply all and confirm you received the disclosure, and the renter specialist will reach out to you.</p>
+        <p>If you have any questions, you may reply directly to this email.</p>
+        <p>Thank you,<br>BeforeListed&trade; Support</p>`;
+    } else if (reason === "search_inactive") {
+      subject =
+        "Your request has been archived, search inactive - BeforeListed\u2122";
+      replyTo = registeredAgentEmail || replyTo;
+      cc = this.buildUniqueEmailList(
+        source === "registered_agent"
+          ? matchedAgentEmails
+          : [registeredAgentEmail, ...matchedAgentEmails],
+        [renter.email],
+      );
+      templateType =
+        source === "registered_agent"
+          ? "ARCHIVE_REGISTERED_SEARCH_INACTIVE"
+          : "ARCHIVE_MATCHED_SEARCH_INACTIVE";
+      const indicatedTo =
+        source === "registered_agent"
+          ? `${registeredName}, ${registeredTitle} with ${registeredBrokerage}`
+          : `${actorName}, ${actorTitle} with ${actorBrokerage}`;
+      bodyHtml = `
+        <p>Hi ${firstName},</p>
+        <p>We understand that you indicated to ${indicatedTo}, that you are no longer actively searching for an apartment.</p>
+        <p>Due to this, your request on BeforeListed&trade; has been archived.</p>
+        <p>If this is not correct, please let us know as soon as possible by replying to this email so we may correct it.</p>
+        <p>Please consider adding the BeforeListed&trade; tool again in your next apartment search.</p>
+        <p>If you have any questions, you may reply directly to this email.</p>
+        <p>We wish you the best of luck in your new home!</p>
+        <p>Thank you,<br>BeforeListed&trade; Support</p>`;
+    } else if (reason === "client_placed") {
+      subject =
+        "Congratulations on your new home! \u{1F389} - BeforeListed\u2122";
+      replyTo = registeredAgentEmail || replyTo;
+      cc = this.buildUniqueEmailList(
+        source === "registered_agent"
+          ? [registeredAgentEmail, ...matchedAgentEmails]
+          : [registeredAgentEmail, ...matchedAgentEmails],
+        [renter.email],
+      );
+      templateType =
+        source === "registered_agent"
+          ? "ARCHIVE_REGISTERED_CLIENT_PLACED"
+          : "ARCHIVE_MATCHED_CLIENT_PLACED";
+      const placedBy =
+        source === "registered_agent"
+          ? `${registeredName}, ${registeredTitle} with ${registeredBrokerage}`
+          : `${actorName}, ${actorTitle} with ${actorBrokerage}`;
+      bodyHtml = `
+        <p>Hi ${firstName},</p>
+        <p>Congratulations!</p>
+        <p>We understand that ${placedBy}, helped you secure your new apartment.</p>
+        <p>That&rsquo;s wonderful news, and we wish you many happy years in your new home!</p>
+        <p>Please consider adding the BeforeListed&trade; tool again in your next apartment search.</p>
+        <p>If you have any questions, you may reply directly to this email.</p>
+        <p>Thank you,<br>BeforeListed&trade; Support</p>`;
+    }
+
+    await emailService.sendRenterArchiveNotification({
+      to: renter.email,
+      renterName: renter.fullName,
+      subject,
+      bodyHtml,
+      cc,
+      replyTo,
+      templateType,
+    });
   }
 
   private async notifyNonRegisteredAgentsAboutSharedRequest(
@@ -2279,7 +2808,11 @@ export class PreMarketService {
       ) as any;
     }
 
-    const sortedListings = listings.sort((a: any, b: any) => {
+    const activeListings = listings.filter(
+      (request: any) => !this.getAgentArchiveStatus(request, agentId).isArchivedForAgent,
+    );
+
+    const sortedListings = activeListings.sort((a: any, b: any) => {
       const timeA = matchTimeByRequestId.get(a._id?.toString()) ?? -1;
       const timeB = matchTimeByRequestId.get(b._id?.toString()) ?? -1;
       return timeB - timeA;
@@ -2324,6 +2857,7 @@ export class PreMarketService {
           request.scope,
           globalMatchedScopeRequestIds.has(request._id?.toString() || ""),
         );
+        const archiveStatus = this.getAgentArchiveStatus(request, agentId);
 
         return {
           ...request,
@@ -2336,6 +2870,7 @@ export class PreMarketService {
           accessType: accessSummary.accessType,
           canRequestAccess: false,
           chargeAmount: accessSummary.chargeAmount ?? null,
+          ...archiveStatus,
           ...(accessSummary.showPayment && accessSummary.payment
             ? { payment: accessSummary.payment }
             : {}),
