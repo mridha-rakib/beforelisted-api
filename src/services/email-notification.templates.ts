@@ -1430,6 +1430,7 @@ export function matchReferralAcknowledgmentToMatchingAgentTemplate(
 export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
   registeredAgentFirstName: string,
   renterFullName: string,
+  requestId: string,
   registeredAgentFullName: string,
   registeredAgentTitle: string,
   registeredAgentBrokerage: string,
@@ -1446,6 +1447,7 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
     registeredAgentFirstName || "Agent",
   );
   const safeRenterFullName = escapeHtml(renterFullName || "N/A");
+  const safeRequestId = escapeHtml(requestId || "N/A");
   const safeRegisteredAgentFullName = escapeHtml(
     registeredAgentFullName || "N/A",
   );
@@ -1548,17 +1550,19 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
 
             <div class="details">
                 <p>Renter: ${safeRenterFullName}</p>
+                <p>Request ID: ${safeRequestId}</p>
                 <p>Registered Agent: ${safeRegisteredAgentFullName}, ${safeRegisteredAgentTitle} with ${safeRegisteredAgentBrokerage}</p>
                 <p>Referral Facilitator: Tuval Mor, Licensed Real Estate Salesperson, The Corcoran Group</p>
-                <p>Matched Agent (Owner Representation): ${safeMatchedAgentFullName}, ${safeMatchedAgentTitle} with ${safeMatchedAgentBrokerage}</p>
-                <p>Email: ${safeMatchedAgentEmail} Contact Number: ${safeMatchedAgentPhoneNumber}</p>
+                <p>Matched Agent (Owner Representation):<br>${safeMatchedAgentFullName}, ${safeMatchedAgentTitle} with ${safeMatchedAgentBrokerage}</p>
+                <p>Email: ${safeMatchedAgentEmail}</p>
+                <p>Contact Number: ${safeMatchedAgentPhoneNumber}</p>
             </div>
 
-            <p>As outlined in the Agent Agreement, this match is recognized as a referral facilitated through BeforeListed&trade;.</p>
+            <p>You may wish to reach out to the matched agent directly to discuss the opportunity and explore next steps.</p>
 
-            <p>If a transaction results from this referral, any applicable referral fees will be processed through Corcoran&rsquo;s standard referral procedures, in accordance with the agreed-upon percentages and brokerage requirements.</p>
+            <p><strong>Referral reminder:</strong></p>
 
-            <p>No action is required at this time. If and when a transaction proceeds, you will be responsible for completing and submitting the required Corcoran referral documentation.</p>
+            <p>If you choose to assist this renter whether through or outside the website, and a transaction results, referral fees will apply as outlined in the BeforeListed&trade; Agent Agreement, subject to brokerage approval and payable only upon closing.</p>
 
             <p>If you have any questions, you may reply directly to this email.</p>
 

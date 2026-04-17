@@ -1364,6 +1364,7 @@ export class EmailService {
       const html = ownerRepresentationMatchReferralAcknowledgmentTemplate(
         payload.registeredAgentFirstName,
         payload.renterFullName,
+        payload.requestId,
         payload.registeredAgentFullName,
         payload.registeredAgentTitle,
         payload.registeredAgentBrokerage,
@@ -1382,9 +1383,9 @@ export class EmailService {
           name: payload.registeredAgentFullName,
         },
         cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
-        replyTo: "support@beforelisted.com",
+        replyTo: payload.matchedAgentEmail || "support@beforelisted.com",
         subject:
-          "Match Referral Acknowledgment \u2013 owner agent matched| BeforeListed\u2122",
+          "Owner Rep Selected on Your Renter - Review Now | BeforeListed\u2122",
         html,
       };
 

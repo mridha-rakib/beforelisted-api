@@ -176,6 +176,10 @@ export class PreMarketService {
       return "Available";
     }
 
+    if (grantAccess.representation_type === "owner_representation") {
+      return "Available";
+    }
+
     if (grantAccess.status === "free") {
       return "free";
     }
@@ -216,6 +220,10 @@ export class PreMarketService {
   ): "admin-granted" | "payment-based" | "none" {
     if (hasGrantAccess) {
       return "admin-granted";
+    }
+
+    if (grantAccess?.representation_type === "owner_representation") {
+      return "none";
     }
 
     if (grantAccess?.status === "free" || grantAccess?.status === "paid") {
@@ -640,6 +648,9 @@ export class PreMarketService {
     const excludedRequestIds = Array.from(
       new Set(
         agentOwnedAccessRecords
+          .filter(
+            (record) => record.representation_type !== "owner_representation",
+          )
           .map((record) => record.preMarketRequestId?.toString())
           .filter((id): id is string => Boolean(id)),
       ),
@@ -685,13 +696,19 @@ export class PreMarketService {
           grantAccess,
           hasGrantAccess,
         );
+        const isOwnerRepresentationAccess =
+          grantAccess?.representation_type === "owner_representation";
         const isMatched =
+          !isOwnerRepresentationAccess &&
           grantAccess &&
           (grantAccess.status === "free" || grantAccess.status === "paid");
         const isRejected =
-          !hasGrantAccess && grantAccess?.status === "rejected";
+          !hasGrantAccess &&
+          !isOwnerRepresentationAccess &&
+          grantAccess?.status === "rejected";
         const hasRequestedAccess =
           !hasGrantAccess &&
+          !isOwnerRepresentationAccess &&
           grantAccess &&
           grantAccess.status !== "free" &&
           grantAccess.status !== "paid" &&
@@ -703,7 +720,7 @@ export class PreMarketService {
             : hasRequestedAccess
               ? "requested"
               : request.status;
-        const displayStatus = grantAccess
+        const displayStatus = grantAccess && !isOwnerRepresentationAccess
           ? accessSummary.grantAccessStatus
           : request.status;
         const visibleScope = this.resolveAgentVisibleScope(
@@ -712,11 +729,20 @@ export class PreMarketService {
         );
         const currentRegisteredAgentId =
           await this.resolveRegisteredAgentIdForRequest(request);
+        const isCurrentRegisteredAgent = currentRegisteredAgentId === agentId;
         const referralInfo = request.renterId
           ? await this.getReferralInfoForRenter(request.renterId.toString())
           : null;
+        const renterName = referralInfo?.renterName ?? null;
         const registrationDisclosureStatus =
           this.getRegistrationDisclosureStatus(request, agentId);
+        const ownerRepresentationStatus = isCurrentRegisteredAgent
+          ? this.getOwnerRepresentationStatus(request)
+          : {
+              ownerRepresentationMatchCount: 0,
+              hasOwnerRepresentationMatches: false,
+              hasNewOwnerRepresentationMatches: false,
+            };
 
         return {
           ...request,
@@ -729,6 +755,7 @@ export class PreMarketService {
               }).referralAgentId,
             ),
           referralInfo,
+          renterName,
           status: displayStatus,
           listingStatus,
           grantAccessStatus: accessSummary.grantAccessStatus,
@@ -737,6 +764,11 @@ export class PreMarketService {
           representationSelectedAt: accessSummary.representationSelectedAt,
           accessType: accessSummary.accessType,
           canRequestAccess: accessSummary.canRequestAccess,
+          ownerRepresentationSelected: this.hasOwnerRepresentationMatchForAgent(
+            request,
+            agentId,
+          ),
+          ...ownerRepresentationStatus,
           ...registrationDisclosureStatus,
         };
       }),
@@ -1134,6 +1166,142 @@ export class PreMarketService {
       archiveReasonLabel: reason ? ARCHIVE_REASON_LABELS[reason] : null,
       archiveSource: (archive?.source ?? null) as AgentArchiveSource | null,
       archivedAt: archive?.archivedAt ?? null,
+    };
+  }
+
+  private getOwnerRepresentationStatus(
+    request: IPreMarketRequest | Record<string, any>,
+  ): {
+    ownerRepresentationMatchCount: number;
+    hasOwnerRepresentationMatches: boolean;
+    hasNewOwnerRepresentationMatches: boolean;
+  } {
+    const matches = Array.isArray((request as any)?.ownerRepresentationMatches)
+      ? (request as any).ownerRepresentationMatches
+      : [];
+
+    return {
+      ownerRepresentationMatchCount: matches.length,
+      hasOwnerRepresentationMatches: matches.length > 0,
+      hasNewOwnerRepresentationMatches: matches.some(
+        (match: any) => !match?.viewedAt,
+      ),
+    };
+  }
+
+  private hasOwnerRepresentationMatchForAgent(
+    request: IPreMarketRequest | Record<string, any>,
+    agentId: string,
+  ): boolean {
+    const matches = Array.isArray((request as any)?.ownerRepresentationMatches)
+      ? (request as any).ownerRepresentationMatches
+      : [];
+
+    return matches.some((match: any) => {
+      return this.normalizeUserId(match?.agentId) === agentId;
+    });
+  }
+
+  private async buildOwnerRepresentationMatches(
+    request: IPreMarketRequest | Record<string, any>,
+  ): Promise<
+    Array<{
+      agentId: string;
+      fullName: string;
+      title: string;
+      brokerage: string;
+      email: string;
+      phoneNumber: string;
+      representation_type: "owner_representation";
+      selectedAt: Date | null;
+      viewedAt: Date | null;
+      isViewed: boolean;
+    }>
+  > {
+    const matches = Array.isArray((request as any)?.ownerRepresentationMatches)
+      ? (request as any).ownerRepresentationMatches
+      : [];
+
+    const enriched = await Promise.all(
+      matches.map(async (match: any) => {
+        const agentId = this.normalizeUserId(match?.agentId) || "";
+        const agentDetails = await this.resolveOwnerRepresentationAgentDetails(
+          agentId,
+        );
+
+        return {
+          agentId,
+          fullName:
+            agentDetails.fullName ||
+            match?.fullName ||
+            match?.email ||
+            "Matched Agent",
+          title:
+            agentDetails.title ||
+            match?.title ||
+            "Licensed Real Estate Salesperson",
+          brokerage:
+            agentDetails.brokerage ||
+            match?.brokerage ||
+            "The Corcoran Group",
+          email: agentDetails.email || match?.email || "N/A",
+          phoneNumber:
+            agentDetails.phoneNumber || match?.phoneNumber || "N/A",
+          representation_type: "owner_representation" as const,
+          selectedAt: match?.selectedAt ?? null,
+          viewedAt: match?.viewedAt ?? null,
+          isViewed: Boolean(match?.viewedAt),
+        };
+      }),
+    );
+
+    return enriched.sort((a, b) => {
+      const timeA = a.selectedAt ? new Date(a.selectedAt).getTime() : 0;
+      const timeB = b.selectedAt ? new Date(b.selectedAt).getTime() : 0;
+      return timeA - timeB;
+    });
+  }
+
+  private async resolveOwnerRepresentationAgentDetails(
+    agentId: string,
+  ): Promise<{
+    fullName: string;
+    title: string;
+    brokerage: string;
+    email: string;
+    phoneNumber: string;
+  }> {
+    if (!agentId) {
+      return {
+        fullName: "",
+        title: "",
+        brokerage: "",
+        email: "",
+        phoneNumber: "",
+      };
+    }
+
+    let agentUser = await this.userRepository.findById(agentId);
+    let agentProfile = await this.agentRepository.findByUserId(agentId);
+
+    if (!agentUser) {
+      const profileById = await this.agentRepository.findById(agentId);
+      const profileUserId = this.normalizeUserId(
+        profileById?.userId as any,
+      );
+
+      if (profileUserId) {
+        agentUser = await this.userRepository.findById(profileUserId);
+        agentProfile = profileById || agentProfile;
+      }
+    }
+
+    return {
+      fullName: agentUser?.fullName || agentUser?.email || "",
+      title: agentProfile?.title || "",
+      brokerage: agentProfile?.brokerageName || "",
+      email: agentUser?.email || "",
+      phoneNumber: agentUser?.phoneNumber || "",
     };
   }
 
@@ -2777,8 +2945,14 @@ export class PreMarketService {
         "free",
         "paid",
       ]);
+    const renterRepresentationAccessRecords = accessRecords.filter(
+      (record) => record.representation_type !== "owner_representation",
+    );
 
-    if (!Array.isArray(accessRecords) || accessRecords.length === 0) {
+    if (
+      !Array.isArray(renterRepresentationAccessRecords) ||
+      renterRepresentationAccessRecords.length === 0
+    ) {
       logger.info({ agentId }, "Normal agent has no access yet");
       return PaginationHelper.buildResponse(
         [],
@@ -2788,7 +2962,7 @@ export class PreMarketService {
       ) as any;
     }
 
-    const matchTimes = accessRecords
+    const matchTimes = renterRepresentationAccessRecords
       .map((access) => {
         const timestamp = new Date(
           access.updatedAt || access.createdAt || 0,
@@ -2839,7 +3013,7 @@ export class PreMarketService {
     const globalMatchedScopeRequestIds =
       await this.getGlobalMatchedScopeRequestIdSet(paginatedRequestIds);
     const accessRecordByRequestId = new Map(
-      accessRecords.map((access) => [
+      renterRepresentationAccessRecords.map((access) => [
         access.preMarketRequestId.toString(),
         access,
       ]),
@@ -2934,14 +3108,69 @@ export class PreMarketService {
       agent.hasGrantAccess,
     );
 
-    return enrichedRequest;
+    return this.enrichOwnerRepresentationDetailsForAgent(
+      agentId,
+      requestId,
+      request,
+      enrichedRequest,
+    );
+  }
+
+  async enrichOwnerRepresentationDetailsForAgent(
+    agentId: string,
+    requestId: string,
+    request: IPreMarketRequest | Record<string, any>,
+    response: Record<string, any>,
+  ): Promise<Record<string, any>> {
+    const registeredAgentId = await this.resolveRegisteredAgentIdForRequest(
+      request as IPreMarketRequest,
+    );
+    const isRegisteredAgent = registeredAgentId === agentId;
+    const isOwnerRepresentationAgent =
+      this.hasOwnerRepresentationMatchForAgent(request, agentId);
+
+    const ownerRepresentationPayload: Record<string, any> = {};
+
+    if (isRegisteredAgent) {
+      ownerRepresentationPayload.ownerRepresentationMatches =
+        await this.buildOwnerRepresentationMatches(request);
+      ownerRepresentationPayload.ownerRepresentationStatus =
+        this.getOwnerRepresentationStatus(request);
+
+      this.preMarketRepository
+        .markOwnerRepresentationMatchesViewed(requestId)
+        .catch((error) => {
+          logger.error(
+            { error, requestId, agentId },
+            "Failed to mark owner representation matches viewed",
+          );
+        });
+    }
+
+    if (isOwnerRepresentationAgent) {
+      const registeredAgent = await this.getArchiveAgentInfo(registeredAgentId);
+      ownerRepresentationPayload.ownerRepresentationRegisteredAgent = {
+        id: registeredAgent.id,
+        fullName: registeredAgent.fullName,
+        title: registeredAgent.title,
+        brokerage: registeredAgent.brokerage,
+        email: registeredAgent.email,
+        phoneNumber: registeredAgent.phoneNumber,
+      };
+      ownerRepresentationPayload.ownerRepresentationSelected = true;
+    }
+
+    return {
+      ...response,
+      ...ownerRepresentationPayload,
+    };
   }
 
   async matchRequestForAgent(
     agentId: string,
     requestId: string,
     representationType: MatchRepresentationType = "renter_representation",
-  ): Promise<IGrantAccessRequest> {
+  ): Promise<any> {
     const agent = await this.agentRepository.findByUserId(agentId);
     if (
       !agent ||
@@ -2969,6 +3198,62 @@ export class PreMarketService {
       throw new ForbiddenException(
         "This listing is no longer accepting requests",
       );
+    }
+
+    if (representationType === "owner_representation") {
+      const alreadySelected = this.hasOwnerRepresentationMatchForAgent(
+        listingActivationCheck as any,
+        agentId,
+      );
+      const agentSnapshot =
+        await this.resolveOwnerRepresentationAgentDetails(agentId);
+      const updatedRequest = alreadySelected
+        ? null
+        : await this.preMarketRepository.addOwnerRepresentationMatch(
+            requestId,
+            agentId,
+            agentSnapshot,
+          );
+      const currentRequest = updatedRequest || listingActivationCheck;
+      const registeredAgentId =
+        await this.resolveRegisteredAgentIdForRequest(currentRequest as any);
+      const registeredAgent = await this.getArchiveAgentInfo(registeredAgentId);
+      const ownerMatches = Array.isArray(
+        (currentRequest as any)?.ownerRepresentationMatches,
+      )
+        ? (currentRequest as any).ownerRepresentationMatches
+        : [];
+      const selectedMatch = ownerMatches.find((match: any) => {
+        return this.normalizeUserId(match?.agentId) === agentId;
+      });
+
+      if (!alreadySelected && updatedRequest) {
+        this.notifyRegisteredAgentAboutOwnerRepresentationMatch(
+          agentId,
+          currentRequest as any,
+        ).catch((error) => {
+          logger.error(
+            { error, requestId, agentId },
+            "Failed to send owner representation match acknowledgment (non-blocking)",
+          );
+        });
+      }
+
+      return {
+        requestId,
+        matchedAgentId: agentId,
+        representation_type: "owner_representation",
+        representationSelectedAt: selectedMatch?.selectedAt ?? new Date(),
+        ownerRepresentationSelected: true,
+        registeredAgentInfo: {
+          id: registeredAgent.id,
+          fullName: registeredAgent.fullName,
+          title: registeredAgent.title,
+          brokerage: registeredAgent.brokerage,
+          email: registeredAgent.email,
+          phoneNumber: registeredAgent.phoneNumber,
+        },
+      };
     }
 
     const existing = await this.grantAccessRepository.findByAgentAndRequest(
@@ -3010,17 +3295,7 @@ export class PreMarketService {
       throw error;
     }
 
-    if (shouldNotify && representationType === "owner_representation") {
-      this.notifyRegisteredAgentAboutOwnerRepresentationMatch(
-        agentId,
-        listingActivationCheck,
-      ).catch((error) => {
-        logger.error(
-          { error, requestId, agentId },
-          "Failed to send owner representation match acknowledgment (non-blocking)",
-        );
-      });
-    } else if (shouldNotify) {
+    if (shouldNotify) {
       this.notifyRenterAboutMatchedOpportunity(
         agentId,
         listingActivationCheck,
@@ -3852,6 +4127,11 @@ export class PreMarketService {
       to: registeredAgent.email,
       registeredAgentFirstName,
       renterFullName: renter.fullName,
+      requestId:
+        preMarketRequest.requestId ||
+        preMarketRequest.requestName ||
+        preMarketRequest._id?.toString() ||
+        "N/A",
       registeredAgentFullName: registeredAgent.fullName,
       registeredAgentTitle: registeredAgent.title,
       registeredAgentBrokerage: registeredAgent.brokerage,
@@ -4602,6 +4882,7 @@ export class PreMarketService {
       const defaultAgent = await this.getDefaultReferralAgent();
       return {
         registrationType,
+        renterName: renter.fullName || renter.email || "Renter",
         referrer: {
           referrerId: defaultAgent.id,
           referrerName: defaultAgent.fullName,
@@ -4644,6 +4925,7 @@ export class PreMarketService {
 
     return {
       registrationType,
+      renterName: renter.fullName || renter.email || "Renter",
       referrer: {
         referrerId,
         referrerName,

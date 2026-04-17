@@ -239,6 +239,14 @@ export class PreMarketController {
       request as any,
     );
 
+    const withOwnerRepresentationDetails = (payload: Record<string, any>) =>
+      this.preMarketService.enrichOwnerRepresentationDetailsForAgent(
+        userId,
+        requestId,
+        request as any,
+        payload,
+      );
+
     const enrichedCreatorRequest = includeCreatorRenterInfo
       ? await this.preMarketService.enrichRequestWithFullRenterInfo(
           request,
@@ -274,7 +282,7 @@ export class PreMarketController {
             userId,
           ));
 
-        return {
+        return withOwnerRepresentationDetails({
           ...enriched,
           scope: visibleScope,
           status: grantAccessStatus,
@@ -283,10 +291,10 @@ export class PreMarketController {
           grantAccessId: matchRecord._id?.toString(),
           accessType: "admin-granted",
           canRequestAccess: false,
-        };
+        });
       }
 
-      return {
+      return withOwnerRepresentationDetails({
         ...request,
         scope: visibleScope,
         renterInfo: includeCreatorRenterInfo
@@ -300,7 +308,7 @@ export class PreMarketController {
         ...(includeCreatorRenterInfo
           ? {}
           : { message: "Match this request to view renter information" }),
-      };
+      });
     }
 
     const accessSummary = await this.preMarketService.getAgentAccessSummary(
@@ -385,7 +393,7 @@ export class PreMarketController {
       );
     }
 
-    return response;
+    return withOwnerRepresentationDetails(response);
   }
 
   // ============================================
@@ -1047,7 +1055,9 @@ export class PreMarketController {
     ApiResponse.success(
       res,
       matchRecord,
-      "Request was moved to the Renter Matches section"
+      representationType === "owner_representation"
+        ? "Owner representation selection saved"
+        : "Request was moved to the Renter Matches section",
     );
   });
 

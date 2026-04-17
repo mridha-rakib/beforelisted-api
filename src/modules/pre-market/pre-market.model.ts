@@ -69,6 +69,17 @@ export interface IPreMarketRequest extends Document {
     source: "registered_agent" | "matched_agent";
     archivedAt: Date;
   }>;
+  ownerRepresentationMatches?: Array<{
+    agentId: Types.ObjectId | string;
+    representation_type: "owner_representation";
+    selectedAt: Date;
+    viewedAt?: Date | null;
+    fullName?: string;
+    title?: string;
+    brokerage?: string;
+    email?: string;
+    phoneNumber?: string;
+  }>;
   referralAgentId?: Types.ObjectId | string;
   lockedByAgentId?: Types.ObjectId | string;
   lockedAt?: Date;
@@ -106,7 +117,7 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
   },
   renterId: {
     type: Types.ObjectId,
-    ref: "Renter",
+    ref: "User",
     required: true,
     index: true,
   },
@@ -264,6 +275,45 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
       _id: false,
     },
   ],
+  ownerRepresentationMatches: [
+    {
+      agentId: {
+        type: Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+      representation_type: {
+        type: String,
+        enum: ["owner_representation"],
+        default: "owner_representation",
+        required: true,
+      },
+      selectedAt: {
+        type: Date,
+        required: true,
+      },
+      viewedAt: {
+        type: Date,
+        default: null,
+      },
+      fullName: {
+        type: String,
+      },
+      title: {
+        type: String,
+      },
+      brokerage: {
+        type: String,
+      },
+      email: {
+        type: String,
+      },
+      phoneNumber: {
+        type: String,
+      },
+      _id: false,
+    },
+  ],
   referralAgentId: {
     type: Types.ObjectId,
     ref: "User",
@@ -315,6 +365,7 @@ preMarketSchema.index({
   "registrationDisclosureConfirmations.agentId": 1,
 });
 preMarketSchema.index({ "agentArchives.agentId": 1, createdAt: -1 });
+preMarketSchema.index({ "ownerRepresentationMatches.agentId": 1, createdAt: -1 });
 
 // MIDDLEWARE
 

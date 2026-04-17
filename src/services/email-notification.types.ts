@@ -129,6 +129,7 @@ export interface IOwnerRepresentationMatchReferralAcknowledgmentPayload {
   to: string;
   registeredAgentFirstName: string;
   renterFullName: string;
+  requestId: string;
   registeredAgentFullName: string;
   registeredAgentTitle: string;
   registeredAgentBrokerage: string;

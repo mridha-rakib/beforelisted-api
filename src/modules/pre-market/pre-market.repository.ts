@@ -568,6 +568,81 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       .exec() as Promise<IPreMarketRequest | null>;
   }
 
+  async addOwnerRepresentationMatch(
+    requestId: string,
+    agentId: string,
+    agentSnapshot?: {
+      fullName?: string;
+      title?: string;
+      brokerage?: string;
+      email?: string;
+      phoneNumber?: string;
+    },
+  ): Promise<IPreMarketRequest | null> {
+    const agentObjectId = new Types.ObjectId(agentId);
+
+    return this.model
+      .findOneAndUpdate(
+        {
+          _id: requestId,
+          isDeleted: { $ne: true },
+          "ownerRepresentationMatches.agentId": { $ne: agentObjectId },
+        },
+        {
+          $push: {
+            ownerRepresentationMatches: {
+              agentId: agentObjectId,
+              representation_type: "owner_representation",
+              selectedAt: new Date(),
+              viewedAt: null,
+              ...(agentSnapshot?.fullName
+                ? { fullName: agentSnapshot.fullName }
+                : {}),
+              ...(agentSnapshot?.title ? { title: agentSnapshot.title } : {}),
+              ...(agentSnapshot?.brokerage
+                ? { brokerage: agentSnapshot.brokerage }
+                : {}),
+              ...(agentSnapshot?.email ? { email: agentSnapshot.email } : {}),
+              ...(agentSnapshot?.phoneNumber
+                ? { phoneNumber: agentSnapshot.phoneNumber }
+                : {}),
+            },
+          },
+        },
+        { new: true },
+      )
+      .lean()
+      .exec() as Promise<IPreMarketRequest | null>;
+  }
+
+  async markOwnerRepresentationMatchesViewed(
+    requestId: string,
+  ): Promise<void> {
+    await this.model.updateOne(
+      {
+        _id: requestId,
+        isDeleted: { $ne: true },
+        ownerRepresentationMatches: {
+          $elemMatch: {
+            $or: [{ viewedAt: null }, { viewedAt: { $exists: false } }],
+          },
+        },
+      },
+      {
+        $set: {
+          "ownerRepresentationMatches.$[match].viewedAt": new Date(),
+        },
+      },
+      {
+        arrayFilters: [
+          {
+            "match.viewedAt": null,
+          },
+        ],
+      },
+    );
+  }
+
   async toggleListingActive(
     id: string,
     isActive: boolean
