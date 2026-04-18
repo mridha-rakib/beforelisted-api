@@ -1137,6 +1137,7 @@ export function renterOpportunityFoundOtherAgentTemplate(
   matchedAgentBrokerageName?: string,
   matchedAgentEmail?: string,
   matchedAgentPhone?: string,
+  matchedAgentDisclosureLink?: string | null,
   logoUrl?: string,
   brandColor: string = "#1890FF"
 ): string {
@@ -1154,7 +1155,13 @@ export function renterOpportunityFoundOtherAgentTemplate(
   );
   const safeMatchedAgentEmail = escapeHtml(matchedAgentEmail?.trim() || "N/A");
   const safeMatchedAgentPhone = escapeHtml(matchedAgentPhone?.trim() || "N/A");
+  const safeMatchedAgentDisclosureLink = escapeHtml(
+    matchedAgentDisclosureLink?.trim() || "",
+  );
   const isAllMarket = requestScope === "All Market";
+  const disclosureLinkMarkup = safeMatchedAgentDisclosureLink
+    ? `<a href="${safeMatchedAgentDisclosureLink}">Agent Disclosure</a>`
+    : "Agent Disclosure";
 
   return `
 <!DOCTYPE html>
@@ -1240,7 +1247,7 @@ export function renterOpportunityFoundOtherAgentTemplate(
                 Hi ${safeFirstName},
             </div>
 
-            ${isAllMarket ? "" : "<p>Good news!</p>"}
+            <p>Good news!</p>
 
             ${
               isAllMarket
@@ -1264,17 +1271,13 @@ export function renterOpportunityFoundOtherAgentTemplate(
               Phone: ${safeMatchedAgentPhone}
             </p>
 
-            ${
-              isAllMarket
-                ? `<p>The renter specialist ${safeMatchedAgentFullName} will provide the required agency disclosures for your review and signature. Once those disclosures are completed, they may begin assisting you in connection with your rental search, including assistance with publicly listed opportunities.</p>`
-                : `<p>The additional agent listed above will provide the required agency disclosures for your review and signature. Once those disclosures are completed, they may begin acting on your behalf in connection with outreach related to your request.</p>`
-            }
+            <p>Please sign the document using the link below:</p>
 
-            ${
-              isAllMarket
-                ? `<p>As a reminder, a broker fee is payable only if you successfully rent an apartment presented to you by a licensed agent assisting with your request, with all required disclosures provided.</p>`
-                : `<p>As a reminder, a broker fee is only payable if you successfully rent an apartment presented to you by the agent assisting with your request. The fee is paid only once and does not change based on the number of agents assisting you.</p>`
-            }
+            <p>${disclosureLinkMarkup}</p>
+
+            <p>In the meantime, you may just email reply all and confirm you received the disclosure, and the ${isAllMarket ? "renter specialist" : "assisting agent"} will reach out to you.</p>
+
+            <p>As a reminder, a broker fee is only payable if you successfully rent an apartment presented to you by the agent assisting with your request, The fee is paid only once and does not change based on the number of agents assisting you.</p>
 
             ${
               isAllMarket

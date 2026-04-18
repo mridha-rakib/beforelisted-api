@@ -70,15 +70,38 @@ export const activateAgentWithLinkSchema = z.object({
   body: z
     .object({
       activationLink: activationLinkSchema.optional(),
+      registrationLink: activationLinkSchema.optional(),
+      disclosureLink: activationLinkSchema.optional(),
       link: activationLinkSchema.optional(),
+      linkType: z.enum(["registration", "disclosure"]).optional(),
       reason: z.string().trim().optional(),
     })
-    .refine((data) => Boolean(data.activationLink || data.link), {
-      message: "Activation link is required",
-      path: ["activationLink"],
+    .refine(
+      (data) =>
+        Boolean(
+          data.activationLink ||
+            data.registrationLink ||
+            data.disclosureLink ||
+            data.link,
+        ),
+      {
+        message: "A PowerForm link is required",
+        path: ["activationLink"],
+      },
+    )
+    .transform((data) => {
+      const genericLink = data.activationLink ?? data.registrationLink ?? data.link;
+      return {
+        activationLink:
+          data.linkType === "disclosure" ? undefined : genericLink,
+        disclosureLink:
+          data.disclosureLink ??
+          (data.linkType === "disclosure" ? genericLink : undefined),
+        reason: data.reason,
+      };
     })
-    .transform((data) => ({
-      activationLink: data.activationLink ?? data.link!,
-      reason: data.reason,
-    })),
+    .refine((data) => Boolean(data.activationLink || data.disclosureLink), {
+      message: "A registration or disclosure link is required",
+      path: ["activationLink"],
+    }),
 });

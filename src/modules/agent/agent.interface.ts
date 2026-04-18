@@ -32,6 +32,7 @@ export interface IAgentProfile extends Document {
   isActive: boolean;
   activeAt?: Date;
   activationLink?: string;
+  disclosureLink?: string;
   activationHistory: IActivationRecord[];
 
   // Admin Approval

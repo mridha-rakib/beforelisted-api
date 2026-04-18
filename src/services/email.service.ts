@@ -1258,6 +1258,7 @@ export class EmailService {
         payload.matchedAgentBrokerageName,
         payload.matchedAgentEmail,
         payload.matchedAgentPhone,
+        payload.matchedAgentDisclosureLink,
         this.config.logoUrl,
         this.config.brandColor,
       );

@@ -305,6 +305,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
     userId: string,
     adminId: string,
     activationLink: string,
+    disclosureLink: string,
     reason?: string
   ): Promise<IAgentProfile> {
     const agent = await this.model.findOne({ userId }).exec();
@@ -320,6 +321,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
         activeAt: agent.isActive && agent.activeAt ? agent.activeAt : now,
         lastActivationChange: now,
         activationLink,
+        disclosureLink,
       },
     };
 

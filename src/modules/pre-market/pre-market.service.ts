@@ -102,6 +102,7 @@ export class PreMarketService {
     email: string;
     phoneNumber: string | null;
     activationLink: string | null;
+    disclosureLink: string | null;
     referralCode: string | null;
   };
 
@@ -123,6 +124,7 @@ export class PreMarketService {
     email: string;
     phoneNumber: string | null;
     activationLink: string | null;
+    disclosureLink: string | null;
     referralCode: string | null;
   }> {
     if (this.defaultReferralAgentCache) {
@@ -135,6 +137,7 @@ export class PreMarketService {
       email: DEFAULT_REGISTERED_AGENT_EMAIL,
       phoneNumber: null,
       activationLink: null,
+      disclosureLink: null,
       referralCode: null,
     };
 
@@ -157,6 +160,7 @@ export class PreMarketService {
       email: user.email || DEFAULT_REGISTERED_AGENT_EMAIL,
       phoneNumber: user.phoneNumber ?? null,
       activationLink: agentProfile?.activationLink || null,
+      disclosureLink: agentProfile?.disclosureLink || null,
       referralCode: user.referralCode ?? null,
     };
 
@@ -2357,6 +2361,7 @@ export class PreMarketService {
     title: string;
     brokerage: string;
     activationLink: string | null;
+    disclosureLink: string | null;
   }> {
     if (!agentId) {
       const defaultAgent = await this.getDefaultReferralAgent();
@@ -2368,6 +2373,7 @@ export class PreMarketService {
         title: DEFAULT_REFERRAL_AGENT_TITLE,
         brokerage: DEFAULT_REFERRAL_AGENT_BROKERAGE,
         activationLink: defaultAgent.activationLink,
+        disclosureLink: defaultAgent.disclosureLink,
       };
     }
 
@@ -2384,6 +2390,7 @@ export class PreMarketService {
       title: profile?.title || DEFAULT_REFERRAL_AGENT_TITLE,
       brokerage: profile?.brokerageName || DEFAULT_REFERRAL_AGENT_BROKERAGE,
       activationLink: profile?.activationLink || null,
+      disclosureLink: profile?.disclosureLink || null,
     };
   }
 
@@ -2464,11 +2471,12 @@ export class PreMarketService {
     const actorBrokerage = this.escapeEmailHtml(actorAgent.brokerage);
     const registrationLink =
       registeredAgent.activationLink || "Link unavailable";
-    const matchedDisclosureLink = actorAgent.activationLink || "Link unavailable";
+    const matchedDisclosureLink =
+      actorAgent.disclosureLink || "Link unavailable";
     const registrationLinkMarkup = registeredAgent.activationLink
       ? `<a href="${this.escapeEmailHtml(registrationLink)}">Client Registration and Disclosure</a>`
       : this.escapeEmailHtml(registrationLink);
-    const disclosureLinkMarkup = actorAgent.activationLink
+    const disclosureLinkMarkup = actorAgent.disclosureLink
       ? `<a href="${this.escapeEmailHtml(matchedDisclosureLink)}">Agent Disclosure</a>`
       : this.escapeEmailHtml(matchedDisclosureLink);
     const matchedAgentEmails = matchedAgents.map((agent) => agent.email);
@@ -2498,7 +2506,7 @@ export class PreMarketService {
         <p>Thank you,<br>BeforeListed&trade; Support</p>`;
     } else if (source === "matched_agent" && reason === "disclosure_missing") {
       subject =
-        "Agent disclosure missing, required before assisting with your request can begin - BeforeListed\u2122";
+        "Agent disclosure missing, required before assisting with your request can begin \u2014 BeforeListed\u2122";
       replyTo = actorAgentEmail || replyTo;
       cc = this.buildUniqueEmailList([registeredAgentEmail], [renter.email]);
       templateType = "ARCHIVE_MATCHED_DISCLOSURE_MISSING";
@@ -4294,6 +4302,7 @@ export class PreMarketService {
         matchedAgentBrokerageName: matchedAgentProfile?.brokerageName || "N/A",
         matchedAgentEmail: agent.email,
         matchedAgentPhone: agent.phoneNumber || "N/A",
+        matchedAgentDisclosureLink: matchedAgentProfile?.disclosureLink || null,
       });
 
       const agentAckCcEmails = buildCcList(

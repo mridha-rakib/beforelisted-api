@@ -46,6 +46,10 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
     type: String,
     trim: true,
   },
+  disclosureLink: {
+    type: String,
+    trim: true,
+  },
   activationHistory: [
     {
       action: {

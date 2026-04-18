@@ -841,6 +841,7 @@ export class GrantAccessService {
         matchedAgentBrokerageName: matchingAgentProfile?.brokerageName || "N/A",
         matchedAgentEmail: matchingAgentUser.email || "N/A",
         matchedAgentPhone: matchingAgentUser.phoneNumber || "N/A",
+        matchedAgentDisclosureLink: matchingAgentProfile?.disclosureLink || null,
       });
 
     if (!otherAgentEmailResult.success) {

@@ -36,7 +36,8 @@ export type UpdateAgentProfilePayload = {
 };
 
 export type ActivateAgentWithLinkPayload = {
-  activationLink: string;
+  activationLink?: string;
+  disclosureLink?: string;
   reason?: string;
 };
 
@@ -51,6 +52,7 @@ export type AgentProfileResponse = {
   isActive: boolean;
   activeAt?: Date;
   activationLink?: string;
+  disclosureLink?: string;
 
   totalRentersReferred: number;
   activeReferrals: number;

@@ -113,6 +113,7 @@ export interface IRenterOpportunityFoundOtherAgentPayload {
   matchedAgentBrokerageName?: string;
   matchedAgentEmail?: string;
   matchedAgentPhone?: string;
+  matchedAgentDisclosureLink?: string | null;
 }
 
 export interface IMatchReferralAcknowledgmentToMatchingAgentPayload {

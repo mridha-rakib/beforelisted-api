@@ -585,6 +585,15 @@ export class AgentService {
     const newStatus = !previousStatus;
     const accountStatus = newStatus ? "active" : "inactive";
 
+    if (
+      newStatus &&
+      (!agent.activationLink?.trim() || !agent.disclosureLink?.trim())
+    ) {
+      throw new BadRequestException(
+        "Both registration/disclosures and disclosure PowerForm links are required before activating an agent",
+      );
+    }
+
     const [updated] = await Promise.all([
       this.repository.toggleActive(resolvedUserId, adminId, reason),
       this.userService.updateAccountStatus(resolvedUserId, accountStatus),
@@ -679,8 +688,9 @@ export class AgentService {
   ): Promise<{
     isActive: boolean;
     previousStatus: boolean;
-    accountStatus: "active";
-    activationLink: string;
+    accountStatus: "active" | "inactive";
+    activationLink?: string;
+    disclosureLink?: string;
     message: string;
   }> {
     if (!userId || userId.trim() === "") {
@@ -708,18 +718,34 @@ export class AgentService {
     }
 
     const previousStatus = Boolean(agent.isActive);
+    const nextActivationLink =
+      payload.activationLink?.trim() || agent.activationLink?.trim() || "";
+    const nextDisclosureLink =
+      payload.disclosureLink?.trim() || agent.disclosureLink?.trim() || "";
+    const hasRequiredLinks = Boolean(nextActivationLink && nextDisclosureLink);
 
-    const [updated] = await Promise.all([
-      this.repository.activateWithLink(
-        resolvedUserId,
-        adminId,
-        payload.activationLink,
-        payload.reason,
-      ),
-      this.userService.updateAccountStatus(resolvedUserId, "active"),
-    ]);
+    const updated = hasRequiredLinks
+      ? await this.repository.activateWithLink(
+          resolvedUserId,
+          adminId,
+          nextActivationLink,
+          nextDisclosureLink,
+          payload.reason,
+        )
+      : await this.repository.updateByUserId(resolvedUserId, {
+          ...(payload.activationLink ? { activationLink: nextActivationLink } : {}),
+          ...(payload.disclosureLink ? { disclosureLink: nextDisclosureLink } : {}),
+        });
 
-    if (!previousStatus) {
+    if (!updated) {
+      throw new NotFoundException("Agent not found");
+    }
+
+    const activatedNow = hasRequiredLinks && !previousStatus;
+
+    if (activatedNow) {
+      await this.userService.updateAccountStatus(resolvedUserId, "active");
+
       const { NotificationService } =
         await import("../notification/notification.service");
       const notificationService = new NotificationService();
@@ -771,11 +797,14 @@ export class AgentService {
     }
 
     return {
-      isActive: true,
+      isActive: Boolean(updated.isActive),
       previousStatus,
-      accountStatus: "active",
-      activationLink: updated.activationLink || payload.activationLink,
-      message: previousStatus
+      accountStatus: updated.isActive ? "active" : "inactive",
+      activationLink: updated.activationLink || nextActivationLink,
+      disclosureLink: updated.disclosureLink || nextDisclosureLink,
+      message: !hasRequiredLinks
+        ? "PowerForm link saved. Agent activation requires both registration/disclosures and disclosure links."
+        : previousStatus
         ? "Agent activation link updated successfully"
         : "Agent activated successfully and activation link attached",
     };
@@ -847,6 +876,7 @@ export class AgentService {
       isActive: agent.isActive,
       activeAt: agent.activeAt,
       activationLink: agent.activationLink,
+      disclosureLink: agent.disclosureLink,
       totalRentersReferred: agent.totalRentersReferred,
       activeReferrals: agent.activeReferrals,
       emailSubscriptionEnabled: agent.emailSubscriptionEnabled !== false,
