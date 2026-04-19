@@ -6,6 +6,7 @@ import { ErrorCodeEnum } from "@/enums/error-code.enum";
 import { logger } from "@/middlewares/pino-logger";
 import { AgentProfileRepository } from "@/modules/agent/agent.repository";
 import { AuthUtil } from "@/modules/auth/auth.utils";
+import { BlockedEmailService } from "@/modules/blocked-email/blocked-email.service";
 import { UserRepository } from "@/modules/user/user.repository";
 import {
   ForbiddenException,
@@ -71,6 +72,8 @@ export class AuthMiddleware {
           ErrorCodeEnum.AUTH_UNAUTHORIZED_ACCESS
         );
       }
+
+      await new BlockedEmailService().assertEmailNotBlocked(user.email);
 
       if (user.role === "Agent") {
         const agentRepository = new AgentProfileRepository();
@@ -147,6 +150,12 @@ export class AuthMiddleware {
         const user = await userRepository.findById(payload.userId);
 
         if (!user || user.accountStatus !== "active") {
+          return next();
+        }
+
+        try {
+          await new BlockedEmailService().assertEmailNotBlocked(user.email);
+        } catch {
           return next();
         }
 

@@ -17,6 +17,7 @@ import { comparePassword, hashPassword } from "@/utils/password.utils";
 import type { IAgentProfile } from "../agent/agent.interface";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import type { AgentProfileResponse } from "../agent/agent.type";
+import { BlockedEmailService } from "../blocked-email/blocked-email.service";
 import { EmailVerificationService } from "../email-verification/email-verification.service";
 import {
   IResendOTPRequest,
@@ -45,6 +46,7 @@ export class AuthService {
   private renterRepository: RenterRepository;
   private referralService: ReferralService;
   private preMarketService: PreMarketService;
+  private blockedEmailService: BlockedEmailService;
 
   constructor() {
     this.userService = new UserService();
@@ -54,12 +56,15 @@ export class AuthService {
     this.renterRepository = new RenterRepository();
     this.referralService = new ReferralService();
     this.preMarketService = new PreMarketService();
+    this.blockedEmailService = new BlockedEmailService();
   }
 
   /**
    * Login user (All roles: Admin, Agent, Renter)
    */
   async login(payload: LoginPayload): Promise<AuthServiceResponse> {
+    await this.blockedEmailService.assertEmailNotBlocked(payload.email);
+
     const user = await this.userService.getUserByEmailWithPassword(
       payload.email,
     );
@@ -704,6 +709,8 @@ export class AuthService {
       if (user.accountStatus !== "active") {
         throw new UnauthorizedException(MESSAGES.AUTH.ACCOUNT_INACTIVE);
       }
+
+      await this.blockedEmailService.assertEmailNotBlocked(user.email);
 
       if (user.role === ROLES.AGENT) {
         const agentRepository = new AgentProfileRepository();

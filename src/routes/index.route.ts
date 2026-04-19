@@ -1,5 +1,6 @@
 import agentRouter from "@/modules/agent/agent.route";
 import authRouter from "@/modules/auth/auth.route";
+import blockedEmailRouter from "@/modules/blocked-email/blocked-email.route";
 import faqRouter from "@/modules/faq/faq.route";
 import fileRouter from "@/modules/file/file.route";
 import grantAccessRouter from "@/modules/grant-access/grant-access.route";
@@ -63,6 +64,10 @@ const moduleRoutes = [
   {
     path: "/support",
     route: supportRouter,
+  },
+  {
+    path: "/blocked-emails",
+    route: blockedEmailRouter,
   },
 ];
 

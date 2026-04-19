@@ -20,6 +20,7 @@ export const ErrorCodeEnum = {
 
   // Access Control Errors
   ACCESS_UNAUTHORIZED: "ACCESS_UNAUTHORIZED",
+  EMAIL_BLOCKED: "EMAIL_BLOCKED",
 
   // Validation and Resource Errors
   VALIDATION_ERROR: "VALIDATION_ERROR",

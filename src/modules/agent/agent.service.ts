@@ -16,6 +16,7 @@ import {
 import { hashPassword } from "@/utils/password.utils";
 import type { Types } from "mongoose";
 import { AuthUtil } from "../auth/auth.utils";
+import { BlockedEmailService } from "../blocked-email/blocked-email.service";
 import { EmailVerificationService } from "../email-verification/email-verification.service";
 import { PreMarketService } from "../pre-market/pre-market.service";
 import { ReferralService } from "../referral/referral.service";
@@ -43,6 +44,7 @@ export class AgentService {
   private emailService: EmailService;
   private preMarketService: PreMarketService;
   private renterRepository: RenterRepository;
+  private blockedEmailService: BlockedEmailService;
 
   constructor() {
     this.repository = new AgentProfileRepository();
@@ -54,11 +56,14 @@ export class AgentService {
     this.emailService = new EmailService();
     this.preMarketService = new PreMarketService();
     this.renterRepository = new RenterRepository();
+    this.blockedEmailService = new BlockedEmailService();
   }
 
   async registerAgent(
     payload: AgentRegisterPayload,
   ): Promise<AgentRegistrationResponse> {
+    await this.blockedEmailService.assertEmailNotBlocked(payload.email);
+
     const existingUser = await this.userService.getUserByEmail(payload.email);
     if (existingUser) {
       throw new ConflictException("Email already registered");

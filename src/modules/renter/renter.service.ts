@@ -29,6 +29,7 @@ import { RenterUtil } from "./renter.utils";
 
 import { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import { AgentProfileRepository } from "../agent/agent.repository";
+import { BlockedEmailService } from "../blocked-email/blocked-email.service";
 import { PreMarketRepository } from "../pre-market/pre-market.repository";
 import { PreMarketService } from "../pre-market/pre-market.service";
 import { ReferralService } from "../referral/referral.service";
@@ -44,6 +45,7 @@ export class RenterService {
   private referralService: ReferralService;
   private excelService: ExcelService;
   private preMarketService: PreMarketService;
+  private blockedEmailService: BlockedEmailService;
 
   constructor() {
     this.repository = new RenterRepository();
@@ -54,9 +56,12 @@ export class RenterService {
     this.referralService = new ReferralService();
     this.excelService = new ExcelService();
     this.preMarketService = new PreMarketService();
+    this.blockedEmailService = new BlockedEmailService();
   }
 
   async registerRenter(payload: any): Promise<RenterRegistrationResponse> {
+    await this.blockedEmailService.assertEmailNotBlocked(payload.email);
+
     // Detect registration type
     if (payload.referralCode) {
       const parsed = ReferralParser.parse(payload.referralCode);
