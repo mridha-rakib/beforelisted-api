@@ -59,8 +59,14 @@ export class RenterService {
     this.blockedEmailService = new BlockedEmailService();
   }
 
-  async registerRenter(payload: any): Promise<RenterRegistrationResponse> {
-    await this.blockedEmailService.assertEmailNotBlocked(payload.email);
+  async registerRenter(
+    payload: any,
+    context?: { ipAddress?: string | null }
+  ): Promise<RenterRegistrationResponse> {
+    await this.blockedEmailService.assertEmailNotBlocked(payload.email, {
+      action: "register",
+      ipAddress: context?.ipAddress,
+    });
 
     // Detect registration type
     if (payload.referralCode) {
@@ -826,9 +832,18 @@ export class RenterService {
       })
     );
 
+    const blockedEmailSet = await this.blockedEmailService.getActiveEmailSet(
+      data.map((item) => item.email),
+    );
+
+    const enrichedData = data.map((item) => ({
+      ...item,
+      isBlocked: blockedEmailSet.has(item.email.trim().toLowerCase()),
+    }));
+
     return {
       success: true,
-      data,
+      data: enrichedData,
       pagination: result.pagination,
     };
   }

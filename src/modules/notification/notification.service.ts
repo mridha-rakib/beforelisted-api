@@ -233,6 +233,78 @@ export class NotificationService {
   /**
    * Notify admin when agent requests grant access
    */
+  async notifyAdminsEmailBlocked(data: {
+    email: string;
+    adminName: string;
+    reason: string;
+  }): Promise<void> {
+    try {
+      const admins = await this.repository.getAllAdmins();
+      if (admins.length === 0) {
+        logger.warn("No admins found to notify about blocked email");
+        return;
+      }
+
+      await Promise.all(
+        admins.map((admin) =>
+          this.createNotification({
+            recipientId: admin._id,
+            recipientRole: "Admin",
+            title: "Email blocked",
+            message: `Email blocked: ${data.email} by ${data.adminName} reason: ${data.reason}`,
+            type: "warning",
+            actionData: {
+              email: data.email,
+              adminName: data.adminName,
+              reason: data.reason,
+            },
+          }),
+        ),
+      );
+    } catch (error) {
+      logger.error(
+        { error, email: data.email },
+        "Failed to notify admins about blocked email",
+      );
+    }
+  }
+
+  async notifyAdminsBlockedAccessAttempt(data: {
+    email: string;
+    action: "Login" | "Register" | "Submit Request";
+    reason?: string | null;
+  }): Promise<void> {
+    try {
+      const admins = await this.repository.getAllAdmins();
+      if (admins.length === 0) {
+        logger.warn("No admins found to notify about blocked access attempt");
+        return;
+      }
+
+      await Promise.all(
+        admins.map((admin) =>
+          this.createNotification({
+            recipientId: admin._id,
+            recipientRole: "Admin",
+            title: "Blocked access attempt",
+            message: `Blocked access attempt by ${data.email} (Action: ${data.action})`,
+            type: "alert",
+            actionData: {
+              email: data.email,
+              action: data.action,
+              reason: data.reason ?? null,
+            },
+          }),
+        ),
+      );
+    } catch (error) {
+      logger.error(
+        { error, email: data.email, action: data.action },
+        "Failed to notify admins about blocked access attempt",
+      );
+    }
+  }
+
   async notifyAdminAboutGrantAccessRequest(data: {
     agentId: string | Types.ObjectId;
     agentName: string;

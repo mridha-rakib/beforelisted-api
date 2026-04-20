@@ -66,7 +66,10 @@ export class PreMarketController {
 
     const request = await this.preMarketService.createRequest(
       userId,
-      validated.body
+      validated.body,
+      {
+        ipAddress: req.ip || req.socket.remoteAddress,
+      },
     );
 
     ApiResponse.created(

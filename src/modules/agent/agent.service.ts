@@ -61,8 +61,12 @@ export class AgentService {
 
   async registerAgent(
     payload: AgentRegisterPayload,
+    context?: { ipAddress?: string | null },
   ): Promise<AgentRegistrationResponse> {
-    await this.blockedEmailService.assertEmailNotBlocked(payload.email);
+    await this.blockedEmailService.assertEmailNotBlocked(payload.email, {
+      action: "register",
+      ipAddress: context?.ipAddress,
+    });
 
     const existingUser = await this.userService.getUserByEmail(payload.email);
     if (existingUser) {

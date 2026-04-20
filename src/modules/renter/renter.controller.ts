@@ -42,7 +42,9 @@ export class RenterController {
   registerRenter = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
       const validated = await zParse(renterRegisterSchema, req);
-      const result = await this.service.registerRenter(validated.body);
+      const result = await this.service.registerRenter(validated.body, {
+        ipAddress: req.ip || req.socket.remoteAddress,
+      });
 
       // Set refresh token in httpOnly cookie
       res.cookie(
@@ -62,7 +64,9 @@ export class RenterController {
   registerAgentReferralRenter = asyncHandler(
     async (req: Request, res: Response) => {
       const validated = await zParse(agentReferralRenterRegisterSchema, req);
-      const result = await this.service.registerRenter(validated.body);
+      const result = await this.service.registerRenter(validated.body, {
+        ipAddress: req.ip || req.socket.remoteAddress,
+      });
 
       res.cookie(
         COOKIE_CONFIG.REFRESH_TOKEN.name,
@@ -81,7 +85,9 @@ export class RenterController {
   registerAdminReferralRenter = asyncHandler(
     async (req: Request, res: Response) => {
       const validated = await zParse(adminReferralRenterRegisterSchema, req);
-      const result = await this.service.registerRenter(validated.body);
+      const result = await this.service.registerRenter(validated.body, {
+        ipAddress: req.ip || req.socket.remoteAddress,
+      });
 
       res.cookie(
         COOKIE_CONFIG.REFRESH_TOKEN.name,

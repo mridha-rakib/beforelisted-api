@@ -32,7 +32,9 @@ export class AuthController {
   login = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
       const validated = await zParse(loginSchema, req);
-      const result = await this.authService.login(validated.body);
+      const result = await this.authService.login(validated.body, {
+        ipAddress: req.ip || req.socket.remoteAddress,
+      });
 
       res.cookie(
         COOKIE_CONFIG.REFRESH_TOKEN.name,

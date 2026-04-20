@@ -62,8 +62,14 @@ export class AuthService {
   /**
    * Login user (All roles: Admin, Agent, Renter)
    */
-  async login(payload: LoginPayload): Promise<AuthServiceResponse> {
-    await this.blockedEmailService.assertEmailNotBlocked(payload.email);
+  async login(
+    payload: LoginPayload,
+    context?: { ipAddress?: string | null },
+  ): Promise<AuthServiceResponse> {
+    await this.blockedEmailService.assertEmailNotBlocked(payload.email, {
+      action: "login",
+      ipAddress: context?.ipAddress,
+    });
 
     const user = await this.userService.getUserByEmailWithPassword(
       payload.email,

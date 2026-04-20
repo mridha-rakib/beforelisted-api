@@ -24,6 +24,7 @@ export class BlockedEmailController {
     const blockedEmail = await this.service.block(
       validated.body,
       req.user!.userId,
+      req.ip || req.socket.remoteAddress,
     );
 
     ApiResponse.created(res, blockedEmail, "Email blocked successfully");
@@ -34,6 +35,7 @@ export class BlockedEmailController {
     const blockedEmail = await this.service.unblock(
       validated.params.id,
       req.user!.userId,
+      req.ip || req.socket.remoteAddress,
     );
 
     ApiResponse.success(res, blockedEmail, "Email unblocked successfully");

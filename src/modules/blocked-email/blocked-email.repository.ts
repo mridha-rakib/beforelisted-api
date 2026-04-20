@@ -19,6 +19,26 @@ export class BlockedEmailRepository {
     }).exec();
   }
 
+  async findActiveByEmails(emails: string[]): Promise<string[]> {
+    const normalizedEmails = emails
+      .map((email) => normalizeEmail(email))
+      .filter(Boolean);
+
+    if (normalizedEmails.length === 0) {
+      return [];
+    }
+
+    const blockedEmails = await BlockedEmail.find({
+      email: { $in: normalizedEmails },
+      status: "active",
+    })
+      .select("email")
+      .lean()
+      .exec();
+
+    return blockedEmails.map((item) => item.email);
+  }
+
   async list(status?: BlockedEmailStatus): Promise<IBlockedEmail[]> {
     return BlockedEmail.find(status ? { status } : {})
       .sort({ blockedAt: -1, createdAt: -1 })

@@ -23,6 +23,7 @@ import { AgentProfileRepository } from "../agent/agent.repository";
 import type { IGrantAccessRequest } from "../grant-access/grant-access.model";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
 import { PaymentService } from "../payment/payment.service";
+import { BlockedEmailService } from "../blocked-email/blocked-email.service";
 import { RenterRepository } from "../renter/renter.repository";
 import { UserRepository } from "../user/user.repository";
 import { preMarketNotifier, PreMarketNotifier } from "./pre-market-notifier";
@@ -96,6 +97,7 @@ export class PreMarketService {
   private readonly paymentService: PaymentService;
   private readonly notifier: PreMarketNotifier;
   private readonly notificationService: NotificationService;
+  private readonly blockedEmailService: BlockedEmailService;
   private defaultReferralAgentCache?: {
     id: string;
     fullName: string;
@@ -113,6 +115,7 @@ export class PreMarketService {
     this.paymentService = new PaymentService();
     this.notifier = new PreMarketNotifier();
     this.notificationService = new NotificationService();
+    this.blockedEmailService = new BlockedEmailService();
     this.renterRepository = new RenterRepository();
     this.userRepository = new UserRepository();
     this.excelService = new ExcelService();
@@ -389,6 +392,7 @@ export class PreMarketService {
       shareConsent?: boolean;
       scope?: PreMarketScope;
     },
+    context?: { ipAddress?: string | null },
   ): Promise<IPreMarketRequest> {
     const earliest = new Date(payload.movingDateRange.earliest);
     const latest = new Date(payload.movingDateRange.latest);
@@ -409,6 +413,11 @@ export class PreMarketService {
     if (!renter) {
       throw new NotFoundException("Renter not found");
     }
+
+    await this.blockedEmailService.assertEmailNotBlocked(renter.email, {
+      action: "submit_request",
+      ipAddress: context?.ipAddress,
+    });
 
     if (renter.referredByAgentId) {
       const referredAgent =

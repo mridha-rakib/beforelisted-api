@@ -225,7 +225,9 @@ export class AgentController {
   registerAgent = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(agentRegisterSchema, req);
 
-    const result = await this.service.registerAgent(validated.body);
+    const result = await this.service.registerAgent(validated.body, {
+      ipAddress: req.ip || req.socket.remoteAddress,
+    });
 
     res.cookie(
       COOKIE_CONFIG.REFRESH_TOKEN.name,
