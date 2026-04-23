@@ -165,14 +165,13 @@ export class EmailTemplates {
 
             <p>Congratulations on registering with BeforeListed&trade;.</p>
 
-            <p>As a BeforeListed&trade; registered user, you have access to exclusive discounts with two highly recommended moving companies, whether you use my service or not.</p>
+            <p>As a BeforeListed&trade; registered user, you have access to exclusive discounts with two highly recommended moving companies.</p>
 
-            <p>These offers are available specifically to BeforeListed&trade; registered contacts:</p>
+            <p>Use the code &ldquo;BeforeListed&rdquo; when booking your next move to receive your exclusive discount:</p>
 
             <div class="discount-card">
                 <h3>Piece of Cake Moving</h3>
-                <p><strong>Website:</strong> <a href="https://mypieceofcakemove.com">https://mypieceofcakemove.com</a></p>
-                <p><strong>Discount Code:</strong> <span class="code">BeforeListed</span></p>
+                <p><a href="https://mypieceofcakemove.com/ref/?field36=BeforeListed">Click on this special Piece Of Cake link to use your BeforeListed discount</a></p>
                 <ul>
                     <li>Local Moves (within 250 miles): 10% off</li>
                     <li>Long Distance Moves (over 250 miles): 5% off</li>
@@ -182,7 +181,7 @@ export class EmailTemplates {
             <div class="discount-card">
                 <h3>Imperial Moving</h3>
                 <p><strong>Website:</strong> <a href="https://www.imperialmovers.com">https://www.imperialmovers.com</a></p>
-                <p><strong>Discount Code:</strong> <span class="code">BeforeListed</span></p>
+                <p><strong>Promo Code:</strong> <span class="code">BeforeListed</span></p>
             </div>
 
             <p>To apply the discount, simply enter the code &ldquo;BeforeListed&rdquo; in the promo code field when submitting your request on their website.</p>
