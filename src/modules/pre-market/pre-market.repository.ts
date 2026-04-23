@@ -568,6 +568,34 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       .exec() as Promise<IPreMarketRequest | null>;
   }
 
+  async removeAgentArchiveRecordsByReason(
+    requestId: string,
+    reason:
+      | "registration_missing"
+      | "disclosure_missing"
+      | "search_inactive"
+      | "client_placed",
+  ): Promise<IPreMarketRequest | null> {
+    return this.model
+      .findOneAndUpdate(
+        {
+          _id: requestId,
+          isDeleted: { $ne: true },
+          "agentArchives.reason": reason,
+        },
+        {
+          $pull: {
+            agentArchives: {
+              reason,
+            },
+          },
+        },
+        { new: true },
+      )
+      .lean()
+      .exec() as Promise<IPreMarketRequest | null>;
+  }
+
   async addOwnerRepresentationMatch(
     requestId: string,
     agentId: string,

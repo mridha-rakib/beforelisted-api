@@ -797,8 +797,29 @@ export class PreMarketService {
     renterId: string,
     query: PaginationQuery,
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
-    const result = this.preMarketRepository.findByRenterId(renterId, query);
-    return result;
+    const [result, renter] = await Promise.all([
+      this.preMarketRepository.findByRenterId(renterId, query),
+      this.renterRepository.findRenterWithReferrer(renterId),
+    ]);
+
+    const enrichedData = await Promise.all(
+      result.data.map(async (request) => {
+        const archiveDisplay = await this.buildRenterArchiveDisplay(
+          request,
+          renter,
+        );
+
+        return {
+          ...request,
+          archiveDisplay,
+        };
+      }),
+    );
+
+    return {
+      ...result,
+      data: enrichedData,
+    } as any;
   }
 
   async syncRequestOwnershipForRenter(renterId: string): Promise<void> {
@@ -1180,6 +1201,176 @@ export class PreMarketService {
       archiveSource: (archive?.source ?? null) as AgentArchiveSource | null,
       archivedAt: archive?.archivedAt ?? null,
     };
+  }
+
+  private getRenterVisibleArchive(
+    request: IPreMarketRequest | Record<string, any>,
+  ): {
+    reason: AgentArchiveReason;
+    source: AgentArchiveSource;
+    archivedAt: Date | null;
+  } | null {
+    const archives = Array.isArray((request as any)?.agentArchives)
+      ? (request as any).agentArchives
+      : [];
+
+    const visibleArchives = archives
+      .filter((archive: any) => {
+        const reason = archive?.reason as AgentArchiveReason | undefined;
+        return reason && reason !== "disclosure_missing";
+      })
+      .sort((left: any, right: any) => {
+        const leftTime = left?.archivedAt
+          ? new Date(left.archivedAt).getTime()
+          : 0;
+        const rightTime = right?.archivedAt
+          ? new Date(right.archivedAt).getTime()
+          : 0;
+        return rightTime - leftTime;
+      });
+
+    const latest = visibleArchives[0];
+    if (!latest?.reason || !latest?.source) {
+      return null;
+    }
+
+    return {
+      reason: latest.reason as AgentArchiveReason,
+      source: latest.source as AgentArchiveSource,
+      archivedAt: latest.archivedAt ?? null,
+    };
+  }
+
+  private buildRenterRegistrationLink(
+    activationLink: string | null,
+    renter: any,
+    agentName: string,
+  ): string | null {
+    const trimmedLink = activationLink?.trim();
+    if (!trimmedLink) {
+      return null;
+    }
+
+    try {
+      const url = new URL(trimmedLink);
+      if (!url.searchParams.has("env")) {
+        url.searchParams.set("env", "na1");
+      }
+
+      const renterName = renter?.fullName?.trim();
+      const renterEmail = renter?.email?.trim();
+      const renterPhone = renter?.phoneNumber?.trim();
+
+      if (renterName) {
+        url.searchParams.set("renter_name", renterName);
+      }
+      if (renterEmail) {
+        url.searchParams.set("renter_email", renterEmail);
+      }
+      if (renterPhone) {
+        url.searchParams.set("renter_phone", renterPhone);
+      }
+      if (agentName?.trim()) {
+        url.searchParams.set("agent_name", agentName.trim());
+      }
+
+      return url.toString();
+    } catch {
+      return null;
+    }
+  }
+
+  private async buildRenterArchiveDisplay(
+    request: IPreMarketRequest | Record<string, any>,
+    renter: any,
+  ): Promise<
+    | {
+        reason: AgentArchiveReason;
+        source: AgentArchiveSource;
+        archivedAt: Date | null;
+        statusLabel: string;
+        eyebrow: string;
+        title: string;
+        description: string;
+        actionLabel?: string;
+        actionType?: "external_link" | "reactivate_search";
+        actionHref?: string;
+      }
+    | null
+  > {
+    const visibleArchive = this.getRenterVisibleArchive(request);
+    if (!visibleArchive) {
+      return null;
+    }
+
+    if (visibleArchive.reason === "registration_missing") {
+      const registeredAgentId =
+        await this.resolveRegisteredAgentIdForRequest(request as IPreMarketRequest);
+      const registeredAgent = await this.getArchiveAgentInfo(registeredAgentId);
+      const actionHref = this.buildRenterRegistrationLink(
+        registeredAgent.activationLink,
+        renter,
+        registeredAgent.fullName,
+      );
+
+      return {
+        reason: visibleArchive.reason,
+        source: visibleArchive.source,
+        archivedAt: visibleArchive.archivedAt,
+        statusLabel: "Search Paused",
+        eyebrow: "SEARCH PAUSED",
+        title: "Registration Missing",
+        description:
+          "To resume your search, please complete your Corcoran Client Registration. Once completed, your agent will review and reactivate your request.",
+        ...(actionHref
+          ? {
+              actionLabel: "Complete Registration",
+              actionType: "external_link" as const,
+              actionHref,
+            }
+          : {}),
+      };
+    }
+
+    if (visibleArchive.reason === "search_inactive") {
+      return {
+        reason: visibleArchive.reason,
+        source: visibleArchive.source,
+        archivedAt: visibleArchive.archivedAt,
+        statusLabel: "Search Paused",
+        eyebrow: "SEARCH PAUSED",
+        title: "Search Inactive",
+        description:
+          "We haven't received a recent confirmation that you're still searching. Confirm below to keep your request active.",
+        actionLabel: "Yes, I'm Still Searching",
+        actionType: "reactivate_search",
+      };
+    }
+
+    if (visibleArchive.reason === "client_placed") {
+      return {
+        reason: visibleArchive.reason,
+        source: visibleArchive.source,
+        archivedAt: visibleArchive.archivedAt,
+        statusLabel: "Request Closed",
+        eyebrow: "REQUEST CLOSED",
+        title: "Apartment Secured",
+        description:
+          "Congratulations! Your search has been completed and this request is now closed.",
+      };
+    }
+
+    return null;
+  }
+
+  private buildAgentRequestLink(
+    requestId: string,
+    isRegisteredAgent: boolean,
+  ): string {
+    const baseUrl = env.CLIENT_URL || "https://beforelisted.com";
+    return isRegisteredAgent
+      ? `${baseUrl}/agent/dashboard/${requestId}`
+      : `${baseUrl}/agent/matches/${requestId}`;
   }
 
   private getOwnerRepresentationStatus(
@@ -2168,6 +2359,34 @@ export class PreMarketService {
       ? "registered_agent"
       : "matched_agent";
     const matchedAgentIds = await this.getMatchedAgentIdsForArchive(requestId);
+
+    if (
+      reason === "registration_missing" &&
+      (request.visibility === "SHARED" || matchedAgentIds.length > 0)
+    ) {
+      throw new BadRequestException(
+        "Registration Missing can only be used before the request is shared or matched.",
+      );
+    }
+
+    if (reason === "registration_missing") {
+      const registeredAgent = await this.getArchiveAgentInfo(registeredAgentId);
+      if (!registeredAgent.activationLink?.trim()) {
+        throw new BadRequestException(
+          "A client registration link is required before archiving this request for registration missing.",
+        );
+      }
+    }
+
+    if (reason === "disclosure_missing") {
+      const matchedAgent = await this.getArchiveAgentInfo(agentId);
+      if (!matchedAgent.disclosureLink?.trim()) {
+        throw new BadRequestException(
+          "An agent disclosure link is required before archiving this request for disclosure missing.",
+        );
+      }
+    }
+
     const affectsEveryone =
       reason === "search_inactive" || reason === "client_placed";
     const affectedAgentIds = affectsEveryone
@@ -2247,13 +2466,96 @@ export class PreMarketService {
       };
     }
 
-    await this.preMarketRepository.removeAgentArchiveRecord(requestId, agentId);
+    if (
+      archiveStatus.archiveReason === "search_inactive" ||
+      archiveStatus.archiveReason === "client_placed"
+    ) {
+      await this.preMarketRepository.removeAgentArchiveRecordsByReason(
+        requestId,
+        archiveStatus.archiveReason,
+      );
+    } else {
+      await this.preMarketRepository.removeAgentArchiveRecord(requestId, agentId);
+    }
 
     return {
       requestId,
       archiveReason: archiveStatus.archiveReason,
       archiveReasonLabel: archiveStatus.archiveReasonLabel,
       isArchivedForAgent: false,
+    };
+  }
+
+  async reactivateSearchForRenter(
+    renterId: string,
+    requestId: string,
+  ): Promise<{
+    requestId: string;
+    reactivatedAgents: number;
+  }> {
+    const request = await this.getRequestById(requestId);
+
+    if (request.renterId.toString() !== renterId) {
+      throw new ForbiddenException("You cannot reactivate another renter's request");
+    }
+
+    const searchInactiveArchives = Array.isArray((request as any)?.agentArchives)
+      ? (request as any).agentArchives.filter(
+          (archive: any) => archive?.reason === "search_inactive",
+        )
+      : [];
+
+    if (searchInactiveArchives.length === 0) {
+      throw new BadRequestException(
+        "This request is not currently paused for search inactivity.",
+      );
+    }
+
+    const renter = await this.renterRepository.findRenterWithReferrer(renterId);
+    const registeredAgentId =
+      await this.resolveRegisteredAgentIdForRequest(request);
+    const matchedAgentIds = await this.getMatchedAgentIdsForArchive(requestId);
+    const recipientAgentIds = Array.from(
+      new Set(
+        [registeredAgentId, ...matchedAgentIds].filter(
+          (id): id is string => Boolean(id),
+        ),
+      ),
+    );
+
+    await this.preMarketRepository.removeAgentArchiveRecordsByReason(
+      requestId,
+      "search_inactive",
+    );
+
+    const requestLabel =
+      request.requestId || request.requestName || request._id?.toString() || "N/A";
+
+    await Promise.allSettled(
+      recipientAgentIds.map(async (agentId) => {
+        const agent = await this.getArchiveAgentInfo(agentId);
+        if (!agent.email) {
+          return;
+        }
+
+        const requestLink = this.buildAgentRequestLink(
+          requestId,
+          agentId === registeredAgentId,
+        );
+
+        await emailService.sendRenterSearchReactivatedAgentNotification({
+          to: agent.email,
+          agentName: agent.fullName,
+          clientFullName: renter?.fullName || "Client",
+          requestId: requestLabel,
+          requestLink,
+        });
+      }),
+    );
+
+    return {
+      requestId,
+      reactivatedAgents: recipientAgentIds.length,
     };
   }
 
@@ -2354,7 +2656,8 @@ export class PreMarketService {
       new Set(
         records
           .filter((record) =>
-            ["approved", "free", "paid"].includes(String(record.status)),
+            ["approved", "free", "paid"].includes(String(record.status)) &&
+            record.representation_type !== "owner_representation",
           )
           .map((record) => record.agentId.toString())
           .filter((id): id is string => Boolean(id)),
@@ -2556,11 +2859,11 @@ export class PreMarketService {
         <p>Thank you,<br>BeforeListed&trade; Support</p>`;
     } else if (reason === "client_placed") {
       subject =
-        "Congratulations on your new home! \u{1F389} - BeforeListed\u2122";
+        "Congratulations on your new home! \u{1F389} \u2014 BeforeListed\u2122";
       replyTo = registeredAgentEmail || replyTo;
       cc = this.buildUniqueEmailList(
         source === "registered_agent"
-          ? [registeredAgentEmail, ...matchedAgentEmails]
+          ? matchedAgentEmails
           : [registeredAgentEmail, ...matchedAgentEmails],
         [renter.email],
       );

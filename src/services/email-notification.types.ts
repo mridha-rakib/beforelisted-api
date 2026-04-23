@@ -169,6 +169,14 @@ export interface IRenterArchiveNotificationPayload {
   templateType: string;
 }
 
+export interface IRenterSearchReactivatedAgentNotificationPayload {
+  to: string;
+  agentName: string;
+  clientFullName: string;
+  requestId: string;
+  requestLink: string;
+}
+
 export interface IAdminContactRequestPayload {
   to: string;
   senderEmail: string;

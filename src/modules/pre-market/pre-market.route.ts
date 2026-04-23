@@ -23,6 +23,13 @@ router.get(
   controller.getRenterRequests.bind(controller),
 );
 
+router.patch(
+  "/:requestId/reactivate-search",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
+  controller.reactivateSearch.bind(controller),
+);
+
 router.get(
   "/renter/requests/with-agents",
   authMiddleware.verifyToken,

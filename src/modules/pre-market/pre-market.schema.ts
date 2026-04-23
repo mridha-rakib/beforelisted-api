@@ -270,6 +270,12 @@ export const unarchiveRequestSchema = z.object({
   }),
 });
 
+export const reactivateSearchSchema = z.object({
+  params: z.object({
+    requestId: z.string().min(24, "Invalid request ID"),
+  }),
+});
+
 export const adminToggleListingStatusSchema = z.object({
   params: z.object({
     renterId: z.string().min(24, "Invalid renter ID"),

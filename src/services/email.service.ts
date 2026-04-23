@@ -49,6 +49,7 @@ import {
   IRenterRegisteredAgentInactivePayload,
   IRenterArchiveNotificationPayload,
   IRenterRegistrationVerifiedAdminPayload,
+  IRenterSearchReactivatedAgentNotificationPayload,
   IRenterRequestClosedAgentAlertPayload,
   IRenterRequestClosedRenterNotificationPayload,
   IRenterRequestConfirmationPayload,
@@ -1545,6 +1546,55 @@ export class EmailService {
           email: payload.to,
         },
         "Failed to send renter archive notification",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  async sendRenterSearchReactivatedAgentNotification(
+    payload: IRenterSearchReactivatedAgentNotificationPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, requestId: payload.requestId },
+        "Sending renter search reactivated notification to agent",
+      );
+
+      const agentFirstName =
+        payload.agentName?.trim().split(/\s+/)[0] || payload.agentName || "Agent";
+      const bodyHtml = `
+        <p>Hi ${agentFirstName},</p>
+        <p>${payload.clientFullName} has resumed their search (Request ID: ${payload.requestId}). The request is now active.</p>
+        <p><a href="${payload.requestLink}">View Request</a></p>
+        <p>Thank you,<br>BeforeListed&trade; Support</p>`;
+
+      const html = this.buildSimpleBeforeListedEmail(bodyHtml);
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.agentName },
+        replyTo: "support@beforelisted.com",
+        subject: `Renter Reactivated Search - ${payload.clientFullName}, Request ${payload.requestId}`,
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "RENTER_SEARCH_REACTIVATED_AGENT_NOTIFICATION",
+        payload.to,
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send renter search reactivated notification to agent",
       );
 
       return {

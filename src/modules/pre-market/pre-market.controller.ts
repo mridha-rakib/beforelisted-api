@@ -27,6 +27,7 @@ import {
   confirmRegistrationDisclosureSchema,
   createPreMarketRequestSchema,
   preMarketListSchema,
+  reactivateSearchSchema,
   requestAccessSchema,
   toggleShareVisibilitySchema,
   toggleListingActivationSchema,
@@ -101,6 +102,22 @@ export class PreMarketController {
       requests.data,
       requests.pagination,
       "Renter requests retrieved"
+    );
+  });
+
+  reactivateSearch = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(reactivateSearchSchema, req);
+    const userId = req.user!.userId;
+
+    const result = await this.preMarketService.reactivateSearchForRenter(
+      userId,
+      validated.params.requestId,
+    );
+
+    ApiResponse.success(
+      res,
+      result,
+      "Your agent has been notified that your search is now active.",
     );
   });
 
