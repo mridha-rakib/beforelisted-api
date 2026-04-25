@@ -35,9 +35,11 @@ import {
   renterRequestUpdatedNotificationTemplate,
 } from "./email-notification.templates";
 import {
+  IActiveSearchConfirmationReminderPayload,
   IAdminContactRequestPayload,
   IAgentRegistrationVerifiedAdminPayload,
   IAgentRequestConfirmationPayload,
+  ISystemArchivedSearchInactiveAgentNotificationPayload,
   IMatchReferralAcknowledgmentToMatchingAgentPayload,
   INonRegisteredAgentRequestSubmissionNotificationPayload,
   INonRegisteredAgentSharedRequestNotificationPayload,
@@ -50,6 +52,7 @@ import {
   IRenterArchiveNotificationPayload,
   IRenterRegistrationVerifiedAdminPayload,
   IRenterSearchReactivatedAgentNotificationPayload,
+  IRenterUnarchiveNotificationPayload,
   IRenterRequestClosedAgentAlertPayload,
   IRenterRequestClosedRenterNotificationPayload,
   IRenterRequestConfirmationPayload,
@@ -1558,6 +1561,44 @@ export class EmailService {
     }
   }
 
+  async sendActiveSearchConfirmationReminder(
+    payload: IActiveSearchConfirmationReminderPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, templateType: payload.templateType },
+        "Sending active search confirmation reminder",
+      );
+
+      const html = this.buildSimpleBeforeListedEmail(payload.bodyHtml);
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.renterName },
+        cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
+        replyTo: payload.replyTo || "support@beforelisted.com",
+        subject: payload.subject,
+        html,
+      };
+
+      return await this.sendEmail(emailOptions, payload.templateType, payload.to);
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send active search confirmation reminder",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
   async sendRenterSearchReactivatedAgentNotification(
     payload: IRenterSearchReactivatedAgentNotificationPayload,
   ): Promise<IEmailResult> {
@@ -1595,6 +1636,93 @@ export class EmailService {
           email: payload.to,
         },
         "Failed to send renter search reactivated notification to agent",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  async sendSystemArchivedSearchInactiveAgentNotification(
+    payload: ISystemArchivedSearchInactiveAgentNotificationPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, requestId: payload.requestId },
+        "Sending system archived search inactive notification to agent",
+      );
+
+      const agentFirstName =
+        payload.agentName?.trim().split(/\s+/)[0] || payload.agentName || "Agent";
+      const bodyHtml = `
+        <p>Hi ${agentFirstName},</p>
+        <p>${payload.renterName}'s request (${payload.requestId}) was automatically archived because the renter did not confirm they are still searching after the latest confirmation email.</p>
+        <p>If you have any questions, you may reply directly to this email.</p>
+        <p>Thank you,<br>BeforeListed&trade; Support</p>`;
+
+      const html = this.buildSimpleBeforeListedEmail(bodyHtml);
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.agentName },
+        replyTo: "support@beforelisted.com",
+        subject: `Request Automatically Archived - ${payload.renterName}, ${payload.requestId}`,
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "SYSTEM_ARCHIVED_SEARCH_INACTIVE_AGENT_NOTIFICATION",
+        payload.to,
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send system archived search inactive notification to agent",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  async sendRenterUnarchiveNotification(
+    payload: IRenterUnarchiveNotificationPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, templateType: payload.templateType },
+        "Sending renter unarchive notification",
+      );
+
+      const html = this.buildSimpleBeforeListedEmail(payload.bodyHtml);
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.renterName },
+        cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
+        replyTo: payload.replyTo || "support@beforelisted.com",
+        subject: payload.subject,
+        html,
+      };
+
+      return await this.sendEmail(emailOptions, payload.templateType, payload.to);
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send renter unarchive notification",
       );
 
       return {

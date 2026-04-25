@@ -143,6 +143,43 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       .exec() as unknown as Promise<IGrantAccessRequest[]>;
   }
 
+  async findLatestMatchedAtByRequestIds(
+    preMarketRequestIds: Array<string | Types.ObjectId>,
+  ): Promise<Map<string, Date>> {
+    if (!preMarketRequestIds || preMarketRequestIds.length === 0) {
+      return new Map();
+    }
+
+    const results = await this.model.aggregate<{
+      _id: Types.ObjectId;
+      latestMatchedAt: Date;
+    }>([
+      {
+        $match: {
+          preMarketRequestId: { $in: preMarketRequestIds },
+          status: { $in: ["approved", "free", "paid"] },
+          representation_type: { $ne: "owner_representation" },
+        },
+      },
+      {
+        $group: {
+          _id: "$preMarketRequestId",
+          latestMatchedAt: {
+            $max: {
+              $ifNull: ["$updatedAt", "$createdAt"],
+            },
+          },
+        },
+      },
+    ]);
+
+    return new Map(
+      results
+        .filter((item) => item?._id && item?.latestMatchedAt)
+        .map((item) => [item._id.toString(), new Date(item.latestMatchedAt)]),
+    );
+  }
+
   async existsByPreMarketRequestIdAndStatuses(
     preMarketRequestId: string | Types.ObjectId,
     statuses: GrantAccessStatus[]

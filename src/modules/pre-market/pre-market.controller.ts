@@ -24,6 +24,7 @@ import {
   adminChargeSchema,
   adminRejectSchema,
   agentMatchRequestSchema,
+  confirmActiveSearchSchema,
   confirmRegistrationDisclosureSchema,
   createPreMarketRequestSchema,
   preMarketListSchema,
@@ -102,6 +103,21 @@ export class PreMarketController {
       requests.data,
       requests.pagination,
       "Renter requests retrieved"
+    );
+  });
+
+  confirmActiveSearch = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(confirmActiveSearchSchema, req);
+
+    const confirmation =
+      await this.preMarketService.confirmActiveSearchRequest(
+        validated.query.token,
+      );
+
+    ApiResponse.success(
+      res,
+      confirmation,
+      "Active request confirmation recorded",
     );
   });
 

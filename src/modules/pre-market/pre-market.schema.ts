@@ -276,6 +276,12 @@ export const reactivateSearchSchema = z.object({
   }),
 });
 
+export const confirmActiveSearchSchema = z.object({
+  query: z.object({
+    token: z.string().min(16, "Invalid confirmation token"),
+  }),
+});
+
 export const adminToggleListingStatusSchema = z.object({
   params: z.object({
     renterId: z.string().min(24, "Invalid renter ID"),

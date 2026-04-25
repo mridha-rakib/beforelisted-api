@@ -9,6 +9,11 @@ const router = Router();
 
 const controller = new PreMarketController();
 
+router.get(
+  "/confirm-active-search",
+  controller.confirmActiveSearch.bind(controller),
+);
+
 router.post(
   "/create",
   authMiddleware.verifyToken,

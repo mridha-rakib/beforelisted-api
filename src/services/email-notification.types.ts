@@ -177,6 +177,33 @@ export interface IRenterSearchReactivatedAgentNotificationPayload {
   requestLink: string;
 }
 
+export interface IActiveSearchConfirmationReminderPayload {
+  to: string;
+  renterName: string;
+  subject: string;
+  bodyHtml: string;
+  cc?: string[];
+  replyTo?: string;
+  templateType: string;
+}
+
+export interface ISystemArchivedSearchInactiveAgentNotificationPayload {
+  to: string;
+  agentName: string;
+  renterName: string;
+  requestId: string;
+}
+
+export interface IRenterUnarchiveNotificationPayload {
+  to: string;
+  renterName: string;
+  subject: string;
+  bodyHtml: string;
+  cc?: string[];
+  replyTo?: string;
+  templateType: string;
+}
+
 export interface IAdminContactRequestPayload {
   to: string;
   senderEmail: string;

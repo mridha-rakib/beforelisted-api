@@ -6,6 +6,7 @@ import { AdminSeeder } from "@/seeders/admin.seeder";
 import { AgentSeeder } from "@/seeders/agent.seeder";
 import { NoticeSeeder } from "@/seeders/notice.seeder";
 import { startPreMarketExpirationJob } from "@/jobs/pre-market-expiration.job";
+import { startPreMarketSearchConfirmationJob } from "@/jobs/pre-market-search-confirmation.job";
 
 
 export async function bootstrapApplication(): Promise<void> {
@@ -23,6 +24,7 @@ export async function bootstrapApplication(): Promise<void> {
     }
     await NoticeSeeder.run();
     startPreMarketExpirationJob();
+    startPreMarketSearchConfirmationJob();
 
     logger.info("✅ Application bootstrapped successfully");
   } catch (error) {

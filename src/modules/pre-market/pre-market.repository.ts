@@ -509,8 +509,9 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
         | "registration_missing"
         | "disclosure_missing"
         | "search_inactive"
+        | "search_inactive_automatic"
         | "client_placed";
-      source: "registered_agent" | "matched_agent";
+      source: "registered_agent" | "matched_agent" | "system";
       archivedAt: Date;
     }>,
   ): Promise<number> {
@@ -574,6 +575,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       | "registration_missing"
       | "disclosure_missing"
       | "search_inactive"
+      | "search_inactive_automatic"
       | "client_placed",
   ): Promise<IPreMarketRequest | null> {
     return this.model
@@ -594,6 +596,31 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       )
       .lean()
       .exec() as Promise<IPreMarketRequest | null>;
+  }
+
+  async findActiveRequestsForSearchConfirmationSweep(): Promise<
+    IPreMarketRequest[]
+  > {
+    return this.model
+      .find({
+        isDeleted: false,
+        isActive: true,
+        status: { $ne: "deleted" },
+      })
+      .lean<IPreMarketRequest[]>()
+      .exec();
+  }
+
+  async findByPendingSearchConfirmationToken(
+    token: string,
+  ): Promise<IPreMarketRequest | null> {
+    return this.model
+      .findOne({
+        isDeleted: false,
+        "searchActivity.pendingConfirmationToken": token,
+      })
+      .lean<IPreMarketRequest | null>()
+      .exec();
   }
 
   async addOwnerRepresentationMatch(

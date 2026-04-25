@@ -58,6 +58,14 @@ export interface IPreMarketRequest extends Document {
     agentId: Types.ObjectId | string;
     confirmedAt: Date;
   }>;
+  searchActivity?: {
+    lastRenterUpdatedAt?: Date | null;
+    lastConfirmedAt?: Date | null;
+    lastConfirmationEmailSentAt?: Date | null;
+    pendingConfirmationToken?: string | null;
+    pendingConfirmationSentAt?: Date | null;
+    pendingConfirmationExpiresAt?: Date | null;
+  };
   agentArchives?: Array<{
     agentId: Types.ObjectId | string;
     archivedByAgentId: Types.ObjectId | string;
@@ -65,8 +73,9 @@ export interface IPreMarketRequest extends Document {
       | "registration_missing"
       | "disclosure_missing"
       | "search_inactive"
+      | "search_inactive_automatic"
       | "client_placed";
-    source: "registered_agent" | "matched_agent";
+    source: "registered_agent" | "matched_agent" | "system";
     archivedAt: Date;
   }>;
   ownerRepresentationMatches?: Array<{
@@ -241,6 +250,40 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
       _id: false,
     },
   ],
+  searchActivity: {
+    lastRenterUpdatedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    lastConfirmedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    lastConfirmationEmailSentAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    pendingConfirmationToken: {
+      type: String,
+      default: null,
+      index: true,
+      sparse: true,
+    },
+    pendingConfirmationSentAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    pendingConfirmationExpiresAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    _id: false,
+  },
   agentArchives: [
     {
       agentId: {
@@ -259,13 +302,14 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
           "registration_missing",
           "disclosure_missing",
           "search_inactive",
+          "search_inactive_automatic",
           "client_placed",
         ],
         required: true,
       },
       source: {
         type: String,
-        enum: ["registered_agent", "matched_agent"],
+        enum: ["registered_agent", "matched_agent", "system"],
         required: true,
       },
       archivedAt: {
