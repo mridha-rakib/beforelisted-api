@@ -315,12 +315,12 @@ export class PreMarketService {
   public resolveAgentVisibleScope(
     scope: string | undefined,
     shouldDisplayMatchedScope: boolean,
-  ): string {
+  ): "Upcoming" | "All Market" | "Upcoming (M)" {
     if (scope === "All Market" && shouldDisplayMatchedScope) {
       return "Upcoming (M)";
     }
 
-    return scope || "Upcoming";
+    return scope === "All Market" ? "All Market" : "Upcoming";
   }
 
   private async getGlobalMatchedScopeRequestIdSet(
@@ -5116,12 +5116,18 @@ export class PreMarketService {
     } else {
       const matchedAgentProfile = await this.agentRepository.findByUserId(agentId);
       const ccEmails = buildCcList([registeredAgentEmail, agent.email]);
+      const requestScope = this.resolveAgentVisibleScope(
+        preMarketRequest.scope,
+        await this.shouldDisplayMatchedScopeForRequest(
+          preMarketRequest._id?.toString() || "",
+        ),
+      );
       await emailService.sendRenterOpportunityFoundByOtherAgent({
         to: renter.email,
         renterName: renter.fullName,
         cc: ccEmails,
         replyTo: registeredAgentEmail,
-        requestScope: preMarketRequest.scope,
+        requestScope,
         matchedAgentFullName: agent.fullName || agent.email || "N/A",
         matchedAgentTitle:
           matchedAgentProfile?.title || "Licensed Real Estate Agent",

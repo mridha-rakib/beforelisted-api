@@ -1131,7 +1131,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
  */
 export function renterOpportunityFoundOtherAgentTemplate(
   renterName: string,
-  requestScope?: "Upcoming" | "All Market",
+  requestScope?: "Upcoming" | "All Market" | "Upcoming (M)",
   matchedAgentFullName?: string,
   matchedAgentTitle?: string,
   matchedAgentBrokerageName?: string,

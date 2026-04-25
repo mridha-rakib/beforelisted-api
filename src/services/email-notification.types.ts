@@ -107,7 +107,7 @@ export interface IRenterOpportunityFoundOtherAgentPayload {
   renterName: string;
   cc?: string[];
   replyTo?: string;
-  requestScope?: "Upcoming" | "All Market";
+  requestScope?: "Upcoming" | "All Market" | "Upcoming (M)";
   matchedAgentFullName?: string;
   matchedAgentTitle?: string;
   matchedAgentBrokerageName?: string;
