@@ -3034,7 +3034,6 @@ export class PreMarketService {
       [renter.email],
     );
     const bodyHtml = `
-      <h2 style="margin: 0 0 18px 0; color: #333333; font-size: 24px; font-weight: 600; line-height: 1.3;">Confirm Your Search to Keep Your Request Active</h2>
       <p>Hi ${this.escapeEmailHtml(firstName)},</p>
       <p>We are currently working on your behalf to identify apartments that match your request, including opportunities that may not yet be publicly advertised.</p>
       <p>To continue your search, please confirm that you are still actively looking by clicking below:</p>
@@ -3049,6 +3048,7 @@ export class PreMarketService {
       renterName: renter.fullName,
       subject:
         "Action Required: Confirm Your Search to Keep Your Request Active (24hrs) \u2013 BeforeListed",
+      headerTitle: "Confirm Your Search to Keep Your Request Active",
       bodyHtml,
       cc,
       replyTo: registeredAgent.email || "support@beforelisted.com",
@@ -3139,7 +3139,6 @@ export class PreMarketService {
         [renter.email],
       );
       const bodyHtml = `
-        <h2 style="margin: 0 0 18px 0; color: #333333; font-size: 24px; font-weight: 600; line-height: 1.3;">Your Request Was Paused</h2>
         <p>Hi ${this.escapeEmailHtml(firstName)},</p>
         <p>We didn&rsquo;t receive your search confirmation after our last email, so your request on BeforeListed&trade; has been <strong>paused and moved to our archive</strong>.</p>
         <p>If you&rsquo;re still searching, simply <strong>reply to this email</strong> and we&rsquo;ll reactivate your request right away.</p>
@@ -3153,6 +3152,7 @@ export class PreMarketService {
         renterName: renter.fullName,
         subject:
           "Still Searching? Your Request Was Archived & Search Paused | BeforeListed\u2122",
+        headerTitle: "Your Request Was Paused",
         bodyHtml,
         cc,
         replyTo: registeredAgent.email || "support@beforelisted.com",
@@ -3306,6 +3306,7 @@ export class PreMarketService {
     const registeredAgentEmail = registeredAgent.email;
     const actorAgentEmail = actorAgent.email;
     let subject = "";
+    let headerTitle = "";
     let bodyHtml = "";
     let cc: string[] | undefined;
     let replyTo = "support@beforelisted.com";
@@ -3314,27 +3315,27 @@ export class PreMarketService {
     if (source === "registered_agent" && reason === "registration_missing") {
       subject =
         "Action Required: Complete Your Registration to Activate Your Request \u2013 BeforeListed";
+      headerTitle = "Complete Your Registration to Activate Your Request";
       replyTo = registeredAgentEmail || replyTo;
       templateType = "ARCHIVE_REGISTERED_REGISTRATION_MISSING";
       bodyHtml = `
-        <h2 style="margin: 0 0 18px 0; color: #333333; font-size: 24px; font-weight: 600; line-height: 1.3;">Complete Your Registration to Activate Your Request</h2>
         <p>Hi ${firstName},</p>
         <p>Thank you for submitting your request on BeforeListed&trade;.</p>
         <p>To activate your request, you&rsquo;ll need to complete the required client registration and disclosure form.</p>
-        <p><strong>Your request is currently inactive until this step is completed.<br>This step takes less than a minute to complete.</strong></p>
+        <p><strong>Your request is currently inactive until this step is completed.<br>Takes less than a minute to complete.</strong></p>
         <p>Please complete your registration using the link below:</p>
         <p>${registrationLinkMarkup}</p>
-        <p>Once completed, your request will be activated and ${registeredName} will be able to begin assisting you immediately.</p>
+        <p>Once completed, your request will be activated and ${registeredName} will be able to begin assisting you.</p>
         <p>If you have any questions, feel free to reply to this email.</p>
         <p>Thank you,<br>BeforeListed&trade; Support</p>`;
     } else if (source === "matched_agent" && reason === "disclosure_missing") {
       subject =
         "Action Required: Please Confirm Disclosure to Proceed \u2013 BeforeListed";
+      headerTitle = "Please Confirm Disclosure to Proceed";
       replyTo = actorAgentEmail || replyTo;
       cc = this.buildUniqueEmailList([registeredAgentEmail], [renter.email]);
       templateType = "ARCHIVE_MATCHED_DISCLOSURE_MISSING";
       bodyHtml = `
-        <h2 style="margin: 0 0 18px 0; color: #333333; font-size: 24px; font-weight: 600; line-height: 1.3;">Please Confirm Disclosure to Proceed</h2>
         <p>Hi ${firstName},</p>
         <p>Our system shows that the required agent disclosure document for your assisting agent ${actorName}, ${actorTitle} with ${actorBrokerage}, has not yet been signed.</p>
         <p>Please sign the document using the link below:</p>
@@ -3344,6 +3345,7 @@ export class PreMarketService {
         <p>Thank you,<br>BeforeListed&trade; Support</p>`;
     } else if (reason === "search_inactive") {
       subject = "Your request is no longer active \u2013 BeforeListed";
+      headerTitle = "Your Request Is No Longer Active";
       replyTo = registeredAgentEmail || replyTo;
       cc = this.buildUniqueEmailList(
         source === "registered_agent"
@@ -3360,19 +3362,18 @@ export class PreMarketService {
           ? `${registeredName}, ${registeredTitle} with ${registeredBrokerage}`
           : `${actorName}, ${actorTitle} with ${actorBrokerage}`;
       bodyHtml = `
-        <h2 style="margin: 0 0 18px 0; color: #333333; font-size: 24px; font-weight: 600; line-height: 1.3;">Your Request Is No Longer Active</h2>
         <p>Hi ${firstName},</p>
         <p>We understand that you informed ${indicatedTo}, that you are no longer actively searching for an apartment.</p>
         <p><strong>Your BeforeListed&trade; request has been archived.</strong></p>
         <p>If this is not correct, please reply to this email and we&rsquo;ll update it right away.</p>
         <p>If you begin your search again in the future, you&rsquo;re always welcome to use BeforeListed&trade; to explore new opportunities.</p>
-        <p>We wish you the best of luck in your new home.</p>
         <p>Thank you,<br>BeforeListed&trade; Support</p>`;
     } else if (reason === "client_placed") {
       subject =
         source === "matched_agent"
           ? "Congratulations on your new home! \u{1F389} \u2014 BeforeListed"
           : "Congratulations on your new home! \u{1F389} \u2014 BeforeListed\u2122";
+      headerTitle = "Congratulations on Your New Home \u{1F389}";
       replyTo = registeredAgentEmail || replyTo;
       cc = this.buildUniqueEmailList(
         source === "registered_agent"
@@ -3389,7 +3390,6 @@ export class PreMarketService {
           ? `${registeredName}, ${registeredTitle} with ${registeredBrokerage}`
           : `${actorName}, ${actorTitle} with ${actorBrokerage}`;
       bodyHtml = `
-        <h2 style="margin: 0 0 18px 0; color: #333333; font-size: 24px; font-weight: 600; line-height: 1.3;">Congratulations on your new home! \u{1F389}</h2>
         <p>Hi ${firstName},</p>
         <p><strong>Congratulations on your new home!</strong></p>
         <p>We understand that ${placedBy}, was able to assist you in securing your apartment.</p>
@@ -3403,6 +3403,7 @@ export class PreMarketService {
       to: renter.email,
       renterName: renter.fullName,
       subject,
+      headerTitle,
       bodyHtml,
       cc,
       replyTo,

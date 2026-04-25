@@ -1532,7 +1532,9 @@ export class EmailService {
         "Sending renter archive notification",
       );
 
-      const html = this.buildSimpleBeforeListedEmail(payload.bodyHtml);
+      const html = this.buildSimpleBeforeListedEmail(payload.bodyHtml, {
+        headerTitle: payload.headerTitle,
+      });
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
         cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
@@ -1570,7 +1572,9 @@ export class EmailService {
         "Sending active search confirmation reminder",
       );
 
-      const html = this.buildSimpleBeforeListedEmail(payload.bodyHtml);
+      const html = this.buildSimpleBeforeListedEmail(payload.bodyHtml, {
+        headerTitle: payload.headerTitle,
+      });
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
         cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
@@ -1610,9 +1614,13 @@ export class EmailService {
 
       const agentFirstName =
         payload.agentName?.trim().split(/\s+/)[0] || payload.agentName || "Agent";
+      const clientFirstName =
+        payload.clientFullName?.trim().split(/\s+/)[0] ||
+        payload.clientFullName ||
+        "Client";
       const bodyHtml = `
         <p>Hi ${agentFirstName},</p>
-        <p>${payload.clientFullName} has resumed their search (Request ID: ${payload.requestId}). The request is now active.</p>
+        <p>${clientFirstName} has resumed their search (Request ID: ${payload.requestId}). The request is now active.</p>
         <p><a href="${payload.requestLink}">View Request</a></p>
         <p>Thank you,<br>BeforeListed&trade; Support</p>`;
 
@@ -1620,7 +1628,7 @@ export class EmailService {
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.agentName },
         replyTo: "support@beforelisted.com",
-        subject: `Renter Reactivated Search - ${payload.clientFullName}, Request ${payload.requestId}`,
+        subject: `Renter Reactivated Search – ${payload.clientFullName}, Request ${payload.requestId}`,
         html,
       };
 
@@ -2003,10 +2011,15 @@ export class EmailService {
    * Called during: Admin referral renter registration (passwordless flow)
    */
 
-  private buildSimpleBeforeListedEmail(bodyHtml: string): string {
+  private buildSimpleBeforeListedEmail(
+    bodyHtml: string,
+    options: { headerTitle?: string } = {},
+  ): string {
     const currentYear = new Date().getFullYear();
     const brandColor = this.config.brandColor || "#1890FF";
     const logoUrl = this.config.logoUrl;
+    const usesDesignHeader = Boolean(options.headerTitle);
+    const headerTitle = options.headerTitle || "BeforeListed";
 
     return `
 <!DOCTYPE html>
@@ -2030,17 +2043,17 @@ export class EmailService {
       background-color: #ffffff;
       border-radius: 8px;
       overflow: hidden;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      ${usesDesignHeader ? "" : "box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);"}
     }
     .header {
       background: ${brandColor};
       color: #ffffff;
-      padding: 40px 20px;
+      padding: ${usesDesignHeader ? "56px 24px 64px 24px" : "40px 20px"};
       text-align: center;
     }
     .logo {
       display: block;
-      max-width: 150px;
+      max-width: ${usesDesignHeader ? "170px" : "150px"};
       width: 100%;
       height: auto;
       margin: 0 auto 20px auto;
@@ -2048,27 +2061,28 @@ export class EmailService {
     .header h1 {
       color: #ffffff;
       margin: 0;
-      font-size: 28px;
+      font-size: ${usesDesignHeader ? "18px" : "28px"};
       font-weight: 600;
+      line-height: 1.35;
     }
     .content {
-      padding: 40px 30px;
+      padding: ${usesDesignHeader ? "48px 28px 44px 28px" : "40px 30px"};
     }
     .content p {
-      color: #666666;
+      color: ${usesDesignHeader ? "#222222" : "#666666"};
       font-size: 16px;
-      line-height: 1.6;
-      margin: 0 0 15px 0;
+      line-height: ${usesDesignHeader ? "1.55" : "1.6"};
+      margin: ${usesDesignHeader ? "0 0 22px 0" : "0 0 15px 0"};
     }
     .content a {
       color: ${brandColor};
-      text-decoration: none;
+      text-decoration: ${usesDesignHeader ? "underline" : "none"};
     }
     .footer {
       background-color: #f9f9f9;
-      padding: 30px;
+      padding: ${usesDesignHeader ? "24px 30px" : "30px"};
       text-align: center;
-      border-top: 1px solid #e0e0e0;
+      ${usesDesignHeader ? "" : "border-top: 1px solid #e0e0e0;"}
     }
     .footer p {
       color: #999999;
@@ -2081,10 +2095,10 @@ export class EmailService {
     }
     @media (max-width: 600px) {
       .content {
-        padding: 30px 20px;
+        padding: ${usesDesignHeader ? "34px 22px 32px 22px" : "30px 20px"};
       }
       .header h1 {
-        font-size: 24px;
+        font-size: ${usesDesignHeader ? "17px" : "24px"};
       }
     }
     @media (max-width: 480px) {
@@ -2098,7 +2112,7 @@ export class EmailService {
   <div class="container">
     <div class="header">
       ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed Logo" class="logo">` : ""}
-      <h1>BeforeListed</h1>
+      <h1>${headerTitle}</h1>
     </div>
     <div class="content">${bodyHtml}</div>
     <div class="footer">

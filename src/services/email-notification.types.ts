@@ -163,6 +163,7 @@ export interface IRenterArchiveNotificationPayload {
   to: string;
   renterName: string;
   subject: string;
+  headerTitle?: string;
   bodyHtml: string;
   cc?: string[];
   replyTo?: string;
@@ -181,6 +182,7 @@ export interface IActiveSearchConfirmationReminderPayload {
   to: string;
   renterName: string;
   subject: string;
+  headerTitle?: string;
   bodyHtml: string;
   cc?: string[];
   replyTo?: string;
