@@ -1,8 +1,13 @@
 // file: src/services/email.templates.beforelisted.ts
 
+import {
+  DEFAULT_EMAIL_LOGO_URL,
+  normalizeEmailLogoUrl,
+  renderEmailLogo,
+} from "./email-branding";
+
 export class EmailTemplates {
-  private logoUrl: string =
-    "https://agi-prod-file-upload-public-main-use1.s3.amazonaws.com/d6a6bcf9-cea1-471c-a177-563559b38b29";
+  private logoUrl: string = DEFAULT_EMAIL_LOGO_URL;
   private brandColor: string = "#1890FF";
   private contactUrl: string = "mailto:support@beforelisted.com";
   private privacyUrl: string =
@@ -50,7 +55,7 @@ export class EmailTemplates {
     logoUrl?: string,
     brandColor?: string,
   ): string {
-    const logo = logoUrl || this.logoUrl;
+    const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
     const displayName = renterName?.trim() || "there";
 
@@ -157,7 +162,7 @@ export class EmailTemplates {
 <body>
     <div class="container">
         <div class="header">
-            <img src="${logo}" alt="BeforeListed Logo" class="logo" />
+            ${renderEmailLogo(logo)}
             <h1>Save on Your Move</h1>
         </div>
         <div class="content">
@@ -217,7 +222,7 @@ export class EmailTemplates {
       brokerage?: string;
     }
   ): string {
-    const logo = logoUrl || this.logoUrl;
+    const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
     const isRenter = userType === "Renter";
     const firstName = userName?.trim().split(/\s+/)[0] || userName || "there";
@@ -411,7 +416,7 @@ export class EmailTemplates {
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <img src="${logo}" alt="BeforeListed Logo" class="logo">
+            ${renderEmailLogo(logo)}
             <h1>Welcome to BeforeListed!</h1>
         </div>
 
@@ -440,7 +445,7 @@ export class EmailTemplates {
     logoUrl?: string,
     brandColor?: string,
   ): string {
-    const logo = logoUrl || this.logoUrl;
+    const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
 
     return `
@@ -544,7 +549,7 @@ export class EmailTemplates {
 <body>
     <div class="container">
         <div class="header">
-            <img src="${logo}" alt="BeforeListed Logo" class="logo">
+            ${renderEmailLogo(logo)}
             <h1>Your account is now active</h1>
         </div>
 
@@ -621,7 +626,7 @@ export class EmailTemplates {
     logoUrl?: string,
     brandColor?: string
   ): string {
-    const logo = logoUrl || this.logoUrl;
+    const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
     const role = userType;
 
@@ -772,7 +777,7 @@ export class EmailTemplates {
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <img src="${logo}" alt="BeforeListed Logo" class="logo">
+            ${renderEmailLogo(logo)}
             <h1>Your Account is Ready!</h1>
         </div>
 
@@ -855,7 +860,7 @@ export class EmailTemplates {
     logoUrl?: string,
     brandColor?: string
   ): string {
-    const logo = logoUrl || this.logoUrl;
+    const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
     const firstName = userName?.trim().split(/\s+/)[0] || userName || "there";
 
@@ -951,7 +956,7 @@ export class EmailTemplates {
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <img src="${logo}" alt="BeforeListed Logo" class="logo">
+            ${renderEmailLogo(logo)}
             <h1>Verification Code</h1>
         </div>
 
@@ -996,7 +1001,7 @@ export class EmailTemplates {
     logoUrl?: string,
     brandColor?: string
   ): string {
-    const logo = logoUrl || this.logoUrl;
+    const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
 
     return `
@@ -1106,7 +1111,7 @@ export class EmailTemplates {
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <img src="${logo}" alt="BeforeListed Logo" class="logo">
+            ${renderEmailLogo(logo)}
             <h1>Password Reset Request</h1>
         </div>
 
@@ -1153,7 +1158,7 @@ export class EmailTemplates {
     logoUrl?: string,
     brandColor?: string
   ): string {
-    const logo = logoUrl || this.logoUrl;
+    const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
     const formattedDate = changeDate.toLocaleString();
 
@@ -1274,7 +1279,7 @@ export class EmailTemplates {
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <img src="${logo}" alt="BeforeListed Logo" class="logo">
+            ${renderEmailLogo(logo)}
             <h1>Password Updated</h1>
         </div>
 
@@ -1334,7 +1339,7 @@ export class EmailTemplates {
       ? userType.charAt(0).toUpperCase() + userType.slice(1)
       : "User"; //
 
-    const logo = logoUrl || this.logoUrl;
+    const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
 
     return `
@@ -1379,7 +1384,7 @@ export class EmailTemplates {
   <div class="email-container">
     <!-- Header -->
     <div class="header">
-      <div class="logo"> <img src="${logo}" alt="BeforeListed Logo" class="logo"></div>
+      ${renderEmailLogo(logo)}
       <div class="header-title">Password Reset Code</div>
     </div>
 
@@ -1462,7 +1467,7 @@ export class EmailTemplates {
       ? userType.charAt(0).toUpperCase() + userType.slice(1)
       : "User"; //
 
-    const logo = logoUrl || this.logoUrl;
+    const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
 
     return `
@@ -1504,7 +1509,7 @@ export class EmailTemplates {
   <div class="email-container">
     <!-- Header -->
     <div class="header">
-      <div class="logo"><img src="${logo}" alt="BeforeListed Logo" class="logo"></div>
+      ${renderEmailLogo(logo)}
       <div class="header-title">Password Reset Successful</div>
     </div>
 
@@ -1573,7 +1578,7 @@ export class EmailTemplates {
     logoUrl?: string,
     brandColor?: string
   ): string {
-    const logo = logoUrl || this.logoUrl;
+    const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
     const displayName =
       userName && userName.trim() ? userName.split(" ")[0] : "there";
@@ -1669,7 +1674,7 @@ export class EmailTemplates {
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <img src="${logo}" alt="BeforeListed Logo" class="logo">
+            ${renderEmailLogo(logo)}
             <h1>Account Deleted</h1>
         </div>
 
@@ -1709,7 +1714,7 @@ export class EmailTemplates {
     logoUrl?: string,
     brandColor?: string
   ): string {
-    const logo = logoUrl || this.logoUrl;
+    const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
     const displayName =
       userName && userName.trim() ? userName.split(" ")[0] : "there";
@@ -1805,7 +1810,7 @@ export class EmailTemplates {
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <img src="${logo}" alt="BeforeListed Logo" class="logo">
+            ${renderEmailLogo(logo)}
             <h1>Agent Account Deleted</h1>
         </div>
 
@@ -1853,7 +1858,7 @@ export class EmailTemplates {
     logoUrl?: string,
     brandColor?: string
   ): string {
-    const logo = logoUrl || this.logoUrl;
+    const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
     const displayName =
       userName && userName.trim() ? userName.split(" ")[0] : "there";
@@ -1994,7 +1999,7 @@ export class EmailTemplates {
 <body>
     <div class="container">
         <div class="header">
-            <img src="${logo}" alt="BeforeListed Logo" class="logo">
+            ${renderEmailLogo(logo)}
             <h1>${headerTitle}</h1>
         </div>
 
@@ -2022,7 +2027,7 @@ export class EmailTemplates {
     logoUrl?: string,
     brandColor?: string
   ): string {
-    const logo = logoUrl || this.logoUrl;
+    const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
 
     return `
@@ -2311,7 +2316,7 @@ export class EmailTemplates {
   <div class="container">
     <!-- Header -->
     <div class="header">
-      ${logo ? `<img src="${logo}" alt="BeforeListed" class="header-logo">` : ""}
+      ${renderEmailLogo(logo, { alt: "BeforeListed", className: "header-logo" })}
       <h1>Your Account is Ready!</h1>
     </div>
 

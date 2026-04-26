@@ -1,5 +1,7 @@
 // file: src/services/email-notification.templates.ts
 
+import { renderEmailLogo } from "./email-branding";
+
 // ============================================
 // AGENT NOTIFICATION EMAIL TEMPLATE
 // ============================================
@@ -147,7 +149,7 @@ export function preMarketAgentNotificationTemplate(
     <div class="container">
         <!-- Header -->
         <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
             <h1>&#128276; New Opportunity</h1>
         </div>
 
@@ -363,7 +365,7 @@ export function preMarketAdminNotificationTemplate(
     <div class="container">
         <!-- Header -->
         <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
             <h1>&#9881;&#65039; Admin Notification</h1>
         </div>
 
@@ -555,7 +557,7 @@ export function renterRequestConfirmationTemplate(
 <body>
     <div class="container">
         <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
             <h1>Your request has been received</h1>
         </div>
 
@@ -679,7 +681,7 @@ export function renterRequestExpiredTemplate(
 <body>
     <div class="container">
         <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
             <h1>Your BeforeListed Request Has Expired</h1>
         </div>
 
@@ -881,7 +883,7 @@ export function agentRenterRequestConfirmationTemplate(
 <body>
     <div class="container">
         <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
             <h1>New renter request submitted</h1>
         </div>
 
@@ -1086,7 +1088,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
 <body>
     <div class="container">
         <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
             <h1>Opportunity Found</h1>
         </div>
 
@@ -1238,7 +1240,7 @@ export function renterOpportunityFoundOtherAgentTemplate(
 <body>
     <div class="container">
         <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
             <h1>Opportunity Found</h1>
         </div>
 
@@ -1394,7 +1396,7 @@ export function matchReferralAcknowledgmentToMatchingAgentTemplate(
 <body>
     <div class="container">
         <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
             <h1>Referral Acknowledgment</h1>
         </div>
 
@@ -1538,7 +1540,7 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
 <body>
     <div class="container">
         <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
             <h1>Match Referral Acknowledgment</h1>
         </div>
 
@@ -1678,7 +1680,7 @@ export function renterRequestClosedAgentAlertTemplate(
 <body>
     <div class="container">
         <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
             <h1>Renter Request Closed</h1>
         </div>
 
@@ -1816,7 +1818,7 @@ export function renterRequestClosedRenterNotificationTemplate(
 <body>
     <div class="container">
         <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
             <h1>Your Request Has Been Closed</h1>
         </div>
 
@@ -1969,7 +1971,7 @@ export function renterRequestUpdatedNotificationTemplate(
 <body>
     <div class="container">
         <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
             <h1>Renter request updated</h1>
         </div>
 
@@ -2187,7 +2189,7 @@ export function nonRegisteredAgentRequestSubmissionNotificationTemplate(
 <body>
     <div class="container">
         <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
             <h1>Shared Request Notification</h1>
         </div>
 
@@ -2369,7 +2371,7 @@ export function agentRegistrationVerifiedAdminTemplate(
 <body>
     <div class="container">
         <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
             <h1>BeforeListed&trade; - Agent Verification</h1>
         </div>
         <div class="content">
@@ -2538,7 +2540,7 @@ export function renterRegistrationVerifiedAdminTemplate(
 <body>
     <div class="container">
         <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
             <h1>BeforeListed&trade; - Renter Verification</h1>
         </div>
         <div class="content">
@@ -2689,7 +2691,7 @@ export function adminContactRequestTemplate(
 <body>
     <div class="container">
         <div class="header">
-            ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed" class="logo">` : ""}
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
             <h1>New Contact Message</h1>
         </div>
         <div class="content">

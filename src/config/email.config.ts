@@ -1,6 +1,7 @@
 // file: src/config/email.config.ts
 
 import { env } from "@/env";
+import { normalizeEmailLogoUrl } from "@/services/email-branding";
 import type { IEmailConfig, IPostmarkConfig } from "@/services/email.types";
 import { z } from "zod";
 
@@ -13,7 +14,10 @@ const emailConfigSchema = z.object({
   EMAIL_FROM_NAME: z.string().default("BeforeListed"),
   EMAIL_FROM_ADDRESS: z.email("EMAIL_FROM_ADDRESS must be valid email"),
   EMAIL_REPLY_TO: z.email().optional(),
-  EMAIL_LOGO_URL: z.url("Must be valid URL").optional(),
+  EMAIL_LOGO_URL: z
+    .string()
+    .optional()
+    .transform((value) => normalizeEmailLogoUrl(value)),
   EMAIL_BRAND_COLOR: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
@@ -36,7 +40,7 @@ export function createEmailConfig(): IEmailConfig {
       email: env.EMAIL_FROM_ADDRESS,
     },
     replyTo: env.EMAIL_REPLY_TO,
-    logoUrl: env.EMAIL_LOGO_URL,
+    logoUrl: envVars.EMAIL_LOGO_URL,
     brandColor: env.EMAIL_BRAND_COLOR,
     adminEmail: env.ADMIN_EMAIL,
     maxRetries: env.EMAIL_MAX_RETRIES,

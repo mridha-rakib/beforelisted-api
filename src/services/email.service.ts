@@ -2,6 +2,7 @@
 
 import { emailConfig } from "@/config/email.config";
 import { logger } from "@/middlewares/pino-logger";
+import { renderEmailLogo } from "@/services/email-branding";
 import { createEmailTransporter } from "@/services/email.transporter";
 import {
   IAdminReferralEmailPayload,
@@ -2111,7 +2112,7 @@ export class EmailService {
 <body>
   <div class="container">
     <div class="header">
-      ${logoUrl ? `<img src="${logoUrl}" alt="BeforeListed Logo" class="logo">` : ""}
+      ${renderEmailLogo(logoUrl)}
       <h1>${headerTitle}</h1>
     </div>
     <div class="content">${bodyHtml}</div>

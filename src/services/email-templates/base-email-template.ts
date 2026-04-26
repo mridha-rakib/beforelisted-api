@@ -1,6 +1,7 @@
 // file: src/services/email-templates/base-email-template.ts
 
 import { logger } from "@/middlewares/pino-logger";
+import { renderEmailLogo } from "@/services/email-branding";
 
 /**
  * Abstract base class for all email templates
@@ -40,7 +41,7 @@ export abstract class BaseEmailTemplate {
   protected generateHeader(title: string, subtitle?: string): string {
     return `
       <div class="header">
-        ${this.logoUrl ? `<img src="${this.logoUrl}" alt="${this.brandName}" class="logo">` : ""}
+        ${renderEmailLogo(this.logoUrl, { alt: this.brandName, marginBottom: 10 })}
         <h1>${title}</h1>
         ${subtitle ? `<p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">${subtitle}</p>` : ""}
       </div>

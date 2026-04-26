@@ -106,7 +106,12 @@ const normalizeEnv = (
         ? value.slice(1, -1)
         : value;
 
-    normalized[key] = trimmed;
+    normalized[key] =
+      key === "EMAIL_LOGO_URL"
+        ? trimmed
+            .replace(/^(["']|%22|%27)+/i, "")
+            .replace(/(["']|%22|%27)+$/i, "")
+        : trimmed;
   }
 
   return normalized;
