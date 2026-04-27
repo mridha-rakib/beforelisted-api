@@ -88,6 +88,20 @@ export class RenterService {
       );
     }
   }
+
+  async getRegistrationLinkStatus(referralCode: string): Promise<{
+    active: boolean;
+    role: string;
+  }> {
+    const referrer =
+      await this.referralService.validateReferralCode(referralCode);
+
+    return {
+      active: true,
+      role: referrer.role,
+    };
+  }
+
   private async registerAgentReferralRenter(
     payload: AgentReferralRenterRegisterPayload
   ): Promise<RenterRegistrationResponse> {

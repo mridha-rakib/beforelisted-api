@@ -77,13 +77,6 @@ const ARCHIVE_REASON_LABELS: Record<AgentArchiveReason, string> = {
 const SEARCH_CONFIRMATION_INTERVAL_MS = 15 * 24 * 60 * 60 * 1000;
 const SEARCH_CONFIRMATION_EXPIRY_MS = 3 * 24 * 60 * 60 * 1000;
 
-const MATCHED_SCOPE_GRANT_ACCESS_STATUSES = [
-  "pending",
-  "approved",
-  "free",
-  "paid",
-] as const;
-
 const DEFAULT_REGISTERED_AGENT_EMAIL = SYSTEM_DEFAULT_AGENT.email;
 const DEFAULT_REGISTERED_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
 const DEFAULT_REFERRAL_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
@@ -326,25 +319,14 @@ export class PreMarketService {
   private async getGlobalMatchedScopeRequestIdSet(
     requestIds: string[],
   ): Promise<Set<string>> {
-    const records =
-      await this.grantAccessRepository.findByPreMarketRequestIdsAndStatuses(
-        requestIds,
-        [...MATCHED_SCOPE_GRANT_ACCESS_STATUSES],
-      );
-
-    return new Set(
-      records
-        .map((record) => record.preMarketRequestId?.toString())
-        .filter((id): id is string => Boolean(id)),
-    );
+    return this.preMarketRepository.getMatchedScopeRequestIdSet(requestIds);
   }
 
   public async shouldDisplayMatchedScopeForRequest(
     requestId: string | Types.ObjectId,
   ): Promise<boolean> {
-    return this.grantAccessRepository.existsByPreMarketRequestIdAndStatuses(
+    return this.preMarketRepository.shouldDisplayMatchedScopeForRequest(
       requestId,
-      [...MATCHED_SCOPE_GRANT_ACCESS_STATUSES],
     );
   }
 
@@ -4130,6 +4112,10 @@ export class PreMarketService {
       throw error;
     }
 
+    await this.preMarketRepository.setAllMarketRequestPrivateAfterMatch(
+      requestId,
+    );
+
     if (shouldNotify) {
       this.notifyRenterAboutMatchedOpportunity(
         agentId,
@@ -5796,7 +5782,7 @@ export class PreMarketService {
         await this.excelService.updateConsolidatedPreMarketStatuses(
           normalizedRequestIds.map((requestId) => ({
             requestId,
-            status: "Deleted",
+            status: "Archived",
           })),
         );
 

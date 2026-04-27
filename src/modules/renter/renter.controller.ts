@@ -34,6 +34,22 @@ export class RenterController {
   // REGISTRATION ENDPOINTS
   // ============================================
 
+  getRegistrationLinkStatus = asyncHandler(
+    async (req: Request, res: Response) => {
+      const referralCode = String(req.query.referralCode || req.query.ref || "")
+        .trim();
+
+      if (!referralCode) {
+        throw new BadRequestException("Referral code is required");
+      }
+
+      const result =
+        await this.service.getRegistrationLinkStatus(referralCode);
+
+      ApiResponse.success(res, result, "Registration link is active");
+    }
+  );
+
   /**
    * PUBLIC: Register as Renter (Referral required)
    * POST /renter/register

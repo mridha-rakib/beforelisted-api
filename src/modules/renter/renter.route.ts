@@ -7,6 +7,8 @@ import { RenterController } from "./renter.controller";
 const router = Router();
 const controller = new RenterController();
 
+router.get("/registration-link/status", controller.getRegistrationLinkStatus);
+
 router.post("/register", controller.registerRenter);
 
 router.post("/register/agent-referral", controller.registerAgentReferralRenter);

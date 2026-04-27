@@ -13,9 +13,141 @@ import {
   type IPreMarketRequest,
 } from "./pre-market.model";
 
+const MATCHED_SCOPE_GRANT_ACCESS_STATUSES = [
+  "pending",
+  "approved",
+  "free",
+  "paid",
+] as const;
+
+type AgentVisibleScope = "Upcoming" | "All Market" | "Upcoming (M)";
+
 export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   constructor() {
     super(PreMarketRequestModel);
+  }
+
+  private resolveAgentVisibleScope(
+    scope: string | undefined,
+    shouldDisplayMatchedScope: boolean,
+  ): AgentVisibleScope {
+    if (scope === "All Market" && shouldDisplayMatchedScope) {
+      return "Upcoming (M)";
+    }
+
+    return scope === "All Market" ? "All Market" : "Upcoming";
+  }
+
+  async getMatchedScopeRequestIdSet(
+    requestIds: Array<string | Types.ObjectId>,
+  ): Promise<Set<string>> {
+    if (!requestIds || requestIds.length === 0) {
+      return new Set();
+    }
+
+    const validRequestIds = requestIds
+      .map((requestId) => {
+        if (requestId instanceof Types.ObjectId) {
+          return requestId;
+        }
+
+        return Types.ObjectId.isValid(requestId)
+          ? new Types.ObjectId(requestId)
+          : null;
+      })
+      .filter((requestId): requestId is Types.ObjectId => Boolean(requestId));
+
+    if (validRequestIds.length === 0) {
+      return new Set();
+    }
+
+    const records = await GrantAccessRequestModel.aggregate<{
+      _id: Types.ObjectId;
+    }>([
+      {
+        $match: {
+          preMarketRequestId: { $in: validRequestIds },
+          status: { $in: [...MATCHED_SCOPE_GRANT_ACCESS_STATUSES] },
+        },
+      },
+      {
+        $group: {
+          _id: "$preMarketRequestId",
+        },
+      },
+    ]);
+
+    return new Set(records.map((record) => record._id.toString()));
+  }
+
+  async shouldDisplayMatchedScopeForRequest(
+    requestId: string | Types.ObjectId,
+  ): Promise<boolean> {
+    const matchedRequestIds = await this.getMatchedScopeRequestIdSet([requestId]);
+
+    return matchedRequestIds.has(requestId.toString());
+  }
+
+  async applyAgentVisibleScopes<T extends { _id?: unknown; scope?: string }>(
+    requests: T[],
+  ): Promise<Array<T & { scope: AgentVisibleScope }>> {
+    if (!requests || requests.length === 0) {
+      return [];
+    }
+
+    const matchedRequestIds = await this.getMatchedScopeRequestIdSet(
+      requests
+        .map((request) => request._id)
+        .filter(
+          (requestId): requestId is string | Types.ObjectId =>
+            typeof requestId === "string" || requestId instanceof Types.ObjectId,
+        ),
+    );
+
+    return requests.map((request) => ({
+      ...request,
+      scope: this.resolveAgentVisibleScope(
+        request.scope,
+        matchedRequestIds.has(request._id?.toString() || ""),
+      ),
+    }));
+  }
+
+  async applyAgentVisibleScope<T extends { _id?: unknown; scope?: string }>(
+    request: T | null,
+  ): Promise<(T & { scope: AgentVisibleScope }) | null> {
+    if (!request) {
+      return null;
+    }
+
+    const [visibleRequest] = await this.applyAgentVisibleScopes([request]);
+
+    return visibleRequest ?? null;
+  }
+
+  async setAllMarketRequestPrivateAfterMatch(
+    requestId: string | Types.ObjectId,
+  ): Promise<IPreMarketRequest | null> {
+    return this.model
+      .findOneAndUpdate(
+        {
+          _id: requestId,
+          scope: "All Market",
+          isDeleted: { $ne: true },
+        },
+        {
+          $set: {
+            visibility: "PRIVATE",
+          },
+          $unset: {
+            lockedByAgentId: "",
+            lockedAt: "",
+          },
+        },
+        { new: true },
+      )
+      .lean()
+      .exec() as Promise<IPreMarketRequest | null>;
   }
 
   async findAllWithPagination(

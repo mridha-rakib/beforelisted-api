@@ -1,6 +1,7 @@
 // file: src/modules/referral/referral.service.ts
 
 import { ROLES as RolesEnum } from "@/constants/app.constants";
+import { ErrorCodeEnum } from "@/enums/error-code.enum";
 import {
   BadRequestException,
   NotFoundException,
@@ -65,6 +66,7 @@ export class ReferralService {
       if (!agentProfile || agentProfile.isActive === false) {
         throw new BadRequestException(
           "This agent referral link is no longer active",
+          ErrorCodeEnum.REGISTRATION_LINK_INACTIVE,
         );
       }
     }

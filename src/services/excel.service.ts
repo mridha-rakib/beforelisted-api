@@ -67,6 +67,7 @@ export class ExcelService {
         "Guarantor Required",
         "Preferences",
         "Market Scope",
+        "Registration",
         "Status",
         "Created Date",
       ];
@@ -124,9 +125,10 @@ export class ExcelService {
           };
         }
 
-        // Center align status and dates
+        // Center align registration, status and dates
         dataRow.getCell(24).alignment = { horizontal: "center" };
         dataRow.getCell(25).alignment = { horizontal: "center" };
+        dataRow.getCell(26).alignment = { horizontal: "center" };
 
         rowCount++;
       }
@@ -156,6 +158,7 @@ export class ExcelService {
         15, // Guarantor
         20, // Preferences
         14, // Market Scope
+        14, // Registration
         12, // Status
         15, // Created Date
       ];
@@ -167,7 +170,7 @@ export class ExcelService {
       if (rows.length > 0) {
         worksheet.autoFilter = {
           from: "A1",
-          to: `Y${rows.length + 1}`,
+          to: `Z${rows.length + 1}`,
         };
       }
 
@@ -232,6 +235,7 @@ export class ExcelService {
           "Guarantor Required",
           "Preferences",
           "Market Scope",
+          "Registration",
           "Status",
           "Created Date",
         ];
@@ -252,7 +256,7 @@ export class ExcelService {
         // Set column widths
         worksheet.columns = [
           18, 15, 20, 15, 26, 18, 18, 20, 20, 15, 15, 12, 12, 15, 25, 10, 10,
-          20, 20, 12, 15, 20, 14, 12, 15,
+          20, 20, 12, 15, 20, 14, 14, 12, 15,
         ].map((width) => ({ width }));
       }
 
@@ -612,6 +616,7 @@ export class ExcelService {
           rowSource.specialPreferences
       ),
       this.getMarketScope(rowSource),
+      this.resolveRegisteredAgentRegistrationStatus(rowSource),
       this.resolveConsolidatedRequestStatus(entry),
       this.formatDate(latestRequest.createdAt ?? entry.createdAt),
     ];
@@ -624,8 +629,8 @@ export class ExcelService {
       return "Registered";
     }
 
-    if (latestRequest.isDeleted === true || latestRequest.isActive === false) {
-      return "Inactive";
+    if (this.isArchivedConsolidatedRequest(latestRequest)) {
+      return "Archived";
     }
 
     const status = latestRequest.status || latestRequest.requestStatus;
@@ -634,6 +639,45 @@ export class ExcelService {
     }
 
     return "Registered";
+  }
+
+  private resolveRegisteredAgentRegistrationStatus(request: any): "Check" | "None" {
+    const registeredAgentId = this.normalizeId(
+      request.referralAgentId ??
+        request.renterInfo?.referredByAgentId ??
+        request.referredByAgentId
+    );
+
+    if (!registeredAgentId) {
+      return "None";
+    }
+
+    const confirmations = Array.isArray(request.registrationDisclosureConfirmations)
+      ? request.registrationDisclosureConfirmations
+      : [];
+    const hasRegisteredAgentConfirmation = confirmations.some(
+      (confirmation: { agentId?: unknown }) => {
+        const confirmationAgentId = this.normalizeId(confirmation?.agentId);
+        return confirmationAgentId === registeredAgentId;
+      }
+    );
+
+    return hasRegisteredAgentConfirmation ? "Check" : "None";
+  }
+
+  private isArchivedConsolidatedRequest(request: any): boolean {
+    if (
+      request?.isDeleted === true ||
+      request?.isActive === false ||
+      request?.status === "deleted" ||
+      request?.requestStatus === "deleted"
+    ) {
+      return true;
+    }
+
+    return (
+      Array.isArray(request?.agentArchives) && request.agentArchives.length > 0
+    );
   }
 
   private getRenterName(request: any): string {
@@ -1427,6 +1471,34 @@ export class ExcelService {
     }
 
     return String(value).trim();
+  }
+
+  private normalizeId(value: unknown): string | null {
+    if (!value) {
+      return null;
+    }
+
+    if (typeof value === "string") {
+      return value.trim() || null;
+    }
+
+    if (typeof value === "object") {
+      const objectValue = value as {
+        _id?: unknown;
+        toString?: () => string;
+      };
+
+      if (objectValue._id) {
+        return this.normalizeId(objectValue._id);
+      }
+
+      if (typeof objectValue.toString === "function") {
+        const normalized = objectValue.toString();
+        return normalized && normalized !== "[object Object]" ? normalized : null;
+      }
+    }
+
+    return null;
   }
 
   /**

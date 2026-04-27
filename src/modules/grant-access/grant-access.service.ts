@@ -167,6 +167,12 @@ export class GrantAccessService {
       throw error;
     }
 
+    if (representationType !== "owner_representation") {
+      await this.preMarketRepository.setAllMarketRequestPrivateAfterMatch(
+        preMarketRequestId,
+      );
+    }
+
     logger.info({ agentId }, `Grant access requested: ${preMarketRequestId}`);
 
     try {
@@ -318,6 +324,11 @@ export class GrantAccessService {
       );
 
       await this.grantAccessRepository.updateById(grantAccessId, grantAccess);
+      if (grantAccess.representation_type !== "owner_representation") {
+        await this.preMarketRepository.setAllMarketRequestPrivateAfterMatch(
+          grantAccess.preMarketRequestId,
+        );
+      }
       await this.notifier.notifyAgentOfApproval(grantAccess, true);
       this.notifyRenterOpportunityForFreeMatch(
         grantAccess,
@@ -388,6 +399,11 @@ export class GrantAccessService {
       grantAccess.status = "approved";
 
       await this.grantAccessRepository.updateById(grantAccessId, grantAccess);
+      if (grantAccess.representation_type !== "owner_representation") {
+        await this.preMarketRepository.setAllMarketRequestPrivateAfterMatch(
+          grantAccess.preMarketRequestId,
+        );
+      }
       await this.notifier.sendPaymentLinkToAgent(grantAccess);
 
       try {
