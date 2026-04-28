@@ -3264,13 +3264,16 @@ export class PreMarketService {
     const actorName = this.escapeEmailHtml(actorAgent.fullName);
     const actorTitle = this.escapeEmailHtml(actorAgent.title);
     const actorBrokerage = this.escapeEmailHtml(actorAgent.brokerage);
-    const registrationLink =
-      registeredAgent.activationLink || "Link unavailable";
+    const registrationLink = this.buildRenterRegistrationLink(
+      registeredAgent.activationLink,
+      renter,
+      registeredAgent.fullName,
+    );
     const matchedDisclosureLink =
       actorAgent.disclosureLink || "Link unavailable";
-    const registrationLinkMarkup = registeredAgent.activationLink
+    const registrationLinkMarkup = registrationLink
       ? `<a href="${this.escapeEmailHtml(registrationLink)}">Client Registration and Disclosure</a>`
-      : this.escapeEmailHtml(registrationLink);
+      : this.escapeEmailHtml("Link unavailable");
     const disclosureLinkMarkup = actorAgent.disclosureLink
       ? `<a href="${this.escapeEmailHtml(matchedDisclosureLink)}">Agent Disclosure</a>`
       : this.escapeEmailHtml(matchedDisclosureLink);
