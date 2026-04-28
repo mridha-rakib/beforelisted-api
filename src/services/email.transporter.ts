@@ -255,7 +255,7 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
         ? attachment.content.toString("base64")
         : Buffer.from(attachment.content).toString("base64"),
       ContentType: attachment.contentType || "application/octet-stream",
-      ContentDisposition: attachment.contentDisposition || "attachment",
+      ContentID: attachment.contentId,
     }));
   }
 

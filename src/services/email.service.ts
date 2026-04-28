@@ -2,8 +2,13 @@
 
 import { emailConfig } from "@/config/email.config";
 import { logger } from "@/middlewares/pino-logger";
-import { renderEmailLogo } from "@/services/email-branding";
+import {
+  EMAIL_LOGO_CONTENT_ID,
+  renderEmailLogo,
+} from "@/services/email-branding";
 import { createEmailTransporter } from "@/services/email.transporter";
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 import {
   IAdminReferralEmailPayload,
   type IAccountDeletedPayload,
@@ -63,11 +68,40 @@ import {
 import { EmailTemplateFactory } from "./email-templates/email-template.factory";
 import { EmailTemplates } from "./email.templates.beforelisted";
 
+const EMAIL_LOGO_ATTACHMENT_FILENAME = "beforelisted-email-logo.png";
+
+function loadEmailLogoAttachment(): Buffer | null {
+  const candidatePaths = [
+    join(__dirname, "assets", EMAIL_LOGO_ATTACHMENT_FILENAME),
+    join(
+      process.cwd(),
+      "dist",
+      "services",
+      "assets",
+      EMAIL_LOGO_ATTACHMENT_FILENAME,
+    ),
+    join(
+      process.cwd(),
+      "src",
+      "services",
+      "assets",
+      EMAIL_LOGO_ATTACHMENT_FILENAME,
+    ),
+  ];
+
+  const logoPath = candidatePaths.find((candidatePath) =>
+    existsSync(candidatePath),
+  );
+
+  return logoPath ? readFileSync(logoPath) : null;
+}
+
 export class EmailService {
   private transporter = createEmailTransporter(emailConfig);
   private templates = new EmailTemplates();
   private templateFactory: EmailTemplateFactory;
   private config = emailConfig;
+  private readonly emailLogoAttachment = loadEmailLogoAttachment();
 
   constructor() {
     this.initializeTransporter();
@@ -1528,20 +1562,39 @@ export class EmailService {
     payload: IRenterArchiveNotificationPayload,
   ): Promise<IEmailResult> {
     try {
+      const isRegisteredRegistrationMissing =
+        payload.templateType === "ARCHIVE_REGISTERED_REGISTRATION_MISSING";
+      const subject = isRegisteredRegistrationMissing
+        ? "Client registration missing, required to activate your request - BeforeListed"
+        : payload.subject;
+      const headerTitle = isRegisteredRegistrationMissing
+        ? "Client Registration Missing"
+        : payload.headerTitle;
       logger.debug(
         { email: payload.to, templateType: payload.templateType },
         "Sending renter archive notification",
       );
 
       const html = this.buildSimpleBeforeListedEmail(payload.bodyHtml, {
-        headerTitle: payload.headerTitle,
+        headerTitle,
       });
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
-        cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
+        cc:
+          !isRegisteredRegistrationMissing &&
+          payload.cc &&
+          payload.cc.length > 0
+            ? payload.cc
+            : undefined,
         replyTo: payload.replyTo || "support@beforelisted.com",
-        subject: payload.subject,
+        subject,
         html,
+        headers: {
+          "X-BeforeListed-Template": payload.templateType,
+        },
+        metadata: {
+          templateType: payload.templateType,
+        },
       };
 
       return await this.sendEmail(emailOptions, payload.templateType, payload.to);
@@ -1715,7 +1768,9 @@ export class EmailService {
         "Sending renter unarchive notification",
       );
 
-      const html = this.buildSimpleBeforeListedEmail(payload.bodyHtml);
+      const html = this.buildSimpleBeforeListedEmail(payload.bodyHtml, {
+        headerTitle: payload.headerTitle,
+      });
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
         cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
@@ -2140,7 +2195,9 @@ export class EmailService {
     const startTime = Date.now();
 
     try {
-      const response = await this.transporter.send(options);
+      const response = await this.transporter.send(
+        this.withDefaultEmailLogo(options),
+      );
 
       const duration = Date.now() - startTime;
 
@@ -2197,6 +2254,35 @@ export class EmailService {
         maxAttempts: this.config.maxRetries,
       };
     }
+  }
+
+  private withDefaultEmailLogo(options: IEmailOptions): IEmailOptions {
+    if (!options.html.includes(EMAIL_LOGO_CONTENT_ID)) {
+      return options;
+    }
+
+    const attachments = options.attachments ?? [];
+    const hasLogoAttachment = attachments.some(
+      (attachment) => attachment.contentId === EMAIL_LOGO_CONTENT_ID,
+    );
+
+    if (hasLogoAttachment || !this.emailLogoAttachment) {
+      return options;
+    }
+
+    return {
+      ...options,
+      attachments: [
+        ...attachments,
+        {
+          filename: EMAIL_LOGO_ATTACHMENT_FILENAME,
+          content: this.emailLogoAttachment,
+          contentType: "image/png",
+          contentDisposition: "inline",
+          contentId: EMAIL_LOGO_CONTENT_ID,
+        },
+      ],
+    };
   }
 
   // ============================================

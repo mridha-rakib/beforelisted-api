@@ -5,6 +5,7 @@ RUN npm ci && npm cache clean --force
 
 FROM deps AS build
 COPY tsconfig.json tsconfig-paths-bootstrap.js ./
+COPY scripts ./scripts
 COPY src ./src
 RUN npm run build
 

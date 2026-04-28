@@ -29,9 +29,7 @@ const envSchema = z.object({
     .default("noreply@beforelisted.com"),
   EMAIL_REPLY_TO: z.email("Must be a valid email").optional(),
 
-  EMAIL_LOGO_URL: z
-    .url("Must be valid URL")
-    .default("https://i.postimg.cc/wB4Zgqmy/Logo-8.jpg"),
+  EMAIL_LOGO_URL: z.string().default("cid:beforelisted-email-logo.png"),
   EMAIL_BRAND_COLOR: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color")

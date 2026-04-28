@@ -200,6 +200,7 @@ export interface IRenterUnarchiveNotificationPayload {
   to: string;
   renterName: string;
   subject: string;
+  headerTitle?: string;
   bodyHtml: string;
   cc?: string[];
   replyTo?: string;

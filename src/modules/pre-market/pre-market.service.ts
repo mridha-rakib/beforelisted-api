@@ -2437,6 +2437,16 @@ export class PreMarketService {
     }
 
     if (reason === "registration_missing") {
+      const registrationStatus = this.getRegistrationDisclosureStatus(
+        request,
+        agentId,
+      );
+      if (registrationStatus.registrationDisclosureConfirmed) {
+        throw new BadRequestException(
+          "Registration Missing cannot be used after registration / disclosure has been confirmed.",
+        );
+      }
+
       const registeredAgent = await this.getArchiveAgentInfo(registeredAgentId);
       if (!registeredAgent.activationLink?.trim()) {
         throw new BadRequestException(
@@ -2488,19 +2498,21 @@ export class PreMarketService {
       });
     }
 
-    this.sendArchiveNotification({
-      request,
-      actorAgentId: agentId,
-      registeredAgentId,
-      matchedAgentIds,
-      reason,
-      source,
-    }).catch((error) => {
-      logger.error(
-        { error, requestId, agentId, reason },
-        "Failed to send archive notification",
-      );
-    });
+    if (archivedAgents > 0) {
+      this.sendArchiveNotification({
+        request,
+        actorAgentId: agentId,
+        registeredAgentId,
+        matchedAgentIds,
+        reason,
+        source,
+      }).catch((error) => {
+        logger.error(
+          { error, requestId, agentId, reason },
+          "Failed to send archive notification",
+        );
+      });
+    }
 
     return {
       requestId,
@@ -2752,10 +2764,6 @@ export class PreMarketService {
           continue;
         }
 
-        if (Array.isArray((request as any)?.agentArchives) && (request as any).agentArchives.length > 0) {
-          continue;
-        }
-
         const searchActivity = this.getSearchActivity(request);
         if (
           searchActivity.pendingConfirmationToken &&
@@ -2772,6 +2780,10 @@ export class PreMarketService {
               archivedRequests += 1;
             }
           }
+          continue;
+        }
+
+        if (Array.isArray((request as any)?.agentArchives) && (request as any).agentArchives.length > 0) {
           continue;
         }
 
@@ -2854,6 +2866,8 @@ export class PreMarketService {
           ? await this.getReferralInfoForRenter(request.renterId.toString())
           : null;
         const archiveStatus = this.getAgentArchiveStatus(request, agentId);
+        const registrationDisclosureStatus =
+          this.getRegistrationDisclosureStatus(request, agentId);
 
         return {
           ...request,
@@ -2883,6 +2897,7 @@ export class PreMarketService {
           archiveReasonLabel: archiveStatus.archiveReasonLabel,
           archiveSource: archiveStatus.archiveSource,
           archivedAt: archiveStatus.archivedAt,
+          ...registrationDisclosureStatus,
         };
       }),
     );
@@ -3017,11 +3032,12 @@ export class PreMarketService {
     );
     const bodyHtml = `
       <p>Hi ${this.escapeEmailHtml(firstName)},</p>
-      <p>We are currently working on your behalf to identify apartments that match your request, including opportunities that may not yet be publicly advertised.</p>
-      <p>To continue your search, please confirm that you are still actively looking by clicking below:</p>
-      <p><a href="${this.escapeEmailHtml(confirmationLink)}"><strong>Confirm My Search</strong></a></p>
-      <p>Once confirmed, your request will remain active and your next confirmation cycle will reset.</p>
-      <p><strong>Important:</strong> If no action is taken, your request on BeforeListed&trade; will be automatically archived within 24 hours.</p>
+      <p>As you know, upcoming units often take longer to identify than apartments already on the market.</p>
+      <p>We are currently working on your behalf to identify apartments that match your request that may not yet be publicly advertised.</p>
+      <p>Please confirm that you would like us to continue the search by clicking the link below:</p>
+      <p><a href="${this.escapeEmailHtml(confirmationLink)}">Active Request Confirmation</a></p>
+      <p>After confirming, your request will remain active and the next confirmation check will reset.</p>
+      <p>Please note that if no action is taken, your request on BeforeListed&trade; will automatically be archived in three days.</p>
       <p>If you have any questions, you may reply directly to this email.</p>
       <p>Thank you,<br>BeforeListed&trade; Support</p>`;
 
@@ -3029,8 +3045,8 @@ export class PreMarketService {
       to: renter.email,
       renterName: renter.fullName,
       subject:
-        "Action Required: Confirm Your Search to Keep Your Request Active (24hrs) \u2013 BeforeListed",
-      headerTitle: "Confirm Your Search to Keep Your Request Active",
+        "Please confirm your search to keep your request active - BeforeListed\u2122",
+      headerTitle: "Please confirm your search to keep your request active",
       bodyHtml,
       cc,
       replyTo: registeredAgent.email || "support@beforelisted.com",
@@ -3062,13 +3078,6 @@ export class PreMarketService {
     request: IPreMarketRequest,
     now: Date,
   ): Promise<boolean> {
-    if (
-      Array.isArray((request as any)?.agentArchives) &&
-      (request as any).agentArchives.length > 0
-    ) {
-      return false;
-    }
-
     const registeredAgentId =
       await this.resolveRegisteredAgentIdForRequest(request);
     const matchedAgentIds = await this.getMatchedAgentIdsForArchive(
@@ -3106,6 +3115,10 @@ export class PreMarketService {
       ),
     } as Partial<IPreMarketRequest>);
 
+    if (archivedAgents === 0) {
+      return false;
+    }
+
     const renter = await this.renterRepository.findRenterWithReferrer(
       request.renterId.toString(),
     );
@@ -3122,49 +3135,25 @@ export class PreMarketService {
       );
       const bodyHtml = `
         <p>Hi ${this.escapeEmailHtml(firstName)},</p>
-        <p>We didn&rsquo;t receive your search confirmation after our last email, so your request on BeforeListed&trade; has been <strong>paused and moved to our archive</strong>.</p>
-        <p>If you&rsquo;re still searching, simply <strong>reply to this email</strong> and we&rsquo;ll reactivate your request right away.</p>
-        <p>Active requests allow agents to continue reaching out to owners on your behalf for upcoming apartments that may not yet be advertised.</p>
-        <p>If your plans have changed, no action is needed.</p>
-        <p>If you&rsquo;d like to continue your search, we&rsquo;re here to help.</p>
+        <p>We understand that you did not confirm that you are still searching in response to our last email.</p>
+        <p>Due to this, your request on BeforeListed&trade; has been archived.</p>
+        <p>If this is not correct, please let us know as soon as possible by replying to this email so we may correct it.</p>
+        <p>Please consider adding the BeforeListed&trade; tool again in your next apartment search.</p>
+        <p>If you have any questions, you may reply directly to this email.</p>
+        <p>We wish you the best of luck in your new home!</p>
         <p>Thank you,<br>BeforeListed&trade; Support</p>`;
 
       await emailService.sendRenterArchiveNotification({
         to: renter.email,
         renterName: renter.fullName,
         subject:
-          "Still Searching? Your Request Was Archived & Search Paused | BeforeListed\u2122",
-        headerTitle: "Your Request Was Paused",
+          "Your request has been archived, search inactive - BeforeListed\u2122",
+        headerTitle: "Your request has been archived, search inactive",
         bodyHtml,
         cc,
         replyTo: registeredAgent.email || "support@beforelisted.com",
         templateType: "SYSTEM_ARCHIVED_SEARCH_CONFIRMATION_MISSING",
       });
-
-      const requestLabel =
-        request.requestId || request.requestName || request._id.toString();
-      const agentRecipientIds = Array.from(
-        new Set(
-          [registeredAgentId, ...matchedAgentIds].filter(
-            (id): id is string => Boolean(id),
-          ),
-        ),
-      );
-      await Promise.allSettled(
-        agentRecipientIds.map(async (agentId) => {
-          const agent = await this.getArchiveAgentInfo(agentId);
-          if (!agent.email) {
-            return;
-          }
-
-          await emailService.sendSystemArchivedSearchInactiveAgentNotification({
-            to: agent.email,
-            agentName: agent.fullName,
-            renterName: renter.fullName || "Client",
-            requestId: requestLabel,
-          });
-        }),
-      );
     }
 
     return archivedAgents > 0;
@@ -3217,6 +3206,7 @@ export class PreMarketService {
       to: renter.email,
       renterName: renter.fullName,
       subject: "Your request is now active \u2013 BeforeListed\u2122",
+      headerTitle: "Your Request Is Now Active",
       bodyHtml,
       cc,
       replyTo: registeredAgent.email || "support@beforelisted.com",
@@ -3296,19 +3286,20 @@ export class PreMarketService {
 
     if (source === "registered_agent" && reason === "registration_missing") {
       subject =
-        "Action Required: Complete Your Registration to Activate Your Request \u2013 BeforeListed";
-      headerTitle = "Complete Your Registration to Activate Your Request";
+        "Client registration missing, required to activate your request - BeforeListed";
+      headerTitle = "Client Registration Missing";
       replyTo = registeredAgentEmail || replyTo;
       templateType = "ARCHIVE_REGISTERED_REGISTRATION_MISSING";
       bodyHtml = `
         <p>Hi ${firstName},</p>
         <p>Thank you for submitting your request on BeforeListed&trade;.</p>
-        <p>To activate your request, you&rsquo;ll need to complete the required client registration and disclosure form.</p>
-        <p><strong>Your request is currently inactive until this step is completed.<br>Takes less than a minute to complete.</strong></p>
-        <p>Please complete your registration using the link below:</p>
+        <p>Our system shows that the required client registration and disclosure document, which was needed during your submission, has not yet been signed.</p>
+        <p>Due to this, ${registeredName}, ${registeredTitle} with ${registeredBrokerage}, is not permitted to contact owners on your behalf until the registration is completed.</p>
+        <p>Your request is currently inactive.</p>
+        <p>To activate your request, please sign the document using the link below:</p>
         <p>${registrationLinkMarkup}</p>
-        <p>Once completed, your request will be activated and ${registeredName} will be able to begin assisting you.</p>
-        <p>If you have any questions, feel free to reply to this email.</p>
+        <p>Once the document is signed, your request may be reactivated.</p>
+        <p>If you have any questions, you may reply directly to this email.</p>
         <p>Thank you,<br>BeforeListed&trade; Support</p>`;
     } else if (source === "matched_agent" && reason === "disclosure_missing") {
       subject =
@@ -3858,6 +3849,8 @@ export class PreMarketService {
           globalMatchedScopeRequestIds.has(request._id?.toString() || ""),
         );
         const archiveStatus = this.getAgentArchiveStatus(request, agentId);
+        const registrationDisclosureStatus =
+          this.getRegistrationDisclosureStatus(request, agentId);
 
         return {
           ...request,
@@ -3872,6 +3865,7 @@ export class PreMarketService {
           accessType: accessSummary.accessType,
           canRequestAccess: false,
           chargeAmount: accessSummary.chargeAmount ?? null,
+          ...registrationDisclosureStatus,
           ...archiveStatus,
           ...(accessSummary.showPayment && accessSummary.payment
             ? { payment: accessSummary.payment }

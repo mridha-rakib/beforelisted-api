@@ -11,6 +11,7 @@ export interface IEmailAttachment {
   content: Buffer | string;
   contentType?: string;
   contentDisposition?: "attachment" | "inline";
+  contentId?: string;
 }
 
 export interface IEmailOptions {
