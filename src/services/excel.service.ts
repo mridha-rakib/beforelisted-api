@@ -1485,11 +1485,18 @@ export class ExcelService {
     if (typeof value === "object") {
       const objectValue = value as {
         _id?: unknown;
+        toHexString?: () => string;
         toString?: () => string;
       };
 
-      if (objectValue._id) {
-        return this.normalizeId(objectValue._id);
+      const nestedId = objectValue._id;
+      if (nestedId && nestedId !== value) {
+        return this.normalizeId(nestedId);
+      }
+
+      if (typeof objectValue.toHexString === "function") {
+        const normalized = objectValue.toHexString();
+        return normalized.trim() || null;
       }
 
       if (typeof objectValue.toString === "function") {

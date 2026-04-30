@@ -123,6 +123,8 @@ export interface IMatchReferralAcknowledgmentToMatchingAgentPayload {
   registeredAgentFullName: string;
   registeredAgentTitle: string;
   registeredAgentBrokerage: string;
+  requestRepresentedByTuvalMor?: boolean;
+  matchedAgentIsTuvalMor?: boolean;
   cc?: string[];
 }
 
@@ -139,6 +141,7 @@ export interface IOwnerRepresentationMatchReferralAcknowledgmentPayload {
   matchedAgentBrokerage: string;
   matchedAgentEmail: string;
   matchedAgentPhoneNumber: string;
+  requestRepresentedByTuvalMor?: boolean;
   cc?: string[];
 }
 

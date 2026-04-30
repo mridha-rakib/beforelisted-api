@@ -128,6 +128,52 @@ export class EmailService {
     }
   }
 
+  private buildFacilitatorRegisteredAgentReferralLink(
+    matchedAgentFullName: string,
+    renterFullName: string,
+  ): string {
+    const powerFormBase =
+      "https://www.docusign.net/Member/PowerFormSigning.aspx?PowerFormId=9b3a6921-6388-4263-b18d-ba9a16b5bdc5&env=na1";
+    const closingAgentName = encodeURIComponent(
+      matchedAgentFullName?.trim() || "",
+    );
+    const renterName = encodeURIComponent(renterFullName?.trim() || "");
+
+    return `${powerFormBase}&ClosingAgentName=${closingAgentName}&RenterName=${renterName}`;
+  }
+
+  private buildRegisteredAgentReferralLink(
+    registeredAgentFullName: string,
+    matchedAgentFullName: string,
+    renterFullName: string,
+  ): string {
+    const powerFormBase =
+      "https://www.docusign.net/Member/PowerFormSigning.aspx?PowerFormId=31a21874-2095-40c5-960f-92f3d9bcd871&env=na1";
+    const referringAgentName = encodeURIComponent(
+      registeredAgentFullName?.trim() || "",
+    );
+    const closingAgentName = encodeURIComponent(
+      matchedAgentFullName?.trim() || "",
+    );
+    const renterName = encodeURIComponent(renterFullName?.trim() || "");
+
+    return `${powerFormBase}&ReferringAgentName=${referringAgentName}&ClosingAgentName=${closingAgentName}&RenterName=${renterName}`;
+  }
+
+  private buildFacilitatorReferralLink(
+    closingAgentFullName: string,
+    renterFullName: string,
+  ): string {
+    const powerFormBase =
+      "https://www.docusign.net/Member/PowerFormSigning.aspx?PowerFormId=7d64af5b-efbb-43d9-ba13-661821a32c88&env=na1";
+    const closingAgentName = encodeURIComponent(
+      closingAgentFullName?.trim() || "",
+    );
+    const renterName = encodeURIComponent(renterFullName?.trim() || "");
+
+    return `${powerFormBase}&ClosingAgentName=${closingAgentName}&RenterName=${renterName}`;
+  }
+
   async sendPasswordResetOTP(
     userName: string | undefined,
     email: string,
@@ -1350,6 +1396,36 @@ export class EmailService {
         "Sending match referral acknowledgment to matching agent",
       );
 
+      const referralAgreement = payload.requestRepresentedByTuvalMor
+        ? {
+            variant: "16A" as const,
+            facilitatorRegisteredLink:
+              this.buildFacilitatorRegisteredAgentReferralLink(
+                payload.matchedAgentName,
+                payload.renterFullName,
+              ),
+          }
+        : payload.matchedAgentIsTuvalMor
+          ? {
+              variant: "16C" as const,
+              registeredAgentLink: this.buildRegisteredAgentReferralLink(
+                payload.registeredAgentFullName,
+                payload.matchedAgentName,
+                payload.renterFullName,
+              ),
+            }
+          : {
+              variant: "16B" as const,
+              registeredAgentLink: this.buildRegisteredAgentReferralLink(
+                payload.registeredAgentFullName,
+                payload.matchedAgentName,
+                payload.renterFullName,
+              ),
+              facilitatorLink: this.buildFacilitatorReferralLink(
+                payload.matchedAgentName,
+                payload.renterFullName,
+              ),
+            };
       const html = matchReferralAcknowledgmentToMatchingAgentTemplate(
         payload.matchedAgentName,
         payload.renterFullName,
@@ -1358,6 +1434,7 @@ export class EmailService {
         payload.registeredAgentBrokerage,
         this.config.logoUrl,
         this.config.brandColor,
+        referralAgreement,
       );
 
       const emailOptions: IEmailOptions = {
@@ -1415,6 +1492,13 @@ export class EmailService {
         payload.matchedAgentPhoneNumber,
         this.config.logoUrl,
         this.config.brandColor,
+        payload.requestRepresentedByTuvalMor,
+        payload.requestRepresentedByTuvalMor
+          ? undefined
+          : this.buildFacilitatorReferralLink(
+              payload.registeredAgentFullName,
+              payload.renterFullName,
+            ),
       );
 
       const emailOptions: IEmailOptions = {
@@ -1423,7 +1507,7 @@ export class EmailService {
           name: payload.registeredAgentFullName,
         },
         cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
-        replyTo: payload.matchedAgentEmail || "support@beforelisted.com",
+        replyTo: "support@beforelisted.com",
         subject:
           "Owner Rep Selected on Your Renter - Review Now | BeforeListed\u2122",
         html,

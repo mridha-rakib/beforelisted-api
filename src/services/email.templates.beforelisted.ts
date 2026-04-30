@@ -134,6 +134,23 @@ export class EmailTemplates {
             color: ${color};
             font-weight: 700;
         }
+        .disclosure-footer {
+            background-color: #222222;
+            padding: 18px 40px 84px 40px;
+            color: #ffffff;
+        }
+        .disclosure-footer p {
+            color: #ffffff;
+            font-size: 15px;
+            line-height: 1.35;
+            margin: 0 0 8px 0;
+        }
+        .disclosure-text {
+            font-style: italic;
+        }
+        .disclosure-text strong {
+            font-weight: 700;
+        }
         a {
             color: ${color};
             text-decoration: none;
@@ -170,13 +187,11 @@ export class EmailTemplates {
 
             <p>Congratulations on registering with BeforeListed&trade;.</p>
 
-            <p>As a BeforeListed&trade; registered user, you have access to exclusive discounts with two highly recommended moving companies.</p>
-
-            <p>Use the code &ldquo;BeforeListed&rdquo; when booking your next move to receive your exclusive discount:</p>
+            <p>As a BeforeListed&trade; registered user, you have access to exclusive discounts with two recommended partner moving companies.</p>
 
             <div class="discount-card">
                 <h3>Piece of Cake Moving</h3>
-                <p>Click here to use your special BeforeListed discount link: <a href="https://mypieceofcakemove.com/ref/?field36=BeforeListed">https://mypieceofcakemove.com/ref/?field36=BeforeListed</a></p>
+                <p><strong>Discount Link:</strong> <a href="https://mypieceofcakemove.com/ref/?field36=BeforeListed">Click here to apply your BeforeListed discount</a></p>
                 <ul>
                     <li>Local Moves (within 250 miles): 10% off</li>
                     <li>Long Distance Moves (over 250 miles): 5% off</li>
@@ -185,7 +200,7 @@ export class EmailTemplates {
 
             <div class="discount-card">
                 <h3>Imperial Moving</h3>
-                <p><strong>Website:</strong> <a href="https://www.imperialmovers.com">https://www.imperialmovers.com</a></p>
+                <p><strong>Website:</strong> <a href="https://www.imperialmovers.com">www.imperialmovers.com</a></p>
                 <p><strong>Promo Code:</strong> <span class="code">BeforeListed</span></p>
             </div>
 
@@ -193,9 +208,9 @@ export class EmailTemplates {
 
             <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>
-        <div class="footer">
-            <p>${this.getFooterCopyrightText()}</p>
-            ${this.getFooterLinks(color)}
+        <div class="disclosure-footer">
+            <p class="disclosure-text"><strong>Disclosure:</strong> BeforeListed&trade; may receive a referral fee when you use the links or codes above. These discounts are provided as a convenience and do not affect your rental search or your relationship with your agent.</p>
+            <p>Happy Click Shop LLC d/b/a BeforeListed&trade; | 418 Broadway STE R, Albany, NY 12207 USA</p>
         </div>
     </div>
 </body>

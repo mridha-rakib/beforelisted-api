@@ -1155,6 +1155,19 @@ export class PreMarketService {
     return null;
   }
 
+  private isTuvalMorAgent(agent: {
+    fullName?: string | null;
+    email?: string | null;
+  }): boolean {
+    const normalizedName = agent.fullName?.trim().toLowerCase();
+    const normalizedEmail = agent.email?.trim().toLowerCase();
+
+    return (
+      normalizedName === SYSTEM_DEFAULT_AGENT.fullName.toLowerCase() ||
+      normalizedEmail === SYSTEM_DEFAULT_AGENT.email.toLowerCase()
+    );
+  }
+
   private getRegistrationDisclosureStatus(
     request: IPreMarketRequest | Record<string, any>,
     agentId: string,
@@ -4940,6 +4953,10 @@ export class PreMarketService {
       [env.ADMIN_EMAIL, matchedAgent.email],
       [registeredAgent.email],
     );
+    const requestRepresentedByTuvalMor = this.isTuvalMorAgent({
+      fullName: registeredAgent.fullName,
+      email: registeredAgent.email,
+    });
 
     await emailService.sendOwnerRepresentationMatchReferralAcknowledgment({
       to: registeredAgent.email,
@@ -4961,6 +4978,7 @@ export class PreMarketService {
         matchedAgentProfile?.brokerageName || "The Corcoran Group",
       matchedAgentEmail: matchedAgent.email,
       matchedAgentPhoneNumber: matchedAgent.phoneNumber || "N/A",
+      requestRepresentedByTuvalMor,
       cc,
     });
   }
@@ -5086,6 +5104,14 @@ export class PreMarketService {
       (agent.email &&
         registeredAgentEmail &&
         agent.email.toLowerCase() === registeredAgentEmail.toLowerCase());
+    const requestRepresentedByTuvalMor = this.isTuvalMorAgent({
+      fullName: registeredAgentFullName,
+      email: registeredAgentEmail,
+    });
+    const matchedAgentIsTuvalMor = this.isTuvalMorAgent({
+      fullName: agent.fullName,
+      email: agent.email,
+    });
 
     if (isRegisteredAgentMatch) {
       await emailService.sendRenterOpportunityFoundByRegisteredAgent({
@@ -5132,6 +5158,8 @@ export class PreMarketService {
         registeredAgentFullName,
         registeredAgentTitle,
         registeredAgentBrokerage,
+        requestRepresentedByTuvalMor,
+        matchedAgentIsTuvalMor,
         cc: agentAckCcEmails,
       });
     }

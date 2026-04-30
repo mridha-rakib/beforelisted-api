@@ -1310,11 +1310,18 @@ export function matchReferralAcknowledgmentToMatchingAgentTemplate(
   registeredAgentTitle: string,
   registeredAgentBrokerage: string,
   logoUrl?: string,
-  brandColor: string = "#1890FF"
+  brandColor: string = "#1890FF",
+  referralAgreement?: {
+    variant: "16A" | "16B" | "16C";
+    facilitatorRegisteredLink?: string;
+    registeredAgentLink?: string;
+    facilitatorLink?: string;
+  },
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = matchedAgentName?.trim().split(" ")[0] || matchedAgentName;
   const safeFirstName = escapeHtml(firstName || "Agent");
+  const safeMatchedAgentFullName = escapeHtml(matchedAgentName || "N/A");
   const safeRenterFullName = escapeHtml(renterFullName || "N/A");
   const safeRegisteredAgentFullName = escapeHtml(
     registeredAgentFullName || "N/A",
@@ -1323,6 +1330,39 @@ export function matchReferralAcknowledgmentToMatchingAgentTemplate(
   const safeRegisteredAgentBrokerage = escapeHtml(
     registeredAgentBrokerage || "N/A",
   );
+  const safeFacilitatorRegisteredLink = escapeHtml(
+    referralAgreement?.facilitatorRegisteredLink || "",
+  );
+  const safeRegisteredAgentLink = escapeHtml(
+    referralAgreement?.registeredAgentLink || "",
+  );
+  const safeFacilitatorLink = escapeHtml(
+    referralAgreement?.facilitatorLink || "",
+  );
+  const noActionText = referralAgreement
+    ? "No action is required at this time, if and when a transaction proceeds, you will be responsible for completing and submitting the required Corcoran referral documentation in accordance with brokerage procedures."
+    : "No action is required at this time. If and when a transaction proceeds, you will be responsible for completing and submitting the required Corcoran referral documentation in accordance with brokerage procedures.";
+  const referralAgreementMarkup =
+    referralAgreement?.variant === "16A"
+      ? `
+            <p>At closing, ${safeMatchedAgentFullName} is responsible for submitting the following referral agreement:</p>
+
+            <p>Referral agreement (Facilitator &amp; Registered Agent) <a href="${safeFacilitatorRegisteredLink}">link</a></p>
+`
+      : referralAgreement?.variant === "16B"
+        ? `
+            <p>At closing, ${safeMatchedAgentFullName} is responsible for submitting the following referral agreements:</p>
+
+            <p>&bull; Referral agreement (Registered Agent). <a href="${safeRegisteredAgentLink}">link</a><br>
+            &bull; Referral agreement (Facilitator). <a href="${safeFacilitatorLink}">link</a></p>
+`
+        : referralAgreement?.variant === "16C"
+          ? `
+            <p>At closing, ${safeMatchedAgentFullName} is responsible for submitting the following referral agreement:</p>
+
+            <p>&bull; <a href="${safeRegisteredAgentLink}">Submit Registered Agent Referral Agreement</a></p>
+`
+          : "";
 
   return `
 <!DOCTYPE html>
@@ -1330,7 +1370,7 @@ export function matchReferralAcknowledgmentToMatchingAgentTemplate(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Referral Acknowledgment</title>
+    <title>Match Referral Acknowledgment</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -1397,7 +1437,7 @@ export function matchReferralAcknowledgmentToMatchingAgentTemplate(
     <div class="container">
         <div class="header">
             ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
-            <h1>Referral Acknowledgment</h1>
+            <h1>Match Referral Acknowledgment</h1>
         </div>
 
         <div class="content">
@@ -1415,9 +1455,10 @@ export function matchReferralAcknowledgmentToMatchingAgentTemplate(
 
             <p>As outlined in the Agent Agreement, this match is recognized as a referral facilitated through BeforeListed.</p>
 
-            <p>If a transaction results from this referral, any applicable referral fees payable to the registered agent and the facilitating agent will be documented and processed through Corcoran&apos;s standard referral procedures, in accordance with the agreed-upon percentages and subject to brokerage procedures.</p>
+            <p>If a transaction results from this referral, any applicable referral fees payable to the registered agent and the facilitating agent will be documented and processed through Corcoran&rsquo;s standard referral procedures, in accordance with the agreed-upon percentages and subject to brokerage procedures.</p>
 
-            <p>No action is required at this time. If and when a transaction proceeds, you will be responsible for completing and submitting the required Corcoran referral documentation in accordance with brokerage procedures.</p>
+            <p>${noActionText}</p>
+${referralAgreementMarkup}
 
             <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
         </div>
@@ -1446,6 +1487,8 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
   matchedAgentPhoneNumber: string,
   logoUrl?: string,
   brandColor: string = "#1890FF",
+  requestRepresentedByTuvalMor: boolean = false,
+  facilitatorReferralLink?: string,
 ): string {
   const currentYear = new Date().getFullYear();
   const safeRegisteredAgentFirstName = escapeHtml(
@@ -1467,6 +1510,35 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
   const safeMatchedAgentPhoneNumber = escapeHtml(
     matchedAgentPhoneNumber || "N/A",
   );
+  const safeFacilitatorReferralLink = escapeHtml(
+    facilitatorReferralLink || "",
+  );
+  const detailsMarkup = `
+            <div class="details">
+                <p>Renter: ${safeRenterFullName}</p>
+                <p>Request ID: ${safeRequestId}</p>
+                <p>Registered Agent: ${safeRegisteredAgentFullName}, ${safeRegisteredAgentTitle} with ${safeRegisteredAgentBrokerage}</p>
+                <p>Referral Facilitator: Tuval Mor, Licensed Real Estate Salesperson, The Corcoran Group</p>
+                <p>Matched Agent (Owner Representation):<br>${safeMatchedAgentFullName}, ${safeMatchedAgentTitle} with ${safeMatchedAgentBrokerage}</p>
+                <p>Email: ${safeMatchedAgentEmail}</p>
+                <p>Contact Number: ${safeMatchedAgentPhoneNumber}</p>
+            </div>
+`;
+  const closingMarkup = requestRepresentedByTuvalMor
+    ? `
+            <p>You may wish to reach out to the matched agent directly to discuss the opportunity and explore next steps.</p>
+`
+    : `
+            <p>You may wish to reach out to the matched agent directly to discuss the opportunity and explore next steps.</p>
+
+            <p>Referral reminder:</p>
+
+            <p>If you choose to assist this renter whether through or outside the website, and a transaction results, referral fees will apply as outlined in the BeforeListed&trade; Agent Agreement, subject to brokerage approval and payable only upon closing.</p>
+
+            <p>At closing, ${safeRegisteredAgentFullName} is responsible for submitting the following referral agreement:</p>
+
+            <p>&bull; <a href="${safeFacilitatorReferralLink}">Submit Facilitator Referral Agreement</a></p>
+`;
 
   return `
 <!DOCTYPE html>
@@ -1553,21 +1625,8 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
 
             <p>This email confirms that a renter request you registered has been matched through the BeforeListed&trade; service.</p>
 
-            <div class="details">
-                <p>Renter: ${safeRenterFullName}</p>
-                <p>Request ID: ${safeRequestId}</p>
-                <p>Registered Agent: ${safeRegisteredAgentFullName}, ${safeRegisteredAgentTitle} with ${safeRegisteredAgentBrokerage}</p>
-                <p>Referral Facilitator: Tuval Mor, Licensed Real Estate Salesperson, The Corcoran Group</p>
-                <p>Matched Agent (Owner Representation):<br>${safeMatchedAgentFullName}, ${safeMatchedAgentTitle} with ${safeMatchedAgentBrokerage}</p>
-                <p>Email: ${safeMatchedAgentEmail}</p>
-                <p>Contact Number: ${safeMatchedAgentPhoneNumber}</p>
-            </div>
-
-            <p>You may wish to reach out to the matched agent directly to discuss the opportunity and explore next steps.</p>
-
-            <p><strong>Referral reminder:</strong></p>
-
-            <p>If you choose to assist this renter whether through or outside the website, and a transaction results, referral fees will apply as outlined in the BeforeListed&trade; Agent Agreement, subject to brokerage approval and payable only upon closing.</p>
+${detailsMarkup}
+${closingMarkup}
 
             <p>If you have any questions, you may reply directly to this email.</p>
 
