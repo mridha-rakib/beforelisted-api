@@ -1551,9 +1551,23 @@ export class EmailService {
 
       const html = renterRequestClosedAgentAlertTemplate(
         payload.agentName,
+        payload.renterFullName,
+        payload.renterEmail,
+        payload.renterPhoneNumber,
         payload.requestId,
         payload.reason,
         payload.closedAt,
+        payload.marketScope,
+        payload.minPrice,
+        payload.maxPrice,
+        payload.earliestDate,
+        payload.latestDate,
+        payload.bedrooms,
+        payload.bathrooms,
+        payload.location,
+        payload.features,
+        payload.preferencesByOrder,
+        payload.submittedAt,
         this.config.logoUrl,
         this.config.brandColor,
       );

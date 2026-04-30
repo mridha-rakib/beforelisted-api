@@ -148,9 +148,23 @@ export interface IOwnerRepresentationMatchReferralAcknowledgmentPayload {
 export interface IRenterRequestClosedAgentAlertPayload {
   to: string;
   agentName: string;
+  renterFullName: string;
+  renterEmail: string;
+  renterPhoneNumber: string;
   requestId: string;
   reason: string;
   closedAt: string;
+  marketScope: string;
+  minPrice: string;
+  maxPrice: string;
+  earliestDate: string;
+  latestDate: string;
+  bedrooms: string;
+  bathrooms: string;
+  location: string;
+  features: string;
+  preferencesByOrder: string;
+  submittedAt: string;
   cc?: string[];
 }
 

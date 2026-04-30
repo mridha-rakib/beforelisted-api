@@ -610,7 +610,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
       .findOne({ userId })
       .populate({
         path: "userId",
-        select: "profileImageUrl",
+        select: "profileImageUrl fullName email phoneNumber",
       })
       .populate({
         path: "referredByAgentId",

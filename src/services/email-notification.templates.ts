@@ -1648,18 +1648,46 @@ ${closingMarkup}
  */
 export function renterRequestClosedAgentAlertTemplate(
   agentName: string,
+  renterFullName: string,
+  renterEmail: string,
+  renterPhoneNumber: string,
   requestId: string,
   reason: string,
   closedAt: string,
+  marketScope: string,
+  minPrice: string,
+  maxPrice: string,
+  earliestDate: string,
+  latestDate: string,
+  bedrooms: string,
+  bathrooms: string,
+  location: string,
+  features: string,
+  preferencesByOrder: string,
+  submittedAt: string,
   logoUrl?: string,
   brandColor: string = "#1890FF"
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = agentName?.trim().split(" ")[0] || agentName;
   const safeFirstName = escapeHtml(firstName || "Agent");
+  const safeRenterFullName = escapeHtml(renterFullName || "N/A");
+  const safeRenterEmail = escapeHtml(renterEmail || "N/A");
+  const safeRenterPhoneNumber = escapeHtml(renterPhoneNumber || "N/A");
   const safeRequestId = escapeHtml(requestId || "N/A");
   const safeReason = escapeHtml(reason || "N/A");
   const safeClosedAt = escapeHtml(closedAt || "N/A");
+  const safeMarketScope = escapeHtml(marketScope || "N/A");
+  const safeMinPrice = escapeHtml(minPrice || "N/A");
+  const safeMaxPrice = escapeHtml(maxPrice || "N/A");
+  const safeEarliestDate = escapeHtml(earliestDate || "N/A");
+  const safeLatestDate = escapeHtml(latestDate || "N/A");
+  const safeBedrooms = escapeHtml(bedrooms || "N/A");
+  const safeBathrooms = escapeHtml(bathrooms || "N/A");
+  const safeLocation = escapeHtml(location || "N/A");
+  const safeFeatures = escapeHtml(features || "N/A");
+  const safePreferencesByOrder = escapeHtml(preferencesByOrder || "N/A");
+  const safeSubmittedAt = escapeHtml(submittedAt || "N/A");
 
   return `
 <!DOCTYPE html>
@@ -1723,6 +1751,12 @@ export function renterRequestClosedAgentAlertTemplate(
             display: inline-block;
             min-width: 120px;
         }
+        .section-title {
+            color: ${brandColor};
+            font-size: 16px;
+            font-weight: 700;
+            margin: 24px 0 10px 0;
+        }
         .footer {
             background-color: #f9f9f9;
             padding: 20px;
@@ -1750,19 +1784,36 @@ export function renterRequestClosedAgentAlertTemplate(
 
             <p>A renter intake request associated with you has been closed on BeforeListed&trade;.</p>
 
+            <div class="section-title">Renter contact information:</div>
             <div class="details">
                 <p>
-                    <strong>Request ID:</strong><br>
-                    ${safeRequestId}
+                    <strong>Name:</strong><br>
+                    ${safeRenterFullName}
                 </p>
                 <p>
-                    <strong>Reason:</strong><br>
-                    ${safeReason}
+                    <strong>Email:</strong><br>
+                    ${safeRenterEmail}
                 </p>
                 <p>
-                    <strong>Date Closed:</strong><br>
-                    ${safeClosedAt}
+                    <strong>Phone:</strong><br>
+                    ${safeRenterPhoneNumber}
                 </p>
+            </div>
+
+            <div class="section-title">Request details:</div>
+            <div class="details">
+                <p><strong>Request ID:</strong><br>${safeRequestId}</p>
+                <p><strong>Reason: ${safeReason}</strong></p>
+                <p><strong>Date Closed: ${safeClosedAt}</strong></p>
+                <p><strong>Market Scope:</strong><br>${safeMarketScope}</p>
+                <p><strong>Budget:</strong><br>${safeMinPrice} - ${safeMaxPrice}</p>
+                <p><strong>Move Date:</strong><br>${safeEarliestDate} - ${safeLatestDate}</p>
+                <p><strong>Bedrooms:</strong><br>${safeBedrooms}</p>
+                <p><strong>Bathrooms:</strong><br>${safeBathrooms}</p>
+                <p><strong>Location:</strong><br>${safeLocation}</p>
+                <p><strong>Features:</strong><br>${safeFeatures}</p>
+                <p><strong>Preferences By Order:</strong><br>${safePreferencesByOrder}</p>
+                <p><strong>Submitted:</strong><br>${safeSubmittedAt}</p>
             </div>
 
             <p>No further outreach is required for this request.</p>

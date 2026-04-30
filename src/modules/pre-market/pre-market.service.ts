@@ -74,8 +74,8 @@ const ARCHIVE_REASON_LABELS: Record<AgentArchiveReason, string> = {
   client_placed: "Client Placed",
 };
 
-const SEARCH_CONFIRMATION_INTERVAL_MS = 15 * 24 * 60 * 60 * 1000;
-const SEARCH_CONFIRMATION_EXPIRY_MS = 3 * 24 * 60 * 60 * 1000;
+const SEARCH_CONFIRMATION_INTERVAL_MS = 14 * 24 * 60 * 60 * 1000;
+const SEARCH_CONFIRMATION_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 const DEFAULT_REGISTERED_AGENT_EMAIL = SYSTEM_DEFAULT_AGENT.email;
 const DEFAULT_REGISTERED_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
@@ -958,6 +958,32 @@ export class PreMarketService {
 
     const requestId = request.requestId || request._id?.toString() || "";
     const formattedClosedAt = this.formatEasternTime(closedAt);
+    const renter = await this.renterRepository.findRenterWithReferrer(
+      request.renterId.toString(),
+    );
+    const minPrice = this.formatCurrencyUSD(request.priceRange?.min);
+    const maxPrice = this.formatCurrencyUSD(request.priceRange?.max);
+    const bedrooms =
+      Array.isArray(request.bedrooms) && request.bedrooms.length > 0
+        ? request.bedrooms.join(", ")
+        : "Any";
+    const bathrooms =
+      Array.isArray(request.bathrooms) && request.bathrooms.length > 0
+        ? request.bathrooms.join(", ")
+        : "Any";
+    const earliestDate = this.formatDateValue(
+      request.movingDateRange?.earliest,
+    );
+    const latestDate = this.formatDateValue(request.movingDateRange?.latest);
+    const location = this.formatRequestLocations(request.locations);
+    const features = this.formatSharedRequestFeatures(request);
+    const preferencesByOrder =
+      Array.isArray(request.preferences) && request.preferences.length > 0
+        ? request.preferences.map((value) => String(value)).join(", ")
+        : "Not specified";
+    const submittedAt = this.formatEasternTime(
+      request.createdAt ? new Date(request.createdAt) : new Date(),
+    );
 
     for (const recipient of recipients) {
       const shouldNotify = await this.isAgentEmailSubscriptionEnabled(
@@ -975,9 +1001,23 @@ export class PreMarketService {
       await emailService.sendRenterRequestClosedAgentAlert({
         to: recipient.email,
         agentName: recipient.name,
+        renterFullName: renter?.fullName || "N/A",
+        renterEmail: renter?.email || "N/A",
+        renterPhoneNumber: renter?.phoneNumber || "N/A",
         requestId,
         reason,
         closedAt: formattedClosedAt,
+        marketScope: request.scope || "Upcoming",
+        minPrice,
+        maxPrice,
+        earliestDate,
+        latestDate,
+        bedrooms,
+        bathrooms,
+        location,
+        features,
+        preferencesByOrder,
+        submittedAt,
       });
     }
   }
@@ -1022,10 +1062,7 @@ export class PreMarketService {
       request.renterId.toString(),
     );
 
-    if (
-      renter?.registrationType === "agent_referral" &&
-      renter.referredByAgentId
-    ) {
+    if (renter?.referredByAgentId) {
       const referredAgent = renter.referredByAgentId as any;
       const referredAgentId =
         typeof referredAgent === "object" && referredAgent?._id
@@ -1272,9 +1309,21 @@ export class PreMarketService {
         url.searchParams.set("env", "na1");
       }
 
-      const renterName = renter?.fullName?.trim();
-      const renterEmail = renter?.email?.trim();
-      const renterPhone = renter?.phoneNumber?.trim();
+      const renterUser =
+        renter?.userId && typeof renter.userId === "object"
+          ? renter.userId
+          : null;
+      const renterName = (
+        renter?.fullName ||
+        renterUser?.fullName ||
+        ""
+      ).trim();
+      const renterEmail = (renter?.email || renterUser?.email || "").trim();
+      const renterPhone = (
+        renter?.phoneNumber ||
+        renterUser?.phoneNumber ||
+        ""
+      ).trim();
 
       if (renterName) {
         url.searchParams.set("renter_name", renterName);
@@ -1596,8 +1645,9 @@ export class PreMarketService {
       return null;
     }
 
-    if (renter.registrationType === "agent_referral") {
-      return this.normalizeUserId(renter.referredByAgentId);
+    const referredAgentId = this.normalizeUserId(renter.referredByAgentId);
+    if (referredAgentId) {
+      return referredAgentId;
     }
 
     const defaultAgent = await this.getDefaultReferralAgent();
@@ -2192,6 +2242,38 @@ export class PreMarketService {
       return;
     }
 
+    const closedAt = new Date();
+    const activeRequests = requests.filter(
+      (request) =>
+        !request.isDeleted &&
+        request.isActive !== false &&
+        request.status !== "deleted",
+    );
+
+    for (const request of activeRequests) {
+      const preMarketRequestId = request._id?.toString();
+      if (!preMarketRequestId) {
+        continue;
+      }
+
+      try {
+        const matchedAgentIds =
+          await this.getMatchedAgentIdsForClosedAlert(preMarketRequestId);
+
+        await this.notifyAssociatedAgentsRequestClosed(
+          request,
+          "Renter deleted account",
+          closedAt,
+          matchedAgentIds,
+        );
+      } catch (error) {
+        logger.error(
+          { error, requestId: request._id, renterId },
+          "Failed to send request closed alert before renter account deletion",
+        );
+      }
+    }
+
     await this.preMarketRepository.deleteManyByIds(requestIds);
     await this.grantAccessRepository.deleteByPreMarketRequestIds(requestIds);
 
@@ -2693,6 +2775,7 @@ export class PreMarketService {
   async confirmActiveSearchRequest(token: string): Promise<{
     requestId: string;
     confirmedAt: Date;
+    renterFullName: string;
   }> {
     const request =
       await this.preMarketRepository.findByPendingSearchConfirmationToken(token);
@@ -2726,6 +2809,16 @@ export class PreMarketService {
       throw new BadRequestException("This confirmation link has expired.");
     }
 
+    const renter = await this.renterRepository.findRenterWithReferrer(
+      request.renterId.toString(),
+    );
+    const renterUser =
+      renter?.userId && typeof renter.userId === "object"
+        ? renter.userId
+        : null;
+    const renterFullName =
+      renter?.fullName || renterUser?.fullName || "there";
+
     await this.preMarketRepository.updateById(request._id.toString(), {
       searchActivity: {
         ...(request as any).searchActivity,
@@ -2737,6 +2830,7 @@ export class PreMarketService {
     return {
       requestId: request.requestId || request.requestName || request._id.toString(),
       confirmedAt: now,
+      renterFullName,
     };
   }
 
@@ -3045,12 +3139,11 @@ export class PreMarketService {
     );
     const bodyHtml = `
       <p>Hi ${this.escapeEmailHtml(firstName)},</p>
-      <p>As you know, upcoming units often take longer to identify than apartments already on the market.</p>
-      <p>We are currently working on your behalf to identify apartments that match your request that may not yet be publicly advertised.</p>
-      <p>Please confirm that you would like us to continue the search by clicking the link below:</p>
-      <p><a href="${this.escapeEmailHtml(confirmationLink)}">Active Request Confirmation</a></p>
-      <p>After confirming, your request will remain active and the next confirmation check will reset.</p>
-      <p>Please note that if no action is taken, your request on BeforeListed&trade; will automatically be archived in three days.</p>
+      <p>We are currently working on your behalf to identify apartments that match your request, including opportunities that may not yet be publicly advertised.</p>
+      <p>To continue your search, please confirm that you are still actively looking by clicking below:</p>
+      <p><a href="${this.escapeEmailHtml(confirmationLink)}"><strong style="color: #000000;">Confirm My Search</strong></a></p>
+      <p>Once confirmed, your request will remain active and your next confirmation cycle will reset.</p>
+      <p><strong style="color: #000000;">Important:</strong> If no action is taken, your request on BeforeListed&trade; will be automatically archived within 24 hours.</p>
       <p>If you have any questions, you may reply directly to this email.</p>
       <p>Thank you,<br>BeforeListed&trade; Support</p>`;
 
@@ -3058,8 +3151,8 @@ export class PreMarketService {
       to: renter.email,
       renterName: renter.fullName,
       subject:
-        "Please confirm your search to keep your request active - BeforeListed\u2122",
-      headerTitle: "Please confirm your search to keep your request active",
+        "Action Required: Confirm Your Search to Keep Your Request Active (24hrs) \u2013 BeforeListed",
+      headerTitle: "Confirm Your Search to Keep Your Request Active",
       bodyHtml,
       cc,
       replyTo: registeredAgent.email || "support@beforelisted.com",
@@ -3148,20 +3241,19 @@ export class PreMarketService {
       );
       const bodyHtml = `
         <p>Hi ${this.escapeEmailHtml(firstName)},</p>
-        <p>We understand that you did not confirm that you are still searching in response to our last email.</p>
-        <p>Due to this, your request on BeforeListed&trade; has been archived.</p>
-        <p>If this is not correct, please let us know as soon as possible by replying to this email so we may correct it.</p>
-        <p>Please consider adding the BeforeListed&trade; tool again in your next apartment search.</p>
-        <p>If you have any questions, you may reply directly to this email.</p>
-        <p>We wish you the best of luck in your new home!</p>
+        <p>We didn&rsquo;t receive your search confirmation after our last email, so your request on BeforeListed&trade; has been <strong>paused and moved to our archive</strong>.</p>
+        <p>If you&rsquo;re still searching, simply <strong>reply to this email</strong> and we&rsquo;ll reactivate your request right away.</p>
+        <p>Active requests allow agents to continue reaching out to owners on your behalf for upcoming apartments that may not yet be advertised.</p>
+        <p>If your plans have changed, no action is needed.</p>
+        <p>If you&rsquo;d like to continue your search, we&rsquo;re here to help.</p>
         <p>Thank you,<br>BeforeListed&trade; Support</p>`;
 
       await emailService.sendRenterArchiveNotification({
         to: renter.email,
         renterName: renter.fullName,
         subject:
-          "Your request has been archived, search inactive - BeforeListed\u2122",
-        headerTitle: "Your request has been archived, search inactive",
+          "Still Searching? Your Request Was Archived & Search Paused | BeforeListed\u2122",
+        headerTitle: "Your Request Was Paused",
         bodyHtml,
         cc,
         replyTo: registeredAgent.email || "support@beforelisted.com",
@@ -3210,8 +3302,8 @@ export class PreMarketService {
       <p>Hi ${this.escapeEmailHtml(firstName)},</p>
       <p>Your agent ${this.escapeEmailHtml(unarchivingAgent.fullName)} ${this.escapeEmailHtml(unarchivingAgent.title)} with ${this.escapeEmailHtml(unarchivingAgent.brokerage)}, has reactivated your request.</p>
       <p>Your request was previously archived for the following reason:</p>
-      <p>${this.escapeEmailHtml(archivedReasonLabel)}</p>
-      <p>Your request is now active.</p>
+      <p><strong style="color: #000000;">${this.escapeEmailHtml(archivedReasonLabel)}</strong></p>
+      <p><strong style="color: #000000;">Your request is now active.</strong></p>
       <p>If you have any questions, you may reply directly to this email.</p>
       <p>Thank you,<br>BeforeListed&trade; Support</p>`;
 
@@ -3219,7 +3311,7 @@ export class PreMarketService {
       to: renter.email,
       renterName: renter.fullName,
       subject: "Your request is now active \u2013 BeforeListed\u2122",
-      headerTitle: "Your Request Is Now Active",
+      headerTitle: "Your request is now active",
       bodyHtml,
       cc,
       replyTo: registeredAgent.email || "support@beforelisted.com",
