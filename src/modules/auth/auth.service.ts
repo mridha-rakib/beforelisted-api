@@ -511,9 +511,17 @@ export class AuthService {
         result.userType === ROLES.RENTER ? renterRegisteredAgent : undefined,
     });
 
-    if (result.userType === ROLES.RENTER) {
+    if (
+      result.userType === ROLES.RENTER &&
+      renterRegisteredAgent?.email?.toLowerCase() ===
+        SYSTEM_DEFAULT_AGENT.email.toLowerCase()
+    ) {
       logger.info(
-        { userId: user._id, email: user.email },
+        {
+          userId: user._id,
+          email: user.email,
+          registeredAgentEmail: renterRegisteredAgent.email,
+        },
         "Triggering moving discount codes email after renter OTP verification",
       );
 
@@ -542,6 +550,15 @@ export class AuthService {
           "Moving discount codes email failed after renter OTP verification",
         );
       }
+    } else if (result.userType === ROLES.RENTER) {
+      logger.info(
+        {
+          userId: user._id,
+          email: user.email,
+          registeredAgentEmail: renterRegisteredAgent?.email ?? null,
+        },
+        "Skipping moving discount codes email for non-default registered agent",
+      );
     }
 
     return {

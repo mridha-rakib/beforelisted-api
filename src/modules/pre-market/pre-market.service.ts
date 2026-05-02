@@ -75,7 +75,7 @@ const ARCHIVE_REASON_LABELS: Record<AgentArchiveReason, string> = {
 };
 
 const SEARCH_CONFIRMATION_INTERVAL_MS = 14 * 24 * 60 * 60 * 1000;
-const SEARCH_CONFIRMATION_EXPIRY_MS = 24 * 60 * 60 * 1000;
+const SEARCH_CONFIRMATION_EXPIRY_MS = 3 * 24 * 60 * 60 * 1000;
 
 const DEFAULT_REGISTERED_AGENT_EMAIL = SYSTEM_DEFAULT_AGENT.email;
 const DEFAULT_REGISTERED_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
@@ -895,12 +895,15 @@ export class PreMarketService {
     }
 
     const changedFieldDetails = this.buildChangedFieldsSummary(request, payload);
+    const now = new Date();
     const nextPayload = {
       ...(payload as Partial<IPreMarketRequest>),
-      searchActivity: {
-        ...((request as any)?.searchActivity ?? {}),
-        lastRenterUpdatedAt: new Date(),
-      },
+      searchActivity: this.resetSearchConfirmationActivity(
+        (request as any)?.searchActivity,
+        {
+          lastRenterUpdatedAt: now,
+        },
+      ),
     };
 
     // Update
@@ -1500,6 +1503,26 @@ export class PreMarketService {
       pendingConfirmationSentAt: null,
       pendingConfirmationExpiresAt: null,
     };
+  }
+
+  private resetSearchConfirmationActivity(
+    searchActivity: Record<string, any> | null | undefined,
+    updates: Partial<{
+      lastRenterUpdatedAt: Date;
+      lastConfirmedAt: Date;
+    }> = {},
+  ) {
+    return {
+      ...this.clearPendingSearchConfirmationState(searchActivity),
+      ...updates,
+    };
+  }
+
+  getAgentArchiveStatusForRequest(
+    request: IPreMarketRequest | Record<string, any>,
+    agentId: string,
+  ) {
+    return this.getAgentArchiveStatus(request, agentId);
   }
 
   private getOwnerRepresentationStatus(
@@ -2657,11 +2680,12 @@ export class PreMarketService {
     }
 
     await this.preMarketRepository.updateById(requestId, {
-      searchActivity: {
-        ...((request as any)?.searchActivity ?? {}),
-        lastConfirmedAt: new Date(),
-        ...this.clearPendingSearchConfirmationState((request as any)?.searchActivity),
-      },
+      searchActivity: this.resetSearchConfirmationActivity(
+        (request as any)?.searchActivity,
+        {
+          lastConfirmedAt: new Date(),
+        },
+      ),
     } as Partial<IPreMarketRequest>);
 
     const unarchivingAgent = await this.getArchiveAgentInfo(agentId);
@@ -2732,13 +2756,12 @@ export class PreMarketService {
       "search_inactive_automatic",
     );
     await this.preMarketRepository.updateById(requestId, {
-      searchActivity: {
-        ...((request as any)?.searchActivity ?? {}),
-        lastConfirmedAt: new Date(),
-        ...this.clearPendingSearchConfirmationState(
-          (request as any)?.searchActivity,
-        ),
-      },
+      searchActivity: this.resetSearchConfirmationActivity(
+        (request as any)?.searchActivity,
+        {
+          lastConfirmedAt: new Date(),
+        },
+      ),
     } as Partial<IPreMarketRequest>);
 
     const requestLabel =
@@ -2820,11 +2843,12 @@ export class PreMarketService {
       renter?.fullName || renterUser?.fullName || "there";
 
     await this.preMarketRepository.updateById(request._id.toString(), {
-      searchActivity: {
-        ...(request as any).searchActivity,
-        lastConfirmedAt: now,
-        ...this.clearPendingSearchConfirmationState((request as any).searchActivity),
-      },
+      searchActivity: this.resetSearchConfirmationActivity(
+        (request as any).searchActivity,
+        {
+          lastConfirmedAt: now,
+        },
+      ),
     } as Partial<IPreMarketRequest>);
 
     return {

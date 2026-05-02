@@ -291,6 +291,17 @@ export class PreMarketController {
       : null;
     const shouldDisplayMatchedScope =
       await this.preMarketService.shouldDisplayMatchedScopeForRequest(requestId);
+    const archiveStatus = this.preMarketService.getAgentArchiveStatusForRequest(
+      request as any,
+      userId,
+    );
+    const archiveFields = {
+      isArchivedForAgent: archiveStatus.isArchivedForAgent,
+      archiveReason: archiveStatus.archiveReason,
+      archiveReasonLabel: archiveStatus.archiveReasonLabel,
+      archiveSource: archiveStatus.archiveSource,
+      archivedAt: archiveStatus.archivedAt,
+    };
 
     if (agent.hasGrantAccess) {
       const matchRecord = await this.preMarketService.getMatchedAccessRecord(
@@ -327,6 +338,7 @@ export class PreMarketController {
           grantAccessId: matchRecord._id?.toString(),
           accessType: "admin-granted",
           canRequestAccess: false,
+          ...archiveFields,
         });
       }
 
@@ -341,6 +353,7 @@ export class PreMarketController {
         grantAccessStatus,
         accessType: "none",
         canRequestAccess: false,
+        ...archiveFields,
         ...(includeCreatorRenterInfo
           ? {}
           : { message: "Match this request to view renter information" }),
@@ -384,6 +397,7 @@ export class PreMarketController {
       grantAccessStatus: accessSummary.grantAccessStatus,
       grantAccessId: accessSummary.grantAccessId,
       accessType: accessSummary.accessType,
+      ...archiveFields,
       canRequestAccess: accessSummary.canRequestAccess,
       chargeAmount: accessSummary.chargeAmount ?? null,
     };
