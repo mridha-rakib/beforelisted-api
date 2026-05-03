@@ -66,6 +66,8 @@ type MatchRepresentationType =
   | "owner_representation"
   | "renter_representation";
 
+const REGISTRATION_DISCLOSURE_MATCHED_STATUSES = ["approved", "free", "paid"];
+
 const ARCHIVE_REASON_LABELS: Record<AgentArchiveReason, string> = {
   registration_missing: "Registration Missing",
   disclosure_missing: "Disclosure Missing",
@@ -1229,6 +1231,34 @@ export class PreMarketService {
       registrationDisclosureConfirmed: Boolean(confirmation),
       registrationDisclosureConfirmedAt: confirmation?.confirmedAt ?? null,
     };
+  }
+
+  private async ensureAgentCanConfirmRegistrationDisclosure(
+    agentId: string,
+    requestId: string,
+    request: IPreMarketRequest,
+  ): Promise<void> {
+    const registeredAgentId =
+      await this.resolveRegisteredAgentIdForRequest(request);
+    if (registeredAgentId === agentId) {
+      return;
+    }
+
+    const matchedAccess = await this.grantAccessRepository.findByAgentAndRequest(
+      agentId,
+      requestId,
+    );
+    const isMatchedRenterRepresentation = Boolean(
+      matchedAccess &&
+        matchedAccess.representation_type !== "owner_representation" &&
+        REGISTRATION_DISCLOSURE_MATCHED_STATUSES.includes(
+          String(matchedAccess.status),
+        ),
+    );
+
+    if (!isMatchedRenterRepresentation) {
+      throw new ForbiddenException("You have not matched this request yet");
+    }
   }
 
   private getAgentArchiveStatus(
@@ -2452,7 +2482,11 @@ export class PreMarketService {
 
     const request = await this.getRequestById(requestId);
     this.ensureAgentCanViewRequest(agent, request as any);
-    await this.ensureAgentCanViewRequestVisibility(agentId, request as any);
+    await this.ensureAgentCanConfirmRegistrationDisclosure(
+      agentId,
+      requestId,
+      request as any,
+    );
 
     const existingStatus = this.getRegistrationDisclosureStatus(
       request,
