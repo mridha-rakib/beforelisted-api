@@ -952,15 +952,22 @@ export class PreMarketController {
           agentId,
           "grantAccessAgents"
         );
+        const responsePayload =
+          await this.preMarketService.enrichOwnerRepresentationDetailsForAgent(
+            agentId,
+            requestId,
+            request as any,
+            {
+              ...enriched,
+              scope: visibleScope,
+              accessType: "admin-granted",
+              status: "matched",
+              listingStatus: "matched",
+            },
+          );
         return ApiResponse.success(
           res,
-          {
-            ...enriched,
-            scope: visibleScope,
-            accessType: "admin-granted",
-            status: "matched",
-            listingStatus: "matched",
-          },
+          responsePayload,
           "Pre-market request details retrieved"
         );
       }
@@ -1042,15 +1049,23 @@ export class PreMarketController {
         "? Returning full request details to normal agent (paid access)"
       );
 
+      const responsePayload =
+        await this.preMarketService.enrichOwnerRepresentationDetailsForAgent(
+          agentId,
+          requestId,
+          request as any,
+          {
+            ...enriched,
+            scope: visibleScope,
+            accessType: paidAccess.status,
+            status: "matched",
+            listingStatus: "matched",
+          },
+        );
+
       return ApiResponse.success(
         res,
-        {
-          ...enriched,
-          scope: visibleScope,
-          accessType: paidAccess.status,
-          status: "matched",
-          listingStatus: "matched",
-        },
+        responsePayload,
         "Pre-market request details retrieved"
       );
     }
@@ -1163,13 +1178,20 @@ export class PreMarketController {
           request,
           userId
         );
+      const responsePayload =
+        await this.preMarketService.enrichOwnerRepresentationDetailsForAgent(
+          userId,
+          requestId,
+          request as any,
+          {
+            ...enriched,
+            accessType: accessCheck.accessType,
+          },
+        );
 
       ApiResponse.success(
         res,
-        {
-          ...enriched,
-          accessType: accessCheck.accessType,
-        },
+        responsePayload,
         "Pre-market request details"
       );
     }

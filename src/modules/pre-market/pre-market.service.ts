@@ -753,9 +753,14 @@ export class PreMarketService {
               hasOwnerRepresentationMatches: false,
               hasNewOwnerRepresentationMatches: false,
             };
+        const visibleRequest =
+          this.stripOwnerRepresentationMatchesForNonRegisteredAgent(
+            request,
+            isCurrentRegisteredAgent,
+          );
 
         return {
-          ...request,
+          ...visibleRequest,
           scope: visibleScope,
           referralAgentId:
             currentRegisteredAgentId ??
@@ -1586,6 +1591,18 @@ export class PreMarketService {
     return matches.some((match: any) => {
       return this.normalizeUserId(match?.agentId) === agentId;
     });
+  }
+
+  private stripOwnerRepresentationMatchesForNonRegisteredAgent<
+    T extends Record<string, any>,
+  >(payload: T, isRegisteredAgent: boolean): T {
+    if (isRegisteredAgent) {
+      return payload;
+    }
+
+    const { ownerRepresentationMatches: _ownerRepresentationMatches, ...rest } =
+      payload;
+    return rest as T;
   }
 
   private async buildOwnerRepresentationMatches(
@@ -3033,9 +3050,14 @@ export class PreMarketService {
         const archiveStatus = this.getAgentArchiveStatus(request, agentId);
         const registrationDisclosureStatus =
           this.getRegistrationDisclosureStatus(request, agentId);
+        const visibleRequest =
+          this.stripOwnerRepresentationMatchesForNonRegisteredAgent(
+            request,
+            isRegisteredAgent,
+          );
 
         return {
-          ...request,
+          ...visibleRequest,
           scope: this.resolveAgentVisibleScope(
             request.scope,
             globalMatchedScopeRequestIds.has(requestIdValue),
@@ -4014,12 +4036,20 @@ export class PreMarketService {
           request.scope,
           globalMatchedScopeRequestIds.has(request._id?.toString() || ""),
         );
+        const registeredAgentId =
+          await this.resolveRegisteredAgentIdForRequest(request);
+        const isRegisteredAgent = registeredAgentId === agentId;
+        const visibleRequest =
+          this.stripOwnerRepresentationMatchesForNonRegisteredAgent(
+            request,
+            isRegisteredAgent,
+          );
         const archiveStatus = this.getAgentArchiveStatus(request, agentId);
         const registrationDisclosureStatus =
           this.getRegistrationDisclosureStatus(request, agentId);
 
         return {
-          ...request,
+          ...visibleRequest,
           scope: responseScope,
           renterInfo,
           status: accessSummary.grantAccessStatus,
@@ -4137,8 +4167,14 @@ export class PreMarketService {
       ownerRepresentationPayload.ownerRepresentationSelected = true;
     }
 
+    const visibleResponse =
+      this.stripOwnerRepresentationMatchesForNonRegisteredAgent(
+        response,
+        isRegisteredAgent,
+      );
+
     return {
-      ...response,
+      ...visibleResponse,
       ...ownerRepresentationPayload,
     };
   }
@@ -4706,7 +4742,16 @@ export class PreMarketService {
     // Enrich each request with full renter information
     const enrichedData = await Promise.all(
       paginated.data.map(async (request) => {
-        return this.enrichRequestWithFullRenterInfo(request, agentId);
+        const registeredAgentId =
+          await this.resolveRegisteredAgentIdForRequest(request);
+        const enriched = await this.enrichRequestWithFullRenterInfo(
+          request,
+          agentId,
+        );
+        return this.stripOwnerRepresentationMatchesForNonRegisteredAgent(
+          enriched,
+          registeredAgentId === agentId,
+        );
       }),
     );
 
