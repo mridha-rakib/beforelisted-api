@@ -1238,6 +1238,27 @@ export class PreMarketService {
     };
   }
 
+  public async ensureRegisteredAgentCanMatchRequest(
+    agentId: string,
+    request: IPreMarketRequest,
+  ): Promise<void> {
+    const registeredAgentId =
+      await this.resolveRegisteredAgentIdForRequest(request);
+    if (registeredAgentId !== agentId) {
+      return;
+    }
+
+    const registrationStatus = this.getRegistrationDisclosureStatus(
+      request,
+      agentId,
+    );
+    if (!registrationStatus.registrationDisclosureConfirmed) {
+      throw new ForbiddenException(
+        "Registration / Disclosure confirmation is required before matching this request",
+      );
+    }
+  }
+
   private async ensureAgentCanConfirmRegistrationDisclosure(
     agentId: string,
     requestId: string,
@@ -3371,9 +3392,6 @@ export class PreMarketService {
     ]);
     const firstName =
       renter.fullName?.trim().split(/\s+/)[0] || renter.fullName || "there";
-    const archivedReasonLabel = archiveReason
-      ? ARCHIVE_REASON_LABELS[archiveReason]
-      : "Archived";
     const cc = this.buildUniqueEmailList(
       [registeredAgent.email, ...matchedAgents.map((agent) => agent.email)],
       [renter.email],
@@ -3381,8 +3399,6 @@ export class PreMarketService {
     const bodyHtml = `
       <p>Hi ${this.escapeEmailHtml(firstName)},</p>
       <p>Your agent ${this.escapeEmailHtml(unarchivingAgent.fullName)} ${this.escapeEmailHtml(unarchivingAgent.title)} with ${this.escapeEmailHtml(unarchivingAgent.brokerage)}, has reactivated your request.</p>
-      <p>Your request was previously archived for the following reason:</p>
-      <p><strong style="color: #000000;">${this.escapeEmailHtml(archivedReasonLabel)}</strong></p>
       <p><strong style="color: #000000;">Your request is now active.</strong></p>
       <p>If you have any questions, you may reply directly to this email.</p>
       <p>Thank you,<br>BeforeListed&trade; Support</p>`;
@@ -4203,6 +4219,10 @@ export class PreMarketService {
 
     this.ensureAgentCanViewRequest(agent, listingActivationCheck as any);
     await this.ensureAgentCanViewRequestVisibility(
+      agentId,
+      listingActivationCheck as any,
+    );
+    await this.ensureRegisteredAgentCanMatchRequest(
       agentId,
       listingActivationCheck as any,
     );

@@ -1803,8 +1803,8 @@ export function renterRequestClosedAgentAlertTemplate(
             <div class="section-title">Request details:</div>
             <div class="details">
                 <p><strong>Request ID:</strong><br>${safeRequestId}</p>
-                <p><strong>Reason: ${safeReason}</strong></p>
-                <p><strong>Date Closed: ${safeClosedAt}</strong></p>
+                <p><strong style="color: #000000;">Reason: ${safeReason}</strong></p>
+                <p><strong style="color: #000000;">Date Closed: ${safeClosedAt}</strong></p>
                 <p><strong>Market Scope:</strong><br>${safeMarketScope}</p>
                 <p><strong>Budget:</strong><br>${safeMinPrice} - ${safeMaxPrice}</p>
                 <p><strong>Move Date:</strong><br>${safeEarliestDate} - ${safeLatestDate}</p>

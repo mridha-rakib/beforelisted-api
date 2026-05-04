@@ -466,6 +466,10 @@ export class PreMarketController {
       userId,
       request as any,
     );
+    await this.preMarketService.ensureRegisteredAgentCanMatchRequest(
+      userId,
+      request as any,
+    );
 
     const grantAccess = await this.grantAccessService.requestAccess(
       userId,
@@ -1087,6 +1091,10 @@ export class PreMarketController {
       const request = await this.preMarketService.getRequestById(requestId);
       this.preMarketService.ensureAgentCanViewRequest(agent, request as any);
       await this.preMarketService.ensureAgentCanViewRequestVisibility(
+        agentId,
+        request as any,
+      );
+      await this.preMarketService.ensureRegisteredAgentCanMatchRequest(
         agentId,
         request as any,
       );
