@@ -60,7 +60,9 @@ export class AuthService {
   }
 
   /**
-   * Login user (All roles: Admin, Agent, Renter)
+   * Authenticates admins, agents, and renters and returns session tokens plus role-specific context.
+   * Expects email/password and may accept a referral code to repair legacy renter accounts with no referrer.
+   * Can fail for blocked email, invalid credentials, inactive/unverified accounts, inactive agents, missing renter profile, or invalid referral repair.
    */
   async login(
     payload: LoginPayload,
@@ -324,7 +326,9 @@ export class AuthService {
   }
 
   /**
-   * Verify email
+   * Verifies a pending email OTP and activates the email-verified state for the user.
+   * Expects an email/code pair from the verification form and resolves agent/renter follow-up notifications.
+   * Can fail when the OTP is invalid/expired or the user no longer exists; notification/email failures are logged non-blockingly.
    */
   async verifyEmail(payload: VerifyEmailPayload): Promise<{
     message: string;

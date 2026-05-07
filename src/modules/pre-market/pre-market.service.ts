@@ -365,6 +365,11 @@ export class PreMarketService {
     return this.buildAgentAccessSummary(grantAccess, hasGrantAccess);
   }
 
+  /**
+   * Creates a renter's active pre-market request and initializes ownership, visibility, and search-confirmation state.
+   * Expects a renter user ID, valid move dates, valid price range, locations, and referral-backed renter profile.
+   * Can fail when the renter is missing/blocked, the referred agent is unavailable, the renter already has an active request, or required referral ownership is missing.
+   */
   async createRequest(
     renterId: string,
     payload: {
@@ -872,6 +877,11 @@ export class PreMarketService {
   // UPDATE REQUEST (RENTER ONLY)
   // ============================================
 
+  /**
+   * Updates a renter-owned pre-market request and resets search-confirmation tracking.
+   * Expects the renter user ID, request ID, and partial request payload from the renter dashboard.
+   * Can fail when the request is missing, owned by another renter, or date/price updates are invalid.
+   */
   async updateRequest(
     renterId: string,
     requestId: string,
@@ -2264,6 +2274,11 @@ export class PreMarketService {
   // DELETE REQUEST (RENTER ONLY)
   // ============================================
 
+  /**
+   * Soft-deletes a renter-owned request and notifies associated agents/renter about closure.
+   * Expects the renter user ID and request ID for an existing request.
+   * Can fail when the request is missing, belongs to another renter, or cleanup of related grant-access records fails.
+   */
   async deleteRequest(renterId: string, requestId: string): Promise<void> {
     const request = await this.getRequestById(requestId);
 
@@ -2316,6 +2331,11 @@ export class PreMarketService {
 
   }
 
+  /**
+   * Removes all requests for a renter during account deletion.
+   * Expects a renter user ID and deletes request records plus related grant-access records.
+   * Can fail when repository deletion fails; notification failures before deletion are logged and do not stop cleanup.
+   */
   async deleteRequestsByRenterId(renterId: string): Promise<void> {
     const requests = await this.preMarketRepository.findAllByRenterId(
       renterId,
@@ -2395,6 +2415,11 @@ export class PreMarketService {
   // VISIBILITY (AGENT-OWNED)
   // ============================================
 
+  /**
+   * Toggles a request between private and shared visibility for the registered agent.
+   * Expects the registered agent user ID and request ID.
+   * Can fail when the agent is not the registered agent or sharing rules block the target visibility.
+   */
   async toggleRequestShareVisibility(
     agentId: string,
     requestId: string,
@@ -2418,6 +2443,11 @@ export class PreMarketService {
     return this.updateRequestVisibility(agentId, requestId, nextVisibility);
   }
 
+  /**
+   * Sets explicit request visibility after enforcing renter consent and registration/disclosure confirmation.
+   * Expects the registered agent user ID, request ID, and desired visibility state.
+   * Can fail when the request is archived, consent is missing, disclosure is unconfirmed, or the request cannot be saved.
+   */
   async updateRequestVisibility(
     agentId: string,
     requestId: string,
@@ -2505,6 +2535,11 @@ export class PreMarketService {
     return updated;
   }
 
+  /**
+   * Records that an agent confirmed registration/disclosure requirements for a request.
+   * Expects an agent user ID and request ID that the agent is allowed to view.
+   * Can fail when the agent/request is missing, access rules deny the action, or the confirmation update cannot be read back.
+   */
   async confirmRegistrationDisclosure(
     agentId: string,
     requestId: string,
@@ -2560,6 +2595,11 @@ export class PreMarketService {
     };
   }
 
+  /**
+   * Archives a request from an agent's workflow for a specific business reason.
+   * Expects an agent user ID, request ID, and reason allowed for that agent's relationship to the request.
+   * Can fail when the agent cannot view/archive the request, the reason is invalid, or registration/disclosure prerequisites conflict with the reason.
+   */
   async archiveRequestForAgent(
     agentId: string,
     requestId: string,
@@ -2712,6 +2752,11 @@ export class PreMarketService {
     };
   }
 
+  /**
+   * Restores an archived request back into an agent's active workflow.
+   * Expects an agent user ID and request ID for a request archived by/for that agent.
+   * Can fail when the agent cannot view the request, the request is not archived for them, or required registration/disclosure links are still missing.
+   */
   async unarchiveRequestForAgent(
     agentId: string,
     requestId: string,
@@ -2780,6 +2825,11 @@ export class PreMarketService {
     };
   }
 
+  /**
+   * Lets a renter reactivate a search after search-inactive archival.
+   * Expects the renter user ID and their request ID.
+   * Can fail when the request belongs to another renter, there are no inactive archives to restore, or notifications fail non-blockingly.
+   */
   async reactivateSearchForRenter(
     renterId: string,
     requestId: string,
@@ -2867,6 +2917,11 @@ export class PreMarketService {
     };
   }
 
+  /**
+   * Confirms that a renter's search is still active from an emailed confirmation token.
+   * Expects a valid pending confirmation token.
+   * Can fail when the token is invalid, expired, already used, or tied to a deleted/inactive request.
+   */
   async confirmActiveSearchRequest(token: string): Promise<{
     requestId: string;
     confirmedAt: Date;
@@ -2930,6 +2985,11 @@ export class PreMarketService {
     };
   }
 
+  /**
+   * Runs the scheduled sweep that archives stale searches or sends confirmation reminders.
+   * Expects no direct input and processes requests due for search-activity checks.
+   * Can fail per request while continuing the sweep; individual reminder/archive errors are counted and logged.
+   */
   async processAutomaticSearchConfirmationSweep(): Promise<{
     remindersSent: number;
     archivedRequests: number;
@@ -4195,6 +4255,11 @@ export class PreMarketService {
     };
   }
 
+  /**
+   * Converts an agent's selection into either an owner-representation match or a free renter-representation grant-access record.
+   * Expects an agent user ID, active request ID, and representation type selected from the agent UI.
+   * Can fail when the agent lacks permission, the listing is inactive, visibility rules block matching, or notification side effects fail non-blockingly.
+   */
   async matchRequestForAgent(
     agentId: string,
     requestId: string,
@@ -4905,6 +4970,11 @@ export class PreMarketService {
   /**
    * Now returns listings WITH or WITHOUT renter info based on access
    */
+  /**
+   * Lists requests visible to a normal agent, hiding renter info until access is approved.
+   * Expects an agent user ID and pagination/filter query.
+   * Can fail when the agent profile is missing or visibility/access enrichment lookups fail.
+   */
   async getAvailableRequestsForNormalAgents(
     agentId: string,
     query: PaginationQuery,
@@ -4980,6 +5050,11 @@ export class PreMarketService {
     };
   }
 
+  /**
+   * Returns full request details for an agent only after grant-access rules allow it.
+   * Expects an agent user ID and request ID.
+   * Can fail when the request/agent is missing, access is pending/rejected/unpaid, or the agent is not allowed to view the request.
+   */
   async getRequestDetailsForAgent(
     agentId: string,
     requestId: string,
@@ -5040,6 +5115,11 @@ export class PreMarketService {
     throw new ForbiddenException("You do not have access to this request");
   }
 
+  /**
+   * Determines whether an agent can see renter info for a specific request.
+   * Expects an agent user ID and request ID; reconciles pending Stripe payment status when needed.
+   * Can return no access when payment is unpaid/rejected or log a warning if payment reconciliation fails.
+   */
   public async checkAgentAccessToRequest(
     agentId: string,
     requestId: string,
@@ -5102,6 +5182,11 @@ export class PreMarketService {
     };
   }
 
+  /**
+   * Finds the paid/free grant-access record that proves an agent is matched to a request.
+   * Expects an agent user ID and request ID.
+   * Can return null when no active free or paid match exists.
+   */
   async getMatchedAccessRecord(
     agentId: string,
     requestId: string,
@@ -5471,6 +5556,11 @@ export class PreMarketService {
    * Get renter's specific pre-market request
    * Only the renter who owns it can view
    */
+  /**
+   * Returns one request to the renter who owns it.
+   * Expects a renter user ID and request ID.
+   * Can fail when the request is missing or belongs to another renter.
+   */
   async getRenterRequestById(
     renterId: string,
     requestId: string,
@@ -5501,9 +5591,9 @@ export class PreMarketService {
   // ============================================
 
   /**
-   * Admin can delete any pre-market request
-   * Hard delete - removes from DB
-   * Related grant access records are also removed
+   * Soft-deletes any request from the admin dashboard and removes related grant-access records.
+   * Expects a request ID selected by an admin.
+   * Can fail when the request is missing or cleanup persistence fails; notifications run non-blockingly.
    */
   async adminDeleteRequest(requestId: string): Promise<void> {
     const request = await this.preMarketRepository.findById(requestId);
@@ -5571,11 +5661,9 @@ export class PreMarketService {
   // ============================================
 
   /**
-   * Toggle listing activation status (Admin or Renter)
-   * @param listingId - Pre-market listing ID
-   * @param isActive - New activation status
-   * @param userId - User performing action
-   * @param userRole - User role (Admin or Renter)
+   * Activates or deactivates a listing from the admin or owning renter flow.
+   * Expects a listing ID, target active state, acting user ID, and role.
+   * Can fail when the listing is missing, a renter does not own it, or the actor is not an admin/renter.
    */
   async toggleListingActivation(
     listingId: string,
@@ -5679,6 +5767,11 @@ export class PreMarketService {
    * @param renterId - Renter ID
    * @param includeInactive - Include deactivated listings
    */
+  /**
+   * Lists all pre-market requests owned by a renter.
+   * Expects a renter user ID and pagination query from the renter dashboard.
+   * Can fail when repository pagination or request lookup fails.
+   */
   async getRenterListings(
     renterId: string,
     includeInactive: boolean = true,
@@ -5689,6 +5782,11 @@ export class PreMarketService {
     );
   }
 
+  /**
+   * Lists renter requests with their visible matched/grant-access agent details.
+   * Expects a renter user ID and pagination query from the renter dashboard.
+   * Can fail when request lookup, grant-access lookup, or agent enrichment fails.
+   */
   async getRenterRequestsWithAgents(
     renterId: string,
     query: PaginationQuery,
@@ -5836,6 +5934,11 @@ export class PreMarketService {
     };
   }
 
+  /**
+   * Builds renter identity and referral context for request-detail responses.
+   * Expects a renter user ID attached to a pre-market request.
+   * Can return null when the renter no longer exists or fail if referral lookups error.
+   */
   private async getRenterInfoForRequest(renterId: string) {
     const renter = await this.renterRepository.findRenterWithReferrer(renterId);
 
@@ -5931,6 +6034,11 @@ export class PreMarketService {
     };
   }
 
+  /**
+   * Resolves the agent/admin referral information shown alongside renter requests.
+   * Expects a renter user ID and checks both agent and admin referral relationships.
+   * Can return null when the renter has no referrer or the referenced referrer no longer exists.
+   */
   private async getReferralInfoForRenter(renterId: string) {
     const renter = await this.renterRepository.findRenterWithReferrer(renterId);
 

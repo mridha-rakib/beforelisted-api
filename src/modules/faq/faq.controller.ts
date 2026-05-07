@@ -51,9 +51,10 @@ export class FAQController {
   getAllFAQsForAdmin = asyncHandler(async (req: Request, res: Response) => {
     const faqs = await this.faqService.getAllFAQs(false);
 
-    console.log("++++++++++++++++++++++++++++++++++++++++");
-    console.log("Admin accessed all FAQs", faqs);
-    console.log("++++++++++++++++++++++++++++++++++++++++");
+    logger.info(
+      { adminId: req.user?.userId, count: faqs.length },
+      "Admin accessed all FAQs"
+    );
 
     ApiResponse.success(res, faqs, "All FAQs retrieved for admin");
   });

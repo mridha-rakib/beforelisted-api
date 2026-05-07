@@ -44,6 +44,11 @@ export class GrantAccessService {
     return await this.preMarketRepository.getRequestById(requestId);
   }
 
+  /**
+   * Adds full renter and referrer details to a pre-market request for authorized agent views.
+   * Expects a request with renterId and the viewing agent user ID.
+   * Can return null renter info when the renter profile is missing or fail if referral lookups error.
+   */
   public async enrichRequestWithFullRenterInfo(
     request: IPreMarketRequest,
     agentId: string
@@ -111,6 +116,11 @@ export class GrantAccessService {
     };
   }
 
+  /**
+   * Creates a pending grant-access request for an agent to view renter information.
+   * Expects an agent user ID, active pre-market request ID, and selected representation type.
+   * Can fail when the listing is missing/inactive, an access request already exists, or persistence/notification fails.
+   */
   async requestAccess(
     agentId: string,
     preMarketRequestId: string,
@@ -225,6 +235,11 @@ export class GrantAccessService {
     return grantAccess;
   }
 
+  /**
+   * Applies an admin decision to a grant-access request: reject, approve free, or approve with charge.
+   * Expects a grant-access ID and admin decision payload with required charge amount when charging.
+   * Can fail when the request is missing, the charge amount is invalid, or persistence/payment-link operations fail; notifications are best-effort.
+   */
   async adminDecideAccess(
     grantAccessId: string,
     decision: {
@@ -455,6 +470,11 @@ export class GrantAccessService {
   // CREATE PAYMENT INTENT
   // ============================================
 
+  /**
+   * Creates a Stripe payment intent for an approved paid grant-access request.
+   * Expects a grant-access ID whose payment state is approved or pending with payment metadata.
+   * Can fail when the grant-access request is missing, payment state is invalid, or Stripe intent creation fails.
+   */
   async createPaymentIntent(
     grantAccessId: string
   ): Promise<{ clientSecret: string; amount: number }> {

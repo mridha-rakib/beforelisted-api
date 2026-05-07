@@ -26,9 +26,9 @@ export class ReferralService {
   }
 
   /**
-   * Validate referral code and get referrer
-   * @throws NotFoundException if code invalid
-   * @throws BadRequestException if referrer can't refer
+   * Validates a referral code and returns the admin or agent who owns it.
+   * Expects a formatted referral code from signup/login; the owner must exist and be allowed to refer.
+   * Can fail when the code is malformed, missing from the database, deleted, the wrong role, or an inactive agent.
    */
   async validateReferralCode(referralCode: string): Promise<IUser> {
     // Validate format
@@ -75,7 +75,9 @@ export class ReferralService {
   }
 
   /**
-   * Generate referral code for user (admin or agent)
+   * Creates and stores a unique referral code for an admin or agent user.
+   * Expects an existing user ID and a role that can refer renters.
+   * Can fail if the user update fails or the repository cannot allocate a unique code.
    */
   async generateReferralCode(
     userId: string,
@@ -92,14 +94,18 @@ export class ReferralService {
   }
 
   /**
-   * Increment referral count for referrer
+   * Records that a valid referral link was used.
+   * Expects a referrer user ID that has already passed validation.
+   * Can fail if the referrer no longer exists or the counter update cannot be saved.
    */
   async recordReferral(referrerId: string): Promise<void> {
     await this.userRepository.incrementReferralCount(referrerId);
   }
 
   /**
-   * Get referrer's referral statistics
+   * Builds referral stats for dashboard display.
+   * Expects a user ID for an admin or agent; returns their code, links, and referred users.
+   * Can fail when the user is missing.
    */
   async getReferralStats(userId: string): Promise<{
     totalReferrals: number;
@@ -128,7 +134,9 @@ export class ReferralService {
   }
 
   /**
-   * Extract referrer role from referral code
+   * Maps a referral code prefix to the role that owns that code.
+   * Expects a formatted code string; unsupported prefixes return null.
+   * Can return null when callers pass a malformed or non-referral value.
    */
   extractReferrerRole(
     referralCode: string

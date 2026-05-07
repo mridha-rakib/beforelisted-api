@@ -1411,7 +1411,6 @@ export class PreMarketNotifier {
           (adminNotificationCreated ? " and 1 admin notification" : ""),
       };
     } catch (error) {
-      console.log("Error creating in-app notifications:", error);
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),

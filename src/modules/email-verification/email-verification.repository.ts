@@ -96,7 +96,10 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
     }
 
     if (userType) {
-      console.log("With userType:", userType);
+      logger.debug(
+        { userType },
+        "Filtering active email verification OTP by user type"
+      );
     }
 
     const record = await EmailVerificationOTP.findOne(query).sort({

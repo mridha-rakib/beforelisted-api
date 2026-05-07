@@ -324,9 +324,12 @@ export class NotificationService {
         return;
       }
 
-      console.log(
-        "Admins to notify:",
-        admins.map((a) => a._id.toString())
+      logger.debug(
+        {
+          adminIds: admins.map((admin) => admin._id.toString()),
+          adminCount: admins.length,
+        },
+        "Admins selected for grant access notification"
       );
 
       const notificationPromises = admins.map((admin) =>

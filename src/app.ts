@@ -23,49 +23,6 @@ import { PreMarketController } from "./modules/pre-market/pre-market.controller.
 const app: Application = express();
 const controller = new PreMarketController();
 
-// app.use(
-//   cors({
-//     origin: ["https://beforelisted.com", "https://dashboard.beforelisted.com"],
-//     credentials: true,
-//   })
-// );
-
-// app.use(
-//   cors({
-//     origin: (origin, callback) => {
-//       if (!origin) {
-//         callback(null, true);
-//         return;
-//       }
-
-//       const allowedOrigins = new Set([
-//         "https://beforelisted.com",
-//         "https://www.beforelisted.com",
-//         "https://dashboard.beforelisted.com",
-//         "http://localhost:3000",
-//         "http://localhost:3001",
-//         "*",
-//       ]);
-
-//       if (allowedOrigins.has(origin)) {
-//         callback(null, true);
-//         return;
-//       }
-
-//       callback(new Error(`CORS blocked for origin: ${origin}`));
-//     },
-//     credentials: true,
-//     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-//     allowedHeaders: [
-//       "Content-Type",
-//       "Authorization",
-//       "X-Requested-With",
-//       "Accept",
-//       "Origin",
-//     ],
-//   }),
-// );
-
 const allowedOrigins = new Set([
   env.CLIENT_URL,
   "https://beforelisted.com",
@@ -77,7 +34,6 @@ const allowedOrigins = new Set([
   "http://localhost:3001",
   "http://localhost:3002",
   "http://127.0.0.1:6060",
-  "https://craps-work-mating-encouraging.trycloudflare.com",
 ]);
 
 app.use(

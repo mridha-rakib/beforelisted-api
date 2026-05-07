@@ -35,6 +35,11 @@ export class ReferralParser {
   private static readonly CODE_PATTERN = /^(AGT|ADM)-[A-Z0-9]{8}$/;
   private static readonly PREFIX_PATTERN = /^([A-Z]{3})-/;
 
+  /**
+   * Converts an optional referral code into a registration type.
+   * Expects codes like AGT-XXXXXXXX or ADM-XXXXXXXX; missing codes mean normal registration.
+   * Can fail validation when the prefix or code shape is wrong, but it does not throw.
+   */
   static parse(referralCode?: string): ParsedReferral {
     if (!referralCode) {
       return {
@@ -81,21 +86,41 @@ export class ReferralParser {
     };
   }
 
+  /**
+   * Reads the three-letter referral prefix without validating the full code.
+   * Expects a non-empty code string; invalid or unsupported formats return null.
+   * Can misclassify nothing by design because callers must still validate the full code.
+   */
   static extractPrefix(code: string): ReferralPrefix | null {
     const match = code.match(this.PREFIX_PATTERN);
     return (match?.[1] as ReferralPrefix) || null;
   }
 
+  /**
+   * Checks whether a referral code routes registration through an agent.
+   * Expects an optional code from the request or URL; missing and invalid codes return false.
+   * Can log validation warnings indirectly through parse when a malformed code is supplied.
+   */
   static isAgentReferral(referralCode?: string): boolean {
     if (!referralCode) return false;
     return this.parse(referralCode).type === "agent_referral";
   }
 
+  /**
+   * Checks whether a referral code routes registration through an admin invite.
+   * Expects an optional code from the request or URL; missing and invalid codes return false.
+   * Can log validation warnings indirectly through parse when a malformed code is supplied.
+   */
   static isAdminReferral(referralCode?: string): boolean {
     if (!referralCode) return false;
     return this.parse(referralCode).type === "admin_referral";
   }
 
+  /**
+   * Produces a caller-friendly validation result for referral-gated registration.
+   * Expects an optional code; no code is valid only for normal registration paths.
+   * Can return an error message when a supplied code does not match the expected pattern.
+   */
   static validate(code?: string): ReferralValidationResult {
     const parsed = this.parse(code);
 

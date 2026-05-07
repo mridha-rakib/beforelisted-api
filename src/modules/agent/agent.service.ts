@@ -59,6 +59,11 @@ export class AgentService {
     this.blockedEmailService = new BlockedEmailService();
   }
 
+  /**
+   * Registers a new agent account and creates the matching agent profile.
+   * Expects a unique email, unique license number, password, and optional request context for blocked-email checks.
+   * Can fail when the email is blocked, already registered, license is reused, OTP creation fails, or referral code generation fails.
+   */
   async registerAgent(
     payload: AgentRegisterPayload,
     context?: { ipAddress?: string | null },
@@ -145,7 +150,9 @@ export class AgentService {
   }
 
   /**
-   * Create agent profile (INTERNAL)
+   * Creates an agent profile for an existing user record.
+   * Expects a user ID and unique license number from a trusted internal flow.
+   * Can fail when the license number is already tied to another profile.
    */
   async createAgentProfile(
     userId: string | Types.ObjectId,
@@ -188,6 +195,11 @@ export class AgentService {
     return this.toResponse(profile);
   }
 
+  /**
+   * Updates the agent profile fields and mirrors shared identity fields onto the user record.
+   * Expects an agent user ID plus editable profile/user fields from the profile form.
+   * Can fail when the agent profile is missing or the follow-up read cannot find the updated profile.
+   */
   async updateAgentProfile(
     userId: string,
     payload: UpdateAgentProfilePayload,
@@ -466,8 +478,9 @@ export class AgentService {
   }
 
   /**
-   * Toggle agent access
-   * Automatically switches between grant and revoke
+   * Grants or revokes an agent's broad grant-access permission from the admin panel.
+   * Expects an agent profile ID, admin user ID, and optional audit reason.
+   * Can fail when the ID is missing, the agent profile does not exist, or the repository update fails.
    */
   async toggleAccess(
     agentId: string,
@@ -543,6 +556,11 @@ export class AgentService {
     };
   }
 
+  /**
+   * Toggles an agent between active and inactive after first-time activation is complete.
+   * Expects an agent user/profile ID, admin ID, and optional reason; activation requires both PowerForm links.
+   * Can fail for missing agent/user records, first activation without the link flow, or missing required links.
+   */
   async toggleAgentActive(
     userId: string,
     adminId: string,
@@ -690,6 +708,11 @@ export class AgentService {
     };
   }
 
+  /**
+   * Performs first-time agent activation once registration and disclosure links are supplied.
+   * Expects an agent user/profile ID, admin ID, and activation/disclosure links from the admin form.
+   * Can fail when the agent or user is missing, required links are incomplete, or activation persistence fails.
+   */
   async activateAgentWithLink(
     userId: string,
     adminId: string,
@@ -903,8 +926,9 @@ export class AgentService {
   }
 
   /**
-   * Delete agent profile (hard delete)
-   * Permanently removes Agent profile and User
+   * Permanently deletes an agent profile and user account, then cleans up dependent referral/match data.
+   * Expects an agent user ID; the system default assigned agent is protected from deletion.
+   * Can fail when the profile is missing, the default agent is targeted, cleanup fails, or deletion emails fail non-blockingly.
    */
   async deleteAgentProfile(userId: string): Promise<{ message: string }> {
     const profile = await this.repository.findByUserId(userId);

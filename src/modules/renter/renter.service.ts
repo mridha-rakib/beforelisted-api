@@ -59,6 +59,11 @@ export class RenterService {
     this.blockedEmailService = new BlockedEmailService();
   }
 
+  /**
+   * Routes renter signup through the correct referral-only registration flow.
+   * Expects renter signup data plus an AGT or ADM referral code and optional request context for blocked-email checks.
+   * Can fail when the email is blocked, the referral code is missing/invalid, or the downstream agent/admin flow rejects the signup.
+   */
   async registerRenter(
     payload: any,
     context?: { ipAddress?: string | null }
@@ -89,6 +94,11 @@ export class RenterService {
     }
   }
 
+  /**
+   * Checks whether a renter registration link is currently usable.
+   * Expects a referral code from the public link and returns the owning role when valid.
+   * Can fail when the code is malformed, missing, deleted, or owned by an inactive agent.
+   */
   async getRegistrationLinkStatus(referralCode: string): Promise<{
     active: boolean;
     role: string;
@@ -102,6 +112,11 @@ export class RenterService {
     };
   }
 
+  /**
+   * Creates a pending renter account from an agent referral link.
+   * Expects a valid AGT referral code, unique renter email, and password from the signup form.
+   * Can fail when the code is invalid, the email already exists, OTP creation fails, or referral counting fails.
+   */
   private async registerAgentReferralRenter(
     payload: AgentReferralRenterRegisterPayload
   ): Promise<RenterRegistrationResponse> {
@@ -174,6 +189,11 @@ export class RenterService {
     };
   }
 
+  /**
+   * Creates an active renter account from an admin referral link and assigns the default agent.
+   * Expects a valid ADM referral code, unique renter email, and optional questionnaire data.
+   * Can fail when the code is invalid, default agent is not configured, email already exists, or welcome/admin emails fail non-blockingly.
+   */
   private async registerAdminReferralRenter(
     payload: AdminReferralRenterRegisterPayload
   ): Promise<RenterRegistrationResponse> {
@@ -531,6 +551,11 @@ export class RenterService {
     return this.toRenterResponse(renter);
   }
 
+  /**
+   * Updates renter profile data and mirrors shared identity fields to the user record.
+   * Expects a renter user ID and editable profile fields from the renter settings form.
+   * Can fail when the renter profile is missing or the user/profile sync cannot be saved.
+   */
   async updateRenterProfile(
     userId: string,
     payload: UpdateRenterProfilePayload
@@ -562,6 +587,11 @@ export class RenterService {
     return this.toRenterResponse(updatedRenter || renter);
   }
 
+  /**
+   * Permanently deletes a renter profile, user account, and their associated request records.
+   * Expects a renter user ID for the account being removed.
+   * Can fail when the renter profile is missing, request cleanup fails, or deletion persistence fails; deletion email errors are logged only.
+   */
   async deleteRenterProfile(userId: string): Promise<{ message: string }> {
     const renter = await this.repository.findByUserId(userId);
     if (!renter) {
@@ -699,6 +729,11 @@ export class RenterService {
     };
   }
 
+  /**
+   * Resolves an agent referral code to the owning agent user ID.
+   * Expects an AGT code that already came from the signup path.
+   * Can fail through referral validation when the code is invalid or the agent cannot refer.
+   */
   private async validateAndGetAgentFromReferralCode(
     code: string
   ): Promise<string> {
@@ -706,6 +741,11 @@ export class RenterService {
     return referrer._id.toString();
   }
 
+  /**
+   * Resolves an admin referral code to the owning admin user ID.
+   * Expects an ADM code that already came from the signup path.
+   * Can fail through referral validation when the code is invalid or the admin cannot refer.
+   */
   private async validateAndGetAdminFromReferralCode(
     code: string
   ): Promise<string> {
@@ -789,6 +829,11 @@ export class RenterService {
     });
   }
 
+  /**
+   * Builds the admin renter list with listing counts and referral context.
+   * Expects pagination/filter input from the admin dashboard.
+   * Can fail when referral lookups or listing aggregation fail.
+   */
   async getAllRenters(
     query: PaginationQuery,
     accountStatus?: string
