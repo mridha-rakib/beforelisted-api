@@ -38,7 +38,7 @@ const infoDescription = `
 | Environment | Base URL |
 | ----------- | -------- |
 | Development | \`http://localhost:7070/api/v1\` |
-| Production | \`https://mating-album-collecting-parking.trycloudflare.com/api/v1\` |
+| Production | \`https://api.beforelisted.com/api/v1\` |
 
 ### 🔐 Security
 - JWT Bearer authentication for protected routes
@@ -81,7 +81,7 @@ const options = {
         description: "Development Server",
       },
       {
-        url: "https://mating-album-collecting-parking.trycloudflare.com/api/v1",
+        url: "https://api.beforelisted.com/api/v1",
         description: "Production Server",
       },
     ],
