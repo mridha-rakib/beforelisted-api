@@ -3304,7 +3304,7 @@ export class PreMarketService {
       <p>To continue your search, please confirm that you are still actively looking by clicking below:</p>
       <p><a href="${this.escapeEmailHtml(confirmationLink)}"><strong style="color: #000000;">Confirm My Search</strong></a></p>
       <p>Once confirmed, your request will remain active and your next confirmation cycle will reset.</p>
-      <p><strong style="color: #000000;">Important:</strong> If no action is taken, your request on BeforeListed&trade; will be automatically archived within 24 hours.</p>
+      <p><strong style="color: #000000;">Important:</strong> If no action is taken, your request on BeforeListed&trade; will be automatically archived within 3 days.</p>
       <p>If you have any questions, you may reply directly to this email.</p>
       <p>Thank you,<br>BeforeListed&trade; Support</p>`;
 
@@ -3312,7 +3312,7 @@ export class PreMarketService {
       to: renter.email,
       renterName: renter.fullName,
       subject:
-        "Action Required: Confirm Your Search to Keep Your Request Active (24hrs) \u2013 BeforeListed",
+        "Action Required: Confirm Your Search to Keep Your Request Active (3 days) \u2013 BeforeListed",
       headerTitle: "Confirm Your Search to Keep Your Request Active",
       bodyHtml,
       cc,
