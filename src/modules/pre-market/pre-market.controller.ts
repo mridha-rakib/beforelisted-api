@@ -5,6 +5,7 @@ import type Stripe from "stripe";
 
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
+import { env } from "@/env";
 import { ExcelService } from "@/services/excel.service";
 import {
   BadRequestException,
@@ -111,17 +112,84 @@ export class PreMarketController {
   confirmActiveSearch = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(confirmActiveSearchSchema, req);
 
-    const confirmation
-      = await this.preMarketService.confirmActiveSearchRequest(
-        validated.query.token,
-      );
+    const wantsJson = this.wantsJsonConfirmationResponse(req);
 
-    ApiResponse.success(
-      res,
-      confirmation,
-      "Active request confirmation recorded",
-    );
+    try {
+      const confirmation
+        = await this.preMarketService.confirmActiveSearchRequest(
+          validated.query.token,
+        );
+
+      if (!wantsJson) {
+        return res.redirect(
+          303,
+          this.buildActiveSearchConfirmationRedirectUrl({
+            status: "success",
+            message: "Your request has been confirmed and your search remains active.",
+            renterFullName: confirmation.renterFullName,
+          }),
+        );
+      }
+
+      return ApiResponse.success(
+        res,
+        confirmation,
+        "Active request confirmation recorded",
+      );
+    }
+    catch (error) {
+      if (wantsJson) {
+        throw error;
+      }
+
+      const message = error instanceof Error
+        ? error.message
+        : "We couldn't confirm your request right now. Please try again.";
+
+      return res.redirect(
+        303,
+        this.buildActiveSearchConfirmationRedirectUrl({
+          status: "error",
+          message,
+        }),
+      );
+    }
   });
+
+  private wantsJsonConfirmationResponse(req: Request): boolean {
+    const responseMode = typeof req.query.response === "string"
+      ? req.query.response.toLowerCase()
+      : "";
+
+    if (responseMode === "json") {
+      return true;
+    }
+
+    const accept = req.get("accept") || "";
+    return accept.includes("application/json") && !accept.includes("text/html");
+  }
+
+  private buildActiveSearchConfirmationRedirectUrl({
+    status,
+    message,
+    renterFullName,
+  }: {
+    status: "success" | "error";
+    message: string;
+    renterFullName?: string;
+  }): string {
+    const redirectUrl = new URL(
+      "/renter/confirm-active-request",
+      env.CLIENT_URL || "https://beforelisted.com",
+    );
+    redirectUrl.searchParams.set("status", status);
+    redirectUrl.searchParams.set("message", message);
+    if (renterFullName) {
+      redirectUrl.searchParams.set("renterFullName", renterFullName);
+    }
+
+    return redirectUrl.toString();
+  }
 
   reactivateSearch = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(reactivateSearchSchema, req);

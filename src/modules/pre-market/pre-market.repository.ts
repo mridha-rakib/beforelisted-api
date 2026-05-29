@@ -791,6 +791,18 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       .exec();
   }
 
+  async findByConfirmedSearchConfirmationToken(
+    token: string,
+  ): Promise<IPreMarketRequest | null> {
+    return this.model
+      .findOne({
+        "isDeleted": false,
+        "searchActivity.lastConfirmedToken": token,
+      })
+      .lean<IPreMarketRequest | null>()
+      .exec();
+  }
+
   async addOwnerRepresentationMatch(
     requestId: string,
     agentId: string,

@@ -1521,6 +1521,8 @@ export class PreMarketService {
     pendingConfirmationToken: string | null;
     pendingConfirmationSentAt: Date | null;
     pendingConfirmationExpiresAt: Date | null;
+    lastConfirmedToken: string | null;
+    lastConfirmedTokenUsedAt: Date | null;
   } {
     const searchActivity = (request as any)?.searchActivity ?? {};
 
@@ -1533,17 +1535,32 @@ export class PreMarketService {
       pendingConfirmationSentAt: searchActivity.pendingConfirmationSentAt ?? null,
       pendingConfirmationExpiresAt:
         searchActivity.pendingConfirmationExpiresAt ?? null,
+      lastConfirmedToken: searchActivity.lastConfirmedToken ?? null,
+      lastConfirmedTokenUsedAt: searchActivity.lastConfirmedTokenUsedAt ?? null,
     };
   }
 
   private buildActiveRequestConfirmationLink(token: string): string {
-    const baseUrl = (env.CLIENT_URL || "https://beforelisted.com").replace(
+    const baseUrl = this.getPublicApiBaseUrl();
+    return `${baseUrl}/pre-market/confirm-active-search?token=${encodeURIComponent(
+      token,
+    )}`;
+  }
+
+  private getPublicApiBaseUrl(): string {
+    if (env.PUBLIC_API_BASE_URL) {
+      return env.PUBLIC_API_BASE_URL.replace(/\/+$/, "");
+    }
+
+    const clientUrl = (env.CLIENT_URL || "https://beforelisted.com").replace(
       /\/+$/,
       "",
     );
-    return `${baseUrl}/renter/confirm-active-request?token=${encodeURIComponent(
-      token,
-    )}`;
+    const basePath = env.BASE_URL.startsWith("/")
+      ? env.BASE_URL
+      : `/${env.BASE_URL}`;
+
+    return `${clientUrl}${basePath.replace(/\/+$/, "")}`;
   }
 
   private getSearchConfirmationAnchor(
@@ -1579,6 +1596,8 @@ export class PreMarketService {
     updates: Partial<{
       lastRenterUpdatedAt: Date;
       lastConfirmedAt: Date;
+      lastConfirmedToken: string;
+      lastConfirmedTokenUsedAt: Date;
     }> = {},
   ) {
     return {
@@ -3036,7 +3055,36 @@ export class PreMarketService {
       = await this.preMarketRepository.findByPendingSearchConfirmationToken(token);
 
     if (!request) {
-      throw new BadRequestException("This confirmation link is invalid.");
+      const confirmedRequest
+        = await this.preMarketRepository.findByConfirmedSearchConfirmationToken(
+          token,
+        );
+
+      if (!confirmedRequest) {
+        throw new BadRequestException("This confirmation link is invalid.");
+      }
+
+      const confirmedSearchActivity = this.getSearchActivity(confirmedRequest);
+      if (!confirmedSearchActivity.lastConfirmedAt) {
+        throw new BadRequestException("This confirmation link is invalid.");
+      }
+
+      const renter = await this.renterRepository.findRenterWithReferrer(
+        confirmedRequest.renterId.toString(),
+      );
+      const renterUser
+        = renter?.userId && typeof renter.userId === "object"
+          ? renter.userId
+          : null;
+
+      return {
+        requestId:
+          confirmedRequest.requestId
+          || confirmedRequest.requestName
+          || confirmedRequest._id.toString(),
+        confirmedAt: confirmedSearchActivity.lastConfirmedAt,
+        renterFullName: renter?.fullName || renterUser?.fullName || "there",
+      };
     }
 
     if (request.isDeleted || request.status === "deleted" || request.isActive === false) {
@@ -3079,6 +3127,8 @@ export class PreMarketService {
         (request as any).searchActivity,
         {
           lastConfirmedAt: now,
+          lastConfirmedToken: token,
+          lastConfirmedTokenUsedAt: now,
         },
       ),
     } as Partial<IPreMarketRequest>);

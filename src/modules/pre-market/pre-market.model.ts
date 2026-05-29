@@ -68,6 +68,8 @@ export type IPreMarketRequest = {
     pendingConfirmationToken?: string | null;
     pendingConfirmationSentAt?: Date | null;
     pendingConfirmationExpiresAt?: Date | null;
+    lastConfirmedToken?: string | null;
+    lastConfirmedTokenUsedAt?: Date | null;
   };
   agentArchives?: Array<{
     agentId: Types.ObjectId | string;
@@ -281,6 +283,17 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
       index: true,
     },
     pendingConfirmationExpiresAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    lastConfirmedToken: {
+      type: String,
+      default: null,
+      index: true,
+      sparse: true,
+    },
+    lastConfirmedTokenUsedAt: {
       type: Date,
       default: null,
       index: true,
