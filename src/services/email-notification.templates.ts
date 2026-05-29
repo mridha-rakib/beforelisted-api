@@ -1,6 +1,6 @@
 // file: src/services/email-notification.templates.ts
 
-import { renderEmailLogo } from "./email-branding";
+import { renderEmailLogo } from "./email-branding.js";
 
 // ============================================
 // AGENT NOTIFICATION EMAIL TEMPLATE
@@ -11,13 +11,15 @@ import { renderEmailLogo } from "./email-branding";
  * WITHOUT renter information
  * Both Grant Access and Normal agents receive same template
  */
-const footerLinks = (brandColor: string): string => `
+function footerLinks(brandColor: string): string {
+  return `
             <p style="margin: 6px 0 0 0;">
                 <a href="mailto:support@beforelisted.com" style="color: ${brandColor}; text-decoration: none;">Contact Us</a> |
                 <a href="https://rental-pennymore-frontend.vercel.app/privacy-policy" style="color: ${brandColor}; text-decoration: none;">Privacy Policy</a> |
                 <a href="https://rental-pennymore-frontend.vercel.app/terms-conditions" style="color: ${brandColor}; text-decoration: none;">Terms and Conditions</a>
             </p>
 `;
+}
 
 export function preMarketAgentNotificationTemplate(
   agentName: string,
@@ -27,7 +29,7 @@ export function preMarketAgentNotificationTemplate(
   serviceType: string,
   listingUrl: string,
   logoUrl?: string,
-  brandColor: string = "#1890FF"
+  brandColor: string = "#1890FF",
 ): string {
   const currentYear = new Date().getFullYear();
 
@@ -216,7 +218,7 @@ export function preMarketAdminNotificationTemplate(
   preMarketRequestId: string,
   requestId: string,
   logoUrl?: string,
-  brandColor: string = "#1890FF"
+  brandColor: string = "#1890FF",
 ): string {
   const currentYear = new Date().getFullYear();
 
@@ -600,7 +602,7 @@ export function renterRequestConfirmationTemplate(
 export function renterRequestExpiredTemplate(
   renterName: string,
   logoUrl?: string,
-  brandColor: string = "#1890FF"
+  brandColor: string = "#1890FF",
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = renterName?.trim().split(" ")[0] || renterName;
@@ -730,7 +732,7 @@ export function agentRenterRequestConfirmationTemplate(
   preferencesByOrder: string,
   submittedAt: string,
   logoUrl?: string,
-  brandColor: string = "#1890FF"
+  brandColor: string = "#1890FF",
 ): string {
   const currentYear = new Date().getFullYear();
   const dashboardLink = `${(process.env.CLIENT_URL || "https://beforelisted.com").replace(/\/+$/, "")}/agent/dashboard`;
@@ -994,25 +996,25 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
   registeredAgentEmail: string,
   registeredAgentPhone: string,
   logoUrl?: string,
-  brandColor: string = "#1890FF"
+  brandColor: string = "#1890FF",
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = renterName?.trim().split(" ")[0] || renterName;
   const safeFirstName = escapeHtml(firstName);
   const safeRegisteredAgentFullName = escapeHtml(
-    registeredAgentFullName?.trim() || "N/A"
+    registeredAgentFullName?.trim() || "N/A",
   );
   const safeRegisteredAgentTitle = escapeHtml(
-    registeredAgentTitle?.trim() || "N/A"
+    registeredAgentTitle?.trim() || "N/A",
   );
   const safeRegisteredAgentBrokerage = escapeHtml(
-    registeredAgentBrokerage?.trim() || "N/A"
+    registeredAgentBrokerage?.trim() || "N/A",
   );
   const safeRegisteredAgentEmail = escapeHtml(
-    registeredAgentEmail?.trim() || "N/A"
+    registeredAgentEmail?.trim() || "N/A",
   );
   const safeRegisteredAgentPhone = escapeHtml(
-    registeredAgentPhone?.trim() || "N/A"
+    registeredAgentPhone?.trim() || "N/A",
   );
 
   return `
@@ -1141,7 +1143,7 @@ export function renterOpportunityFoundOtherAgentTemplate(
   matchedAgentPhone?: string,
   matchedAgentDisclosureLink?: string | null,
   logoUrl?: string,
-  brandColor: string = "#1890FF"
+  brandColor: string = "#1890FF",
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = renterName?.trim().split(" ")[0] || renterName;
@@ -1342,8 +1344,8 @@ export function matchReferralAcknowledgmentToMatchingAgentTemplate(
   const noActionText = referralAgreement
     ? "No action is required at this time, if and when a transaction proceeds, you will be responsible for completing and submitting the required Corcoran referral documentation in accordance with brokerage procedures."
     : "No action is required at this time. If and when a transaction proceeds, you will be responsible for completing and submitting the required Corcoran referral documentation in accordance with brokerage procedures.";
-  const referralAgreementMarkup =
-    referralAgreement?.variant === "16A"
+  const referralAgreementMarkup
+    = referralAgreement?.variant === "16A"
       ? `
             <p>At closing, ${safeMatchedAgentFullName} is responsible for submitting the following referral agreement:</p>
 
@@ -1666,7 +1668,7 @@ export function renterRequestClosedAgentAlertTemplate(
   preferencesByOrder: string,
   submittedAt: string,
   logoUrl?: string,
-  brandColor: string = "#1890FF"
+  brandColor: string = "#1890FF",
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = agentName?.trim().split(" ")[0] || agentName;
@@ -1842,7 +1844,7 @@ export function renterRequestClosedRenterNotificationTemplate(
   reason: string,
   closedAt: string,
   logoUrl?: string,
-  brandColor: string = "#1890FF"
+  brandColor: string = "#1890FF",
 ): string {
   const currentYear = new Date().getFullYear();
   const safeFirstName = escapeHtml(renterFirstName || "Renter");
@@ -1986,21 +1988,21 @@ export function renterRequestUpdatedNotificationTemplate(
   updatedFieldValues: string[],
   updatedAt: string,
   logoUrl?: string,
-  brandColor: string = "#1890FF"
+  brandColor: string = "#1890FF",
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = agentName?.trim().split(" ")[0] || agentName;
   const safeFirstName = escapeHtml(firstName);
   const safeRequestId = escapeHtml(requestId || "N/A");
   const safeRenterName = escapeHtml(renterName || "N/A");
-  const safeFields = updatedFields.map((field) => escapeHtml(field));
-  const safeFieldValues = updatedFieldValues.map((value) => escapeHtml(value));
-  const safeChangedFieldsSummary =
-    safeFields.length > 0 ? safeFields.join(", ") : "Not specified";
-  const safeChangedFieldsNewValues =
-    safeFieldValues.length > 0 ? safeFieldValues.join(", ") : "Not specified";
-  const safeUpdatedFieldsSummary =
-    `${safeChangedFieldsSummary} - ${safeChangedFieldsNewValues}`;
+  const safeFields = updatedFields.map(field => escapeHtml(field));
+  const safeFieldValues = updatedFieldValues.map(value => escapeHtml(value));
+  const safeChangedFieldsSummary
+    = safeFields.length > 0 ? safeFields.join(", ") : "Not specified";
+  const safeChangedFieldsNewValues
+    = safeFieldValues.length > 0 ? safeFieldValues.join(", ") : "Not specified";
+  const safeUpdatedFieldsSummary
+    = `${safeChangedFieldsSummary} - ${safeChangedFieldsNewValues}`;
   const safeUpdatedAt = escapeHtml(updatedAt || "N/A");
 
   return `
@@ -2355,7 +2357,7 @@ export function agentRegistrationVerifiedAdminTemplate(
   registrationDate: string,
   agentRegistrationLink: string,
   logoUrl?: string,
-  brandColor: string = "#1890FF"
+  brandColor: string = "#1890FF",
 ): string {
   const currentYear = new Date().getFullYear();
   const displayName = [agentFirstName, agentLastName].filter(Boolean).join(" ");
@@ -2369,11 +2371,11 @@ export function agentRegistrationVerifiedAdminTemplate(
   const safeRegistrationLink = safeRegistrationLinkValue
     ? escapeHtml(safeRegistrationLinkValue)
     : "N/A";
-  const hasValidRegistrationLink =
-    safeRegistrationLinkValue.length > 0 &&
-    /^https?:\/\//i.test(safeRegistrationLinkValue);
-  const registrationLinkMarkup =
-    hasValidRegistrationLink && safeRegistrationLink !== "N/A"
+  const hasValidRegistrationLink
+    = safeRegistrationLinkValue.length > 0
+      && /^https?:\/\//i.test(safeRegistrationLinkValue);
+  const registrationLinkMarkup
+    = hasValidRegistrationLink && safeRegistrationLink !== "N/A"
       ? `<a href="${safeRegistrationLink}">${safeRegistrationLink}</a>`
       : safeRegistrationLink;
 
@@ -2555,7 +2557,7 @@ export function renterRegistrationVerifiedAdminTemplate(
   registeredAgentName: string,
   registeredAgentBrokerage: string,
   logoUrl?: string,
-  brandColor: string = "#1890FF"
+  brandColor: string = "#1890FF",
 ): string {
   const currentYear = new Date().getFullYear();
   const safeRenterName = renterName || "N/A";
@@ -2705,7 +2707,7 @@ export function adminContactRequestTemplate(
   ipAddress?: string,
   userAgent?: string,
   logoUrl?: string,
-  brandColor: string = "#1890FF"
+  brandColor: string = "#1890FF",
 ): string {
   const currentYear = new Date().getFullYear();
   const safeEmail = escapeHtml(senderEmail);
@@ -2861,7 +2863,7 @@ function escapeHtml(value: string): string {
         return "&lt;";
       case ">":
         return "&gt;";
-      case '"':
+      case "\"":
         return "&quot;";
       case "'":
         return "&#39;";

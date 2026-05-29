@@ -5,7 +5,9 @@ import {
   BadRequestException,
   NotFoundException,
 } from "@/utils/app-error.utils";
+
 import type { IFAQ } from "./faq.model";
+
 import { FAQRepository } from "./faq.repository";
 
 export class FAQService {
@@ -24,13 +26,13 @@ export class FAQService {
 
   async getFAQsByCategory(
     category: string,
-    isActive: boolean = true
+    isActive: boolean = true,
   ): Promise<IFAQ[]> {
     const faqs = await this.faqRepository.getFAQsByCategory(category, isActive);
 
     logger.debug(
       { category, count: faqs.length },
-      "FAQs by category retrieved"
+      "FAQs by category retrieved",
     );
 
     return faqs;
@@ -48,13 +50,13 @@ export class FAQService {
 
   async createFAQ(data: Partial<IFAQ>, adminId: string): Promise<IFAQ> {
     // Get max order and increment
-    const maxOrder = await this.faqRepository.getMaxOrder();
+    const _maxOrder = await this.faqRepository.getMaxOrder();
 
     const faq = await this.faqRepository.createFAQ(
       {
         ...data,
       },
-      adminId
+      adminId,
     );
 
     return faq;
@@ -63,7 +65,7 @@ export class FAQService {
   async updateFAQ(
     id: string,
     data: Partial<IFAQ>,
-    adminId: string
+    adminId: string,
   ): Promise<IFAQ> {
     const faq = await this.faqRepository.updateFAQ(id, data, adminId);
 
@@ -127,7 +129,7 @@ export class FAQService {
 
     logger.warn(
       { adminId, faqId: id, question: faq.question },
-      "FAQ hard deleted (permanent removal)"
+      "FAQ hard deleted (permanent removal)",
     );
   }
 }

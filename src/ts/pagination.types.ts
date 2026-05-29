@@ -5,7 +5,7 @@ import type {
   PaginateModel as MongoosePaginateModel,
 } from "mongoose";
 
-export interface CustomLabels {
+export type CustomLabels = {
   totalDocs?: string;
   docs?: string;
   limit?: string;
@@ -17,9 +17,9 @@ export interface CustomLabels {
   hasPrevPage?: string;
   hasNextPage?: string;
   meta?: string;
-}
+};
 
-export interface PaginateResult<T> {
+export type PaginateResult<T> = {
   data: T[];
   totalItems: number;
   itemsPerPage: number;
@@ -31,9 +31,9 @@ export interface PaginateResult<T> {
   hasPrev: boolean;
   hasNext: boolean;
   meta?: Record<string, any>;
-}
+};
 
-export interface PaginationQuery {
+export type PaginationQuery = {
   page?: string | number;
   limit?: string | number;
   sort?: string;
@@ -48,14 +48,14 @@ export interface PaginationQuery {
   dateTo?: string;
   filters?: Record<string, any>;
   [key: string]: any;
-}
+};
 
-export interface PaginatedRequest extends Request {
+export type PaginatedRequest = {
   query: PaginationQuery;
-}
+} & Request;
 
 // Enhanced: More comprehensive response type
-export interface PaginatedResponse<T> {
+export type PaginatedResponse<T> = {
   success: boolean;
   data: T[];
   pagination: {
@@ -71,17 +71,17 @@ export interface PaginatedResponse<T> {
   };
   meta?: Record<string, any>;
   error?: string;
-}
+};
 
 export type CustomPaginateModel<T extends Document> = MongoosePaginateModel<T>;
 
 // Additional utility types
-export interface SearchableFields {
+export type SearchableFields = {
   [key: string]: string[];
-}
+};
 
-export interface FilterOptions {
+export type FilterOptions = {
   searchFields?: string[];
   additionalFilters?: Record<string, any>;
   defaultSort?: Record<string, number | "asc" | "desc">;
-}
+};

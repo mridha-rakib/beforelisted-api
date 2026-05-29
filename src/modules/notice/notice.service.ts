@@ -2,7 +2,9 @@
 
 import { logger } from "@/middlewares/pino-logger";
 import { NotFoundException } from "@/utils/app-error.utils";
+
 import type { INotice } from "./notice.model";
+
 import { NoticeRepository } from "./notice.repository";
 
 export class NoticeService {
@@ -22,7 +24,7 @@ export class NoticeService {
 
   async updateNotice(
     data: Partial<INotice>,
-    adminId: string
+    adminId: string,
   ): Promise<INotice> {
     const notice = await this.noticeRepository.updateNotice(data, adminId);
 
@@ -54,7 +56,7 @@ export class NoticeService {
 
     const updated = await this.noticeRepository.updateNotice(
       { isActive: !notice.isActive },
-      adminId
+      adminId,
     );
 
     if (!updated) {

@@ -15,18 +15,18 @@ import type { Types } from "mongoose";
 /**
  * Agent Referral Renter Registration Payload
  */
-export interface IAgentReferralRenterRegistration {
+export type IAgentReferralRenterRegistration = {
   email: string;
   password: string;
   fullName: string;
   phoneNumber?: string;
   referralCode: string; // AGT-xxxxxxxx
-}
+};
 
 /**
  * Admin Referral Renter Registration Payload (Passwordless)
  */
-export interface IAdminReferralRenterRegistration {
+export type IAdminReferralRenterRegistration = {
   email: string;
   fullName: string;
   phoneNumber?: string;
@@ -37,12 +37,12 @@ export interface IAdminReferralRenterRegistration {
     buyerSpecialistNeeded: boolean;
     renterSpecialistNeeded: boolean;
   };
-}
+};
 
 /**
  * Renter Registration Response
  */
-export interface IRenterRegistrationResponse {
+export type IRenterRegistrationResponse = {
   success: boolean;
   message: string;
   data?: {
@@ -60,7 +60,7 @@ export interface IRenterRegistrationResponse {
   };
   error?: string;
   timestamp: Date;
-}
+};
 
 // ============================================
 // EMAIL VERIFICATION INTERFACES
@@ -69,23 +69,23 @@ export interface IRenterRegistrationResponse {
 /**
  * Send Verification Code Request
  */
-export interface ISendVerificationCodeRequest {
+export type ISendVerificationCodeRequest = {
   email: string;
   userId: string;
-}
+};
 
 /**
  * Verify Email Code Request
  */
-export interface IVerifyEmailCodeRequest {
+export type IVerifyEmailCodeRequest = {
   email: string;
   verificationCode: string;
-}
+};
 
 /**
  * Verify Email Response
  */
-export interface IVerifyEmailResponse {
+export type IVerifyEmailResponse = {
   success: boolean;
   message: string;
   data?: {
@@ -94,15 +94,15 @@ export interface IVerifyEmailResponse {
   };
   error?: string;
   timestamp: Date;
-}
+};
 
 /**
  * Resend Verification Code Request
  */
-export interface IResendVerificationCodeRequest {
+export type IResendVerificationCodeRequest = {
   email: string;
   userId: string;
-}
+};
 
 // ============================================
 // PASSWORD MANAGEMENT INTERFACES
@@ -111,41 +111,41 @@ export interface IResendVerificationCodeRequest {
 /**
  * Request Password Reset (Forgot Password)
  */
-export interface IForgotPasswordRequest {
+export type IForgotPasswordRequest = {
   email: string;
-}
+};
 
 /**
  * Verify Forgot Password Code
  */
-export interface IVerifyForgotPasswordCodeRequest {
+export type IVerifyForgotPasswordCodeRequest = {
   email: string;
   resetCode: string;
-}
+};
 
 /**
  * Reset Password with Code
  */
-export interface IResetPasswordRequest {
+export type IResetPasswordRequest = {
   email: string;
   resetCode: string;
   newPassword: string;
   // confirmPassword: string;
-}
+};
 
 /**
  * Update Password (Authenticated)
  */
-export interface IUpdatePasswordRequest {
+export type IUpdatePasswordRequest = {
   currentPassword: string;
   newPassword: string;
   // confirmPassword: string;
-}
+};
 
 /**
  * Password Update Response
  */
-export interface IPasswordUpdateResponse {
+export type IPasswordUpdateResponse = {
   success: boolean;
   message: string;
   data?: {
@@ -154,7 +154,7 @@ export interface IPasswordUpdateResponse {
   };
   error?: string;
   timestamp: Date;
-}
+};
 
 // ============================================
 // LOGIN INTERFACES
@@ -163,15 +163,15 @@ export interface IPasswordUpdateResponse {
 /**
  * Renter Login Request
  */
-export interface IRenterLoginRequest {
+export type IRenterLoginRequest = {
   email: string;
   password: string;
-}
+};
 
 /**
  * Renter Login Response
  */
-export interface IRenterLoginResponse {
+export type IRenterLoginResponse = {
   success: boolean;
   message: string;
   data?: {
@@ -187,7 +187,7 @@ export interface IRenterLoginResponse {
   };
   error?: string;
   timestamp: Date;
-}
+};
 
 // ============================================
 // PROFILE INTERFACES
@@ -196,7 +196,7 @@ export interface IRenterLoginResponse {
 /**
  * Get Renter Profile
  */
-export interface IRenterProfile {
+export type IRenterProfile = {
   userId: Types.ObjectId | string;
   email: string;
   fullName: string;
@@ -209,16 +209,16 @@ export interface IRenterProfile {
   emailSubscriptionEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
-}
+};
 
 /**
  * Update Renter Profile
  */
-export interface IUpdateRenterProfileRequest {
+export type IUpdateRenterProfileRequest = {
   fullName?: string;
   phoneNumber?: string;
   emailSubscriptionEnabled?: boolean;
-}
+};
 
 // ============================================
 // ERROR RESPONSES
@@ -227,12 +227,12 @@ export interface IUpdateRenterProfileRequest {
 /**
  * Authentication Error Response
  */
-export interface IAuthErrorResponse {
+export type IAuthErrorResponse = {
   success: false;
   error: string;
   errorCode?: string;
   timestamp: Date;
-}
+};
 
 // ============================================
 // INTERNAL OPERATION INTERFACES
@@ -241,7 +241,7 @@ export interface IAuthErrorResponse {
 /**
  * Renter Creation Data (Internal)
  */
-export interface IRenterCreationData {
+export type IRenterCreationData = {
   userId: Types.ObjectId | string;
   email: string;
   fullName: string;
@@ -251,24 +251,24 @@ export interface IRenterCreationData {
   referredByAdminId?: Types.ObjectId | string;
   emailVerified: boolean;
   accountStatus: "pending" | "active" | "suspended";
-}
+};
 
 /**
  * Password Reset Token Data (Internal)
  */
-export interface IPasswordResetTokenData {
+export type IPasswordResetTokenData = {
   userId: string;
   email: string;
   resetCode: string;
   expiresAt: Date;
   used: boolean;
-}
+};
 
 /**
  * Generated Password Response (Internal)
  */
-export interface IGeneratedPasswordResponse {
+export type IGeneratedPasswordResponse = {
   password: string;
   expiresInHours: number;
   mustChangeOnLogin: boolean;
-}
+};

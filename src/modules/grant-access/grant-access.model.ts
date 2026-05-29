@@ -1,16 +1,13 @@
 // file: src/modules/grant-access/grant-access.model.ts
 
+import type { Document, Types } from "mongoose";
+
+import { model, Schema } from "mongoose";
+
 import { GRANT_ACCESS_CONFIG } from "@/config/pre-market.config";
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
-import { model, Schema, Types, type Document } from "mongoose";
 
-export interface IGrantAccessRequest extends Document<
-  unknown,
-  any,
-  any,
-  Record<string, any>,
-  object
-> {
+export type IGrantAccessRequest = {
   _id: Types.ObjectId;
   preMarketRequestId: Types.ObjectId | string;
   agentId: Types.ObjectId | string;
@@ -38,7 +35,13 @@ export interface IGrantAccessRequest extends Document<
 
   createdAt: Date;
   updatedAt: Date;
-}
+} & Document<
+  unknown,
+  any,
+  any,
+  Record<string, any>,
+  object
+>;
 
 const grantAccessSchema = BaseSchemaUtil.createSchema({
   preMarketRequestId: {
@@ -134,10 +137,10 @@ grantAccessSchema.index(
     preMarketRequestId: 1,
     agentId: 1,
   },
-  { unique: true }
+  { unique: true },
 );
 
 export const GrantAccessRequestModel = model<IGrantAccessRequest>(
   "GrantAccessRequest",
-  grantAccessSchema as any
+  grantAccessSchema as any,
 );

@@ -1,8 +1,9 @@
 // file: src/modules/pre-market/pre-market.route.ts
 
+import { Router } from "express";
+
 import { authMiddleware } from "@/middlewares/auth.middleware";
 
-import { Router } from "express";
 import { PreMarketController } from "./pre-market.controller";
 
 const router = Router();

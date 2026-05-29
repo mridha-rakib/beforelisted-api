@@ -7,6 +7,7 @@
  */
 
 import { Router } from "express";
+
 import { PasswordResetController } from "./password.controller";
 
 const router = Router();

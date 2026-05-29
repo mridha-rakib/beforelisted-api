@@ -1,7 +1,7 @@
 // file: src/modules/auth/auth.type.ts
 
-import type { UserResponse } from "../user/user.type";
 import type { AgentProfileResponse } from "../agent/agent.type";
+import type { UserResponse } from "../user/user.type";
 
 export type ReferralInfo = {
   registrationType: "agent_referral" | "admin_referral";

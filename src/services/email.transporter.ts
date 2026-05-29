@@ -1,7 +1,11 @@
 // file: src/services/email.transporter.ts
 
+import type { AxiosInstance } from "axios";
+
+import axios from "axios";
+
 import { logger } from "@/middlewares/pino-logger";
-import axios, { type AxiosInstance } from "axios";
+
 import type {
   IEmailConfig,
   IEmailOptions,
@@ -29,7 +33,7 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
       headers: {
         "X-Postmark-Server-Token": this.postmarkConfig.apiToken,
         "Content-Type": "application/json",
-        Accept: "application/json",
+        "Accept": "application/json",
       },
       timeout: this.postmarkConfig.timeout,
     });
@@ -40,7 +44,7 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
         messageStream: this.postmarkConfig.messageStream,
         sandboxMode: this.postmarkConfig.sandboxMode,
       },
-      "📧 Postmark Email Transporter initialized"
+      "📧 Postmark Email Transporter initialized",
     );
   }
 
@@ -56,24 +60,26 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
             serverName: response.data.Name || "Unknown",
             deliveryType: response.data.DeliveryType,
           },
-          "✅ Postmark connection verified successfully"
+          "✅ Postmark connection verified successfully",
         );
         return true;
-      } else {
+      }
+      else {
         throw new Error(
-          `Postmark API error: ${response.status} - ${response.data?.Message || "Unknown error"}`
+          `Postmark API error: ${response.status} - ${response.data?.Message || "Unknown error"}`,
         );
       }
-    } catch (error) {
+    }
+    catch (error) {
       this.isConnected = false;
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage
+        = error instanceof Error ? error.message : String(error);
       logger.error(
         {
           error: errorMessage,
           service: "Postmark",
         },
-        "❌ Postmark connection verification failed"
+        "❌ Postmark connection verification failed",
       );
       throw error;
     }
@@ -101,7 +107,7 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
             maxAttempts: this.maxRetries,
             messageStream: this.postmarkConfig.messageStream,
           },
-          "Sending email via Postmark"
+          "Sending email via Postmark",
         );
 
         // Send email via Postmark API
@@ -119,7 +125,7 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
               subject: options.subject,
               attempt: attempt + 1,
             },
-            "✅ Email sent successfully via Postmark"
+            "✅ Email sent successfully via Postmark",
           );
 
           return {
@@ -136,10 +142,11 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
         if (response.status >= 400) {
           const errorData = response.data;
           throw new Error(
-            `Postmark API error (${response.status}): ${errorData?.Message || errorData?.message || "Unknown error"}`
+            `Postmark API error (${response.status}): ${errorData?.Message || errorData?.message || "Unknown error"}`,
           );
         }
-      } catch (error) {
+      }
+      catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         attempt++;
 
@@ -150,7 +157,7 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
             maxAttempts: this.maxRetries,
             willRetry: attempt < this.maxRetries,
           },
-          "Email send attempt failed"
+          "Email send attempt failed",
         );
 
         // If retries remaining, wait before next attempt
@@ -167,7 +174,7 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
         attempts: attempt,
         to: this.getRecipientEmails(options.to),
       },
-      "❌ Email send failed after all retries"
+      "❌ Email send failed after all retries",
     );
 
     return {
@@ -217,12 +224,14 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
   }
 
   private formatRecipients(recipients: any): string {
-    if (!recipients) return "";
+    if (!recipients)
+      return "";
 
     const recArray = Array.isArray(recipients) ? recipients : [recipients];
     return recArray
       .map((r) => {
-        if (typeof r === "string") return r;
+        if (typeof r === "string")
+          return r;
         return r.name ? `${r.name} <${r.email}>` : r.email;
       })
       .join(", ");
@@ -230,7 +239,7 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
 
   private getRecipientEmails(recipients: any): string[] {
     const recArray = Array.isArray(recipients) ? recipients : [recipients];
-    return recArray.map((r) => (typeof r === "string" ? r : r.email));
+    return recArray.map(r => (typeof r === "string" ? r : r.email));
   }
 
   private prepareHeaders(headers?: Record<string, string>): any[] {
@@ -249,7 +258,7 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
       return [];
     }
 
-    return attachments.map((attachment) => ({
+    return attachments.map(attachment => ({
       Name: attachment.filename,
       Content: Buffer.isBuffer(attachment.content)
         ? attachment.content.toString("base64")
@@ -273,12 +282,12 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
    * @param ms - Milliseconds to sleep
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 
 export function createEmailTransporter(
-  config: IEmailConfig
+  config: IEmailConfig,
 ): IEmailTransporter {
   return new PostmarkEmailTransporter(config);
 }
@@ -303,7 +312,7 @@ export function resetEmailTransporter(): void {
         {
           error: err instanceof Error ? err.message : String(err),
         },
-        "Error closing transporter on reset"
+        "Error closing transporter on reset",
       );
     });
   }

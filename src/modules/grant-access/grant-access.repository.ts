@@ -1,16 +1,23 @@
 // file: src/modules/grant-access/grant-access.repository.ts
 
-import { GRANT_ACCESS_CONFIG } from "@/config/pre-market.config";
+import type { FilterQuery } from "mongoose";
+
+import { Types } from "mongoose";
+
+import type { GRANT_ACCESS_CONFIG } from "@/config/pre-market.config";
+
 import { BaseRepository } from "@/modules/base/base.repository";
-import { Types, type FilterQuery } from "mongoose";
+
+import type { IGrantAccessRequest } from "./grant-access.model";
+
 import {
   GrantAccessRequestModel,
-  type IGrantAccessRequest,
+
 } from "./grant-access.model";
 
 type GrantAccessStatus = (typeof GRANT_ACCESS_CONFIG.STATUSES)[number];
-type GrantAccessPaymentStatus =
-  (typeof GRANT_ACCESS_CONFIG.PAYMENT_STATUSES)[number];
+type GrantAccessPaymentStatus
+  = (typeof GRANT_ACCESS_CONFIG.PAYMENT_STATUSES)[number];
 
 type PaymentDeletionHistory = {
   payment?: {
@@ -62,13 +69,13 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
   }
 
   async create(
-    data: Partial<IGrantAccessRequest>
+    data: Partial<IGrantAccessRequest>,
   ): Promise<IGrantAccessRequest> {
     return this.model.create(data);
   }
 
   async findOne(
-    filter: FilterQuery<IGrantAccessRequest> = {}
+    filter: FilterQuery<IGrantAccessRequest> = {},
   ): Promise<IGrantAccessRequest | null> {
     return this.model
       .findOne(filter)
@@ -77,7 +84,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
 
   async findByAgentAndRequest(
     agentId: string,
-    preMarketRequestId: string
+    preMarketRequestId: string,
   ): Promise<IGrantAccessRequest | null> {
     return this.model
       .findOne({
@@ -97,7 +104,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
 
   async findByAgentIdAndRequestIds(
     agentId: string,
-    requestIds: Array<string | Types.ObjectId>
+    requestIds: Array<string | Types.ObjectId>,
   ): Promise<IGrantAccessRequest[]> {
     if (!requestIds || requestIds.length === 0) {
       return [];
@@ -113,7 +120,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
   }
 
   async findByPreMarketRequestId(
-    preMarketRequestId: string | Types.ObjectId
+    preMarketRequestId: string | Types.ObjectId,
   ): Promise<IGrantAccessRequest[]> {
     return this.model
       .find({ preMarketRequestId })
@@ -124,7 +131,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
 
   async findByPreMarketRequestIdsAndStatuses(
     preMarketRequestIds: Array<string | Types.ObjectId>,
-    statuses: GrantAccessStatus[]
+    statuses: GrantAccessStatus[],
   ): Promise<IGrantAccessRequest[]> {
     if (!preMarketRequestIds || preMarketRequestIds.length === 0) {
       return [];
@@ -175,14 +182,14 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
 
     return new Map(
       results
-        .filter((item) => item?._id && item?.latestMatchedAt)
-        .map((item) => [item._id.toString(), new Date(item.latestMatchedAt)]),
+        .filter(item => item?._id && item?.latestMatchedAt)
+        .map(item => [item._id.toString(), new Date(item.latestMatchedAt)]),
     );
   }
 
   async existsByPreMarketRequestIdAndStatuses(
     preMarketRequestId: string | Types.ObjectId,
-    statuses: GrantAccessStatus[]
+    statuses: GrantAccessStatus[],
   ): Promise<boolean> {
     if (!statuses || statuses.length === 0) {
       return false;
@@ -197,13 +204,13 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
   }
 
   async deleteByPreMarketRequestId(
-    preMarketRequestId: string | Types.ObjectId
+    preMarketRequestId: string | Types.ObjectId,
   ): Promise<{ deletedCount?: number }> {
     return this.model.deleteMany({ preMarketRequestId });
   }
 
   async deleteByPreMarketRequestIds(
-    preMarketRequestIds: string[]
+    preMarketRequestIds: string[],
   ): Promise<{ deletedCount?: number }> {
     if (!preMarketRequestIds || preMarketRequestIds.length === 0) {
       return { deletedCount: 0 };
@@ -215,7 +222,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
   }
 
   async deleteByAgentId(
-    agentId: string | Types.ObjectId
+    agentId: string | Types.ObjectId,
   ): Promise<{ deletedCount?: number }> {
     return this.model.deleteMany({ agentId });
   }
@@ -230,7 +237,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
 
   async updateById(
     id: string,
-    data: Partial<IGrantAccessRequest>
+    data: Partial<IGrantAccessRequest>,
   ): Promise<IGrantAccessRequest | null> {
     return this.model
       .findByIdAndUpdate(id, data, { new: true })
@@ -243,8 +250,8 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
 
   async recordPaymentFailure(id: string): Promise<void> {
     await this.model.findByIdAndUpdate(id, {
-      $inc: { "payment.failureCount": 1 },
-      $push: { "payment.failedAt": new Date() },
+      "$inc": { "payment.failureCount": 1 },
+      "$push": { "payment.failedAt": new Date() },
       "payment.paymentStatus": "failed",
     });
   }
@@ -253,7 +260,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
     await this.model.findByIdAndUpdate(id, {
       "payment.paymentStatus": "succeeded",
       "payment.succeededAt": new Date(),
-      status: "paid",
+      "status": "paid",
     });
   }
 
@@ -262,7 +269,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
   }
 
   async countByPaymentStatus(
-    paymentStatus: string | GrantAccessPaymentStatus
+    paymentStatus: string | GrantAccessPaymentStatus,
   ): Promise<number> {
     return this.model.countDocuments({
       "payment.paymentStatus": paymentStatus,
@@ -313,7 +320,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
 
   async findByAgentIdAndStatus(
     agentId: string,
-    status: "pending" | "approved" | "free" | "rejected" | "paid"
+    status: "pending" | "approved" | "free" | "rejected" | "paid",
   ): Promise<IGrantAccessRequest[]> {
     return this.model
       .find({
@@ -327,7 +334,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
 
   async findByAgentIdAndStatuses(
     agentId: string,
-    statuses: Array<"pending" | "approved" | "free" | "rejected" | "paid">
+    statuses: Array<"pending" | "approved" | "free" | "rejected" | "paid">,
   ): Promise<IGrantAccessRequest[]> {
     if (!statuses || statuses.length === 0) {
       return [];
@@ -349,7 +356,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
     });
 
     return ids
-      .map((id) => id?.toString?.() ?? "")
+      .map(id => id?.toString?.() ?? "")
       .filter((id): id is string => Boolean(id));
   }
 
@@ -550,7 +557,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
   }
 
   async getPaymentDeletionHistory(
-    paymentId: string
+    paymentId: string,
   ): Promise<PaymentDeletionHistory | null> {
     return (await this.model
       .findById(paymentId)
@@ -591,7 +598,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       month: `${item._id.year}-${String(item._id.month).padStart(2, "0")}`,
       monthName: new Date(item._id.year, item._id.month - 1).toLocaleDateString(
         "en-US",
-        { month: "long", year: "numeric" }
+        { month: "long", year: "numeric" },
       ),
       totalRevenue: item.totalRevenue,
       paymentCount: item.paymentCount,
@@ -690,7 +697,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
 
     const totalRevenue = results.reduce(
       (sum: number, item: any) => sum + item.totalRevenue,
-      0
+      0,
     );
 
     return {
@@ -699,7 +706,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       totalRevenue,
       totalPayments: results.reduce(
         (sum: number, item: any) => sum + item.paymentCount,
-        0
+        0,
       ),
       monthCount: results.length,
       averagePerMonth:
@@ -710,7 +717,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
         month: `${item._id.year}-${String(item._id.month).padStart(2, "0")}`,
         monthName: new Date(
           item._id.year,
-          item._id.month - 1
+          item._id.month - 1,
         ).toLocaleDateString("en-US", { month: "long", year: "numeric" }),
         totalRevenue: item.totalRevenue,
         paymentCount: item.paymentCount,
@@ -773,21 +780,24 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
         return null;
       }
 
-      const AgentProfileRepository =
-        require("../agent/agent.repository").AgentProfileRepository;
+      const AgentProfileRepository
+        = require("../agent/agent.repository").AgentProfileRepository;
       const agentProfileRepo = new AgentProfileRepository();
 
-      const RenterRepository =
-        require("../renter/renter.repository").RenterRepository;
+      const RenterRepository
+        = require("../renter/renter.repository").RenterRepository;
       const renterRepo = new RenterRepository();
 
       const UserRepository = require("../user/user.repository").UserRepository;
       const userRepo = new UserRepository();
 
       const resolveObjectId = (value: unknown): string | null => {
-        if (!value) return null;
-        if (typeof value === "string") return value;
-        if (value instanceof Types.ObjectId) return value.toString();
+        if (!value)
+          return null;
+        if (typeof value === "string")
+          return value;
+        if (value instanceof Types.ObjectId)
+          return value.toString();
         if (typeof value === "object" && "_id" in value) {
           const id = (value as { _id?: Types.ObjectId | string })._id;
           return id ? id.toString() : null;
@@ -796,12 +806,12 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       };
 
       const isPopulatedAgent = (
-        value: GrantAccessPaymentDoc["agentId"]
+        value: GrantAccessPaymentDoc["agentId"],
       ): value is PopulatedAgent =>
         typeof value === "object" && value !== null && "_id" in value;
 
       const isPopulatedRequest = (
-        value: GrantAccessPaymentDoc["preMarketRequestId"]
+        value: GrantAccessPaymentDoc["preMarketRequestId"],
       ): value is PopulatedPreMarketRequest =>
         typeof value === "object" && value !== null && "_id" in value;
 
@@ -844,9 +854,10 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
                   referralType: "agent_referral",
                 };
               }
-            } else if (renter.referredByAdminId) {
+            }
+            else if (renter.referredByAdminId) {
               const referrer = await userRepo.findById(
-                renter.referredByAdminId._id || renter.referredByAdminId
+                renter.referredByAdminId._id || renter.referredByAdminId,
               );
               if (referrer) {
                 referrerInfo = {
@@ -936,7 +947,8 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
         createdAt: payment.createdAt,
         updatedAt: payment.updatedAt,
       };
-    } catch (error) {
+    }
+    catch (error) {
       throw error;
     }
   }

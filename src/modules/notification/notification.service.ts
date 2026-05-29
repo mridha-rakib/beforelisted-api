@@ -1,13 +1,16 @@
 // file: src/modules/notification/notification.service.ts
 
-import { logger } from "@/middlewares/pino-logger";
 import type { Types } from "mongoose";
-import { AgentProfileRepository } from "../agent/agent.repository";
+
+import { logger } from "@/middlewares/pino-logger";
+
 import type {
   IInAppNotification,
   INotification,
   NotificationType,
 } from "./notification.interface";
+
+import { AgentProfileRepository } from "../agent/agent.repository";
 import { NotificationRepository } from "./notification.repository";
 
 export class NotificationService {
@@ -50,7 +53,7 @@ export class NotificationService {
         recipientId: data.recipientId,
         type: data.notificationType,
       },
-      "Notification created"
+      "Notification created",
     );
 
     return notification;
@@ -70,7 +73,7 @@ export class NotificationService {
         return;
       }
 
-      const notificationPromises = admins.map((admin) =>
+      const notificationPromises = admins.map(admin =>
         this.createNotification({
           recipientId: admin._id,
           recipientRole: "Admin",
@@ -87,19 +90,20 @@ export class NotificationService {
             agentName: agentData.agentName,
             licenseNumber: agentData.licenseNumber,
           },
-        })
+        }),
       );
 
       await Promise.all(notificationPromises);
 
       logger.info(
         { agentId: agentData.agentId, adminCount: admins.length },
-        "Admins notified about pending agent approval"
+        "Admins notified about pending agent approval",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error, agentId: agentData.agentId },
-        "Failed to notify admins about agent approval"
+        "Failed to notify admins about agent approval",
       );
       throw error;
     }
@@ -126,12 +130,13 @@ export class NotificationService {
 
       logger.info(
         { agentId: agentData.agentId },
-        "Agent notified about activation"
+        "Agent notified about activation",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error, agentId: agentData.agentId },
-        "Failed to notify agent about activation"
+        "Failed to notify agent about activation",
       );
       throw error;
     }
@@ -156,12 +161,13 @@ export class NotificationService {
 
       logger.info(
         { agentId: agentData.agentId },
-        "Agent notified about deactivation"
+        "Agent notified about deactivation",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error, agentId: agentData.agentId },
-        "Failed to notify agent about deactivation"
+        "Failed to notify agent about deactivation",
       );
       throw error;
     }
@@ -187,12 +193,13 @@ export class NotificationService {
 
       logger.info(
         { agentId: agentData.agentId },
-        "Agent notified about access granted"
+        "Agent notified about access granted",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error, agentId: agentData.agentId },
-        "Failed to notify agent about access granted"
+        "Failed to notify agent about access granted",
       );
       throw error;
     }
@@ -217,12 +224,13 @@ export class NotificationService {
 
       logger.info(
         { agentId: agentData.agentId },
-        "Agent notified about access revoked"
+        "Agent notified about access revoked",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error, agentId: agentData.agentId },
-        "Failed to notify agent about access revoked"
+        "Failed to notify agent about access revoked",
       );
       throw error;
     }
@@ -246,7 +254,7 @@ export class NotificationService {
       }
 
       await Promise.all(
-        admins.map((admin) =>
+        admins.map(admin =>
           this.createNotification({
             recipientId: admin._id,
             recipientRole: "Admin",
@@ -261,7 +269,8 @@ export class NotificationService {
           }),
         ),
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error, email: data.email },
         "Failed to notify admins about blocked email",
@@ -282,7 +291,7 @@ export class NotificationService {
       }
 
       await Promise.all(
-        admins.map((admin) =>
+        admins.map(admin =>
           this.createNotification({
             recipientId: admin._id,
             recipientRole: "Admin",
@@ -297,7 +306,8 @@ export class NotificationService {
           }),
         ),
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error, email: data.email, action: data.action },
         "Failed to notify admins about blocked access attempt",
@@ -326,13 +336,13 @@ export class NotificationService {
 
       logger.debug(
         {
-          adminIds: admins.map((admin) => admin._id.toString()),
+          adminIds: admins.map(admin => admin._id.toString()),
           adminCount: admins.length,
         },
-        "Admins selected for grant access notification"
+        "Admins selected for grant access notification",
       );
 
-      const notificationPromises = admins.map((admin) =>
+      const notificationPromises = admins.map(admin =>
         this.createNotification({
           recipientId: admin._id,
           recipientRole: "Admin",
@@ -355,18 +365,19 @@ export class NotificationService {
             renterName: data.renterName,
             grantAccessId: data.grantAccessId,
           },
-        })
+        }),
       );
 
       await Promise.all(notificationPromises);
       logger.info(
         { agentId: data.agentId, adminCount: admins.length },
-        "✅ Admins notified about grant access request"
+        "✅ Admins notified about grant access request",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error, agentId: data.agentId },
-        "Failed to notify admins about grant access request"
+        "Failed to notify admins about grant access request",
       );
     }
   }
@@ -382,7 +393,7 @@ export class NotificationService {
   }): Promise<void> {
     try {
       const admins = await this.repository.getAllAdmins();
-      const notificationPromises = admins.map((admin) =>
+      const notificationPromises = admins.map(admin =>
         this.createNotification({
           recipientId: admin._id,
           recipientRole: "Admin",
@@ -398,15 +409,16 @@ export class NotificationService {
             propertyTitle: data.propertyTitle,
             approvedBy: data.approvedBy,
           },
-        })
+        }),
       );
 
       await Promise.all(notificationPromises);
       logger.info(
         { grantAccessId: data.grantAccessId },
-        "✅ Admins notified about grant access approval"
+        "✅ Admins notified about grant access approval",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "Failed to notify admins about approval");
       // Non-blocking
     }
@@ -424,7 +436,7 @@ export class NotificationService {
   }): Promise<void> {
     try {
       const admins = await this.repository.getAllAdmins();
-      const notificationPromises = admins.map((admin) =>
+      const notificationPromises = admins.map(admin =>
         this.createNotification({
           recipientId: admin._id,
           recipientRole: "Admin",
@@ -443,15 +455,16 @@ export class NotificationService {
             rejectionReason: data.rejectionReason,
             rejectedBy: data.rejectedBy,
           },
-        })
+        }),
       );
 
       await Promise.all(notificationPromises);
       logger.info(
         { grantAccessId: data.grantAccessId },
-        "✅ Admins notified about grant access rejection"
+        "✅ Admins notified about grant access rejection",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "Failed to notify admins about rejection");
       // Non-blocking
     }
@@ -494,12 +507,13 @@ export class NotificationService {
 
       logger.info(
         { agentId: data.agentId, grantAccessId: data.grantAccessId },
-        "✅ Agent notified about grant access approval"
+        "✅ Agent notified about grant access approval",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error, agentId: data.agentId, grantAccessId: data.grantAccessId },
-        "Failed to notify agent about grant access approval (non-blocking)"
+        "Failed to notify agent about grant access approval (non-blocking)",
       );
     }
   }
@@ -549,12 +563,13 @@ export class NotificationService {
           grantAccessId: data.grantAccessId,
           amount: data.chargeAmount,
         },
-        "✅ Agent notified about grant access charge"
+        "✅ Agent notified about grant access charge",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error, agentId: data.agentId, grantAccessId: data.grantAccessId },
-        "Failed to notify agent about grant access charge (non-blocking)"
+        "Failed to notify agent about grant access charge (non-blocking)",
       );
     }
   }
@@ -598,12 +613,13 @@ export class NotificationService {
 
       logger.info(
         { agentId: data.agentId, grantAccessId: data.grantAccessId },
-        "✅ Agent notified about grant access rejection"
+        "✅ Agent notified about grant access rejection",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error, agentId: data.agentId, grantAccessId: data.grantAccessId },
-        "Failed to notify agent about grant access rejection (non-blocking)"
+        "Failed to notify agent about grant access rejection (non-blocking)",
       );
     }
   }
@@ -611,7 +627,7 @@ export class NotificationService {
   async getUserNotifications(
     userId: string,
     limit: number = 20,
-    skip: number = 0
+    skip: number = 0,
   ): Promise<{ notifications: INotification[]; total: number }> {
     const [notifications, total] = await Promise.all([
       this.repository.getUserNotifications(userId, limit, skip),

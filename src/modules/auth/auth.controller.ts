@@ -1,12 +1,16 @@
 // file: src/modules/auth/auth.controller.ts
 
+import type { NextFunction, Request, Response } from "express";
+
 import { COOKIE_CONFIG } from "@/config/cookie.config";
 import { MESSAGES } from "@/constants/app.constants";
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { UnauthorizedException } from "@/utils/app-error.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
-import type { NextFunction, Request, Response } from "express";
+
+import type { AuthControllerResponse } from "./auth.type";
+
 import {
   changePasswordSchema,
   loginSchema,
@@ -16,7 +20,6 @@ import {
   verifyOTPSchema,
 } from "./auth.schema";
 import { AuthService } from "./auth.service";
-import { AuthControllerResponse } from "./auth.type";
 
 export class AuthController {
   private authService: AuthService;
@@ -30,7 +33,7 @@ export class AuthController {
    * POST /auth/login
    */
   login = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, _next: NextFunction) => {
       const validated = await zParse(loginSchema, req);
       const result = await this.authService.login(validated.body, {
         ipAddress: req.ip || req.socket.remoteAddress,
@@ -39,7 +42,7 @@ export class AuthController {
       res.cookie(
         COOKIE_CONFIG.REFRESH_TOKEN.name,
         result.tokens.refreshToken,
-        COOKIE_CONFIG.REFRESH_TOKEN.options
+        COOKIE_CONFIG.REFRESH_TOKEN.options,
       );
 
       const response: AuthControllerResponse = {
@@ -57,7 +60,7 @@ export class AuthController {
       };
 
       ApiResponse.success(res, response, MESSAGES.AUTH.LOGIN_SUCCESS);
-    }
+    },
   );
 
   /**
@@ -93,7 +96,7 @@ export class AuthController {
     const validated = await zParse(verifyOTPSchema, req);
     const result = await this.authService.verifyOTP(
       validated.body.email,
-      validated.body.otp
+      validated.body.otp,
     );
 
     ApiResponse.success(res, result);
@@ -108,7 +111,7 @@ export class AuthController {
     const result = await this.authService.resetPassword(
       validated.body.email,
       validated.body.otp,
-      validated.body.newPassword
+      validated.body.newPassword,
     );
 
     ApiResponse.success(res, result);
@@ -119,7 +122,7 @@ export class AuthController {
    * POST /auth/refresh-token
    */
   refreshToken = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, _next: NextFunction) => {
       const refreshToken = req.cookies[COOKIE_CONFIG.REFRESH_TOKEN.name];
       if (!refreshToken) {
         throw new Error("Refresh token not found");
@@ -128,7 +131,7 @@ export class AuthController {
       const result = await this.authService.refreshAccessToken(refreshToken);
 
       ApiResponse.success(res, result);
-    }
+    },
   );
 
   // ============================================
@@ -188,7 +191,7 @@ export class AuthController {
     const result = await this.authService.changePassword(
       userId,
       validated.body.currentPassword,
-      validated.body.newPassword
+      validated.body.newPassword,
     );
 
     ApiResponse.success(res, result, "Password changed successfully");

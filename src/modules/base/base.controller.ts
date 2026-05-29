@@ -4,6 +4,7 @@ import type { NextFunction, Request, Response } from "express";
 import type { Document } from "mongoose";
 
 import type { BaseService } from "@/modules/base/base.service";
+
 import { PaginationHelper } from "@/utils/pagination-helper";
 import { ApiResponse } from "@/utils/response.utils";
 
@@ -21,17 +22,17 @@ export class BaseController<
       // Check if pagination requested
       if (req.query.page || req.query.limit) {
         const paginateOptions = PaginationHelper.parsePaginationParams(
-          req.query
+          req.query,
         );
         const searchFields = (this.service as any).searchFields || [];
         const filter = PaginationHelper.createSearchFilter(
           req.query,
-          searchFields
+          searchFields,
         );
 
         const result = await (this.service as any).getPaginated(
           filter,
-          paginateOptions
+          paginateOptions,
         );
         const response = PaginationHelper.formatResponse(result);
         return ApiResponse.paginated(res, response.data, response.pagination);
@@ -39,7 +40,8 @@ export class BaseController<
 
       const data = await this.service.getAll();
       ApiResponse.success(res, data);
-    } catch (err) {
+    }
+    catch (err) {
       next(err);
     }
   };
@@ -48,7 +50,8 @@ export class BaseController<
     try {
       const data = await this.service.getById(req.params.id);
       ApiResponse.success(res, data);
-    } catch (err) {
+    }
+    catch (err) {
       next(err);
     }
   };
@@ -57,7 +60,8 @@ export class BaseController<
     try {
       const data = await this.service.create(req.body);
       ApiResponse.created(res, data);
-    } catch (err) {
+    }
+    catch (err) {
       next(err);
     }
   };
@@ -66,7 +70,8 @@ export class BaseController<
     try {
       const data = await this.service.update(req.params.id, req.body);
       ApiResponse.success(res, data, "Resource updated successfully");
-    } catch (err) {
+    }
+    catch (err) {
       next(err);
     }
   };
@@ -75,7 +80,8 @@ export class BaseController<
     try {
       await this.service.delete(req.params.id);
       ApiResponse.noContent(res);
-    } catch (err) {
+    }
+    catch (err) {
       next(err);
     }
   };

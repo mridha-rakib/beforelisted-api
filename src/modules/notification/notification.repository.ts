@@ -1,7 +1,9 @@
 // file: src/modules/notification/notification.repository.ts
 
 import { BaseRepository } from "@/modules/base/base.repository";
+
 import type { INotification } from "./notification.interface";
+
 import { Notification } from "./notification.model";
 
 export class NotificationRepository extends BaseRepository<INotification> {
@@ -12,7 +14,7 @@ export class NotificationRepository extends BaseRepository<INotification> {
   async getUserNotifications(
     userId: string,
     limit: number = 20,
-    skip: number = 0
+    skip: number = 0,
   ): Promise<INotification[]> {
     return this.model
       .find({ recipientId: userId })
@@ -40,14 +42,14 @@ export class NotificationRepository extends BaseRepository<INotification> {
     return this.model.findByIdAndUpdate(
       notificationId,
       { isRead: true, readAt: new Date() },
-      { new: true }
+      { new: true },
     );
   }
 
   async markAllAsRead(userId: string): Promise<any> {
     return this.model.updateMany(
       { recipientId: userId, isRead: false },
-      { isRead: true, readAt: new Date() }
+      { isRead: true, readAt: new Date() },
     );
   }
 
@@ -77,7 +79,7 @@ export class NotificationRepository extends BaseRepository<INotification> {
   }
 
   async getUnreadGrantAccessRequests(
-    adminId: string
+    adminId: string,
   ): Promise<INotification[]> {
     return this.model
       .find({

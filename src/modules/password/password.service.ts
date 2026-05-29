@@ -4,7 +4,9 @@ import { logger } from "@/middlewares/pino-logger";
 import { EmailService } from "@/services/email.service";
 import { OTPService } from "@/services/otp.service";
 import { BadRequestException } from "@/utils/app-error.utils";
+
 import type { IPasswordResetOTP } from "./password.interface";
+
 import { PasswordResetOTPRepository } from "./password.repository";
 
 /**
@@ -38,14 +40,14 @@ export class PasswordResetService {
   async requestPasswordReset(
     userId: string,
     email: string,
-    userName: string | undefined
+    userName: string | undefined,
   ): Promise<{ message: string; expiresAt: Date; expiresInMinutes: number }> {
-    const attemptCount =
-      await this.repository.countPasswordResetAttemptsLastHour(userId);
+    const attemptCount
+      = await this.repository.countPasswordResetAttemptsLastHour(userId);
 
     if (attemptCount >= this.config.MAX_REQUESTS_PER_HOUR) {
       throw new BadRequestException(
-        "Too many password reset requests. Please try again after 1 hour."
+        "Too many password reset requests. Please try again after 1 hour.",
       );
     }
 
@@ -56,7 +58,7 @@ export class PasswordResetService {
     await this.repository.createOTP(
       userId,
       String(otpGenerated.code),
-      otpGenerated.expiresAt
+      otpGenerated.expiresAt,
     );
 
     const expiresInMinutes = Math.ceil(otpGenerated.expiresInSeconds / 60);
@@ -65,7 +67,7 @@ export class PasswordResetService {
       userName,
       email,
       String(otpGenerated.code),
-      expiresInMinutes
+      expiresInMinutes,
     );
 
     logger.info(
@@ -74,7 +76,7 @@ export class PasswordResetService {
         email,
         expiresAt: otpGenerated.expiresAt,
       },
-      "Password reset OTP requested"
+      "Password reset OTP requested",
     );
 
     return {
@@ -89,18 +91,18 @@ export class PasswordResetService {
 
     if (!passwordReset) {
       throw new BadRequestException(
-        "No active password reset request found. Please request a new one."
+        "No active password reset request found. Please request a new one.",
       );
     }
 
     if (passwordReset.attempts >= this.config.MAX_OTP_ATTEMPTS) {
       logger.warn(
         { userId, attempts: passwordReset.attempts },
-        "Max password reset OTP attempts exceeded"
+        "Max password reset OTP attempts exceeded",
       );
 
       throw new BadRequestException(
-        `Maximum verification attempts exceeded (${this.config.MAX_OTP_ATTEMPTS}). Please request a new code.`
+        `Maximum verification attempts exceeded (${this.config.MAX_OTP_ATTEMPTS}). Please request a new code.`,
       );
     }
 
@@ -112,7 +114,7 @@ export class PasswordResetService {
           userId,
           attempts: passwordReset.attempts + 1,
         },
-        "Invalid password reset OTP attempted"
+        "Invalid password reset OTP attempted",
       );
 
       throw new BadRequestException("Invalid password reset code");

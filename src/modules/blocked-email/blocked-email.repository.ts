@@ -1,9 +1,12 @@
 import { Types } from "mongoose";
-import { BlockedEmail, type IBlockedEmail } from "./blocked-email.model";
+
+import type { IBlockedEmail } from "./blocked-email.model";
 import type {
   BlockedEmailReason,
   BlockedEmailStatus,
 } from "./blocked-email.type";
+
+import { BlockedEmail } from "./blocked-email.model";
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
@@ -21,7 +24,7 @@ export class BlockedEmailRepository {
 
   async findActiveByEmails(emails: string[]): Promise<string[]> {
     const normalizedEmails = emails
-      .map((email) => normalizeEmail(email))
+      .map(email => normalizeEmail(email))
       .filter(Boolean);
 
     if (normalizedEmails.length === 0) {
@@ -36,7 +39,7 @@ export class BlockedEmailRepository {
       .lean()
       .exec();
 
-    return blockedEmails.map((item) => item.email);
+    return blockedEmails.map(item => item.email);
   }
 
   async list(status?: BlockedEmailStatus): Promise<IBlockedEmail[]> {

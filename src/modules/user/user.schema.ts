@@ -1,8 +1,8 @@
 // file: src/modules/user/user.schema.ts
 
-import { MESSAGES } from "@/constants/app.constants";
 import { z } from "zod";
 
+import { MESSAGES } from "@/constants/app.constants";
 
 export const updateUserSchema = z.object({
   body: z.object({
@@ -10,7 +10,6 @@ export const updateUserSchema = z.object({
     phoneNumber: z.string().optional(),
   }),
 });
-
 
 export const changePasswordSchema = z.object({
   body: z.object({

@@ -33,7 +33,8 @@ function deriveKeyFromUrl(url: string): string | null {
     }
 
     return null;
-  } catch {
+  }
+  catch {
     return null;
   }
 }
@@ -44,8 +45,8 @@ function normalizeFileLink(fileUrl: unknown, key?: unknown): ExcelFileLink {
   if (fileUrl && typeof fileUrl === "object") {
     const value = fileUrl as Record<string, unknown>;
     const url = asString(value.url) || "";
-    const resolvedKey =
-      asString(value.key) || fallbackKey || (url ? deriveKeyFromUrl(url) : null);
+    const resolvedKey
+      = asString(value.key) || fallbackKey || (url ? deriveKeyFromUrl(url) : null);
 
     return { url, key: resolvedKey };
   }

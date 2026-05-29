@@ -63,22 +63,17 @@ app.use(
   }),
 );
 
-const captureRawBody = (
-  req: any,
-  res: any,
-  buf: Buffer,
-  encoding: string | undefined,
-) => {
+function captureRawBody(req: any, res: any, buf: Buffer, _encoding: string | undefined) {
   if (buf && buf.length) {
     req.rawBody = buf;
   }
-};
+}
 
 const normalizedBaseUrl = env.BASE_URL.startsWith("/")
   ? env.BASE_URL
   : `/${env.BASE_URL}`;
-const basePath =
-  normalizedBaseUrl === "/" ? "" : normalizedBaseUrl.replace(/\/$/, "");
+const basePath
+  = normalizedBaseUrl === "/" ? "" : normalizedBaseUrl.replace(/\/$/, "");
 const stripeWebhookPath = `${basePath}/pre-market/payment/webhook`;
 
 app.post(

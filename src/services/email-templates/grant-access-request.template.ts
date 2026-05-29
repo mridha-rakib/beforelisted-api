@@ -1,6 +1,6 @@
 // file: src/services/email-templates/grant-access-request.template.ts
 
-import { BaseEmailTemplate } from "./base-email-template";
+import { BaseEmailTemplate } from "./base-email-template.js";
 
 /**
  * Email template for grant access request (Admin notification)
@@ -28,7 +28,7 @@ export class GrantAccessRequestTemplate extends BaseEmailTemplate {
     requestedAt: string,
     adminDashboardLink: string,
     logoUrl: string | undefined,
-    brandColor: string = "#1890FF"
+    brandColor: string = "#1890FF",
   ) {
     super(logoUrl, brandColor);
     this.adminName = adminName;
@@ -43,7 +43,7 @@ export class GrantAccessRequestTemplate extends BaseEmailTemplate {
   }
 
   getSubject(): string {
-    return `Action required: agent match request pending approval | BeforeListed™`;
+    return `Action required: agent match request pending approval | BeforeListedï¿½`;
   }
 
   getEmailPriority(): "high" | "normal" | "low" {
@@ -55,7 +55,7 @@ export class GrantAccessRequestTemplate extends BaseEmailTemplate {
 
     const header = this.generateHeader(
       "Agent Match Request Pending Approval",
-      "Action Required"
+      "Action Required",
     );
 
     const adminFirstName = this.adminName?.trim().split(" ")[0] || this.adminName;
@@ -105,10 +105,9 @@ export class GrantAccessRequestTemplate extends BaseEmailTemplate {
       </div>
     `;
 
-    const body =
-      introduction + details + actionRequired + note;
+    const body
+      = introduction + details + actionRequired + note;
 
     return this.wrapInHTML(header, body);
   }
 }
-

@@ -1,6 +1,7 @@
 // file: src/jobs/pre-market-expiration.job.ts
 
 import cron from "node-cron";
+
 import { logger } from "@/middlewares/pino-logger";
 import { PreMarketService } from "@/modules/pre-market/pre-market.service";
 
@@ -8,7 +9,7 @@ const EXPIRATION_CRON_SCHEDULE = "*/5 * * * *";
 
 let isRunning = false;
 
-const runExpirationSweep = async (service: PreMarketService): Promise<void> => {
+async function runExpirationSweep(service: PreMarketService): Promise<void> {
   if (isRunning) {
     logger.warn("Pre-market expiration sweep already running; skipping");
     return;
@@ -25,17 +26,19 @@ const runExpirationSweep = async (service: PreMarketService): Promise<void> => {
           deletedCount: result.deletedCount,
           failedCount: result.failedCount,
         },
-        "Expired pre-market requests processed"
+        "Expired pre-market requests processed",
       );
     }
-  } catch (error) {
+  }
+  catch (error) {
     logger.error({ error }, "Failed to process expired pre-market requests");
-  } finally {
+  }
+  finally {
     isRunning = false;
   }
-};
+}
 
-export const startPreMarketExpirationJob = (): void => {
+export function startPreMarketExpirationJob(): void {
   const service = new PreMarketService();
 
   cron.schedule(EXPIRATION_CRON_SCHEDULE, () => {
@@ -44,8 +47,8 @@ export const startPreMarketExpirationJob = (): void => {
 
   logger.info(
     { schedule: EXPIRATION_CRON_SCHEDULE },
-    "Pre-market expiration job scheduled"
+    "Pre-market expiration job scheduled",
   );
 
   void runExpirationSweep(service);
-};
+}

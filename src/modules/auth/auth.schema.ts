@@ -1,7 +1,8 @@
 // file: src/modules/auth/auth.schema.ts
 
-import { MESSAGES, ROLES } from "@/constants/app.constants";
 import { z } from "zod";
+
+import { MESSAGES, ROLES } from "@/constants/app.constants";
 
 /**
  * Register schema with conditional password validation
@@ -93,7 +94,8 @@ export const registerSchema = z.object({
               path: ["password"],
             });
           }
-        } else {
+        }
+        else {
           // Normal renter registration: Password is REQUIRED
           if (!data.password) {
             ctx.addIssue({
@@ -115,7 +117,7 @@ export const loginSchema = z.object({
       .string()
       .regex(
         /^(AGT|ADM)-[A-Z0-9]{8}$/,
-        "Invalid referral code format (must start with AGT- or ADM-)"
+        "Invalid referral code format (must start with AGT- or ADM-)",
       )
       .optional(),
   }),

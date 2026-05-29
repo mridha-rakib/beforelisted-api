@@ -1,4 +1,5 @@
 import { z } from "zod";
+
 import { BLOCKED_EMAIL_REASONS } from "./blocked-email.type";
 
 export const createBlockedEmailSchema = z.object({

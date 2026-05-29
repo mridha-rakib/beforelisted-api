@@ -2,29 +2,29 @@
 
 import { logger } from "@/middlewares/pino-logger";
 
-export interface IOTPServiceConfig {
+export type IOTPServiceConfig = {
   length: number;
   expiryMinutes: number;
   allowDuplicates: boolean;
   trackingEnabled: boolean;
   maxTrackedOTPs: number;
-}
+};
 
-export interface IOTPGenerationResponse {
+export type IOTPGenerationResponse = {
   code: string;
   expiresAt: Date;
   expiresInSeconds: number;
   createdAt: Date;
   moduleKey?: string;
-}
+};
 
-export interface IOTPValidationResponse {
+export type IOTPValidationResponse = {
   isValid: boolean;
   message: string;
   isExpired?: boolean;
   remainingSeconds?: number;
   errorCode?: string;
-}
+};
 
 export class OTPService {
   private readonly DEFAULT_CONFIG: IOTPServiceConfig = {
@@ -50,13 +50,13 @@ export class OTPService {
       {
         config: this.config,
       },
-      "OTP Service initialized"
+      "OTP Service initialized",
     );
   }
 
   generate(
     moduleKey?: string,
-    expiryOverride?: number
+    expiryOverride?: number,
   ): IOTPGenerationResponse {
     try {
       const expiryMinutes = expiryOverride || this.config.expiryMinutes;
@@ -74,9 +74,9 @@ export class OTPService {
         attempts++;
 
         if (
-          this.config.allowDuplicates ||
-          !this.config.trackingEnabled ||
-          !moduleKey
+          this.config.allowDuplicates
+          || !this.config.trackingEnabled
+          || !moduleKey
         ) {
           break;
         }
@@ -93,7 +93,7 @@ export class OTPService {
             moduleKey,
             maxAttempts,
           },
-          "OTP duplicate prevention failed after max attempts"
+          "OTP duplicate prevention failed after max attempts",
         );
       }
 
@@ -103,7 +103,7 @@ export class OTPService {
 
       const createdAt = new Date();
       const expiresAt = new Date(
-        createdAt.getTime() + expiryMinutes * 60 * 1000
+        createdAt.getTime() + expiryMinutes * 60 * 1000,
       );
       const expiresInSeconds = expiryMinutes * 60;
 
@@ -113,7 +113,7 @@ export class OTPService {
           length: this.config.length,
           expiryMinutes,
         },
-        "OTP generated"
+        "OTP generated",
       );
 
       return {
@@ -123,13 +123,14 @@ export class OTPService {
         createdAt,
         moduleKey,
       };
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
           moduleKey,
         },
-        "Failed to generate OTP"
+        "Failed to generate OTP",
       );
       throw error;
     }
@@ -137,26 +138,28 @@ export class OTPService {
 
   generate6Digit(
     moduleKey?: string,
-    expiryOverride?: number
+    expiryOverride?: number,
   ): IOTPGenerationResponse {
     const originalLength = this.config.length;
     try {
       this.config.length = 6;
       return this.generate(moduleKey, expiryOverride);
-    } finally {
+    }
+    finally {
       this.config.length = originalLength;
     }
   }
 
   generate8Digit(
     moduleKey?: string,
-    expiryOverride?: number
+    expiryOverride?: number,
   ): IOTPGenerationResponse {
     const originalLength = this.config.length;
     try {
       this.config.length = 8;
       return this.generate(moduleKey, expiryOverride);
-    } finally {
+    }
+    finally {
       this.config.length = originalLength;
     }
   }
@@ -164,7 +167,7 @@ export class OTPService {
   validate(
     otp: string,
     expiresAt: Date,
-    expectedLength?: number
+    expectedLength?: number,
   ): IOTPValidationResponse {
     try {
       const length = expectedLength || this.config.length;
@@ -193,9 +196,9 @@ export class OTPService {
         };
       }
 
-      const min = Math.pow(10, length - 1);
-      const max = Math.pow(10, length) - 1;
-      const otpNumber = parseInt(otp, 10);
+      const min = 10 ** (length - 1);
+      const max = 10 ** length - 1;
+      const otpNumber = Number.parseInt(otp, 10);
 
       if (otpNumber < min || otpNumber > max) {
         return {
@@ -210,7 +213,7 @@ export class OTPService {
 
       if (isExpired) {
         const expiredMinutesAgo = Math.floor(
-          (now.getTime() - expiresAt.getTime()) / 60000
+          (now.getTime() - expiresAt.getTime()) / 60000,
         );
         return {
           isValid: false,
@@ -221,7 +224,7 @@ export class OTPService {
       }
 
       const remainingSeconds = Math.floor(
-        (expiresAt.getTime() - now.getTime()) / 1000
+        (expiresAt.getTime() - now.getTime()) / 1000,
       );
 
       return {
@@ -230,12 +233,13 @@ export class OTPService {
         isExpired: false,
         remainingSeconds,
       };
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
         },
-        "Error validating OTP"
+        "Error validating OTP",
       );
 
       return {
@@ -265,17 +269,19 @@ export class OTPService {
       if (moduleKey) {
         this.recentOTPs.delete(moduleKey);
         logger.debug({ moduleKey }, "Cleared tracked OTPs");
-      } else {
+      }
+      else {
         this.recentOTPs.clear();
         logger.debug("Cleared all tracked OTPs");
       }
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
           moduleKey,
         },
-        "Error clearing tracked OTPs"
+        "Error clearing tracked OTPs",
       );
     }
   }
@@ -304,20 +310,21 @@ export class OTPService {
       this.config = newConfig;
 
       logger.info({ config: this.config }, "OTP Service configuration updated");
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
         },
-        "Failed to update OTP Service configuration"
+        "Failed to update OTP Service configuration",
       );
       throw error;
     }
   }
 
   private generateRandomOTP(length: number): string {
-    const min = Math.pow(10, length - 1);
-    const max = Math.pow(10, length) - 1;
+    const min = 10 ** (length - 1);
+    const max = 10 ** length - 1;
     const randomNumber = Math.floor(Math.random() * (max - min + 1) + min);
     return randomNumber.toString();
   }

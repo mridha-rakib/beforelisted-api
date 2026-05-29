@@ -1,7 +1,9 @@
 // file: src/modules/notice/notice.repository.ts
 
+import type { INotice } from "./notice.model";
+
 import { BaseRepository } from "../base/base.repository";
-import { Notice, type INotice } from "./notice.model";
+import { Notice } from "./notice.model";
 
 export class NoticeRepository extends BaseRepository<INotice> {
   constructor() {
@@ -29,7 +31,7 @@ export class NoticeRepository extends BaseRepository<INotice> {
 
   async updateNotice(
     data: Partial<INotice>,
-    updatedBy: string
+    updatedBy: string,
   ): Promise<INotice | null> {
     const notice = await this.model.findOneAndUpdate(
       {},
@@ -38,7 +40,7 @@ export class NoticeRepository extends BaseRepository<INotice> {
         updatedBy,
         updatedAt: new Date(),
       },
-      { new: true }
+      { new: true },
     );
 
     return notice;

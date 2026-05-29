@@ -1,8 +1,10 @@
 // file: src/modules/file/file.route.ts
 
+import { Router } from "express";
+
 import upload from "@/config/multer.config";
 import { authMiddleware } from "@/middlewares/auth.middleware";
-import { Router } from "express";
+
 import { FileController } from "./file.controller";
 
 const router = Router();
@@ -17,7 +19,7 @@ router.post(
   "/upload-profile-image",
   authMiddleware.verifyToken,
   upload.single("image"),
-  fileController.uploadProfileImage
+  fileController.uploadProfileImage,
 );
 
 /**
@@ -27,7 +29,7 @@ router.post(
 router.delete(
   "/profile-image",
   authMiddleware.verifyToken,
-  fileController.deleteProfileImage
+  fileController.deleteProfileImage,
 );
 
 /**
@@ -40,7 +42,7 @@ router.post(
   "/upload-excel",
   authMiddleware.verifyToken,
   upload.single("file"),
-  fileController.uploadExcelFile
+  fileController.uploadExcelFile,
 );
 
 /**
@@ -53,7 +55,7 @@ router.post(
   "/upload-pdf",
   authMiddleware.verifyToken,
   upload.single("file"),
-  fileController.uploadPdfFile
+  fileController.uploadPdfFile,
 );
 
 export default router;

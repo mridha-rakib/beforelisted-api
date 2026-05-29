@@ -5,16 +5,17 @@ import type { NextFunction, Request, Response } from "express";
 type AsyncControllerType = (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => Promise<any>;
 
 export function asyncHandler(
-  controller: AsyncControllerType
+  controller: AsyncControllerType,
 ): AsyncControllerType {
   return async (req, res, next) => {
     try {
       await controller(req, res, next);
-    } catch (error) {
+    }
+    catch (error) {
       next(error);
     }
   };

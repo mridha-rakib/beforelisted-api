@@ -1,9 +1,12 @@
 // file: src/modules/renter/renter.model.ts
 
-import { BaseSchemaUtil } from "@/utils/base-schema.utils";
-import { model, Types, type Document, type Query } from "mongoose";
+import type { Document, Query } from "mongoose";
 
-export interface IRenterModel extends Document {
+import { model, Types } from "mongoose";
+
+import { BaseSchemaUtil } from "@/utils/base-schema.utils";
+
+export type IRenterModel = {
   userId: Types.ObjectId;
 
   email: string;
@@ -34,10 +37,10 @@ export interface IRenterModel extends Document {
   updatedAt: Date;
 
   // Instance methods
-  softDelete(): Promise<void>;
-  restore(): Promise<void>;
-  completeProfile(data: Partial<IRenterModel>): Promise<void>;
-}
+  softDelete: () => Promise<void>;
+  restore: () => Promise<void>;
+  completeProfile: (data: Partial<IRenterModel>) => Promise<void>;
+} & Document;
 
 const renterSchema = BaseSchemaUtil.createSchema({
   userId: {

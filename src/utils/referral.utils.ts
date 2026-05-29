@@ -1,7 +1,8 @@
 // file: src/utils/referral.utils.ts
 
+import crypto from "node:crypto";
+
 import { ROLES } from "@/constants/app.constants";
-import crypto from "crypto";
 
 /**
  * Referral code generation and validation
@@ -14,7 +15,7 @@ export class ReferralUtil {
   };
 
   static generateReferralCode(
-    role: typeof ROLES.ADMIN | typeof ROLES.AGENT
+    role: typeof ROLES.ADMIN | typeof ROLES.AGENT,
   ): string {
     const prefix = this.PREFIX[role as keyof typeof this.PREFIX];
     const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -31,10 +32,12 @@ export class ReferralUtil {
    * Extract role from referral code
    */
   static extractRoleFromCode(
-    code: string
+    code: string,
   ): typeof ROLES.ADMIN | typeof ROLES.AGENT | null {
-    if (code.startsWith("ADM-")) return ROLES.ADMIN;
-    if (code.startsWith("AGT-")) return ROLES.AGENT;
+    if (code.startsWith("ADM-"))
+      return ROLES.ADMIN;
+    if (code.startsWith("AGT-"))
+      return ROLES.AGENT;
     return null;
   }
 

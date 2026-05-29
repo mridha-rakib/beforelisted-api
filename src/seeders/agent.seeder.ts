@@ -2,15 +2,15 @@
 
 import {
   ROLES,
-  SYSTEM_DEFAULT_AGENT,
   SYSTEM_DEFAULT_ADMIN,
+  SYSTEM_DEFAULT_AGENT,
 } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 import { AgentProfile } from "@/modules/agent/agent.model";
 import { RenterModel } from "@/modules/renter/renter.model";
+import { User } from "@/modules/user/user.model";
 import { UserRepository } from "@/modules/user/user.repository";
 import { hashPassword } from "@/utils/password.utils";
-import { User } from "@/modules/user/user.model";
 
 export class AgentSeeder {
   private static readonly DEFAULT_AGENT_PASSWORD = "Agent@12345";
@@ -66,7 +66,8 @@ export class AgentSeeder {
           },
           "Default agent seeded. Rotate this password in production.",
         );
-      } else {
+      }
+      else {
         const userUpdates: Record<string, any> = {};
 
         if (seededAgentUser.fullName !== SYSTEM_DEFAULT_AGENT.fullName) {
@@ -86,8 +87,8 @@ export class AgentSeeder {
         }
 
         if (!seededAgentUser.referralCode) {
-          userUpdates.referralCode =
-            await userRepository.generateUniqueReferralCode("AGT");
+          userUpdates.referralCode
+            = await userRepository.generateUniqueReferralCode("AGT");
         }
 
         if (Object.keys(userUpdates).length > 0) {
@@ -101,7 +102,8 @@ export class AgentSeeder {
             { userId: seededAgentUser?._id?.toString?.() },
             "Default agent user updated by seeder",
           );
-        } else {
+        }
+        else {
           logger.info("Default agent user already exists. Skipping user create.");
         }
       }
@@ -145,12 +147,14 @@ export class AgentSeeder {
                 },
                 "Re-linked default agent profile to seeded user (stale user reference detected)",
               );
-            } else {
+            }
+            else {
               throw new Error(
                 `Cannot seed default agent profile. License ${SYSTEM_DEFAULT_AGENT.licenseNumber} is already assigned to another user (${linkedUser.email ?? linkedUser._id?.toString?.()}).`,
               );
             }
-          } else {
+          }
+          else {
             profile = conflictingProfile;
           }
         }
@@ -175,7 +179,8 @@ export class AgentSeeder {
           },
           "Default agent profile created successfully",
         );
-      } else {
+      }
+      else {
         const profileUpdates: Record<string, any> = {};
 
         if (profile.licenseNumber !== SYSTEM_DEFAULT_AGENT.licenseNumber) {
@@ -206,7 +211,8 @@ export class AgentSeeder {
             { profileId: profile._id?.toString?.() },
             "Default agent profile updated by seeder",
           );
-        } else {
+        }
+        else {
           logger.info(
             "Default agent profile already exists. Skipping profile create.",
           );
@@ -242,7 +248,8 @@ export class AgentSeeder {
         },
         "Default system users are ensured",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(error, "Error running default agent seeder");
       throw error;
     }

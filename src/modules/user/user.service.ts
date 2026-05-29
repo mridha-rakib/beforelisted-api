@@ -12,15 +12,17 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@/utils/app-error.utils";
-import { ReferralService } from "../referral/referral.service";
+
 import type { IUser } from "./user.interface";
-import { PreMarketService } from "../pre-market/pre-market.service";
-import { UserRepository } from "./user.repository";
 import type {
   UpdateUserPayload,
   UserCreatePayload,
   UserResponse,
 } from "./user.type";
+
+import { PreMarketService } from "../pre-market/pre-market.service";
+import { ReferralService } from "../referral/referral.service";
+import { UserRepository } from "./user.repository";
 
 export class UserService {
   private userRepository: UserRepository;
@@ -37,24 +39,24 @@ export class UserService {
 
   toUserResponse(user: IUser): UserResponse {
     const referredByValue = user.referredBy;
-    const referredBy =
-      referredByValue &&
-      typeof referredByValue === "object" &&
-      "_id" in referredByValue
+    const referredBy
+      = referredByValue
+        && typeof referredByValue === "object"
+        && "_id" in referredByValue
         ? String(referredByValue._id)
         : referredByValue
-        ? String(referredByValue)
-        : undefined;
+          ? String(referredByValue)
+          : undefined;
 
     const deletedByValue = user.deletedBy;
-    const deletedBy =
-      deletedByValue &&
-      typeof deletedByValue === "object" &&
-      "_id" in deletedByValue
+    const deletedBy
+      = deletedByValue
+        && typeof deletedByValue === "object"
+        && "_id" in deletedByValue
         ? String(deletedByValue._id)
         : deletedByValue
-        ? String(deletedByValue)
-        : undefined;
+          ? String(deletedByValue)
+          : undefined;
 
     return {
       _id: user._id.toString(),
@@ -106,7 +108,8 @@ export class UserService {
       const user = await this.userRepository.create(payload);
       logger.info({ userId: user._id, email: user.email }, "User created");
       return user;
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(error, "Error creating user");
       throw error;
     }
@@ -177,7 +180,7 @@ export class UserService {
    */
   async updateUserProfile(
     userId: string,
-    payload: UpdateUserPayload
+    payload: UpdateUserPayload,
   ): Promise<UserResponse> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
@@ -191,8 +194,10 @@ export class UserService {
 
     // Sync fullName and phoneNumber to role-specific profile
     const syncPayload: Record<string, any> = {};
-    if (payload.fullName) syncPayload.fullName = payload.fullName;
-    if (payload.phoneNumber) syncPayload.phoneNumber = payload.phoneNumber;
+    if (payload.fullName)
+      syncPayload.fullName = payload.fullName;
+    if (payload.phoneNumber)
+      syncPayload.phoneNumber = payload.phoneNumber;
 
     if (Object.keys(syncPayload).length > 0) {
       if (user.role === "Renter") {
@@ -201,7 +206,8 @@ export class UserService {
         const renterRepository = new RenterRepository();
         await renterRepository.updateByUserId(userId, syncPayload);
         logger.info({ userId, role: "Renter" }, "Profile synced to Renter model");
-      } else if (user.role === "Agent") {
+      }
+      else if (user.role === "Agent") {
         // Sync to Agent profile
         const { AgentProfileRepository } = await import("../agent/agent.repository");
         const agentRepository = new AgentProfileRepository();
@@ -252,7 +258,7 @@ export class UserService {
     data: {
       emailVerificationToken?: string;
       emailVerificationExpiresAt?: Date;
-    }
+    },
   ): Promise<IUser | null> {
     return this.userRepository.updateVerificationToken(userId, data);
   }
@@ -262,7 +268,7 @@ export class UserService {
    */
   async updatePassword(
     userId: string,
-    hashedPassword: string
+    hashedPassword: string,
   ): Promise<IUser | null> {
     return this.userRepository.updatePassword(userId, hashedPassword);
   }
@@ -302,7 +308,7 @@ export class UserService {
    * ADMIN: Permanently delete user
    */
   async adminPermanentlyDeleteUser(
-    userId: string
+    userId: string,
   ): Promise<{ message: string }> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
@@ -327,8 +333,8 @@ export class UserService {
           }
 
           try {
-            const emailResult =
-              await this.emailService.sendRegisteredAgentNoLongerActiveToRenter(
+            const emailResult
+              = await this.emailService.sendRegisteredAgentNoLongerActiveToRenter(
                 {
                   to: renter.email,
                   renterName: renter.fullName || "Renter",
@@ -346,7 +352,8 @@ export class UserService {
                 "Registered-agent-inactive email failed to send",
               );
             }
-          } catch (error) {
+          }
+          catch (error) {
             logger.error(
               {
                 userId,
@@ -379,14 +386,15 @@ export class UserService {
 
       logger.info(
         { userId, tokensDeleted: result },
-        "All refresh tokens invalidated for user"
+        "All refresh tokens invalidated for user",
       );
 
       return result || 0;
 
       // Option 2: If you use a token management service
       // return await this.tokenService.invalidateAllUserTokens(userId);
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ userId, error }, "Error invalidating refresh tokens");
       throw error;
     }
@@ -403,7 +411,7 @@ export class UserService {
   async notifyPasswordChange(
     email: string,
     fullName: string,
-    changedAt: Date
+    changedAt: Date,
   ): Promise<void> {
     try {
       await this.emailService.sendPasswordChangedEmail({
@@ -413,10 +421,11 @@ export class UserService {
       });
 
       logger.info({ email, changedAt }, "Password change notification sent");
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { email, error },
-        "Failed to send password change notification"
+        "Failed to send password change notification",
       );
       // Don't throw - email failure shouldn't block password change
     }
@@ -453,7 +462,7 @@ export class UserService {
 
   async updateAccountStatus(
     userId: string,
-    status: "active" | "inactive" | "pending"
+    status: "active" | "inactive" | "pending",
   ): Promise<IUser | null> {
     const user = await this.userRepository.updateById(userId, {
       accountStatus: status,
@@ -475,7 +484,7 @@ export class UserService {
 
     if (email === SYSTEM_DEFAULT_AGENT.email.toLowerCase()) {
       throw new ForbiddenException(
-        "Default assigned agent account cannot be deleted"
+        "Default assigned agent account cannot be deleted",
       );
     }
   }

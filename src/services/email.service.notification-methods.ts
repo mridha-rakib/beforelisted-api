@@ -1,20 +1,21 @@
 // file: src/services/email.service.notification-methods.ts
 
-import { logger } from "@/middlewares/pino-logger";
 import type {
   IPreMarketAdminNotificationPayload,
   IPreMarketAgentNotificationPayload,
 } from "@/services/email-notification.types";
 import type { IEmailOptions, IEmailResult } from "@/services/email.types";
 
+import { logger } from "@/middlewares/pino-logger";
+
 export async function sendPreMarketNotificationToAgent(
   this: any,
-  payload: IPreMarketAgentNotificationPayload
+  payload: IPreMarketAgentNotificationPayload,
 ): Promise<IEmailResult> {
   try {
     logger.debug(
       { email: payload.to, agentType: payload.agentType },
-      "Sending pre-market notification to agent"
+      "Sending pre-market notification to agent",
     );
 
     // Render template - WITHOUT renter info
@@ -26,7 +27,7 @@ export async function sendPreMarketNotificationToAgent(
       payload.serviceType,
       payload.listingUrl,
       this.config.logoUrl,
-      this.config.brandColor
+      this.config.brandColor,
     );
 
     // Prepare email options
@@ -41,15 +42,16 @@ export async function sendPreMarketNotificationToAgent(
     return await this.sendEmail(
       emailOptions,
       "PRE_MARKET_AGENT_NOTIFICATION",
-      payload.to
+      payload.to,
     );
-  } catch (error) {
+  }
+  catch (error) {
     logger.error(
       {
         error: error instanceof Error ? error.message : String(error),
         email: payload.to,
       },
-      "Failed to send pre-market agent notification"
+      "Failed to send pre-market agent notification",
     );
 
     return {
@@ -64,12 +66,12 @@ export async function sendPreMarketNotificationToAgent(
 
 export async function sendPreMarketNotificationToAdmin(
   this: any,
-  payload: IPreMarketAdminNotificationPayload
+  payload: IPreMarketAdminNotificationPayload,
 ): Promise<IEmailResult> {
   try {
     logger.debug(
       { email: payload.to, preMarketRequestId: payload.preMarketRequestId },
-      "Sending pre-market notification to admin with renter info"
+      "Sending pre-market notification to admin with renter info",
     );
 
     // Render template - WITH renter info
@@ -83,7 +85,7 @@ export async function sendPreMarketNotificationToAdmin(
       payload.listingUrl,
       payload.preMarketRequestId,
       this.config.logoUrl,
-      this.config.brandColor
+      this.config.brandColor,
     );
 
     // Prepare email options
@@ -98,15 +100,16 @@ export async function sendPreMarketNotificationToAdmin(
     return await this.sendEmail(
       emailOptions,
       "PRE_MARKET_ADMIN_NOTIFICATION",
-      payload.to
+      payload.to,
     );
-  } catch (error) {
+  }
+  catch (error) {
     logger.error(
       {
         error: error instanceof Error ? error.message : String(error),
         email: payload.to,
       },
-      "Failed to send pre-market admin notification"
+      "Failed to send pre-market admin notification",
     );
 
     return {

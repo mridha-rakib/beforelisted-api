@@ -13,7 +13,7 @@ const logger = pino(
     level: env.LOG_LEVEL || "info",
     timestamp: () => `,"time":"${dayjs().format("YYYY-MM-DD HH:mm:ss")}"`,
   },
-  env.NODE_ENV === "production" ? undefined : pretty()
+  env.NODE_ENV === "production" ? undefined : pretty(),
 );
 
 function pinoLogger() {
@@ -21,7 +21,8 @@ function pinoLogger() {
     logger: logger as any,
     genReqId(req, res) {
       const existingID = req.id ?? req.headers["x-request-id"];
-      if (existingID) return existingID;
+      if (existingID)
+        return existingID;
       const id = randomUUID();
       res.setHeader("X-Request-Id", id);
       return id;

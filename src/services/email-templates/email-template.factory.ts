@@ -1,7 +1,9 @@
 // file: src/services/email-templates/email-template.factory.ts
 
 import { logger } from "@/middlewares/pino-logger";
-import { BaseEmailTemplate } from "./base-email-template";
+
+import type { BaseEmailTemplate } from "./base-email-template.js";
+
 import { GrantAccessApprovalTemplate } from "./grant-access-approval.template";
 import { GrantAccessRejectionTemplate } from "./grant-access-rejection.template";
 import { GrantAccessRequestTemplate } from "./grant-access-request.template";
@@ -33,7 +35,7 @@ export class EmailTemplateFactory {
     propertyTitle: string,
     location: string,
     requestedAt: string,
-    adminDashboardLink: string
+    adminDashboardLink: string,
   ): BaseEmailTemplate {
     return new GrantAccessRequestTemplate(
       adminName,
@@ -46,7 +48,7 @@ export class EmailTemplateFactory {
       requestedAt,
       adminDashboardLink,
       this.logoUrl,
-      this.brandColor
+      this.brandColor,
     );
   }
 
@@ -59,7 +61,7 @@ export class EmailTemplateFactory {
     location: string,
     approvalType: "free" | "paid",
     chargeAmount: number | null,
-    accessLink: string
+    accessLink: string,
   ): BaseEmailTemplate {
     return new GrantAccessApprovalTemplate(
       agentName,
@@ -69,7 +71,7 @@ export class EmailTemplateFactory {
       chargeAmount,
       accessLink,
       this.logoUrl,
-      this.brandColor
+      this.brandColor,
     );
   }
 
@@ -80,7 +82,7 @@ export class EmailTemplateFactory {
     agentName: string,
     propertyTitle: string,
     rejectionReason: string | null,
-    contactEmail: string
+    contactEmail: string,
   ): BaseEmailTemplate {
     return new GrantAccessRejectionTemplate(
       agentName,
@@ -88,7 +90,7 @@ export class EmailTemplateFactory {
       rejectionReason,
       contactEmail,
       this.logoUrl,
-      this.brandColor
+      this.brandColor,
     );
   }
 
@@ -100,7 +102,7 @@ export class EmailTemplateFactory {
     propertyTitle: string,
     chargeAmount: number,
     paymentLink: string,
-    paymentDeadline: string
+    paymentDeadline: string,
   ): BaseEmailTemplate {
     return new PaymentLinkTemplate(
       agentName,
@@ -109,7 +111,7 @@ export class EmailTemplateFactory {
       paymentLink,
       paymentDeadline,
       this.logoUrl,
-      this.brandColor
+      this.brandColor,
     );
   }
 
@@ -121,7 +123,7 @@ export class EmailTemplateFactory {
     this.brandColor = brandColor;
     logger.info(
       { logoUrl, brandColor },
-      "Email template factory branding updated"
+      "Email template factory branding updated",
     );
   }
 }

@@ -1,5 +1,21 @@
 // file: src/services/email.service.ts
 
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import type {
+  IAccountDeletedPayload,
+  IAdminReferralEmailPayload,
+  IAgentActivatedByAdminEmailPayload,
+  IEmailOptions,
+  IEmailResult,
+  IEmailVerificationPayload,
+  IMovingDiscountCodesEmailPayload,
+  IPasswordChangedPayload,
+  IPasswordResetPayload,
+  IWelcomeEmailPayload,
+} from "@/services/email.types";
+
 import { emailConfig } from "@/config/email.config";
 import { logger } from "@/middlewares/pino-logger";
 import {
@@ -7,20 +23,33 @@ import {
   renderEmailLogo,
 } from "@/services/email-branding";
 import { createEmailTransporter } from "@/services/email.transporter";
-import { existsSync, readFileSync } from "fs";
-import { join } from "path";
-import {
-  IAdminReferralEmailPayload,
-  type IAccountDeletedPayload,
-  type IAgentActivatedByAdminEmailPayload,
-  type IEmailOptions,
-  type IEmailResult,
-  type IEmailVerificationPayload,
-  type IMovingDiscountCodesEmailPayload,
-  type IPasswordChangedPayload,
-  type IPasswordResetPayload,
-  type IWelcomeEmailPayload,
-} from "@/services/email.types";
+
+import type {
+  IActiveSearchConfirmationReminderPayload,
+  IAdminContactRequestPayload,
+  IAgentRegistrationVerifiedAdminPayload,
+  IAgentRequestConfirmationPayload,
+  IMatchReferralAcknowledgmentToMatchingAgentPayload,
+  INonRegisteredAgentRequestSubmissionNotificationPayload,
+  INonRegisteredAgentSharedRequestNotificationPayload,
+  IOwnerRepresentationMatchReferralAcknowledgmentPayload,
+  IPreMarketAdminNotificationPayload,
+  IPreMarketAgentNotificationPayload,
+  IRenterArchiveNotificationPayload,
+  IRenterOpportunityFoundOtherAgentPayload,
+  IRenterOpportunityFoundRegisteredAgentPayload,
+  IRenterRegisteredAgentInactivePayload,
+  IRenterRegistrationVerifiedAdminPayload,
+  IRenterRequestClosedAgentAlertPayload,
+  IRenterRequestClosedRenterNotificationPayload,
+  IRenterRequestConfirmationPayload,
+  IRenterRequestExpiredNotificationPayload,
+  IRenterRequestUpdatedNotificationPayload,
+  IRenterSearchReactivatedAgentNotificationPayload,
+  IRenterUnarchiveNotificationPayload,
+  ISystemArchivedSearchInactiveAgentNotificationPayload,
+} from "./email-notification.types";
+
 import {
   adminContactRequestTemplate,
   agentRegistrationVerifiedAdminTemplate,
@@ -40,31 +69,6 @@ import {
   renterRequestExpiredTemplate,
   renterRequestUpdatedNotificationTemplate,
 } from "./email-notification.templates";
-import {
-  IActiveSearchConfirmationReminderPayload,
-  IAdminContactRequestPayload,
-  IAgentRegistrationVerifiedAdminPayload,
-  IAgentRequestConfirmationPayload,
-  ISystemArchivedSearchInactiveAgentNotificationPayload,
-  IMatchReferralAcknowledgmentToMatchingAgentPayload,
-  INonRegisteredAgentRequestSubmissionNotificationPayload,
-  INonRegisteredAgentSharedRequestNotificationPayload,
-  IOwnerRepresentationMatchReferralAcknowledgmentPayload,
-  IPreMarketAdminNotificationPayload,
-  IPreMarketAgentNotificationPayload,
-  IRenterOpportunityFoundOtherAgentPayload,
-  IRenterOpportunityFoundRegisteredAgentPayload,
-  IRenterRegisteredAgentInactivePayload,
-  IRenterArchiveNotificationPayload,
-  IRenterRegistrationVerifiedAdminPayload,
-  IRenterSearchReactivatedAgentNotificationPayload,
-  IRenterUnarchiveNotificationPayload,
-  IRenterRequestClosedAgentAlertPayload,
-  IRenterRequestClosedRenterNotificationPayload,
-  IRenterRequestConfirmationPayload,
-  IRenterRequestExpiredNotificationPayload,
-  IRenterRequestUpdatedNotificationPayload,
-} from "./email-notification.types";
 import { EmailTemplateFactory } from "./email-templates/email-template.factory";
 import { EmailTemplates } from "./email.templates.beforelisted";
 
@@ -89,7 +93,7 @@ function loadEmailLogoAttachment(): Buffer | null {
     ),
   ];
 
-  const logoPath = candidatePaths.find((candidatePath) =>
+  const logoPath = candidatePaths.find(candidatePath =>
     existsSync(candidatePath),
   );
 
@@ -117,7 +121,8 @@ export class EmailService {
       if (isConnected) {
         logger.info("📧 Email service initialized successfully");
       }
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -132,8 +137,8 @@ export class EmailService {
     matchedAgentFullName: string,
     renterFullName: string,
   ): string {
-    const powerFormBase =
-      "https://www.docusign.net/Member/PowerFormSigning.aspx?PowerFormId=9b3a6921-6388-4263-b18d-ba9a16b5bdc5&env=na1";
+    const powerFormBase
+      = "https://www.docusign.net/Member/PowerFormSigning.aspx?PowerFormId=9b3a6921-6388-4263-b18d-ba9a16b5bdc5&env=na1";
     const closingAgentName = encodeURIComponent(
       matchedAgentFullName?.trim() || "",
     );
@@ -147,8 +152,8 @@ export class EmailService {
     matchedAgentFullName: string,
     renterFullName: string,
   ): string {
-    const powerFormBase =
-      "https://www.docusign.net/Member/PowerFormSigning.aspx?PowerFormId=31a21874-2095-40c5-960f-92f3d9bcd871&env=na1";
+    const powerFormBase
+      = "https://www.docusign.net/Member/PowerFormSigning.aspx?PowerFormId=31a21874-2095-40c5-960f-92f3d9bcd871&env=na1";
     const referringAgentName = encodeURIComponent(
       registeredAgentFullName?.trim() || "",
     );
@@ -164,8 +169,8 @@ export class EmailService {
     closingAgentFullName: string,
     renterFullName: string,
   ): string {
-    const powerFormBase =
-      "https://www.docusign.net/Member/PowerFormSigning.aspx?PowerFormId=7d64af5b-efbb-43d9-ba13-661821a32c88&env=na1";
+    const powerFormBase
+      = "https://www.docusign.net/Member/PowerFormSigning.aspx?PowerFormId=7d64af5b-efbb-43d9-ba13-661821a32c88&env=na1";
     const closingAgentName = encodeURIComponent(
       closingAgentFullName?.trim() || "",
     );
@@ -206,7 +211,8 @@ export class EmailService {
 
       // Send email
       return await this.sendEmail(emailOptions, "PASSWORD_RESET_OTP", email);
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -252,7 +258,8 @@ export class EmailService {
         "PASSWORD_RESET_CONFIRMATION",
         email,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -311,7 +318,8 @@ export class EmailService {
         "EMAIL_VERIFICATION",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -357,7 +365,8 @@ export class EmailService {
       );
 
       return result;
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -400,8 +409,8 @@ export class EmailService {
       // Determine which welcome template to use
       let html: string;
       let subject: string;
-      const resolvedUserType: "Agent" | "Renter" =
-        payload.userType === "Agent" ? "Agent" : "Renter";
+      const resolvedUserType: "Agent" | "Renter"
+        = payload.userType === "Agent" ? "Agent" : "Renter";
 
       if (payload.isPasswordAutoGenerated) {
         html = this.templates.welcomeAutoGeneratedPassword(
@@ -413,7 +422,8 @@ export class EmailService {
           this.config.brandColor,
         );
         subject = `Welcome to BeforeListed - Your Temporary Password`;
-      } else {
+      }
+      else {
         html = this.templates.welcome(
           payload.userName,
           resolvedUserType,
@@ -422,8 +432,8 @@ export class EmailService {
           this.config.brandColor,
           payload.registeredAgent,
         );
-        subject =
-          resolvedUserType === "Agent"
+        subject
+          = resolvedUserType === "Agent"
             ? "Thank You for Registering \u2013 Account Pending Activation | BeforeListed\u2122"
             : "Welcome to BeforeListed";
       }
@@ -438,7 +448,8 @@ export class EmailService {
 
       // Send email
       return await this.sendEmail(emailOptions, "WELCOME", payload.to);
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -495,7 +506,8 @@ export class EmailService {
         "MOVING_DISCOUNT_CODES",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -526,8 +538,8 @@ export class EmailService {
         "Sending agent activated by admin email",
       );
 
-      const agentFirstName =
-        payload.agentName?.trim().split(/\s+/)[0] || "Agent";
+      const agentFirstName
+        = payload.agentName?.trim().split(/\s+/)[0] || "Agent";
 
       const html = this.templates.agentActivatedByAdmin(
         agentFirstName,
@@ -548,7 +560,8 @@ export class EmailService {
         "AGENT_ACTIVATED_BY_ADMIN",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -601,7 +614,8 @@ export class EmailService {
 
       // Send email
       return await this.sendEmail(emailOptions, "PASSWORD_RESET", payload.to);
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -648,7 +662,8 @@ export class EmailService {
 
       // Send email
       return await this.sendEmail(emailOptions, "PASSWORD_CHANGED", payload.to);
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -694,7 +709,8 @@ export class EmailService {
         "RENTER_ACCOUNT_DELETED",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -743,7 +759,8 @@ export class EmailService {
         "AGENT_ACCOUNT_DELETED",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -793,7 +810,8 @@ export class EmailService {
         "RENTER_REGISTERED_AGENT_INACTIVE",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -845,7 +863,8 @@ export class EmailService {
         "PRE_MARKET_AGENT_NOTIFICATION",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -904,7 +923,8 @@ export class EmailService {
         "NON_REGISTERED_AGENT_SHARED_REQUEST_NOTIFICATION",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -970,7 +990,8 @@ export class EmailService {
         "PRE_MARKET_ADMIN_NOTIFICATION",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1022,7 +1043,8 @@ export class EmailService {
         "PRE_MARKET_RENTER_CONFIRMATION",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1070,7 +1092,8 @@ export class EmailService {
         "PRE_MARKET_RENTER_REQUEST_EXPIRED",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1125,7 +1148,8 @@ export class EmailService {
         "PRE_MARKET_REQUEST_UPDATED",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1184,7 +1208,8 @@ export class EmailService {
         "NON_REGISTERED_AGENT_REQUEST_SUBMISSION_NOTIFICATION",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1249,7 +1274,8 @@ export class EmailService {
         "PRE_MARKET_REQUEST_CONFIRMATION_AGENT",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1304,7 +1330,8 @@ export class EmailService {
         "RENTER_OPPORTUNITY_FOUND_REGISTERED_AGENT",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1347,8 +1374,8 @@ export class EmailService {
         this.config.logoUrl,
         this.config.brandColor,
       );
-      const subject =
-        payload.requestScope === "All Market"
+      const subject
+        = payload.requestScope === "All Market"
           ? "A renter specialist may assist with your rental search \u2013 BeforeListed"
           : "An additional agent may help your request \u2013 BeforeListed";
 
@@ -1365,7 +1392,8 @@ export class EmailService {
         "RENTER_OPPORTUNITY_FOUND_OTHER_AGENT",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1450,7 +1478,8 @@ export class EmailService {
         "MATCH_REFERRAL_ACKNOWLEDGMENT",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1518,7 +1547,8 @@ export class EmailService {
         "OWNER_REPRESENTATION_MATCH_REFERRAL_ACKNOWLEDGMENT",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1585,7 +1615,8 @@ export class EmailService {
         "RENTER_REQUEST_CLOSED_AGENT_ALERT",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1637,7 +1668,8 @@ export class EmailService {
         "RENTER_REQUEST_CLOSED_RENTER_NOTIFICATION",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1660,8 +1692,8 @@ export class EmailService {
     payload: IRenterArchiveNotificationPayload,
   ): Promise<IEmailResult> {
     try {
-      const isRegisteredRegistrationMissing =
-        payload.templateType === "ARCHIVE_REGISTERED_REGISTRATION_MISSING";
+      const isRegisteredRegistrationMissing
+        = payload.templateType === "ARCHIVE_REGISTERED_REGISTRATION_MISSING";
       const subject = isRegisteredRegistrationMissing
         ? "Client registration missing, required to activate your request - BeforeListed"
         : payload.subject;
@@ -1679,9 +1711,9 @@ export class EmailService {
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
         cc:
-          !isRegisteredRegistrationMissing &&
-          payload.cc &&
-          payload.cc.length > 0
+          !isRegisteredRegistrationMissing
+          && payload.cc
+          && payload.cc.length > 0
             ? payload.cc
             : undefined,
         replyTo: payload.replyTo || "support@beforelisted.com",
@@ -1696,7 +1728,8 @@ export class EmailService {
       };
 
       return await this.sendEmail(emailOptions, payload.templateType, payload.to);
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1736,7 +1769,8 @@ export class EmailService {
       };
 
       return await this.sendEmail(emailOptions, payload.templateType, payload.to);
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1764,12 +1798,12 @@ export class EmailService {
         "Sending renter search reactivated notification to agent",
       );
 
-      const agentFirstName =
-        payload.agentName?.trim().split(/\s+/)[0] || payload.agentName || "Agent";
-      const clientFirstName =
-        payload.clientFullName?.trim().split(/\s+/)[0] ||
-        payload.clientFullName ||
-        "Client";
+      const agentFirstName
+        = payload.agentName?.trim().split(/\s+/)[0] || payload.agentName || "Agent";
+      const clientFirstName
+        = payload.clientFullName?.trim().split(/\s+/)[0]
+          || payload.clientFullName
+          || "Client";
       const bodyHtml = `
         <p>Hi ${agentFirstName},</p>
         <p>${clientFirstName} has resumed their search (Request ID: ${payload.requestId}). The request is now active.</p>
@@ -1789,7 +1823,8 @@ export class EmailService {
         "RENTER_SEARCH_REACTIVATED_AGENT_NOTIFICATION",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1817,8 +1852,8 @@ export class EmailService {
         "Sending system archived search inactive notification to agent",
       );
 
-      const agentFirstName =
-        payload.agentName?.trim().split(/\s+/)[0] || payload.agentName || "Agent";
+      const agentFirstName
+        = payload.agentName?.trim().split(/\s+/)[0] || payload.agentName || "Agent";
       const bodyHtml = `
         <p>Hi ${agentFirstName},</p>
         <p>${payload.renterName}'s request (${payload.requestId}) was automatically archived because the renter did not confirm they are still searching after the latest confirmation email.</p>
@@ -1838,7 +1873,8 @@ export class EmailService {
         "SYSTEM_ARCHIVED_SEARCH_INACTIVE_AGENT_NOTIFICATION",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1878,7 +1914,8 @@ export class EmailService {
       };
 
       return await this.sendEmail(emailOptions, payload.templateType, payload.to);
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1936,7 +1973,8 @@ export class EmailService {
         "AGENT_REGISTRATION_VERIFIED_ADMIN",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1980,9 +2018,9 @@ export class EmailService {
 
       const registeredAgentEmail = payload.registeredAgentEmail?.trim();
       const adminEmail = payload.to.trim().toLowerCase();
-      const cc =
-        registeredAgentEmail &&
-        registeredAgentEmail.toLowerCase() !== adminEmail
+      const cc
+        = registeredAgentEmail
+          && registeredAgentEmail.toLowerCase() !== adminEmail
           ? [registeredAgentEmail]
           : undefined;
 
@@ -1999,7 +2037,8 @@ export class EmailService {
         "RENTER_REGISTRATION_VERIFIED_ADMIN",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -2030,9 +2069,9 @@ export class EmailService {
         "Sending public contact request to admin",
       );
 
-      const subjectLine =
-        payload.subject.replace(/[\r\n]+/g, " ").trim() ||
-        "New contact message from public user";
+      const subjectLine
+        = payload.subject.replace(/[\r\n]+/g, " ").trim()
+          || "New contact message from public user";
 
       const html = adminContactRequestTemplate(
         payload.senderEmail,
@@ -2061,7 +2100,8 @@ export class EmailService {
         "ADMIN_CONTACT_REQUEST",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -2100,17 +2140,17 @@ export class EmailService {
         "Sending admin referral email with temporary password",
       );
 
-      const passwordStr =
-        typeof payload.temporaryPassword === "string"
+      const passwordStr
+        = typeof payload.temporaryPassword === "string"
           ? payload.temporaryPassword
           : payload.temporaryPassword.password;
 
-      let passwordExpiryTime: string | null = null;
+      let _passwordExpiryTime: string | null = null;
       if (
-        payload.passwordExpiresAt &&
-        payload.passwordExpiresAt instanceof Date
+        payload.passwordExpiresAt
+        && payload.passwordExpiresAt instanceof Date
       ) {
-        passwordExpiryTime = payload.passwordExpiresAt.toLocaleString("en-US", {
+        _passwordExpiryTime = payload.passwordExpiresAt.toLocaleString("en-US", {
           year: "numeric",
           month: "short",
           day: "numeric",
@@ -2141,7 +2181,8 @@ export class EmailService {
 
       // Send email
       return await this.sendEmail(emailOptions, "ADMIN_REFERRAL", payload.to);
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -2335,7 +2376,8 @@ export class EmailService {
         attempt: response.retries + 1,
         maxAttempts: this.config.maxRetries,
       };
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -2361,7 +2403,7 @@ export class EmailService {
 
     const attachments = options.attachments ?? [];
     const hasLogoAttachment = attachments.some(
-      (attachment) => attachment.contentId === EMAIL_LOGO_CONTENT_ID,
+      attachment => attachment.contentId === EMAIL_LOGO_CONTENT_ID,
     );
 
     if (hasLogoAttachment || !this.emailLogoAttachment) {
@@ -2428,7 +2470,8 @@ export class EmailService {
         "GRANT_ACCESS_REQUEST_ADMIN",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -2480,7 +2523,8 @@ export class EmailService {
         "GRANT_ACCESS_APPROVAL_AGENT",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -2527,7 +2571,8 @@ export class EmailService {
         "GRANT_ACCESS_REJECTION_AGENT",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -2577,7 +2622,8 @@ export class EmailService {
         "PAYMENT_LINK_AGENT",
         payload.to,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -2602,7 +2648,8 @@ export class EmailService {
     try {
       await this.transporter.close();
       logger.info("✅ Email service connection closed");
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -2623,7 +2670,8 @@ export async function initializeEmailService(): Promise<void> {
   try {
     await emailService.closeConnection();
     logger.info("✅ Email service initialized");
-  } catch (error) {
+  }
+  catch (error) {
     logger.error(
       {
         error: error instanceof Error ? error.message : String(error),
@@ -2637,7 +2685,8 @@ export async function cleanupEmailService(): Promise<void> {
   try {
     await emailService.closeConnection();
     logger.info("✅ Email service cleanup completed");
-  } catch (error) {
+  }
+  catch (error) {
     logger.error(
       {
         error: error instanceof Error ? error.message : String(error),

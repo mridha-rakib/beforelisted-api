@@ -1,8 +1,10 @@
 // file: src/modules/faq/faq.model.ts
 
-import mongoose, { Document, Schema } from "mongoose";
+import type { Document } from "mongoose";
 
-export interface IFAQ extends Document {
+import mongoose, { Schema } from "mongoose";
+
+export type IFAQ = {
   _id: mongoose.Types.ObjectId;
   question: string;
   answer: string;
@@ -11,7 +13,7 @@ export interface IFAQ extends Document {
   updatedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
-}
+} & Document;
 
 const faqSchema = new Schema<IFAQ>(
   {
@@ -42,7 +44,7 @@ const faqSchema = new Schema<IFAQ>(
   {
     timestamps: true,
     collection: "faqs",
-  }
+  },
 );
 
 // Index for sorting

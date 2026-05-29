@@ -1,8 +1,11 @@
 // file: src/modules/agent/agent.model.ts
 
-import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 import { model, Types } from "mongoose";
+
+import { BaseSchemaUtil } from "@/utils/base-schema.utils";
+
 import type { IAgentProfile } from "./agent.interface";
+
 import { AGENT_TITLES } from "./agent.type";
 
 const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({

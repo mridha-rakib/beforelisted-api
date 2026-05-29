@@ -2,7 +2,7 @@
 
 import type { Types } from "mongoose";
 
-export interface IPreMarketNotificationPayloadAgent {
+export type IPreMarketNotificationPayloadAgent = {
   agentId: string | Types.ObjectId;
   agentName: string;
   preMarketRequestId: string | Types.ObjectId;
@@ -12,13 +12,13 @@ export interface IPreMarketNotificationPayloadAgent {
   serviceType: string;
 
   actionUrl: string;
-}
+};
 
 /**
  * Pre-market in-app notification payload for admin
  * Includes renter information
  */
-export interface IPreMarketNotificationPayloadAdmin {
+export type IPreMarketNotificationPayloadAdmin = {
   adminId: string | Types.ObjectId;
   preMarketRequestId: string | Types.ObjectId;
   requestName: string;
@@ -30,22 +30,22 @@ export interface IPreMarketNotificationPayloadAdmin {
   renterPhone: string;
   renterUserId: string | Types.ObjectId;
   actionUrl: string;
-}
+};
 
 /**
  * Combined payload for notifying all agents and admin
  */
-export interface IPreMarketNotificationBatchPayload {
+export type IPreMarketNotificationBatchPayload = {
   agentNotifications: IPreMarketNotificationPayloadAgent[];
   adminNotification: IPreMarketNotificationPayloadAdmin;
-}
+};
 
 /**
  * Response from creating pre-market notifications
  */
-export interface IPreMarketNotificationCreateResponse {
+export type IPreMarketNotificationCreateResponse = {
   agentNotificationsCreated: number;
   adminNotificationCreated: boolean;
   success: boolean;
   message: string;
-}
+};

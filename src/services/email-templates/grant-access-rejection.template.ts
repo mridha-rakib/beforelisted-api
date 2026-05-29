@@ -1,6 +1,6 @@
 // file: src/services/email-templates/grant-access-rejection.template.ts
 
-import { BaseEmailTemplate } from "./base-email-template";
+import { BaseEmailTemplate } from "./base-email-template.js";
 
 /**
  * Email template for grant access rejection (Agent notification)
@@ -17,7 +17,7 @@ export class GrantAccessRejectionTemplate extends BaseEmailTemplate {
     rejectionReason: string | null,
     contactEmail: string,
     logoUrl: string | undefined,
-    brandColor: string = "#1890FF"
+    brandColor: string = "#1890FF",
   ) {
     super(logoUrl, brandColor);
     this.agentName = agentName;
@@ -37,7 +37,7 @@ export class GrantAccessRejectionTemplate extends BaseEmailTemplate {
 
     const alert = this.generateAlert(
       "Your access request for this property has been declined.",
-      "error"
+      "error",
     );
 
     const introduction = `
@@ -78,7 +78,7 @@ export class GrantAccessRejectionTemplate extends BaseEmailTemplate {
 
     const cta = this.generateButton(
       "Contact Support",
-      `mailto:${this.contactEmail}?subject=Grant%20Access%20Request%20Appeal`
+      `mailto:${this.contactEmail}?subject=Grant%20Access%20Request%20Appeal`,
     );
 
     const note = `
@@ -89,14 +89,14 @@ export class GrantAccessRejectionTemplate extends BaseEmailTemplate {
       </div>
     `;
 
-    const body =
-      alert +
-      introduction +
-      propertyDetails +
-      reasonSection +
-      nextSteps +
-      cta +
-      note;
+    const body
+      = alert
+        + introduction
+        + propertyDetails
+        + reasonSection
+        + nextSteps
+        + cta
+        + note;
 
     return this.wrapInHTML(header, body);
   }

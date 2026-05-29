@@ -1,9 +1,11 @@
 // file: src/modules/base/base.service.ts
 
+import type { Document, PaginateOptions } from "mongoose";
+
 import type { BaseRepository } from "@/modules/base/base.repository";
 import type { PaginateResult } from "@/ts/pagination.types";
+
 import { NotFoundException } from "@/utils/app-error.utils";
-import type { Document, PaginateOptions } from "mongoose";
 
 export class BaseService<
   T extends Document<unknown, any, any, Record<string, any>, object>,
@@ -21,7 +23,7 @@ export class BaseService<
 
   async getPaginated(
     filter: any = {},
-    options: PaginateOptions
+    options: PaginateOptions,
   ): Promise<PaginateResult<T>> {
     return this.repo.paginate(filter, options);
   }
@@ -50,7 +52,7 @@ export class BaseService<
 
   async findByIdAndThrow(
     id: string,
-    errorMessage: string = "Resource not found"
+    errorMessage: string = "Resource not found",
   ) {
     const data = await this.repo.findById(id);
 

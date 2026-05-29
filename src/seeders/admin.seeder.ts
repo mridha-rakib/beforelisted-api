@@ -34,7 +34,7 @@ export class AdminSeeder {
 
           logger.info(
             { referralCode, referralLink: existingAdmin.referralLink },
-            "Admin referral code generated"
+            "Admin referral code generated",
           );
         }
 
@@ -70,7 +70,7 @@ export class AdminSeeder {
           referralCode,
           referralLink: adminUser.referralLink, // Virtual field
         },
-        "✅ Admin user created successfully"
+        "✅ Admin user created successfully",
       );
 
       logger.warn(
@@ -79,9 +79,10 @@ export class AdminSeeder {
           password: this.DEFAULT_ADMIN.password,
           referralLink: adminUser.referralLink,
         },
-        "⚠️  IMPORTANT: Change admin password and save referral link!"
+        "⚠️  IMPORTANT: Change admin password and save referral link!",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(error, "Error running admin seeder");
       throw error;
     }
@@ -100,7 +101,7 @@ export class AdminSeeder {
           password: hashedPassword,
           mustChangePassword: true, // Force password change
         },
-        { new: true }
+        { new: true },
       );
 
       if (!admin) {
@@ -108,7 +109,8 @@ export class AdminSeeder {
       }
 
       logger.warn("Admin password reset to default. Change it immediately!");
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(error, "Error resetting admin password");
       throw error;
     }

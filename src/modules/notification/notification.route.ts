@@ -1,5 +1,7 @@
-import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
+
+import { authMiddleware } from "@/middlewares/auth.middleware";
+
 import { NotificationController } from "./notification.controller";
 
 const router = Router();
@@ -14,24 +16,24 @@ router.get("/", authMiddleware.verifyToken, controller.getNotifications);
 router.get(
   "/user",
   authMiddleware.verifyToken,
-  controller.getUserNotifications.bind(controller)
+  controller.getUserNotifications.bind(controller),
 );
 
 router.get(
   "/unread-count",
   authMiddleware.verifyToken,
-  controller.getUnreadCount
+  controller.getUnreadCount,
 );
 router.patch(
   "/:notificationId/read",
   authMiddleware.verifyToken,
-  controller.markAsRead
+  controller.markAsRead,
 );
 router.patch("/read-all", authMiddleware.verifyToken, controller.markAllAsRead);
 router.delete(
   "/:notificationId",
   authMiddleware.verifyToken,
-  controller.deleteNotification
+  controller.deleteNotification,
 );
 
 export default router;

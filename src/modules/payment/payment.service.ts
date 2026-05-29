@@ -1,11 +1,14 @@
 // file: src/modules/payment/payment.service.ts
 
+import Stripe from "stripe";
+
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
-import Stripe from "stripe";
+
 import type { IGrantAccessRequest } from "../grant-access/grant-access.model";
+
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
-import { PreMarketNotifier } from "../pre-market/pre-market-notifier";
+import { PreMarketNotifier } from "../pre-market/pre-market-notifier.js";
 import { PreMarketRepository } from "../pre-market/pre-market.repository";
 import { RenterRepository } from "../renter/renter.repository";
 import { UserRepository } from "../user/user.repository";
@@ -48,7 +51,7 @@ export class PaymentService {
 
     logger.info(
       options.metadata,
-      `Payment intent created: ${paymentIntent.id}`
+      `Payment intent created: ${paymentIntent.id}`,
     );
 
     return paymentIntent;
@@ -56,7 +59,7 @@ export class PaymentService {
 
   private async ensureStripePaymentIntentId(
     grantAccess: IGrantAccessRequest,
-    stripePaymentIntentId: string
+    stripePaymentIntentId: string,
   ): Promise<void> {
     if (!grantAccess.payment) {
       logger.warn(
@@ -64,7 +67,7 @@ export class PaymentService {
           grantAccessId: String(grantAccess._id),
           stripePaymentIntentId,
         },
-        "Grant access missing payment record"
+        "Grant access missing payment record",
       );
       return;
     }
@@ -79,7 +82,7 @@ export class PaymentService {
   }
 
   private async resolveGrantAccessForIntent(
-    intent: Stripe.PaymentIntent
+    intent: Stripe.PaymentIntent,
   ): Promise<IGrantAccessRequest | null> {
     const byIntent = await this.grantAccessRepository.findOne({
       "payment.stripePaymentIntentId": intent.id,
@@ -107,7 +110,7 @@ export class PaymentService {
   private extractPaymentIntentId(
     paymentIntent:
       | Stripe.Checkout.Session["payment_intent"]
-      | Stripe.Charge["payment_intent"]
+      | Stripe.Charge["payment_intent"],
   ): string | null {
     if (!paymentIntent) {
       return null;
@@ -125,12 +128,12 @@ export class PaymentService {
   }
 
   private async handleCheckoutSessionSuccess(
-    session: Stripe.Checkout.Session
+    session: Stripe.Checkout.Session,
   ): Promise<void> {
     if (session.payment_status && session.payment_status !== "paid") {
       logger.info(
         { sessionId: session.id, paymentStatus: session.payment_status },
-        "Checkout session not paid; skipping"
+        "Checkout session not paid; skipping",
       );
       return;
     }
@@ -139,7 +142,7 @@ export class PaymentService {
     if (!paymentIntentId) {
       logger.warn(
         { sessionId: session.id },
-        "Checkout session missing payment intent"
+        "Checkout session missing payment intent",
       );
       return;
     }
@@ -149,13 +152,13 @@ export class PaymentService {
   }
 
   private async handleCheckoutSessionFailure(
-    session: Stripe.Checkout.Session
+    session: Stripe.Checkout.Session,
   ): Promise<void> {
     const paymentIntentId = this.extractPaymentIntentId(session.payment_intent);
     if (!paymentIntentId) {
       logger.warn(
         { sessionId: session.id },
-        "Checkout session missing payment intent"
+        "Checkout session missing payment intent",
       );
       return;
     }
@@ -169,7 +172,7 @@ export class PaymentService {
     if (!paymentIntentId) {
       logger.warn(
         { chargeId: charge.id },
-        "Charge succeeded without payment intent"
+        "Charge succeeded without payment intent",
       );
       return;
     }
@@ -183,7 +186,7 @@ export class PaymentService {
     if (!paymentIntentId) {
       logger.warn(
         { chargeId: charge.id },
-        "Charge failed without payment intent"
+        "Charge failed without payment intent",
       );
       return;
     }
@@ -198,7 +201,7 @@ export class PaymentService {
     }
 
     const intent = await this.stripe.paymentIntents.retrieve(
-      stripePaymentIntentId
+      stripePaymentIntentId,
     );
 
     if (intent.status === "succeeded") {
@@ -207,8 +210,8 @@ export class PaymentService {
     }
 
     if (
-      intent.status === "canceled" ||
-      intent.status === "requires_payment_method"
+      intent.status === "canceled"
+      || intent.status === "requires_payment_method"
     ) {
       await this.handlePaymentFailure(intent);
     }
@@ -227,7 +230,7 @@ export class PaymentService {
           stripePaymentIntentId: intent.id,
           grantAccessId: intent.metadata?.grantAccessId,
         },
-        "Grant access not found for payment intent"
+        "Grant access not found for payment intent",
       );
       return;
     }
@@ -236,7 +239,7 @@ export class PaymentService {
 
     // Update payment status
     await this.grantAccessRepository.recordPaymentSuccess(
-      String(grantAccess._id)
+      String(grantAccess._id),
     );
 
     if (alreadySucceeded) {
@@ -245,7 +248,7 @@ export class PaymentService {
           grantAccessId: grantAccess._id,
           stripePaymentIntentId: intent.id,
         },
-        "Payment already marked as succeeded"
+        "Payment already marked as succeeded",
       );
       return;
     }
@@ -254,7 +257,7 @@ export class PaymentService {
     await this.preMarketRepository.addAgentToViewedBy(
       grantAccess.preMarketRequestId.toString(),
       grantAccess.agentId.toString(),
-      "normalAgents"
+      "normalAgents",
     );
 
     await this.notifyRenterAccessGranted(grantAccess);
@@ -267,7 +270,7 @@ export class PaymentService {
         grantAccessId: grantAccess._id,
         agentId: grantAccess.agentId,
       },
-      `Payment successful: ${intent.id}`
+      `Payment successful: ${intent.id}`,
     );
   }
 
@@ -284,7 +287,7 @@ export class PaymentService {
           stripePaymentIntentId: intent.id,
           grantAccessId: intent.metadata?.grantAccessId,
         },
-        "Grant access not found for payment intent"
+        "Grant access not found for payment intent",
       );
       return;
     }
@@ -295,19 +298,19 @@ export class PaymentService {
           grantAccessId: grantAccess._id,
           stripePaymentIntentId: intent.id,
         },
-        "Payment already succeeded; ignoring failure"
+        "Payment already succeeded; ignoring failure",
       );
       return;
     }
 
     // Increment failure count
     await this.grantAccessRepository.recordPaymentFailure(
-      String(grantAccess._id)
+      String(grantAccess._id),
     );
 
     // Notify agent
     const updated = await this.grantAccessRepository.findById(
-      String(grantAccess._id)
+      String(grantAccess._id),
     );
 
     // await this.notifier.notifyAgentOfPaymentFailure(updated!);
@@ -317,16 +320,16 @@ export class PaymentService {
         grantAccessId: grantAccess._id,
         failureCount: updated?.payment?.failureCount,
       },
-      `Payment failed: ${intent.id}`
+      `Payment failed: ${intent.id}`,
     );
   }
 
   private async notifyRenterAccessGranted(
-    grantAccess: IGrantAccessRequest
+    grantAccess: IGrantAccessRequest,
   ): Promise<void> {
     try {
       const preMarketRequest = await this.preMarketRepository.findById(
-        grantAccess.preMarketRequestId.toString()
+        grantAccess.preMarketRequestId.toString(),
       );
 
       if (!preMarketRequest) {
@@ -342,7 +345,7 @@ export class PaymentService {
       if (!renter) {
         logger.warn(
           { renterId, requestId: preMarketRequest._id },
-          "Renter not found for access grant email"
+          "Renter not found for access grant email",
         );
         return;
       }
@@ -350,7 +353,7 @@ export class PaymentService {
       if (renter.emailSubscriptionEnabled === false) {
         logger.info(
           { renterId, requestId: preMarketRequest._id },
-          "Renter email subscription disabled, skipping email"
+          "Renter email subscription disabled, skipping email",
         );
         return;
       }
@@ -358,22 +361,22 @@ export class PaymentService {
       if (!renter.email) {
         logger.warn(
           { renterId, requestId: preMarketRequest._id },
-          "Renter email missing, skipping access grant email"
+          "Renter email missing, skipping access grant email",
         );
         return;
       }
 
       const agent = await this.userRepository.findById(
-        grantAccess.agentId.toString()
+        grantAccess.agentId.toString(),
       );
       if (!agent) {
         return;
       }
 
-      const listingUrl = `${env.CLIENT_URL}/listings/${preMarketRequest._id}`;
-      const location =
-        preMarketRequest.locations?.map((l) => l.borough).join(", ") ||
-        "Multiple Locations";
+      const _listingUrl = `${env.CLIENT_URL}/listings/${preMarketRequest._id}`;
+      const _location
+        = preMarketRequest.locations?.map(l => l.borough).join(", ")
+          || "Multiple Locations";
 
       // await emailService.sendRenterAccessGrantedNotification({
       //   to: renter.email,
@@ -386,10 +389,11 @@ export class PaymentService {
       //   accessType: "paid",
       //   listingUrl,
       // });
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error, grantAccessId: grantAccess._id },
-        "Failed to send renter access granted email"
+        "Failed to send renter access granted email",
       );
     }
   }
@@ -401,7 +405,7 @@ export class PaymentService {
   async handleWebhook(event: Stripe.Event): Promise<void> {
     logger.info(
       { eventId: event.id, eventType: event.type },
-      "Webhook received"
+      "Webhook received",
     );
 
     switch (event.type) {
@@ -459,12 +463,12 @@ export class PaymentService {
 
   async constructWebhookEvent(
     rawBody: string | Buffer,
-    signature: string
+    signature: string,
   ): Promise<Stripe.Event> {
     return this.stripe.webhooks.constructEvent(
       rawBody,
       signature,
-      env.STRIPE_WEBHOOK_SECRET
+      env.STRIPE_WEBHOOK_SECRET,
     );
   }
 }

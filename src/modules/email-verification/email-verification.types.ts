@@ -23,7 +23,7 @@ export enum UserType {
  * Email verification OTP record in database
  * Generic: works for all user types
  */
-export interface IEmailVerificationOTP extends Document {
+export type IEmailVerificationOTP = {
   _id: Types.ObjectId;
   userId: string;
   email: string;
@@ -37,101 +37,101 @@ export interface IEmailVerificationOTP extends Document {
   maxAttempts: number;
   createdAt?: Date;
   updatedAt?: Date;
-}
+} & Document;
 
 /**
  * OTP creation request - generic for all user types
  */
-export interface ICreateOTPRequest {
+export type ICreateOTPRequest = {
   userId: string;
   email: string;
   userType: UserType | string;
   userName: string; // For email template
-}
+};
 
 /**
  * OTP creation response - same for all user types
  */
-export interface ICreateOTPResponse {
+export type ICreateOTPResponse = {
   otp: string;
   expiresAt: Date;
   expiresInMinutes: number;
   code: string; // Alias for otp (backward compatible)
-}
+};
 
 /**
  * OTP verification request
  */
-export interface IVerifyOTPRequest {
+export type IVerifyOTPRequest = {
   email: string;
   code: string;
-}
+};
 
 /**
  * OTP verification response
  */
-export interface IVerifyOTPResponse {
+export type IVerifyOTPResponse = {
   userId: string;
   email: string;
   userType: UserType | string;
   verified: true;
-}
+};
 
 /**
  * OTP resend request
  */
-export interface IResendOTPRequest {
+export type IResendOTPRequest = {
   email: string;
   userType?: UserType | string;
   userName?: string;
-}
+};
 
 /**
  * OTP resend response
  */
-export interface IResendOTPResponse {
+export type IResendOTPResponse = {
   message: string;
   expiresAt: Date;
   expiresInMinutes: number;
-}
+};
 
 /**
  * Resend eligibility status
  */
-export interface IResendEligibility {
+export type IResendEligibility = {
   canResend: boolean;
   reason?: string;
   nextResendTime?: Date;
   attemptsRemaining?: number;
-}
+};
 
 /**
  * Verification status for user
  */
-export interface IVerificationStatus {
+export type IVerificationStatus = {
   isVerified: boolean;
   pendingVerification: boolean;
   userType?: UserType | string;
   expiresAt?: Date;
   expiresInMinutes?: number;
   attempts?: number;
-}
+};
 
 /**
  * Statistics for user OTPs
  */
-export interface IOTPStatistics {
+export type IOTPStatistics = {
   totalOTPs: number;
   activeOTPs: number;
   verifiedOTPs: number;
   failedAttempts: number;
   averageAttemptsPerOTP: number;
-}
+};
 
 /**
  * Email verification event (for logging/analytics)
  */
-export interface IEmailVerificationEvent {
+export type IEmailVerificationEvent = {
   userId: string;
   email: string;
   userType: UserType;
@@ -143,4 +143,4 @@ export interface IEmailVerificationEvent {
     | "MAX_ATTEMPTS_EXCEEDED";
   timestamp: Date;
   metadata?: Record<string, any>;
-}
+};

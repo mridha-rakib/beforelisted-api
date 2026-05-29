@@ -1,9 +1,10 @@
 // file: src/modules/agent/agent.service.ts
 
+import type { Types } from "mongoose";
+
 import { ROLES, SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
-
 import { EmailService } from "@/services/email.service";
 import { ExcelService } from "@/services/excel.service";
 import { S3Service } from "@/services/s3.service";
@@ -14,16 +15,8 @@ import {
   NotFoundException,
 } from "@/utils/app-error.utils";
 import { hashPassword } from "@/utils/password.utils";
-import type { Types } from "mongoose";
-import { AuthUtil } from "../auth/auth.utils";
-import { BlockedEmailService } from "../blocked-email/blocked-email.service";
-import { EmailVerificationService } from "../email-verification/email-verification.service";
-import { PreMarketService } from "../pre-market/pre-market.service";
-import { ReferralService } from "../referral/referral.service";
-import { RenterRepository } from "../renter/renter.repository";
-import { UserService } from "../user/user.service";
+
 import type { IAgentProfile } from "./agent.interface";
-import { AgentProfileRepository } from "./agent.repository";
 import type {
   ActivateAgentWithLinkPayload,
   AdminAgentMetricsResponse,
@@ -33,6 +26,15 @@ import type {
   CreateAgentProfilePayload,
   UpdateAgentProfilePayload,
 } from "./agent.type";
+
+import { AuthUtil } from "../auth/auth.utils";
+import { BlockedEmailService } from "../blocked-email/blocked-email.service";
+import { EmailVerificationService } from "../email-verification/email-verification.service";
+import { PreMarketService } from "../pre-market/pre-market.service";
+import { ReferralService } from "../referral/referral.service";
+import { RenterRepository } from "../renter/renter.repository";
+import { UserService } from "../user/user.service";
+import { AgentProfileRepository } from "./agent.repository";
 
 export class AgentService {
   private repository: AgentProfileRepository;
@@ -214,7 +216,8 @@ export class AgentService {
       agentPayload.licenseNumber = payload.licenseNumber;
     if (payload.brokerageName)
       agentPayload.brokerageName = payload.brokerageName;
-    if (payload.title) agentPayload.title = payload.title;
+    if (payload.title)
+      agentPayload.title = payload.title;
     if (payload.emailSubscriptionEnabled !== undefined) {
       agentPayload.emailSubscriptionEnabled = payload.emailSubscriptionEnabled;
     }
@@ -224,8 +227,10 @@ export class AgentService {
     }
 
     const userPayload: Record<string, any> = {};
-    if (payload.fullName) userPayload.fullName = payload.fullName;
-    if (payload.phoneNumber) userPayload.phoneNumber = payload.phoneNumber;
+    if (payload.fullName)
+      userPayload.fullName = payload.fullName;
+    if (payload.phoneNumber)
+      userPayload.phoneNumber = payload.phoneNumber;
 
     if (Object.keys(userPayload).length > 0) {
       const { UserRepository } = await import("../user/user.repository");
@@ -383,8 +388,8 @@ export class AgentService {
   }
 
   async adminGetPendingApprovalAgents(): Promise<AgentProfileResponse[]> {
-    const agents: IAgentProfile[] =
-      await this.repository.findPendingApprovalAgents();
+    const agents: IAgentProfile[]
+      = await this.repository.findPendingApprovalAgents();
     return agents.map((agent: IAgentProfile) => this.toResponse(agent));
   }
 
@@ -396,12 +401,12 @@ export class AgentService {
 
     const allAgents: IAgentProfile[] = await this.repository.find({});
 
-    const avgSuccessRate =
-      allAgents.length > 0
+    const avgSuccessRate
+      = allAgents.length > 0
         ? Math.round(
             allAgents.reduce((sum: number, agent: IAgentProfile) => {
-              const rate =
-                agent.totalMatches > 0
+              const rate
+                = agent.totalMatches > 0
                   ? (agent.successfulMatches / agent.totalMatches) * 100
                   : 0;
               return sum + rate;
@@ -596,12 +601,12 @@ export class AgentService {
     }
 
     const previousStatus = agent.isActive;
-    const hasActivatedBefore =
-      Boolean(agent.isActive) ||
-      Boolean(agent.activeAt) ||
-      (agent.activationHistory || []).some(
-        (record) => record.action === "activated",
-      );
+    const hasActivatedBefore
+      = Boolean(agent.isActive)
+        || Boolean(agent.activeAt)
+        || (agent.activationHistory || []).some(
+          record => record.action === "activated",
+        );
 
     if (!previousStatus && !hasActivatedBefore) {
       throw new BadRequestException(
@@ -613,8 +618,8 @@ export class AgentService {
     const accountStatus = newStatus ? "active" : "inactive";
 
     if (
-      newStatus &&
-      (!agent.activationLink?.trim() || !agent.disclosureLink?.trim())
+      newStatus
+      && (!agent.activationLink?.trim() || !agent.disclosureLink?.trim())
     ) {
       throw new BadRequestException(
         "Both registration/disclosures and disclosure PowerForm links are required before activating an agent",
@@ -626,8 +631,8 @@ export class AgentService {
       this.userService.updateAccountStatus(resolvedUserId, accountStatus),
     ]);
 
-    const { NotificationService } =
-      await import("../notification/notification.service");
+    const { NotificationService }
+      = await import("../notification/notification.service");
     const notificationService = new NotificationService();
 
     try {
@@ -638,14 +643,16 @@ export class AgentService {
           agentName: user.fullName,
           activatedBy: adminId,
         });
-      } else {
+      }
+      else {
         await notificationService.notifyAgentDeactivated({
           agentId: user._id.toString(),
           agentName: user.fullName,
           reason,
         });
       }
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error, userId },
         "Failed to send agent status notification",
@@ -656,8 +663,8 @@ export class AgentService {
       try {
         const dashboardLink = `${env.CLIENT_URL.replace(/\/+$/, "")}/agent/dashboard`;
 
-        const emailResult =
-          await this.emailService.sendAgentActivatedByAdminEmail({
+        const emailResult
+          = await this.emailService.sendAgentActivatedByAdminEmail({
             to: user.email,
             agentName: user.fullName,
             dashboardLink,
@@ -673,7 +680,8 @@ export class AgentService {
             "Agent activation email failed to send",
           );
         }
-      } catch (error) {
+      }
+      catch (error) {
         logger.error(
           {
             userId: resolvedUserId,
@@ -750,10 +758,10 @@ export class AgentService {
     }
 
     const previousStatus = Boolean(agent.isActive);
-    const nextActivationLink =
-      payload.activationLink?.trim() || agent.activationLink?.trim() || "";
-    const nextDisclosureLink =
-      payload.disclosureLink?.trim() || agent.disclosureLink?.trim() || "";
+    const nextActivationLink
+      = payload.activationLink?.trim() || agent.activationLink?.trim() || "";
+    const nextDisclosureLink
+      = payload.disclosureLink?.trim() || agent.disclosureLink?.trim() || "";
     const hasRequiredLinks = Boolean(nextActivationLink && nextDisclosureLink);
 
     const updated = hasRequiredLinks
@@ -778,8 +786,8 @@ export class AgentService {
     if (activatedNow) {
       await this.userService.updateAccountStatus(resolvedUserId, "active");
 
-      const { NotificationService } =
-        await import("../notification/notification.service");
+      const { NotificationService }
+        = await import("../notification/notification.service");
       const notificationService = new NotificationService();
 
       try {
@@ -789,7 +797,8 @@ export class AgentService {
           agentName: user.fullName,
           activatedBy: adminId,
         });
-      } catch (error) {
+      }
+      catch (error) {
         logger.error(
           { error, userId: resolvedUserId },
           "Failed to send agent status notification",
@@ -799,8 +808,8 @@ export class AgentService {
       try {
         const dashboardLink = `${env.CLIENT_URL.replace(/\/+$/, "")}/agent/dashboard`;
 
-        const emailResult =
-          await this.emailService.sendAgentActivatedByAdminEmail({
+        const emailResult
+          = await this.emailService.sendAgentActivatedByAdminEmail({
             to: user.email,
             agentName: user.fullName,
             dashboardLink,
@@ -816,7 +825,8 @@ export class AgentService {
             "Agent activation email failed to send",
           );
         }
-      } catch (error) {
+      }
+      catch (error) {
         logger.error(
           {
             userId: resolvedUserId,
@@ -837,8 +847,8 @@ export class AgentService {
       message: !hasRequiredLinks
         ? "PowerForm link saved. Agent activation requires both registration/disclosures and disclosure links."
         : previousStatus
-        ? "Agent activation link updated successfully"
-        : "Agent activated successfully and activation link attached",
+          ? "Agent activation link updated successfully"
+          : "Agent activated successfully and activation link attached",
     };
   }
 
@@ -852,11 +862,11 @@ export class AgentService {
   async generateAndUploadAgentExcel(): Promise<any> {}
 
   private async updateAgentConsolidatedExcel(): Promise<void> {
-    const { buffer, fileName } =
-      await this.excelService.generateConsolidatedAgentExcel();
+    const { buffer, fileName }
+      = await this.excelService.generateConsolidatedAgentExcel();
 
-    const { url } =
-      await this.excelService.uploadConsolidatedAgentExcel(buffer);
+    const { url }
+      = await this.excelService.uploadConsolidatedAgentExcel(buffer);
 
     const totalAgents = await this.repository.count();
 
@@ -936,15 +946,15 @@ export class AgentService {
       throw new NotFoundException("Agent profile not found");
     }
 
-    const agentUser =
-      profile.userId && typeof profile.userId === "object"
+    const agentUser
+      = profile.userId && typeof profile.userId === "object"
         ? (profile.userId as { fullName?: string; email?: string })
         : null;
     const agentEmail = agentUser?.email;
 
     if (
-      agentEmail &&
-      agentEmail.toLowerCase() === SYSTEM_DEFAULT_AGENT.email.toLowerCase()
+      agentEmail
+      && agentEmail.toLowerCase() === SYSTEM_DEFAULT_AGENT.email.toLowerCase()
     ) {
       throw new ForbiddenException(
         "Default assigned agent account cannot be deleted",
@@ -952,19 +962,19 @@ export class AgentService {
     }
 
     const agentName = agentUser?.fullName || agentEmail;
-    const referredRenters =
-      await this.renterRepository.findRentersByAgent(userId);
+    const referredRenters
+      = await this.renterRepository.findRentersByAgent(userId);
 
     await this.preMarketService.deleteAgentMatchHistory(userId);
 
-    const referralCleanup =
-      await this.renterRepository.clearReferredAgentFromRenters(userId);
+    const referralCleanup
+      = await this.renterRepository.clearReferredAgentFromRenters(userId);
 
     if (referralCleanup.renterUserIds.length > 0) {
       const { UserRepository } = await import("../user/user.repository");
       const userRepository = new UserRepository();
-      const userRefCleanupCount =
-        await userRepository.clearAgentReferrerFromUsers(
+      const userRefCleanupCount
+        = await userRepository.clearAgentReferrerFromUsers(
           userId,
           referralCleanup.renterUserIds,
         );
@@ -979,14 +989,14 @@ export class AgentService {
       );
 
       const preMarketOwnershipSyncResults = await Promise.allSettled(
-        referralCleanup.renterUserIds.map((renterUserId) =>
+        referralCleanup.renterUserIds.map(renterUserId =>
           this.preMarketService.syncRequestOwnershipForRenter(renterUserId),
         ),
       );
 
       const preMarketOwnershipSyncFailures = preMarketOwnershipSyncResults
-        .filter((result) => result.status === "rejected")
-        .map((result) =>
+        .filter(result => result.status === "rejected")
+        .map(result =>
           result.status === "rejected"
             ? result.reason instanceof Error
               ? result.reason.message
@@ -1017,8 +1027,8 @@ export class AgentService {
     logger.info({ userId }, "Agent profile and user account deleted");
 
     if (referredRenters.length > 0) {
-      const defaultAgentReferralLoginLink =
-        await this.getDefaultAgentReferralLoginLink();
+      const defaultAgentReferralLoginLink
+        = await this.getDefaultAgentReferralLoginLink();
 
       this.notifyRenterRegisteredAgentNoLongerActive(
         userId,
@@ -1035,8 +1045,8 @@ export class AgentService {
 
     if (agentEmail) {
       try {
-        const emailResult =
-          await this.emailService.sendAgentAccountDeletedEmail({
+        const emailResult
+          = await this.emailService.sendAgentAccountDeletedEmail({
             to: agentEmail,
             userName: agentName,
           });
@@ -1047,7 +1057,8 @@ export class AgentService {
             "Agent account deletion email failed to send",
           );
         }
-      } catch (error) {
+      }
+      catch (error) {
         logger.error(
           {
             userId,
@@ -1077,7 +1088,8 @@ export class AgentService {
       }
 
       return `${env.CLIENT_URL}/signin?ref=${encodeURIComponent(defaultAgent.referralCode)}`;
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
@@ -1095,18 +1107,18 @@ export class AgentService {
     defaultAgentReferralLoginLink?: string,
     notificationReason: "inactive" | "deleted" = "inactive",
   ): Promise<void> {
-    const renters =
-      rentersOverride ??
-      (await this.renterRepository.findRentersByAgent(agentUserId));
+    const renters
+      = rentersOverride
+        ?? (await this.renterRepository.findRentersByAgent(agentUserId));
 
     if (!Array.isArray(renters) || renters.length === 0) {
       return;
     }
 
-    const resolvedDefaultAgentReferralLoginLink =
-      notificationReason === "deleted"
-        ? (defaultAgentReferralLoginLink ??
-          (await this.getDefaultAgentReferralLoginLink()))
+    const resolvedDefaultAgentReferralLoginLink
+      = notificationReason === "deleted"
+        ? (defaultAgentReferralLoginLink
+          ?? (await this.getDefaultAgentReferralLoginLink()))
         : undefined;
 
     await Promise.all(
@@ -1119,8 +1131,8 @@ export class AgentService {
         const renterName = (renter as any)?.fullName || "Renter";
 
         try {
-          const emailResult =
-            await this.emailService.sendRegisteredAgentNoLongerActiveToRenter({
+          const emailResult
+            = await this.emailService.sendRegisteredAgentNoLongerActiveToRenter({
               to: renterEmail,
               renterName,
               notificationReason,
@@ -1138,7 +1150,8 @@ export class AgentService {
               "Registered-agent-inactive email failed to send",
             );
           }
-        } catch (error) {
+        }
+        catch (error) {
           logger.error(
             {
               agentId: agentUserId,

@@ -1,7 +1,8 @@
 // file: src/modules/base/base.repository.ts
 
-import { PaginateResult } from "@/ts/pagination.types";
 import type { Document, FilterQuery, Model, PaginateOptions } from "mongoose";
+
+import type { PaginateResult } from "@/ts/pagination.types";
 
 export class BaseRepository<
   T extends Document<unknown, any, any, Record<string, any>, object>,
@@ -19,6 +20,7 @@ export class BaseRepository<
   async findOne(filter = {}): Promise<T | null> {
     return this.model.findOne(filter).exec();
   }
+
   async create(data: Partial<T>): Promise<T> {
     return this.model.create(data);
   }
@@ -30,9 +32,10 @@ export class BaseRepository<
   async deleteById(id: string): Promise<T | null> {
     return this.model.findByIdAndDelete(id).exec();
   }
+
   async paginate(
     query: any = {},
-    options: PaginateOptions
+    options: PaginateOptions,
   ): Promise<PaginateResult<T>> {
     return (this.model as any).paginate(query, options);
   }
@@ -46,7 +49,7 @@ export class BaseRepository<
       .findByIdAndUpdate(
         id,
         { deletedAt: new Date(), isDeleted: true },
-        { new: true }
+        { new: true },
       )
       .exec();
   }
@@ -56,7 +59,7 @@ export class BaseRepository<
       .findByIdAndUpdate(
         id,
         { deletedAt: null, isDeleted: false },
-        { new: true }
+        { new: true },
       )
       .exec();
   }
@@ -76,7 +79,7 @@ export class BaseRepository<
       skip?: number;
       limit?: number;
       sort?: string | { [key: string]: 1 | -1 };
-    } = {}
+    } = {},
   ): Promise<T[]> {
     let queryBuilder = this.model.find(query);
 

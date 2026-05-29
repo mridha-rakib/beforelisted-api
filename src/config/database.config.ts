@@ -1,6 +1,6 @@
+import mongoose from "mongoose";
 // file: src/config/database.config.ts
 import dns from "node:dns";
-import mongoose from "mongoose";
 
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
@@ -8,7 +8,7 @@ import { logger } from "@/middlewares/pino-logger";
 const mongoSrvDnsFallbackServers = ["1.1.1.1", "8.8.8.8"];
 
 function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function isLoopbackDnsServer(server: string): boolean {
@@ -20,7 +20,8 @@ function configureMongoSrvDnsFallback(uri: string): void {
 
   try {
     parsedUri = new URL(uri);
-  } catch {
+  }
+  catch {
     return;
   }
 
@@ -73,7 +74,8 @@ async function connectDB(retries = 3, retryDelay = 5000) {
         serverSelectionTimeoutMS: 10000,
       });
       return;
-    } catch (error) {
+    }
+    catch (error) {
       if (attempt < retries) {
         logger.warn(
           { err: error, attempt, retries },

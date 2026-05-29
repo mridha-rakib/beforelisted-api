@@ -1,6 +1,7 @@
 // file: src/modules/support/support.route.ts
 
 import { Router } from "express";
+
 import { SupportController } from "./support.controller";
 
 const router = Router();

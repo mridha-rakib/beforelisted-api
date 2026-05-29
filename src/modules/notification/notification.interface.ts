@@ -2,7 +2,7 @@
 
 import type { Document, Types } from "mongoose";
 
-export interface INotification extends Document {
+export type INotification = {
   _id: Types.ObjectId;
   recipientId: Types.ObjectId | string;
   recipientRole: "Admin" | "Agent" | "Renter";
@@ -17,9 +17,9 @@ export interface INotification extends Document {
   readAt?: Date;
   createdAt: Date;
   updatedAt: Date;
-}
+} & Document;
 
-export interface IInAppNotification extends Document {
+export type IInAppNotification = {
   _id: any;
   recipientRole: "Admin" | "Agent" | "Renter";
   type: string;
@@ -50,22 +50,22 @@ export interface IInAppNotification extends Document {
   readAt?: Date;
   createdAt: Date;
   updatedAt: Date;
-}
+} & Document;
 
-export type NotificationType =
-  | "agent_pending_approval"
-  | "agent_activated"
-  | "agent_deactivated"
-  | "agent_access_granted"
-  | "agent_access_revoked"
-  | "new_pre_market_listing"
-  | "new_pre_market_listing_admin"
-  | "grant_access_request"
-  | "grant_access_approved"
-  | "grant_access_rejected"
-  | "grant_access_agent_approved"
-  | "grant_access_agent_charged"
-  | "grant_access_agent_rejected"
-  | "pre_market_listing_deleted_by_admin"
-  | "pre_market_agent_matched"
-  | "pre_market_request_created";
+export type NotificationType
+  = | "agent_pending_approval"
+    | "agent_activated"
+    | "agent_deactivated"
+    | "agent_access_granted"
+    | "agent_access_revoked"
+    | "new_pre_market_listing"
+    | "new_pre_market_listing_admin"
+    | "grant_access_request"
+    | "grant_access_approved"
+    | "grant_access_rejected"
+    | "grant_access_agent_approved"
+    | "grant_access_agent_charged"
+    | "grant_access_agent_rejected"
+    | "pre_market_listing_deleted_by_admin"
+    | "pre_market_agent_matched"
+    | "pre_market_request_created";

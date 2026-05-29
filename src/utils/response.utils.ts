@@ -1,14 +1,15 @@
 // file: src/utils/response.utils.ts
 
+import type { Response } from "express";
+
 import { HTTPSTATUS } from "@/config/http.config";
-import { Response } from "express";
 
 export class ApiResponse {
   static success<T = any>(
     res: Response,
     data: T,
     message: string = "Success",
-    statusCode: number = HTTPSTATUS.OK
+    statusCode: number = HTTPSTATUS.OK,
   ) {
     return res.status(statusCode).json({
       success: true,
@@ -23,7 +24,7 @@ export class ApiResponse {
     data: T[],
     pagination: any,
     message: string = "Success",
-    statusCode: number = HTTPSTATUS.OK
+    statusCode: number = HTTPSTATUS.OK,
   ) {
     return res.status(statusCode).json({
       success: true,
@@ -37,7 +38,7 @@ export class ApiResponse {
   static created<T = any>(
     res: Response,
     data: T,
-    message: string = "Resource created successfully"
+    message: string = "Resource created successfully",
   ) {
     return this.success(res, data, message, HTTPSTATUS.CREATED);
   }

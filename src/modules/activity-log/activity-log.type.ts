@@ -6,6 +6,5 @@ export const ACTIVITY_LOG_ACTION_TYPES = [
   "Blocked request submission",
 ] as const;
 
-export type ActivityLogActionType =
-  (typeof ACTIVITY_LOG_ACTION_TYPES)[number];
-
+export type ActivityLogActionType
+  = (typeof ACTIVITY_LOG_ACTION_TYPES)[number];

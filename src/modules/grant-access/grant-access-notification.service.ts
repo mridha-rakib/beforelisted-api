@@ -1,8 +1,9 @@
 // File: src/modules/grant-access/grant-access-notification.service.ts
 
+import type { INotification } from "@/modules/notification/notification.interface";
+
 import { logger } from "@/middlewares/pino-logger";
 import { AgentProfileRepository } from "@/modules/agent/agent.repository";
-import type { INotification } from "@/modules/notification/notification.interface";
 import { NotificationRepository } from "@/modules/notification/notification.repository";
 import { PreMarketRepository } from "@/modules/pre-market/pre-market.repository";
 import { RenterRepository } from "@/modules/renter/renter.repository";
@@ -34,7 +35,7 @@ export class GrantAccessNotificationService {
   async notifyAdminAboutGrantAccessRequest(
     agentId: string,
     preMarketRequestId: string,
-    grantAccessId: string
+    grantAccessId: string,
   ): Promise<void> {
     try {
       const agent = await this.userRepository.findById(agentId);
@@ -46,8 +47,8 @@ export class GrantAccessNotificationService {
       const agentProfile = await this.agentRepository.findByUserId(agentId);
 
       // Get pre-market request info
-      const preMarketRequest =
-        await this.preMarketRepository.findById(preMarketRequestId);
+      const preMarketRequest
+        = await this.preMarketRepository.findById(preMarketRequestId);
       if (!preMarketRequest) {
         logger.warn({ preMarketRequestId }, "Pre-market request not found");
         return;
@@ -57,7 +58,7 @@ export class GrantAccessNotificationService {
       let renterName = "Unknown";
       let renterEmail = "";
       const renter = await this.renterRepository.findById(
-        preMarketRequest.renterId.toString()
+        preMarketRequest.renterId.toString(),
       );
       if (renter) {
         renterName = renter.fullName;
@@ -101,26 +102,27 @@ export class GrantAccessNotificationService {
       };
 
       await Promise.all(
-        admins.map((admin) =>
+        admins.map(admin =>
           this.notificationRepository.create({
             ...notificationPayload,
             recipientId: admin._id,
-          } as Partial<INotification>)
-        )
+          } as Partial<INotification>),
+        ),
       );
 
       logger.info(
         { agentId, preMarketRequestId, grantAccessId },
-        "✅ Grant access request notification created for admin"
+        "✅ Grant access request notification created for admin",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
           agentId,
           preMarketRequestId,
         },
-        "Failed to create grant access request notification (non-blocking)"
+        "Failed to create grant access request notification (non-blocking)",
       );
       // Don't throw - notification failure should not affect main flow
     }
@@ -132,7 +134,7 @@ export class GrantAccessNotificationService {
   async notifyAdminAboutGrantAccessApproved(
     grantAccessId: string,
     agentName: string,
-    propertyTitle: string
+    propertyTitle: string,
   ): Promise<void> {
     try {
       const admins = await this.notificationRepository.getAllAdmins();
@@ -158,19 +160,20 @@ export class GrantAccessNotificationService {
       };
 
       await Promise.all(
-        admins.map((admin) =>
+        admins.map(admin =>
           this.notificationRepository.create({
             ...notification,
             recipientId: admin._id,
-          })
-        )
+          }),
+        ),
       );
 
       logger.info(
         { grantAccessId, agentName },
-        "✅ Grant access approved notification created"
+        "✅ Grant access approved notification created",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "Failed to create approval notification");
     }
   }
@@ -182,7 +185,7 @@ export class GrantAccessNotificationService {
     grantAccessId: string,
     agentName: string,
     propertyTitle: string,
-    reason?: string
+    reason?: string,
   ): Promise<void> {
     try {
       const admins = await this.notificationRepository.getAllAdmins();
@@ -211,19 +214,20 @@ export class GrantAccessNotificationService {
       };
 
       await Promise.all(
-        admins.map((admin) =>
+        admins.map(admin =>
           this.notificationRepository.create({
             ...notification,
             recipientId: admin._id,
-          })
-        )
+          }),
+        ),
       );
 
       logger.info(
         { grantAccessId, agentName },
-        "✅ Grant access rejected notification created"
+        "✅ Grant access rejected notification created",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "Failed to create rejection notification");
     }
   }

@@ -4,11 +4,13 @@
  * Password Reset Controller
  */
 
+import type { Request, Response } from "express";
+
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { AuthService } from "@/modules/auth/auth.service";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
-import type { Request, Response } from "express";
+
 import {
   forgotPasswordSchema,
   resendPasswordOTPSchema,
@@ -59,7 +61,7 @@ export class PasswordResetController {
    * ✅ Validates OTP code
    */
   verifyPasswordOTP = asyncHandler(async (req: Request, res: Response) => {
-    const validated = await zParse(verifyPasswordOTPSchema, req);
+    await zParse(verifyPasswordOTPSchema, req);
 
     ApiResponse.success(res, { message: "OTP verified" });
   });
@@ -70,10 +72,10 @@ export class PasswordResetController {
 
   resetPassword = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(resetPasswordSchema, req);
-    const result = await this.authService.resetPassword(
+    await this.authService.resetPassword(
       validated.body.email,
       validated.body.otp,
-      validated.body.newPassword
+      validated.body.newPassword,
     );
 
     ApiResponse.success(res, { message: "Password reset successfully" });
@@ -84,7 +86,7 @@ export class PasswordResetController {
   // ============================================
 
   resendPasswordOTP = asyncHandler(async (req: Request, res: Response) => {
-    const validated = await zParse(resendPasswordOTPSchema, req);
+    await zParse(resendPasswordOTPSchema, req);
 
     ApiResponse.success(res, { message: "OTP resent to email" });
   });

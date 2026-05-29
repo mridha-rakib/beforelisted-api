@@ -50,7 +50,7 @@ const envSchema = z.object({
   // Primary email brand color as a hex value; choose from the product design system.
   EMAIL_BRAND_COLOR: z
     .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color")
+    .regex(/^#[0-9A-F]{6}$/i, "Must be a valid hex color")
     .default("#1890FF"),
 
   // Maximum email send retry attempts; choose internally based on Postmark retry tolerance.
@@ -73,14 +73,14 @@ const envSchema = z.object({
   MAX_IMAGE_SIZE: z
     .string()
     .transform(Number)
-    .refine((val) => !isNaN(val) && val > 0, {
+    .refine(val => !isNaN(val) && val > 0, {
       message: "MAX_IMAGE_SIZE must be a valid number",
     }),
   // Comma-separated allowed image MIME types; choose internally based on supported upload formats.
   ALLOWED_IMAGE_TYPES: z
     .string()
-    .transform((val) => val.split(","))
-    .refine((arr) => arr.length > 0, {
+    .transform(val => val.split(","))
+    .refine(arr => arr.length > 0, {
       message: "ALLOWED_IMAGE_TYPES must contain at least one type",
     }),
 
@@ -88,7 +88,7 @@ const envSchema = z.object({
   MAX_EXCEL_SIZE: z
     .string()
     .transform(Number)
-    .refine((val) => !isNaN(val) && val > 0, {
+    .refine(val => !isNaN(val) && val > 0, {
       message: "MAX_EXCEL_SIZE must be a valid number",
     }),
 
@@ -96,7 +96,7 @@ const envSchema = z.object({
   MAX_PDF_SIZE: z
     .string()
     .transform(Number)
-    .refine((val) => !isNaN(val) && val > 0, {
+    .refine(val => !isNaN(val) && val > 0, {
       message: "MAX_PDF_SIZE must be a valid number",
     }),
 
@@ -120,9 +120,7 @@ const envSchema = z.object({
 
 const requiredJwtKeys = ["JWT_SECRET", "JWT_REFRESH_SECRET"] as const;
 
-const normalizeEnv = (
-  rawEnv: NodeJS.ProcessEnv,
-): Record<string, string | undefined> => {
+function normalizeEnv(rawEnv: NodeJS.ProcessEnv): Record<string, string | undefined> {
   const normalized: Record<string, string | undefined> = {};
 
   for (const [key, value] of Object.entries(rawEnv)) {
@@ -131,28 +129,28 @@ const normalizeEnv = (
       continue;
     }
 
-    const trimmed =
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
+    const trimmed
+      = (value.startsWith("\"") && value.endsWith("\""))
+        || (value.startsWith("'") && value.endsWith("'"))
         ? value.slice(1, -1)
         : value;
 
-    normalized[key] =
-      key === "EMAIL_LOGO_URL"
+    normalized[key]
+      = key === "EMAIL_LOGO_URL"
         ? trimmed
-            .replace(/^(["']|%22|%27)+/i, "")
-            .replace(/(["']|%22|%27)+$/i, "")
+            .replace(/^(["']|%22|%27)+/, "")
+            .replace(/(["']|%22|%27)+$/, "")
         : trimmed;
   }
 
   return normalized;
-};
+}
 
 const parsedEnv = normalizeEnv(process.env);
 
 try {
   if (parsedEnv.NODE_ENV === "production") {
-    const missingJwtKeys = requiredJwtKeys.filter((key) => !parsedEnv[key]);
+    const missingJwtKeys = requiredJwtKeys.filter(key => !parsedEnv[key]);
     if (missingJwtKeys.length > 0) {
       throw new Error(
         `Missing required JWT env vars in production: ${missingJwtKeys.join(
@@ -163,13 +161,15 @@ try {
   }
 
   envSchema.parse(parsedEnv);
-} catch (error) {
+}
+catch (error) {
   if (error instanceof z.ZodError) {
     console.error(
       "Missing environment variables:",
-      error.issues.flatMap((issue) => issue.path),
+      error.issues.flatMap(issue => issue.path),
     );
-  } else {
+  }
+  else {
     console.error(error);
   }
   process.exit(1);

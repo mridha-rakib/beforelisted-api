@@ -1,5 +1,7 @@
 // file: src/modules/agent/agent.controller.ts
 
+import type { NextFunction, Request, Response } from "express";
+
 import { COOKIE_CONFIG } from "@/config/cookie.config";
 import { ROLES } from "@/constants/app.constants";
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
@@ -11,7 +13,7 @@ import {
 import { buildExcelDownloadResponse } from "@/utils/excel-response.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
-import type { NextFunction, Request, Response } from "express";
+
 import { UserService } from "../user/user.service";
 import {
   activateAgentWithLinkSchema,
@@ -33,17 +35,17 @@ export class AgentController {
   }
 
   createAgentProfile = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, _next: NextFunction) => {
       const validated = await zParse(createAgentProfileSchema, req);
       const userId = req.user!.userId;
 
       const result = await this.service.createAgentProfile(
         userId,
-        validated.body
+        validated.body,
       );
 
       ApiResponse.created(res, result, "Agent profile created successfully");
-    }
+    },
   );
 
   getAgentProfile = asyncHandler(async (req: Request, res: Response) => {
@@ -55,17 +57,17 @@ export class AgentController {
   });
 
   updateAgentProfile = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, _next: NextFunction) => {
       const validated = await zParse(updateAgentProfileSchema, req);
       const userId = req.user!.userId;
 
       const result = await this.service.updateAgentProfile(
         userId,
-        validated.body
+        validated.body,
       );
 
       ApiResponse.success(res, result, "Agent profile updated successfully");
-    }
+    },
   );
 
   toggleEmailSubscription = asyncHandler(
@@ -76,9 +78,9 @@ export class AgentController {
       ApiResponse.success(
         res,
         result,
-        "Shared request email subscription updated successfully"
+        "Shared request email subscription updated successfully",
       );
-    }
+    },
   );
 
   toggleAcceptingRequests = asyncHandler(
@@ -89,9 +91,9 @@ export class AgentController {
       ApiResponse.success(
         res,
         result,
-        "Agent accepting requests updated successfully"
+        "Agent accepting requests updated successfully",
       );
-    }
+    },
   );
 
   getAcceptingRequestsStatus = asyncHandler(
@@ -102,13 +104,13 @@ export class AgentController {
       ApiResponse.success(
         res,
         result,
-        "Agent accepting requests status retrieved successfully"
+        "Agent accepting requests status retrieved successfully",
       );
-    }
+    },
   );
 
   getReferralLink = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, _next: NextFunction) => {
       const userId = req.user!.userId;
 
       // Get referral stats from service
@@ -132,9 +134,9 @@ export class AgentController {
           referredUsersCount: stats.referredUsers?.length || 0,
           referredUsers: stats.referredUsers,
         },
-        "Referral information retrieved successfully"
+        "Referral information retrieved successfully",
       );
-    }
+    },
   );
 
   /**
@@ -142,7 +144,7 @@ export class AgentController {
    * GET /agent/stats
    */
   getAgentStats = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, _next: NextFunction) => {
       const userId = req.user!.userId;
 
       const result = await this.service.getAgentStats(userId);
@@ -150,9 +152,9 @@ export class AgentController {
       ApiResponse.success(
         res,
         result,
-        "Agent statistics retrieved successfully"
+        "Agent statistics retrieved successfully",
       );
-    }
+    },
   );
 
   /**
@@ -161,7 +163,7 @@ export class AgentController {
    * Query params: page, limit, sort, search, isActive, hasGrantAccess
    */
   adminGetAllAgents = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, _next: NextFunction) => {
       const { page, limit, sort, search, isActive, hasGrantAccess } = req.query;
 
       const result = await this.service.adminGetAllAgents({
@@ -178,9 +180,9 @@ export class AgentController {
         res,
         result.data,
         result.pagination,
-        "Agents retrieved successfully"
+        "Agents retrieved successfully",
       );
-    }
+    },
   );
 
   /**
@@ -199,11 +201,11 @@ export class AgentController {
    * GET /agent/admin/pending-approval
    */
   adminGetPendingApprovalAgents = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, _next: NextFunction) => {
       const result = await this.service.adminGetPendingApprovalAgents();
 
       ApiResponse.success(res, result, "Pending agents retrieved successfully");
-    }
+    },
   );
 
   /**
@@ -211,11 +213,11 @@ export class AgentController {
    * GET /agent/admin/metrics
    */
   adminGetAgentMetrics = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, _next: NextFunction) => {
       const result = await this.service.adminGetAgentMetrics();
 
       ApiResponse.success(res, result, "Agent metrics retrieved successfully");
-    }
+    },
   );
 
   /**
@@ -232,7 +234,7 @@ export class AgentController {
     res.cookie(
       COOKIE_CONFIG.REFRESH_TOKEN.name,
       result.tokens.refreshToken,
-      COOKIE_CONFIG.REFRESH_TOKEN.options
+      COOKIE_CONFIG.REFRESH_TOKEN.options,
     );
 
     const response = {
@@ -250,7 +252,7 @@ export class AgentController {
    * Body: { reason?: string }
    */
   toggleAccess = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, _next: NextFunction) => {
       const { agentId } = req.params;
       const { reason } = req.body;
       const adminId = req.user!.userId;
@@ -260,7 +262,7 @@ export class AgentController {
       if (userRole !== ROLES.ADMIN) {
         logger.warn(
           { userId: adminId, agentId, role: userRole },
-          "Unauthorized access toggle attempt"
+          "Unauthorized access toggle attempt",
         );
         throw new ForbiddenException("Only admins can toggle agent access");
       }
@@ -271,8 +273,8 @@ export class AgentController {
 
       const result = await this.service.toggleAccess(agentId, adminId, reason);
 
-      const { NotificationService } =
-        await import("../notification/notification.service");
+      const { NotificationService }
+        = await import("../notification/notification.service");
       const notificationService = new NotificationService();
 
       try {
@@ -288,14 +290,16 @@ export class AgentController {
             agentName,
             grantedBy: adminId,
           });
-        } else {
+        }
+        else {
           await notificationService.notifyAgentAccessRevoked({
             agentId: populatedUser?._id?.toString() || agentId,
             agentName,
             reason,
           });
         }
-      } catch (error) {
+      }
+      catch (error) {
         logger.error({ error, agentId }, "Failed to send access notification");
       }
       // ============ END ADD ============
@@ -309,9 +313,9 @@ export class AgentController {
           previousAccess: result.previousAccess,
         },
         result.message,
-        200
+        200,
       );
-    }
+    },
   );
 
   /**
@@ -320,13 +324,13 @@ export class AgentController {
    * GET /agent/:agentId/access-status
    */
   getAccessStatus = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, _next: NextFunction) => {
       const { agentId } = req.params;
       const userRole = req.user!.role;
 
       if (userRole !== ROLES.ADMIN) {
         throw new ForbiddenException(
-          "Only admins can view agent access status"
+          "Only admins can view agent access status",
         );
       }
 
@@ -343,9 +347,9 @@ export class AgentController {
           ...status,
         },
         "Access status retrieved",
-        200
+        200,
       );
-    }
+    },
   );
 
   /**
@@ -359,7 +363,7 @@ export class AgentController {
     const result = await this.service.toggleAgentActive(
       validated.params.userId,
       adminId,
-      validated.body?.reason
+      validated.body?.reason,
     );
 
     ApiResponse.success(res, result, result.message);
@@ -390,7 +394,7 @@ export class AgentController {
     const validated = await zParse(getAgentProfileSchema, req);
 
     const result = await this.service.getActivationHistory(
-      validated.params.userId
+      validated.params.userId,
     );
 
     ApiResponse.success(res, result, "Activation history retrieved");
@@ -427,9 +431,9 @@ export class AgentController {
       ApiResponse.success(
         res,
         data,
-        "Consolidated Agent Excel file info retrieved"
+        "Consolidated Agent Excel file info retrieved",
       );
-    }
+    },
   );
 
   /**

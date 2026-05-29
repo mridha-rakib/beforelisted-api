@@ -1,8 +1,13 @@
 // file: src/modules/user/user.model.ts
 
+import type { Query } from "mongoose";
+
+import mongoose, { model, Schema } from "mongoose";
+
 import { ACCOUNT_STATUS, ROLES } from "@/constants/app.constants";
+import { env } from "@/env";
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
-import { model, Query, Schema } from "mongoose";
+
 import type { IUser } from "./user.interface";
 
 const userSchema = BaseSchemaUtil.createSchema<IUser>({
@@ -107,7 +112,7 @@ const userSchema = BaseSchemaUtil.createSchema<IUser>({
         type: Schema.Types.ObjectId,
         ref: "User",
       },
-    }
+    },
   ),
 });
 
@@ -135,7 +140,8 @@ userSchema.pre(/^find/, function (this: Query<any, IUser>) {
 });
 
 userSchema.virtual("referralLink").get(function (this: IUser) {
-  if (!this.referralCode) return null;
+  if (!this.referralCode)
+    return null;
 
   const baseUrl = env.CLIENT_URL || "https://app.rentersedge.com";
 
@@ -145,7 +151,8 @@ userSchema.virtual("referralLink").get(function (this: IUser) {
 });
 
 userSchema.virtual("loginLink").get(function (this: IUser) {
-  if (!this.referralCode) return null;
+  if (!this.referralCode)
+    return null;
 
   const baseUrl = env.CLIENT_URL || "https://app.rentersedge.com";
 
@@ -170,9 +177,6 @@ userSchema.methods.needsPasswordChange = function (this: IUser): boolean {
 
 userSchema.set("toJSON", { virtuals: true });
 userSchema.set("toObject", { virtuals: true });
-
-import { env } from "@/env";
-import mongoose from "mongoose";
 
 const refreshTokenBlacklistSchema = new mongoose.Schema(
   {
@@ -201,12 +205,12 @@ const refreshTokenBlacklistSchema = new mongoose.Schema(
       default: Date.now,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export const RefreshTokenBlacklist = mongoose.model(
   "RefreshTokenBlacklist",
-  refreshTokenBlacklistSchema
+  refreshTokenBlacklistSchema,
 );
 
 export const User = model<IUser>("User", userSchema);

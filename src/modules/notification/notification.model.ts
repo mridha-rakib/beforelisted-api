@@ -1,7 +1,9 @@
 // file: src/modules/notification/notification.model.ts
 
-import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 import { model, Schema } from "mongoose";
+
+import { BaseSchemaUtil } from "@/utils/base-schema.utils";
+
 import type { INotification } from "./notification.interface";
 
 const notificationSchema = BaseSchemaUtil.createSchema<INotification>({
@@ -67,5 +69,5 @@ notificationSchema.index({ createdAt: -1 });
 
 export const Notification = model<INotification>(
   "Notification",
-  notificationSchema
+  notificationSchema,
 );

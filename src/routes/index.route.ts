@@ -1,3 +1,5 @@
+import { Router } from "express";
+
 import agentRouter from "@/modules/agent/agent.route";
 import authRouter from "@/modules/auth/auth.route";
 import blockedEmailRouter from "@/modules/blocked-email/blocked-email.route";
@@ -11,8 +13,6 @@ import preMarketRouter from "@/modules/pre-market/pre-market.route";
 import renterRouter from "@/modules/renter/renter.route";
 import supportRouter from "@/modules/support/support.route";
 import userRouter from "@/modules/user/user.route";
-
-import { Router } from "express";
 
 const router = Router();
 
@@ -71,6 +71,6 @@ const moduleRoutes = [
   },
 ];
 
-moduleRoutes.forEach((route) => router.use(route.path, route.route));
+moduleRoutes.forEach(route => router.use(route.path, route.route));
 
 export default router;

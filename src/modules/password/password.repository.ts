@@ -2,8 +2,10 @@
 
 import { logger } from "@/middlewares/pino-logger";
 import { BaseRepository } from "@/modules/base/base.repository";
-import { PasswordResetOTP } from "./password.model";
+
 import type { IPasswordResetOTP } from "./password.interface";
+
+import { PasswordResetOTP } from "./password.model";
 
 /**
  * Password Reset OTP Repository
@@ -26,7 +28,7 @@ export class PasswordResetOTPRepository extends BaseRepository<IPasswordResetOTP
   async createOTP(
     userId: string,
     otp: string,
-    expiresAt: Date
+    expiresAt: Date,
   ): Promise<IPasswordResetOTP> {
     const record = await PasswordResetOTP.create({
       userId,
@@ -108,7 +110,7 @@ export class PasswordResetOTPRepository extends BaseRepository<IPasswordResetOTP
       {
         $inc: { attempts: 1 },
       },
-      { new: true }
+      { new: true },
     ).exec();
 
     return record || null;
@@ -130,7 +132,7 @@ export class PasswordResetOTPRepository extends BaseRepository<IPasswordResetOTP
           usedAt: new Date(),
         },
       },
-      { new: true }
+      { new: true },
     ).exec();
 
     if (record) {
@@ -158,12 +160,12 @@ export class PasswordResetOTPRepository extends BaseRepository<IPasswordResetOTP
           isUsed: true,
           usedAt: new Date(),
         },
-      }
+      },
     ).exec();
 
     logger.debug(
       { userId, count: result.modifiedCount },
-      "Previous password reset OTPs invalidated"
+      "Previous password reset OTPs invalidated",
     );
 
     return result.modifiedCount || 0;
@@ -186,7 +188,7 @@ export class PasswordResetOTPRepository extends BaseRepository<IPasswordResetOTP
 
     logger.debug(
       { count: result.deletedCount },
-      "Expired password reset OTPs deleted"
+      "Expired password reset OTPs deleted",
     );
 
     return result.deletedCount || 0;
@@ -204,7 +206,7 @@ export class PasswordResetOTPRepository extends BaseRepository<IPasswordResetOTP
 
     logger.debug(
       { userId, count: result.deletedCount },
-      "User password reset OTPs deleted"
+      "User password reset OTPs deleted",
     );
 
     return result.deletedCount || 0;

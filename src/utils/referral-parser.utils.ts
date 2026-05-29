@@ -7,20 +7,20 @@ export type ReferralType = "normal" | "agent_referral" | "admin_referral";
 
 export type ReferralPrefix = "AGT" | "ADM";
 
-export interface ParsedReferral {
+export type ParsedReferral = {
   type: ReferralType;
   code?: string;
   prefix?: ReferralPrefix;
   isValid: boolean;
-}
+};
 
-export interface ReferralValidationResult {
+export type ReferralValidationResult = {
   isValid: boolean;
   type: ReferralType;
   code?: string;
   prefix?: ReferralPrefix;
   error?: string;
-}
+};
 
 // ============================================
 // REFERRAL PARSER (REUSABLE)
@@ -64,7 +64,7 @@ export class ReferralParser {
     if (!this.CODE_PATTERN.test(referralCode)) {
       logger.warn(
         { code: referralCode, prefix },
-        "Referral code failed format validation"
+        "Referral code failed format validation",
       );
       return {
         type: registrationType || "normal",
@@ -76,7 +76,7 @@ export class ReferralParser {
 
     logger.debug(
       { code: referralCode, type: registrationType },
-      "Referral code parsed successfully"
+      "Referral code parsed successfully",
     );
     return {
       type: registrationType || "normal",
@@ -102,7 +102,8 @@ export class ReferralParser {
    * Can log validation warnings indirectly through parse when a malformed code is supplied.
    */
   static isAgentReferral(referralCode?: string): boolean {
-    if (!referralCode) return false;
+    if (!referralCode)
+      return false;
     return this.parse(referralCode).type === "agent_referral";
   }
 
@@ -112,7 +113,8 @@ export class ReferralParser {
    * Can log validation warnings indirectly through parse when a malformed code is supplied.
    */
   static isAdminReferral(referralCode?: string): boolean {
-    if (!referralCode) return false;
+    if (!referralCode)
+      return false;
     return this.parse(referralCode).type === "admin_referral";
   }
 
@@ -171,12 +173,15 @@ export class ReferralParser {
    * @returns ROLES.ADMIN | ROLES.AGENT | null
    */
   static getRoleFromCode(
-    code?: string
+    code?: string,
   ): typeof ROLES.ADMIN | typeof ROLES.AGENT | null {
-    if (!code) return null;
+    if (!code)
+      return null;
     const prefix = this.extractPrefix(code);
-    if (prefix === "ADM") return ROLES.ADMIN;
-    if (prefix === "AGT") return ROLES.AGENT;
+    if (prefix === "ADM")
+      return ROLES.ADMIN;
+    if (prefix === "AGT")
+      return ROLES.AGENT;
     return null;
   }
 }

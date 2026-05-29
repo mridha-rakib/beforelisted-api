@@ -1,5 +1,7 @@
 // file: src/modules/grant-access/grant-access.controller.ts
 
+import type { Request, Response } from "express";
+
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
 import {
@@ -8,10 +10,9 @@ import {
   NotFoundException,
 } from "@/utils/app-error.utils";
 import { ApiResponse } from "@/utils/response.utils";
-import type { Request, Response } from "express";
 
 import { AgentProfileRepository } from "../agent/agent.repository";
-import { PreMarketNotifier } from "../pre-market/pre-market-notifier";
+import { PreMarketNotifier } from "../pre-market/pre-market-notifier.js";
 import { PreMarketRepository } from "../pre-market/pre-market.repository";
 import { GrantAccessRepository } from "./grant-access.repository";
 import { GrantAccessService } from "./grant-access.service";
@@ -49,14 +50,14 @@ export class GrantAccessController {
         page,
         limit,
       },
-      "Admin requesting all payments"
+      "Admin requesting all payments",
     );
 
     const filters = {
       paymentStatus: paymentStatus as any,
       accessStatus: accessStatus as any,
-      page: page ? parseInt(page as string) : 1,
-      limit: limit ? parseInt(limit as string) : 10,
+      page: page ? Number.parseInt(page as string) : 1,
+      limit: limit ? Number.parseInt(limit as string) : 10,
     };
 
     const result = await this.grantAccessService.getAdminPayments(filters);
@@ -67,14 +68,14 @@ export class GrantAccessController {
         count: result.data.length,
         total: result.pagination.total,
       },
-      "Admin payments retrieved"
+      "Admin payments retrieved",
     );
 
     return ApiResponse.paginated(
       res,
       result.data,
       result.pagination,
-      "All payments retrieved successfully"
+      "All payments retrieved successfully",
     );
   });
 
@@ -95,7 +96,7 @@ export class GrantAccessController {
     return ApiResponse.success(
       res,
       stats,
-      "Payment statistics retrieved successfully"
+      "Payment statistics retrieved successfully",
     );
   });
 
@@ -114,18 +115,18 @@ export class GrantAccessController {
       throw new BadRequestException("Grant access ID is required");
     }
 
-    const paymentIntent =
-      await this.grantAccessService.createPaymentIntent(grantAccessId);
+    const paymentIntent
+      = await this.grantAccessService.createPaymentIntent(grantAccessId);
 
     logger.info(
       { agentId, grantAccessId },
-      "Payment intent created successfully"
+      "Payment intent created successfully",
     );
 
     return ApiResponse.success(
       res,
       paymentIntent,
-      "Payment intent created successfully"
+      "Payment intent created successfully",
     );
   });
 
@@ -149,7 +150,7 @@ export class GrantAccessController {
 
       logger.info(
         { agentId, hasGrantAccess: agent.hasGrantAccess },
-        "Agent profile retrieved"
+        "Agent profile retrieved",
       );
 
       const request = await this.grantAccessService.getRequestById(requestId);
@@ -161,41 +162,42 @@ export class GrantAccessController {
 
       logger.info(
         { agentId, requestId, requestStatus: request.status },
-        "Request retrieved from database"
+        "Request retrieved from database",
       );
 
       if (agent.hasGrantAccess === true) {
         logger.info(
           { agentId, type: "grant-access" },
-          "✅ Grant access agent - can see ANY listing with full details"
+          "✅ Grant access agent - can see ANY listing with full details",
         );
 
-        const enriched =
-          await this.grantAccessService.enrichRequestWithFullRenterInfo(
+        const enriched
+          = await this.grantAccessService.enrichRequestWithFullRenterInfo(
             request,
-            agentId
+            agentId,
           );
 
         logger.info(
           { agentId, requestId },
-          "Request enriched with renter information"
+          "Request enriched with renter information",
         );
 
         try {
           await this.preMarketRepository.addAgentToViewedBy(
             requestId,
             agentId,
-            "grantAccessAgents"
+            "grantAccessAgents",
           );
 
           logger.info(
             { agentId, requestId },
-            "✅ Marked as viewed by grant access agent"
+            "✅ Marked as viewed by grant access agent",
           );
-        } catch (error) {
+        }
+        catch (error) {
           logger.warn(
             { agentId, requestId, error },
-            "Failed to track view (non-blocking)"
+            "Failed to track view (non-blocking)",
           );
         }
 
@@ -205,13 +207,13 @@ export class GrantAccessController {
             requestId,
             renterName: enriched.renterInfo?.renterName,
           },
-          "✅ Returning full request details to grant access agent"
+          "✅ Returning full request details to grant access agent",
         );
 
         return ApiResponse.success(
           res,
           enriched,
-          "Pre-market request details retrieved"
+          "Pre-market request details retrieved",
         );
       }
 
@@ -220,13 +222,13 @@ export class GrantAccessController {
       // ============================================
       logger.info(
         { agentId, type: "normal" },
-        "🔒 Normal agent - checking if they have PAID access for this request"
+        "🔒 Normal agent - checking if they have PAID access for this request",
       );
 
       // ✅ Check if agent has paid access for THIS specific request
       // NOTE: Pass ONE object with all conditions
       const paidAccess = await this.grantAccessRepository.findOne({
-        agentId: agentId,
+        agentId,
         preMarketRequestId: requestId,
         status: { $in: ["free", "paid"] },
       });
@@ -234,29 +236,29 @@ export class GrantAccessController {
       if (!paidAccess) {
         logger.warn(
           { agentId, requestId },
-          "❌ Normal agent does NOT have paid access to this request"
+          "❌ Normal agent does NOT have paid access to this request",
         );
 
         throw new ForbiddenException(
-          "You do not have access to this request. Request access or pay to view renter information."
+          "You do not have access to this request. Request access or pay to view renter information.",
         );
       }
 
       logger.info(
         { agentId, requestId, accessStatus: paidAccess.status },
-        `✅ Normal agent has ${paidAccess.status} access to this request`
+        `✅ Normal agent has ${paidAccess.status} access to this request`,
       );
 
       // ✅ Enrich with full renter info (since they paid)
-      const enriched =
-        await this.grantAccessService.enrichRequestWithFullRenterInfo(
+      const enriched
+        = await this.grantAccessService.enrichRequestWithFullRenterInfo(
           request,
-          agentId
+          agentId,
         );
 
       logger.info(
         { agentId, requestId },
-        "Request enriched with renter information"
+        "Request enriched with renter information",
       );
 
       // ✅ Track as normal agent
@@ -264,17 +266,18 @@ export class GrantAccessController {
         await this.preMarketRepository.addAgentToViewedBy(
           requestId,
           agentId,
-          "normalAgents"
+          "normalAgents",
         );
 
         logger.info(
           { agentId, requestId },
-          "✅ Marked as viewed by normal agent"
+          "✅ Marked as viewed by normal agent",
         );
-      } catch (error) {
+      }
+      catch (error) {
         logger.warn(
           { agentId, requestId, error },
-          "Failed to track view (non-blocking)"
+          "Failed to track view (non-blocking)",
         );
       }
 
@@ -286,7 +289,7 @@ export class GrantAccessController {
           accessType: paidAccess.status,
           renterName: enriched.renterInfo?.renterName,
         },
-        "✅ Returning full request details to normal agent (paid access)"
+        "✅ Returning full request details to normal agent (paid access)",
       );
 
       return ApiResponse.success(
@@ -295,9 +298,9 @@ export class GrantAccessController {
           ...enriched,
           accessType: paidAccess.status,
         },
-        "Pre-market request details retrieved"
+        "Pre-market request details retrieved",
       );
-    }
+    },
   );
 
   /**
@@ -311,7 +314,7 @@ export class GrantAccessController {
 
     logger.info(
       { agentId, preMarketRequestId },
-      "Agent requesting grant access"
+      "Agent requesting grant access",
     );
 
     if (!preMarketRequestId) {
@@ -320,18 +323,18 @@ export class GrantAccessController {
 
     const grantAccess = await this.grantAccessService.requestAccess(
       agentId,
-      preMarketRequestId
+      preMarketRequestId,
     );
 
     logger.info(
       { agentId, preMarketRequestId },
-      "Access request created successfully"
+      "Access request created successfully",
     );
 
     return ApiResponse.created(
       res,
       grantAccess,
-      "Access request created successfully"
+      "Access request created successfully",
     );
   });
 
@@ -371,7 +374,7 @@ export class GrantAccessController {
 
     logger.info(
       { adminId, requestId, chargeAmount },
-      "Admin charging for access"
+      "Admin charging for access",
     );
 
     if (!chargeAmount || chargeAmount <= 0) {
@@ -417,11 +420,12 @@ export class GrantAccessController {
   deletePayment = asyncHandler(async (req: Request, res: Response) => {
     const adminId = req.user!.userId;
     const { paymentId } = req.params;
-    if (!paymentId) throw new BadRequestException("Payment ID required");
+    if (!paymentId)
+      throw new BadRequestException("Payment ID required");
 
     const result = await this.grantAccessService.deleteAdminPayment(
       paymentId,
-      adminId
+      adminId,
     );
     return ApiResponse.success(res, result.deletedPayment, result.message);
   });
@@ -429,16 +433,17 @@ export class GrantAccessController {
   getPaymentDeletionHistory = asyncHandler(
     async (req: Request, res: Response) => {
       const { paymentId } = req.params;
-      if (!paymentId) throw new BadRequestException("Payment ID required");
+      if (!paymentId)
+        throw new BadRequestException("Payment ID required");
 
-      const history =
-        await this.grantAccessService.getPaymentDeletionHistory(paymentId);
+      const history
+        = await this.grantAccessService.getPaymentDeletionHistory(paymentId);
       return ApiResponse.success(
         res,
         history,
-        "History retrieved successfully"
+        "History retrieved successfully",
       );
-    }
+    },
   );
 
   /**
@@ -451,16 +456,16 @@ export class GrantAccessController {
 
     logger.info({ adminId, year }, "Admin viewing monthly income");
 
-    const yearNum = year ? parseInt(year as string) : undefined;
-    const data =
-      await this.grantAccessService.getMonthlyIncomeAnalytics(yearNum);
+    const yearNum = year ? Number.parseInt(year as string) : undefined;
+    const data
+      = await this.grantAccessService.getMonthlyIncomeAnalytics(yearNum);
 
     logger.info({ adminId }, "Monthly income data retrieved");
 
     return ApiResponse.success(
       res,
       data,
-      "Monthly income retrieved successfully"
+      "Monthly income retrieved successfully",
     );
   });
 
@@ -474,7 +479,7 @@ export class GrantAccessController {
 
     logger.info(
       { adminId, year, month },
-      "Admin viewing monthly income detail"
+      "Admin viewing monthly income detail",
     );
 
     if (!year || !month) {
@@ -482,8 +487,8 @@ export class GrantAccessController {
     }
 
     const data = await this.grantAccessService.getMonthlyIncomeDetail(
-      parseInt(year),
-      parseInt(month)
+      Number.parseInt(year),
+      Number.parseInt(month),
     );
 
     logger.info({ adminId, year, month }, "Monthly income detail retrieved");
@@ -491,7 +496,7 @@ export class GrantAccessController {
     return ApiResponse.success(
       res,
       data,
-      `Income details for ${data.monthName}`
+      `Income details for ${data.monthName}`,
     );
   });
 
@@ -511,7 +516,7 @@ export class GrantAccessController {
 
     const data = await this.grantAccessService.getIncomeByDateRange(
       startDate as string,
-      endDate as string
+      endDate as string,
     );
 
     logger.info({ adminId }, "Income range retrieved");
@@ -519,7 +524,7 @@ export class GrantAccessController {
     return ApiResponse.success(
       res,
       data,
-      "Income range retrieved successfully"
+      "Income range retrieved successfully",
     );
   });
 
@@ -537,7 +542,7 @@ export class GrantAccessController {
       throw new BadRequestException("Year is required");
     }
 
-    const data = await this.grantAccessService.getYearlyIncome(parseInt(year));
+    const data = await this.grantAccessService.getYearlyIncome(Number.parseInt(year));
 
     logger.info({ adminId, year }, "Yearly income retrieved");
 
@@ -554,8 +559,8 @@ export class GrantAccessController {
       throw new BadRequestException("Invalid payment ID format");
     }
 
-    const paymentDetails =
-      await this.grantAccessService.getPaymentDetailsForAdmin(paymentId);
+    const paymentDetails
+      = await this.grantAccessService.getPaymentDetailsForAdmin(paymentId);
 
     logger.info(
       {
@@ -564,13 +569,13 @@ export class GrantAccessController {
         agentName: paymentDetails.agent.name,
         renterName: paymentDetails.renter?.name,
       },
-      "Payment details retrieved successfully"
+      "Payment details retrieved successfully",
     );
 
     return ApiResponse.success(
       res,
       paymentDetails,
-      "Payment details retrieved successfully"
+      "Payment details retrieved successfully",
     );
   });
 }

@@ -1,8 +1,10 @@
 // file: src/modules/grant-access/grant-access.route.ts
 
-import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
-import { PreMarketNotifier } from "../pre-market/pre-market-notifier";
+
+import { authMiddleware } from "@/middlewares/auth.middleware";
+
+import { PreMarketNotifier } from "../pre-market/pre-market-notifier.js";
 import { GrantAccessController } from "./grant-access.controller";
 
 const router = Router();
@@ -14,7 +16,7 @@ const router = Router();
 //   grantAccessRepository,
 //   preMarketRepository
 // );
-const notifier = new PreMarketNotifier();
+const _notifier = new PreMarketNotifier();
 
 // const grantAccessService = new GrantAccessService(
 //   grantAccessRepository,
@@ -60,21 +62,21 @@ router.get(
   "/admin/payments",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.getAllPayments.bind(controller)
+  controller.getAllPayments.bind(controller),
 );
 
 router.get(
   "/admin/payments/stats",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.getPaymentStats.bind(controller)
+  controller.getPaymentStats.bind(controller),
 );
 
 router.delete(
   "/admin/payments/:paymentId",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.deletePayment.bind(controller)
+  controller.deletePayment.bind(controller),
 );
 
 // History
@@ -82,7 +84,7 @@ router.get(
   "/admin/payments/:paymentId/deletion-history",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.getPaymentDeletionHistory.bind(controller)
+  controller.getPaymentDeletionHistory.bind(controller),
 );
 
 // ============================================
@@ -98,7 +100,7 @@ router.get(
   "/admin/income/monthly",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.getMonthlyIncome.bind(controller)
+  controller.getMonthlyIncome.bind(controller),
 );
 
 /**
@@ -109,7 +111,7 @@ router.get(
   "/admin/income/monthly/:year/:month",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.getMonthlyIncomeDetail.bind(controller)
+  controller.getMonthlyIncomeDetail.bind(controller),
 );
 
 /**
@@ -121,7 +123,7 @@ router.get(
   "/admin/income/range",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.getIncomeByRange.bind(controller)
+  controller.getIncomeByRange.bind(controller),
 );
 
 /**
@@ -132,14 +134,14 @@ router.get(
   "/admin/income/:year",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.getYearlyIncome.bind(controller)
+  controller.getYearlyIncome.bind(controller),
 );
 
 router.get(
   "/admin/payments/:paymentId",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.getPaymentDetails.bind(controller)
+  controller.getPaymentDetails.bind(controller),
 );
 
 export default router;

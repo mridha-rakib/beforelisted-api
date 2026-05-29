@@ -1,12 +1,12 @@
+import jwt from "jsonwebtoken";
+import crypto from "node:crypto";
+import { v4 as uuidv4 } from "uuid";
+
 // file: src/modules/auth/auth.utils.ts
 import { JWT, OTP, REFERRAL_CODE } from "@/constants/app.constants";
 import { env } from "@/env";
-import crypto from "crypto";
-import jwt from "jsonwebtoken";
-import { v4 as uuidv4 } from "uuid";
+
 import type { JWTPayload } from "../user/user.type";
-
-
 
 export class AuthUtil {
   static generateAccessToken(payload: JWTPayload): string {
@@ -16,9 +16,9 @@ export class AuthUtil {
   }
 
   /**
-
+   
 Generate Refresh Token
-*/
+   */
   static generateRefreshToken(userId: string): string {
     return jwt.sign({ userId }, env.JWT_REFRESH_SECRET, {
       expiresIn: JWT.REFRESH_EXPIRY as any,
@@ -26,57 +26,58 @@ Generate Refresh Token
   }
 
   /**
-
+   
 Verify Access Token
-*/
+   */
   static verifyAccessToken(token: string): JWTPayload {
     try {
       const decoded = jwt.verify(token, env.JWT_SECRET);
       return decoded as JWTPayload;
-    } catch (error) {
+    }
+    catch {
       throw new Error("Invalid or expired access token");
     }
   }
 
   /**
-
+   
 Verify Refresh Token
-*/
+   */
   static verifyRefreshToken(token: string): JWTPayload {
     try {
       const decoded = jwt.verify(token, env.JWT_REFRESH_SECRET);
       return decoded as JWTPayload;
-    } catch (error) {
+    }
+    catch {
       throw new Error("Invalid or expired refresh token");
     }
   }
 
   /**
-
+   
 Decode token without verification (for debugging)
-*/
+   */
   static decodeToken(token: string): any {
     return jwt.decode(token);
   }
 
   /**
-
+   
 Generate Email Verification Token
-*/
+   */
   static generateEmailVerificationToken(): string {
     return crypto.randomBytes(32).toString("hex");
   }
 
   /**
-
+   
 Generate OTP (4 digits)
-*/
+   */
   static generateOTP(): string {
-    const min = Math.pow(10, OTP.LENGTH - 1);
-    const max = Math.pow(10, OTP.LENGTH) - 1;
+    const min = 10 ** (OTP.LENGTH - 1);
+    const max = 10 ** OTP.LENGTH - 1;
     return Math.floor(Math.random() * (max - min + 1) + min).toString();
   }
-
 
   static generateReferralCode(prefix: string): string {
     const randomPart = uuidv4()
@@ -86,9 +87,9 @@ Generate OTP (4 digits)
   }
 
   /**
-
+   
 Generate Referral URL Slug
-*/
+   */
   static generateReferralSlug(fullName: string): string {
     const slug = fullName
       .toLowerCase()
@@ -97,13 +98,13 @@ Generate Referral URL Slug
     return `${slug}-${uuidv4().substring(0, 8)}`;
   }
 
-
   static getTokenExpirationTime(expiryString: string): Date {
     const expiryDate = new Date();
     const match = expiryString.match(/(\d+)([dhms])/);
-    if (!match) return expiryDate;
+    if (!match)
+      return expiryDate;
 
-    const value = parseInt(match[1]);
+    const value = Number.parseInt(match[1]);
 
     const unit = match[2];
 
@@ -125,13 +126,11 @@ Generate Referral URL Slug
     return expiryDate;
   }
 
-
   static getOTPExpirationTime(): Date {
     const expiryDate = new Date();
     expiryDate.setMinutes(expiryDate.getMinutes() + OTP.EXPIRY_MINUTES);
     return expiryDate;
   }
-
 
   static getReferralCodeExpirationTime(): Date {
     const expiryDate = new Date();
@@ -140,31 +139,28 @@ Generate Referral URL Slug
   }
 
   static isValidEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@](?:[^\s@]|[^\s@]*[\t\v\f @\xA0\u1680\u2000-\u200A\u202F\u205F\u3000\uFEFF])[^\s@]+$/;
     return emailRegex.test(email);
   }
-
 
   static generateVerificationLink(baseURL: string, token: string): string {
     return `${baseURL}/api/v1/auth/verify-email?token=${token}`;
   }
 
-
   static generatePasswordResetLink(baseURL: string, token: string): string {
     return `${baseURL}/api/v1/auth/reset-password?token=${token}`;
   }
 
-
   static generateAdminReferralLink(
     baseURL: string,
-    referralSlug: string
+    referralSlug: string,
   ): string {
     return `${baseURL}/auth/register?ref=${referralSlug}`;
   }
 
   static generateAgentReferralLink(
     baseURL: string,
-    referralCode: string
+    referralCode: string,
   ): string {
     return `${baseURL}/auth/register?ref=${referralCode}`;
   }

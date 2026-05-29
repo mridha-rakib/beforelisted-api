@@ -1,9 +1,12 @@
 // file: src/modules/pre-market/pre-market.model.ts
 
-import { BaseSchemaUtil } from "@/utils/base-schema.utils";
-import { model, Types, type Document, type Query } from "mongoose";
+import type { Document, Query } from "mongoose";
 
-export interface IPreMarketRequest extends Document {
+import { model, Types } from "mongoose";
+
+import { BaseSchemaUtil } from "@/utils/base-schema.utils";
+
+export type IPreMarketRequest = {
   requestId: string;
   renterId: Types.ObjectId | string;
   requestName: string;
@@ -106,7 +109,7 @@ export interface IPreMarketRequest extends Document {
   updatedAt: Date;
 
   requestNumber: number;
-}
+} & Document;
 
 const preMarketSchema = BaseSchemaUtil.createSchema({
   requestId: {
@@ -405,11 +408,11 @@ preMarketSchema.index({ "viewedBy.normalAgents": 1 });
 preMarketSchema.index({ referralAgentId: 1, visibility: 1, createdAt: -1 });
 preMarketSchema.index({ visibility: 1, lockedByAgentId: 1, createdAt: -1 });
 preMarketSchema.index({
-  _id: 1,
+  "_id": 1,
   "registrationDisclosureConfirmations.agentId": 1,
 });
-preMarketSchema.index({ "agentArchives.agentId": 1, createdAt: -1 });
-preMarketSchema.index({ "ownerRepresentationMatches.agentId": 1, createdAt: -1 });
+preMarketSchema.index({ "agentArchives.agentId": 1, "createdAt": -1 });
+preMarketSchema.index({ "ownerRepresentationMatches.agentId": 1, "createdAt": -1 });
 
 // MIDDLEWARE
 
@@ -421,5 +424,5 @@ preMarketSchema.pre(/^find/, function (this: Query<any, any>) {
 
 export const PreMarketRequestModel = model<IPreMarketRequest>(
   "PreMarketRequest",
-  preMarketSchema as any
+  preMarketSchema as any,
 );

@@ -1,27 +1,28 @@
 // file: src/modules/agent/agent.interface.ts
 
 import type { Document, Types } from "mongoose";
+
 import type { AgentTitle } from "./agent.type";
 
-export interface IAccessToggleRecord {
+export type IAccessToggleRecord = {
   action: "granted" | "revoked";
   toggledBy: Types.ObjectId;
   toggledAt: Date;
   // reason?: string;
-}
+};
 
-export interface IActivationRecord {
+export type IActivationRecord = {
   action: "activated" | "deactivated";
   changedBy: Types.ObjectId;
   changedAt: Date;
   reason?: string;
-}
+};
 
 /**
  * Agent Profile Document Interface
  */
 
-export interface IAgentProfile extends Document {
+export type IAgentProfile = {
   _id: Types.ObjectId;
   userId: Types.ObjectId;
   licenseNumber: string;
@@ -63,4 +64,4 @@ export interface IAgentProfile extends Document {
 
   createdAt: Date;
   updatedAt: Date;
-}
+} & Document;

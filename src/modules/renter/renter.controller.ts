@@ -1,5 +1,7 @@
 // file: src/modules/renter/renter.controller.ts
 
+import type { NextFunction, Request, Response } from "express";
+
 import { COOKIE_CONFIG } from "@/config/cookie.config";
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
@@ -7,7 +9,7 @@ import { BadRequestException } from "@/utils/app-error.utils";
 import { buildExcelDownloadResponse } from "@/utils/excel-response.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
-import type { NextFunction, Request, Response } from "express";
+
 import {
   adminReferralRenterRegisterSchema,
   agentReferralRenterRegisterSchema,
@@ -43,11 +45,11 @@ export class RenterController {
         throw new BadRequestException("Referral code is required");
       }
 
-      const result =
-        await this.service.getRegistrationLinkStatus(referralCode);
+      const result
+        = await this.service.getRegistrationLinkStatus(referralCode);
 
       ApiResponse.success(res, result, "Registration link is active");
-    }
+    },
   );
 
   /**
@@ -56,7 +58,7 @@ export class RenterController {
    * ✅ Auto-detects: Agent Referral or Admin Referral
    */
   registerRenter = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, _next: NextFunction) => {
       const validated = await zParse(renterRegisterSchema, req);
       const result = await this.service.registerRenter(validated.body, {
         ipAddress: req.ip || req.socket.remoteAddress,
@@ -66,11 +68,11 @@ export class RenterController {
       res.cookie(
         COOKIE_CONFIG.REFRESH_TOKEN.name,
         result.tokens.refreshToken,
-        COOKIE_CONFIG.REFRESH_TOKEN.options
+        COOKIE_CONFIG.REFRESH_TOKEN.options,
       );
 
       ApiResponse.created(res, result, "Renter registered successfully");
-    }
+    },
   );
 
   /**
@@ -87,11 +89,11 @@ export class RenterController {
       res.cookie(
         COOKIE_CONFIG.REFRESH_TOKEN.name,
         result.tokens.refreshToken,
-        COOKIE_CONFIG.REFRESH_TOKEN.options
+        COOKIE_CONFIG.REFRESH_TOKEN.options,
       );
 
       ApiResponse.created(res, result, "Renter registered via agent referral");
-    }
+    },
   );
 
   /**
@@ -108,7 +110,7 @@ export class RenterController {
       res.cookie(
         COOKIE_CONFIG.REFRESH_TOKEN.name,
         result.tokens.refreshToken,
-        COOKIE_CONFIG.REFRESH_TOKEN.options
+        COOKIE_CONFIG.REFRESH_TOKEN.options,
       );
 
       ApiResponse.created(
@@ -118,9 +120,9 @@ export class RenterController {
           message:
             "Password has been sent to your email. Please change it on first login.",
         },
-        "Renter registered via admin referral (passwordless)"
+        "Renter registered via admin referral (passwordless)",
       );
-    }
+    },
   );
 
   /**
@@ -143,7 +145,7 @@ export class RenterController {
     const userId = req.user!.userId;
     const result = await this.service.updateRenterProfile(
       userId,
-      validated.body
+      validated.body,
     );
 
     ApiResponse.success(res, result, "Renter profile updated successfully");
@@ -167,7 +169,7 @@ export class RenterController {
     ApiResponse.success(
       res,
       result,
-      "Renter email subscription updated successfully"
+      "Renter email subscription updated successfully",
     );
   });
 
@@ -193,14 +195,14 @@ export class RenterController {
 
     const result = await this.service.getAllRenters(
       validated.query,
-      accountStatus
+      accountStatus,
     );
 
     ApiResponse.paginated(
       res,
       result.data,
       result.pagination,
-      "Renters retrieved successfully"
+      "Renters retrieved successfully",
     );
   });
 
@@ -227,7 +229,7 @@ export class RenterController {
       logger.info({ renterId }, "Admin viewed renter details");
 
       ApiResponse.success(res, renter, "Renter details retrieved successfully");
-    }
+    },
   );
 
   downloadRentersConsolidatedExcel = asyncHandler(
@@ -244,8 +246,8 @@ export class RenterController {
       ApiResponse.success(
         res,
         data,
-        "Consolidated Renter Excel file info retrieved"
+        "Consolidated Renter Excel file info retrieved",
       );
-    }
+    },
   );
 }

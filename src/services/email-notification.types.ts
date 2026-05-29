@@ -1,6 +1,6 @@
 // file: src/services/email-notification.types.ts
 
-export interface IPreMarketAgentNotificationPayload {
+export type IPreMarketAgentNotificationPayload = {
   to: string;
   agentName: string;
   agentType: "Grant Access" | "Normal";
@@ -9,9 +9,9 @@ export interface IPreMarketAgentNotificationPayload {
   location: string;
   serviceType: string;
   listingUrl: string;
-}
+};
 
-export interface IPreMarketAdminNotificationPayload {
+export type IPreMarketAdminNotificationPayload = {
   to: string;
   listingTitle: string;
   listingDescription: string;
@@ -23,23 +23,23 @@ export interface IPreMarketAdminNotificationPayload {
   listingUrl: string;
   preMarketRequestId: string;
   requestId: string;
-}
+};
 
-export interface IRenterRequestConfirmationPayload {
+export type IRenterRequestConfirmationPayload = {
   to: string;
   renterName: string;
   taggedAgentEmail: string;
   taggedAgentFullName: string;
   taggedAgentTitle: string;
   taggedAgentBrokerage: string;
-}
+};
 
-export interface IRenterRequestExpiredNotificationPayload {
+export type IRenterRequestExpiredNotificationPayload = {
   to: string;
   renterName: string;
-}
+};
 
-export interface IRenterRequestUpdatedNotificationPayload {
+export type IRenterRequestUpdatedNotificationPayload = {
   to: string;
   agentName: string;
   requestId: string;
@@ -48,9 +48,9 @@ export interface IRenterRequestUpdatedNotificationPayload {
   updatedFieldValues: string[];
   updatedAt: string;
   cc?: string[];
-}
+};
 
-export interface INonRegisteredAgentSharedRequestNotificationPayload {
+export type INonRegisteredAgentSharedRequestNotificationPayload = {
   to: string;
   agentName: string;
   renterFirstName: string;
@@ -66,12 +66,12 @@ export interface INonRegisteredAgentSharedRequestNotificationPayload {
   features: string;
   preferencesByOrder: string;
   submittedAt: string;
-}
+};
 
-export type INonRegisteredAgentRequestSubmissionNotificationPayload =
-  INonRegisteredAgentSharedRequestNotificationPayload;
+export type INonRegisteredAgentRequestSubmissionNotificationPayload
+  = INonRegisteredAgentSharedRequestNotificationPayload;
 
-export interface IAgentRequestConfirmationPayload {
+export type IAgentRequestConfirmationPayload = {
   to: string;
   agentName: string;
   renterName: string;
@@ -90,9 +90,9 @@ export interface IAgentRequestConfirmationPayload {
   preferencesByOrder: string;
   submittedAt: string;
   cc?: string[];
-}
+};
 
-export interface IRenterOpportunityFoundRegisteredAgentPayload {
+export type IRenterOpportunityFoundRegisteredAgentPayload = {
   to: string;
   renterName: string;
   registeredAgentFullName: string;
@@ -100,9 +100,9 @@ export interface IRenterOpportunityFoundRegisteredAgentPayload {
   registeredAgentBrokerage: string;
   registeredAgentEmail: string;
   registeredAgentPhone: string;
-}
+};
 
-export interface IRenterOpportunityFoundOtherAgentPayload {
+export type IRenterOpportunityFoundOtherAgentPayload = {
   to: string;
   renterName: string;
   cc?: string[];
@@ -114,9 +114,9 @@ export interface IRenterOpportunityFoundOtherAgentPayload {
   matchedAgentEmail?: string;
   matchedAgentPhone?: string;
   matchedAgentDisclosureLink?: string | null;
-}
+};
 
-export interface IMatchReferralAcknowledgmentToMatchingAgentPayload {
+export type IMatchReferralAcknowledgmentToMatchingAgentPayload = {
   to: string;
   matchedAgentName: string;
   renterFullName: string;
@@ -126,9 +126,9 @@ export interface IMatchReferralAcknowledgmentToMatchingAgentPayload {
   requestRepresentedByTuvalMor?: boolean;
   matchedAgentIsTuvalMor?: boolean;
   cc?: string[];
-}
+};
 
-export interface IOwnerRepresentationMatchReferralAcknowledgmentPayload {
+export type IOwnerRepresentationMatchReferralAcknowledgmentPayload = {
   to: string;
   registeredAgentFirstName: string;
   renterFullName: string;
@@ -143,9 +143,9 @@ export interface IOwnerRepresentationMatchReferralAcknowledgmentPayload {
   matchedAgentPhoneNumber: string;
   requestRepresentedByTuvalMor?: boolean;
   cc?: string[];
-}
+};
 
-export interface IRenterRequestClosedAgentAlertPayload {
+export type IRenterRequestClosedAgentAlertPayload = {
   to: string;
   agentName: string;
   renterFullName: string;
@@ -166,17 +166,17 @@ export interface IRenterRequestClosedAgentAlertPayload {
   preferencesByOrder: string;
   submittedAt: string;
   cc?: string[];
-}
+};
 
-export interface IRenterRequestClosedRenterNotificationPayload {
+export type IRenterRequestClosedRenterNotificationPayload = {
   to: string;
   renterFirstName: string;
   requestId: string;
   reason: string;
   closedAt: string;
-}
+};
 
-export interface IRenterArchiveNotificationPayload {
+export type IRenterArchiveNotificationPayload = {
   to: string;
   renterName: string;
   subject: string;
@@ -185,17 +185,17 @@ export interface IRenterArchiveNotificationPayload {
   cc?: string[];
   replyTo?: string;
   templateType: string;
-}
+};
 
-export interface IRenterSearchReactivatedAgentNotificationPayload {
+export type IRenterSearchReactivatedAgentNotificationPayload = {
   to: string;
   agentName: string;
   clientFullName: string;
   requestId: string;
   requestLink: string;
-}
+};
 
-export interface IActiveSearchConfirmationReminderPayload {
+export type IActiveSearchConfirmationReminderPayload = {
   to: string;
   renterName: string;
   subject: string;
@@ -204,16 +204,16 @@ export interface IActiveSearchConfirmationReminderPayload {
   cc?: string[];
   replyTo?: string;
   templateType: string;
-}
+};
 
-export interface ISystemArchivedSearchInactiveAgentNotificationPayload {
+export type ISystemArchivedSearchInactiveAgentNotificationPayload = {
   to: string;
   agentName: string;
   renterName: string;
   requestId: string;
-}
+};
 
-export interface IRenterUnarchiveNotificationPayload {
+export type IRenterUnarchiveNotificationPayload = {
   to: string;
   renterName: string;
   subject: string;
@@ -222,9 +222,9 @@ export interface IRenterUnarchiveNotificationPayload {
   cc?: string[];
   replyTo?: string;
   templateType: string;
-}
+};
 
-export interface IAdminContactRequestPayload {
+export type IAdminContactRequestPayload = {
   to: string;
   senderEmail: string;
   subject: string;
@@ -232,9 +232,9 @@ export interface IAdminContactRequestPayload {
   receivedAt: string;
   ipAddress?: string;
   userAgent?: string;
-}
+};
 
-export interface IAgentRegistrationVerifiedAdminPayload {
+export type IAgentRegistrationVerifiedAdminPayload = {
   to: string;
   agentFirstName: string;
   agentLastName: string;
@@ -244,9 +244,9 @@ export interface IAgentRegistrationVerifiedAdminPayload {
   agentPhoneNumber: string;
   registrationDate: string;
   agentRegistrationLink: string;
-}
+};
 
-export interface IRenterRegistrationVerifiedAdminPayload {
+export type IRenterRegistrationVerifiedAdminPayload = {
   to: string;
   renterName: string;
   renterPhone: string;
@@ -255,16 +255,16 @@ export interface IRenterRegistrationVerifiedAdminPayload {
   registeredAgentName: string;
   registeredAgentBrokerage: string;
   registeredAgentEmail?: string;
-}
+};
 
-export interface IRenterRegisteredAgentInactivePayload {
+export type IRenterRegisteredAgentInactivePayload = {
   to: string;
   renterName: string;
   defaultAgentReferralLoginLink?: string;
   notificationReason?: "inactive" | "deleted";
-}
+};
 
-export interface IPreMarketAgentNotification {
+export type IPreMarketAgentNotification = {
   notificationId: string;
   agentId: string;
   preMarketRequestId: string;
@@ -278,9 +278,9 @@ export interface IPreMarketAgentNotification {
   createdAt: Date;
   expiresAt?: Date;
   actionUrl?: string;
-}
+};
 
-export interface IPreMarketAdminNotification {
+export type IPreMarketAdminNotification = {
   notificationId: string;
   preMarketRequestId: string;
   type: "NEW_LISTING" | "NEW_ACCESS_REQUEST" | "PAYMENT_RECEIVED";
@@ -295,13 +295,13 @@ export interface IPreMarketAdminNotification {
   createdAt: Date;
   expiresAt?: Date;
   actionUrl?: string;
-}
+};
 
-export interface INotificationEmailResult {
+export type INotificationEmailResult = {
   success: boolean;
   messageId?: string;
   error?: string;
   timestamp: Date;
   attempt: number;
   maxAttempts: number;
-}
+};

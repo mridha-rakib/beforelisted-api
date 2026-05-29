@@ -1,5 +1,8 @@
 // file: src/modules/pre-market/pre-market.controller.ts
 
+import type { Request, Response } from "express";
+import type Stripe from "stripe";
+
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
 import { ExcelService } from "@/services/excel.service";
@@ -11,8 +14,7 @@ import {
 import { buildExcelDownloadResponse } from "@/utils/excel-response.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
-import type { Request, Response } from "express";
-import type Stripe from "stripe";
+
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
 import { GrantAccessService } from "../grant-access/grant-access.service";
@@ -20,21 +22,21 @@ import { PaymentService } from "../payment/payment.service";
 import { PreMarketRepository } from "./pre-market.repository";
 import {
   adminApproveSchema,
-  archiveRequestSchema,
   adminChargeSchema,
   adminRejectSchema,
   agentMatchRequestSchema,
+  archiveRequestSchema,
   confirmActiveSearchSchema,
   confirmRegistrationDisclosureSchema,
   createPreMarketRequestSchema,
   preMarketListSchema,
   reactivateSearchSchema,
   requestAccessSchema,
-  toggleShareVisibilitySchema,
   toggleListingActivationSchema,
+  toggleShareVisibilitySchema,
   unarchiveRequestSchema,
-  updateRequestVisibilitySchema,
   updatePreMarketRequestSchema,
+  updateRequestVisibilitySchema,
 } from "./pre-market.schema";
 import { PreMarketService } from "./pre-market.service";
 
@@ -77,7 +79,7 @@ export class PreMarketController {
     ApiResponse.created(
       res,
       request,
-      "Pre-market request created successfully"
+      "Pre-market request created successfully",
     );
   });
 
@@ -95,22 +97,22 @@ export class PreMarketController {
 
     const requests = await this.preMarketService.getRenterRequests(
       userId,
-      validated.query
+      validated.query,
     );
 
     ApiResponse.paginated(
       res,
       requests.data,
       requests.pagination,
-      "Renter requests retrieved"
+      "Renter requests retrieved",
     );
   });
 
   confirmActiveSearch = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(confirmActiveSearchSchema, req);
 
-    const confirmation =
-      await this.preMarketService.confirmActiveSearchRequest(
+    const confirmation
+      = await this.preMarketService.confirmActiveSearchRequest(
         validated.query.token,
       );
 
@@ -153,7 +155,7 @@ export class PreMarketController {
     const request = await this.preMarketService.updateRequest(
       userId,
       requestId,
-      validated.body
+      validated.body,
     );
 
     logger.info({ userId, requestId }, "Pre-market request updated");
@@ -181,13 +183,13 @@ export class PreMarketController {
 
     const request = await this.preMarketService.getRenterRequestById(
       renterId,
-      requestId
+      requestId,
     );
 
     ApiResponse.success(
       res,
       request,
-      "Your pre-market request details retrieved"
+      "Your pre-market request details retrieved",
     );
   });
 
@@ -202,14 +204,14 @@ export class PreMarketController {
 
     const requests = await this.preMarketService.getAllRequests(
       validated.query,
-      agentId
+      agentId,
     );
 
     ApiResponse.paginated(
       res,
       requests.data,
       requests.pagination,
-      "All pre-market requests retrieved"
+      "All pre-market requests retrieved",
     );
   });
 
@@ -240,8 +242,8 @@ export class PreMarketController {
         req.params.requestId,
         true,
       );
-      const normalizedResponse =
-        response?.status === "free"
+      const normalizedResponse
+        = response?.status === "free"
           ? { ...response, status: "Available" }
           : response;
 
@@ -289,8 +291,8 @@ export class PreMarketController {
           userId,
         )
       : null;
-    const shouldDisplayMatchedScope =
-      await this.preMarketService.shouldDisplayMatchedScopeForRequest(requestId);
+    const shouldDisplayMatchedScope
+      = await this.preMarketService.shouldDisplayMatchedScopeForRequest(requestId);
     const archiveStatus = this.preMarketService.getAgentArchiveStatusForRequest(
       request as any,
       userId,
@@ -306,7 +308,7 @@ export class PreMarketController {
     if (agent.hasGrantAccess) {
       const matchRecord = await this.preMarketService.getMatchedAccessRecord(
         userId,
-        requestId
+        requestId,
       );
       const listingStatus = matchRecord ? "matched" : request.status;
       const grantAccessStatus = "free";
@@ -318,16 +320,16 @@ export class PreMarketController {
       await this.preMarketRepository.addAgentToViewedBy(
         requestId,
         userId,
-        "grantAccessAgents"
+        "grantAccessAgents",
       );
 
       if (matchRecord) {
-        const enriched =
-          enrichedCreatorRequest ||
-          (await this.preMarketService.enrichRequestWithFullRenterInfo(
-            request,
-            userId,
-          ));
+        const enriched
+          = enrichedCreatorRequest
+            || (await this.preMarketService.enrichRequestWithFullRenterInfo(
+              request,
+              userId,
+            ));
 
         return withOwnerRepresentationDetails({
           ...enriched,
@@ -362,16 +364,16 @@ export class PreMarketController {
 
     const accessSummary = await this.preMarketService.getAgentAccessSummary(
       userId,
-      requestId
+      requestId,
     );
     const isRejected = accessSummary.grantAccessStatus === "rejected";
-    const hasRequestedAccess =
-      accessSummary.grantAccessStatus !== "Available" &&
-      accessSummary.grantAccessStatus !== "free" &&
-      accessSummary.grantAccessStatus !== "paid" &&
-      accessSummary.grantAccessStatus !== "rejected";
-    const listingStatus =
-      accessSummary.accessType !== "none"
+    const hasRequestedAccess
+      = accessSummary.grantAccessStatus !== "Available"
+        && accessSummary.grantAccessStatus !== "free"
+        && accessSummary.grantAccessStatus !== "paid"
+        && accessSummary.grantAccessStatus !== "rejected";
+    const listingStatus
+      = accessSummary.accessType !== "none"
         ? "matched"
         : isRejected
           ? "rejected"
@@ -386,7 +388,7 @@ export class PreMarketController {
     await this.preMarketRepository.addAgentToViewedBy(
       requestId,
       userId,
-      "normalAgents"
+      "normalAgents",
     );
 
     let response: any = {
@@ -408,12 +410,12 @@ export class PreMarketController {
 
     // Include renter info if agent has access
     if (accessSummary.canSeeRenterInfo || includeCreatorRenterInfo) {
-      const enriched =
-        enrichedCreatorRequest ||
-        (await this.preMarketService.enrichRequestWithFullRenterInfo(
-          request,
-          userId,
-        ));
+      const enriched
+        = enrichedCreatorRequest
+          || (await this.preMarketService.enrichRequestWithFullRenterInfo(
+            request,
+            userId,
+          ));
       response = {
         ...response,
         renterInfo: enriched.renterInfo,
@@ -422,15 +424,17 @@ export class PreMarketController {
       if (accessSummary.canSeeRenterInfo) {
         logger.info(
           { userId, requestId, accessType: accessSummary.accessType },
-          `Request accessed with ${accessSummary.accessType} renter info access`
+          `Request accessed with ${accessSummary.accessType} renter info access`,
         );
-      } else {
+      }
+      else {
         logger.info(
           { userId, requestId },
           "Request accessed with creator renter information via direct details route",
         );
       }
-    } else {
+    }
+    else {
       response = {
         ...response,
         renterInfo: null,
@@ -439,7 +443,7 @@ export class PreMarketController {
 
       logger.info(
         { userId, requestId },
-        "Request accessed without renter info (can request access)"
+        "Request accessed without renter info (can request access)",
       );
     }
 
@@ -479,7 +483,7 @@ export class PreMarketController {
 
     logger.info(
       { userId, preMarketRequestId: validated.body.preMarketRequestId },
-      "Request was moved to the Renter Matches section"
+      "Request was moved to the Renter Matches section",
     );
     ApiResponse.created(res, grantAccess, "Access request created");
   });
@@ -497,8 +501,8 @@ export class PreMarketController {
     const userId = req.user!.userId;
     const { grantAccessId } = req.body;
 
-    const paymentIntent =
-      await this.grantAccessService.createPaymentIntent(grantAccessId);
+    const paymentIntent
+      = await this.grantAccessService.createPaymentIntent(grantAccessId);
 
     logger.info({ userId, grantAccessId }, "Payment intent created");
     ApiResponse.success(res, paymentIntent, "Payment intent created");
@@ -552,7 +556,7 @@ export class PreMarketController {
 
     logger.info(
       { adminId, requestId, amount: validated.body.chargeAmount },
-      "Access charged"
+      "Access charged",
     );
     ApiResponse.success(res, result, "Access charged");
   });
@@ -597,9 +601,9 @@ export class PreMarketController {
     const rawBody = (req as any).rawBody ?? req.body;
     const isBuffer = Buffer.isBuffer(rawBody);
     if (
-      !rawBody ||
-      (typeof rawBody === "string" && rawBody.length === 0) ||
-      (isBuffer && rawBody.length === 0)
+      !rawBody
+      || (typeof rawBody === "string" && rawBody.length === 0)
+      || (isBuffer && rawBody.length === 0)
     ) {
       logger.warn("Stripe webhook received empty body");
       throw new BadRequestException("Empty Stripe webhook payload");
@@ -614,9 +618,10 @@ export class PreMarketController {
     try {
       stripeEvent = await this.paymentService.constructWebhookEvent(
         rawBody,
-        signature
+        signature,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.warn({ error }, "Stripe webhook signature verification failed");
       throw new BadRequestException("Invalid Stripe signature");
     }
@@ -633,19 +638,19 @@ export class PreMarketController {
 
     const requests = await this.preMarketService.getAllRequestsForAgent(
       agentId,
-      validated.query
+      validated.query,
     );
 
     logger.info(
       { agentId, requestCount: requests.data.length },
-      "Agent retrieved all pre-market requests"
+      "Agent retrieved all pre-market requests",
     );
 
     ApiResponse.paginated(
       res,
       requests.data,
       requests.pagination,
-      "Pre-market requests retrieved with visibility control"
+      "Pre-market requests retrieved with visibility control",
     );
   });
 
@@ -674,7 +679,7 @@ export class PreMarketController {
 
     const request = await this.preMarketService.getRequestForAgent(
       agentId,
-      requestId
+      requestId,
     );
 
     logger.info({ agentId, requestId }, "Agent retrieved specific request");
@@ -682,7 +687,7 @@ export class PreMarketController {
     ApiResponse.success(
       res,
       request,
-      "Pre-market request retrieved with visibility control"
+      "Pre-market request retrieved with visibility control",
     );
   });
 
@@ -694,11 +699,11 @@ export class PreMarketController {
       const updated = await this.preMarketService.updateRequestVisibility(
         agentId,
         validated.params.requestId,
-        validated.body.visibility
+        validated.body.visibility,
       );
 
       ApiResponse.success(res, updated, "Request visibility updated");
-    }
+    },
   );
 
   toggleShareVisibility = asyncHandler(async (req: Request, res: Response) => {
@@ -707,7 +712,7 @@ export class PreMarketController {
 
     const updated = await this.preMarketService.toggleRequestShareVisibility(
       agentId,
-      validated.params.requestId
+      validated.params.requestId,
     );
 
     const mode = updated.visibility === "SHARED" ? "ON (Shared)" : "OFF (Private)";
@@ -744,8 +749,8 @@ export class PreMarketController {
       const validated = await zParse(confirmRegistrationDisclosureSchema, req);
       const agentId = req.user!.userId;
 
-      const confirmation =
-        await this.preMarketService.confirmRegistrationDisclosure(
+      const confirmation
+        = await this.preMarketService.confirmRegistrationDisclosure(
           agentId,
           validated.params.requestId,
         );
@@ -771,19 +776,19 @@ export class PreMarketController {
     const validated = await zParse(preMarketListSchema, req);
 
     const result = await this.preMarketService.getAllRequestsForAdmin(
-      validated.query
+      validated.query,
     );
 
     logger.debug(
       { adminId: req.user?.userId, itemCount: result.data.length },
-      "Admin retrieved all pre-market requests"
+      "Admin retrieved all pre-market requests",
     );
 
     ApiResponse.paginated(
       res,
       result.data,
       result.pagination,
-      "Admin pre-market requests retrieved successfully"
+      "Admin pre-market requests retrieved successfully",
     );
   });
 
@@ -801,16 +806,16 @@ export class PreMarketController {
 
     logger.debug(
       { adminId: req.user?.userId, requestId },
-      "Admin retrieving pre-market request details"
+      "Admin retrieving pre-market request details",
     );
 
-    const request =
-      await this.preMarketService.getRequestByIdForAdmin(requestId);
+    const request
+      = await this.preMarketService.getRequestByIdForAdmin(requestId);
 
     ApiResponse.success(
       res,
       request,
-      "Admin pre-market request details retrieved successfully"
+      "Admin pre-market request details retrieved successfully",
     );
   });
 
@@ -830,24 +835,24 @@ export class PreMarketController {
       const validated = await zParse(preMarketListSchema, req);
       const userId = req.user!.userId;
 
-      const requests =
-        await this.preMarketService.getRequestsForGrantAccessAgents(
+      const requests
+        = await this.preMarketService.getRequestsForGrantAccessAgents(
           userId,
-          validated.query
+          validated.query,
         );
 
       logger.debug(
         { userId, itemCount: requests.data.length },
-        "Grant access agent retrieved all available requests"
+        "Grant access agent retrieved all available requests",
       );
 
       ApiResponse.paginated(
         res,
         requests.data,
         requests.pagination,
-        "Available pre-market requests retrieved"
+        "Available pre-market requests retrieved",
       );
-    }
+    },
   );
 
   /**
@@ -912,7 +917,7 @@ export class PreMarketController {
       const agent = await this.agentRepository.findByUserId(agentId);
       if (!agent) {
         throw new ForbiddenException(
-          "You do not have grant access to view this request"
+          "You do not have grant access to view this request",
         );
       }
 
@@ -926,25 +931,25 @@ export class PreMarketController {
         agentId,
         request as any,
       );
-      const shouldDisplayMatchedScope =
-        await this.preMarketService.shouldDisplayMatchedScopeForRequest(
+      const shouldDisplayMatchedScope
+        = await this.preMarketService.shouldDisplayMatchedScopeForRequest(
           requestId,
         );
 
       if (agent.hasGrantAccess === true) {
         const matchRecord = await this.preMarketService.getMatchedAccessRecord(
           agentId,
-          requestId
+          requestId,
         );
 
         if (!matchRecord) {
           throw new ForbiddenException("You have not matched this request yet");
         }
 
-        const enriched =
-          await this.preMarketService.enrichRequestWithFullRenterInfo(
+        const enriched
+          = await this.preMarketService.enrichRequestWithFullRenterInfo(
             request,
-            agentId
+            agentId,
           );
         const visibleScope = this.preMarketService.resolveAgentVisibleScope(
           request.scope,
@@ -954,10 +959,10 @@ export class PreMarketController {
         await this.preMarketRepository.addAgentToViewedBy(
           requestId,
           agentId,
-          "grantAccessAgents"
+          "grantAccessAgents",
         );
-        const responsePayload =
-          await this.preMarketService.enrichOwnerRepresentationDetailsForAgent(
+        const responsePayload
+          = await this.preMarketService.enrichOwnerRepresentationDetailsForAgent(
             agentId,
             requestId,
             request as any,
@@ -972,7 +977,7 @@ export class PreMarketController {
         return ApiResponse.success(
           res,
           responsePayload,
-          "Pre-market request details retrieved"
+          "Pre-market request details retrieved",
         );
       }
 
@@ -981,22 +986,22 @@ export class PreMarketController {
       // ============================================
       logger.info(
         { agentId, type: "normal" },
-        "?? Normal agent - checking if they have PAID access for this request"
+        "?? Normal agent - checking if they have PAID access for this request",
       );
 
       const accessCheck = await this.preMarketService.checkAgentAccessToRequest(
         agentId,
-        requestId
+        requestId,
       );
 
       if (!accessCheck.hasAccess || !accessCheck.grantAccessRecord) {
         logger.warn(
           { agentId, requestId },
-          "? Normal agent does NOT have paid access to this request"
+          "? Normal agent does NOT have paid access to this request",
         );
 
         throw new ForbiddenException(
-          "You do not have access to this request. Request access or pay to view renter information."
+          "You do not have access to this request. Request access or pay to view renter information.",
         );
       }
 
@@ -1004,14 +1009,14 @@ export class PreMarketController {
 
       logger.info(
         { agentId, requestId, accessStatus: paidAccess.status },
-        `? Normal agent has ${paidAccess.status} access to this request`
+        `? Normal agent has ${paidAccess.status} access to this request`,
       );
 
       // ? Enrich with full renter info (since they paid)
-      const enriched =
-        await this.preMarketService.enrichRequestWithFullRenterInfo(
+      const enriched
+        = await this.preMarketService.enrichRequestWithFullRenterInfo(
           request,
-          agentId
+          agentId,
         );
       const visibleScope = this.preMarketService.resolveAgentVisibleScope(
         request.scope,
@@ -1020,7 +1025,7 @@ export class PreMarketController {
 
       logger.info(
         { agentId, requestId },
-        "Request enriched with renter information"
+        "Request enriched with renter information",
       );
 
       // ? Track as normal agent
@@ -1028,17 +1033,18 @@ export class PreMarketController {
         await this.preMarketRepository.addAgentToViewedBy(
           requestId,
           agentId,
-          "normalAgents"
+          "normalAgents",
         );
 
         logger.info(
           { agentId, requestId },
-          "? Marked as viewed by normal agent"
+          "? Marked as viewed by normal agent",
         );
-      } catch (error) {
+      }
+      catch (error) {
         logger.warn(
           { agentId, requestId, error },
-          "Failed to track view (non-blocking)"
+          "Failed to track view (non-blocking)",
         );
       }
 
@@ -1050,11 +1056,11 @@ export class PreMarketController {
           accessType: paidAccess.status,
           renterName: enriched.renterInfo?.renterName,
         },
-        "? Returning full request details to normal agent (paid access)"
+        "? Returning full request details to normal agent (paid access)",
       );
 
-      const responsePayload =
-        await this.preMarketService.enrichOwnerRepresentationDetailsForAgent(
+      const responsePayload
+        = await this.preMarketService.enrichOwnerRepresentationDetailsForAgent(
           agentId,
           requestId,
           request as any,
@@ -1070,17 +1076,17 @@ export class PreMarketController {
       return ApiResponse.success(
         res,
         responsePayload,
-        "Pre-market request details retrieved"
+        "Pre-market request details retrieved",
       );
-    }
+    },
   );
 
   matchRequestForAgent = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(agentMatchRequestSchema, req);
     const agentId = req.user!.userId;
     const { requestId } = validated.params;
-    const representationType =
-      validated.body.representation_type ?? "renter_representation";
+    const representationType
+      = validated.body.representation_type ?? "renter_representation";
 
     const agent = await this.agentRepository.findByUserId(agentId);
     if (!agent) {
@@ -1157,13 +1163,13 @@ export class PreMarketController {
       // Check dual access
       const accessCheck = await this.preMarketService.checkAgentAccessToRequest(
         userId,
-        requestId
+        requestId,
       );
 
       if (!accessCheck.hasAccess) {
         throw new ForbiddenException(
-          "You don't have access to this request. " +
-            "Request access or pay to view renter information."
+          "You don't have access to this request. "
+          + "Request access or pay to view renter information.",
         );
       }
 
@@ -1171,23 +1177,23 @@ export class PreMarketController {
       await this.preMarketRepository.addAgentToViewedBy(
         requestId,
         userId,
-        agent.hasGrantAccess ? "grantAccessAgents" : "normalAgents"
+        agent.hasGrantAccess ? "grantAccessAgents" : "normalAgents",
       );
 
       // Log access type
       logger.info(
         { userId, requestId, accessType: accessCheck.accessType },
-        "Agent accessed request"
+        "Agent accessed request",
       );
 
       // Return with renter info
-      const enriched =
-        await this.preMarketService.enrichRequestWithFullRenterInfo(
+      const enriched
+        = await this.preMarketService.enrichRequestWithFullRenterInfo(
           request,
-          userId
+          userId,
         );
-      const responsePayload =
-        await this.preMarketService.enrichOwnerRepresentationDetailsForAgent(
+      const responsePayload
+        = await this.preMarketService.enrichOwnerRepresentationDetailsForAgent(
           userId,
           requestId,
           request as any,
@@ -1200,9 +1206,9 @@ export class PreMarketController {
       ApiResponse.success(
         res,
         responsePayload,
-        "Pre-market request details"
+        "Pre-market request details",
       );
-    }
+    },
   );
 
   adminDeleteRequest = asyncHandler(async (req: Request, res: Response) => {
@@ -1231,20 +1237,20 @@ export class PreMarketController {
         validated.params.requestId,
         validated.body.isActive,
         userId,
-        "Renter"
+        "Renter",
       );
 
       logger.info(
         { userId, listingId: validated.params.requestId },
-        `Listing ${validated.body.isActive ? "activated" : "deactivated"}`
+        `Listing ${validated.body.isActive ? "activated" : "deactivated"}`,
       );
 
       ApiResponse.success(
         res,
         updated,
-        `Listing ${validated.body.isActive ? "activated" : "deactivated"} successfully`
+        `Listing ${validated.body.isActive ? "activated" : "deactivated"} successfully`,
       );
-    }
+    },
   );
 
   adminToggleListingStatus = asyncHandler(
@@ -1258,8 +1264,8 @@ export class PreMarketController {
       }
 
       // Get current listing to check its status
-      const currentListing =
-        await this.preMarketRepository.getRequestById(listingId);
+      const currentListing
+        = await this.preMarketRepository.getRequestById(listingId);
 
       if (!currentListing) {
         throw new NotFoundException("Pre-market request (listing) not found");
@@ -1268,7 +1274,7 @@ export class PreMarketController {
       // Verify listing belongs to the specified renter
       if (currentListing.renterId.toString() !== renterId) {
         throw new BadRequestException(
-          "Listing does not belong to the specified renter"
+          "Listing does not belong to the specified renter",
         );
       }
 
@@ -1280,7 +1286,7 @@ export class PreMarketController {
         listingId,
         newStatus,
         adminId,
-        "Admin"
+        "Admin",
       );
 
       // Log the action
@@ -1290,20 +1296,20 @@ export class PreMarketController {
           renterId,
           listingId,
           previousStatus: currentStatus,
-          newStatus: newStatus,
+          newStatus,
         },
         `Admin toggled listing status: ${
           newStatus ? "activated" : "deactivated"
-        }`
+        }`,
       );
 
       // Return success response with updated listing
       ApiResponse.success(
         res,
         updated,
-        `Listing ${newStatus ? "activated" : "deactivated"} successfully`
+        `Listing ${newStatus ? "activated" : "deactivated"} successfully`,
       );
-    }
+    },
   );
 
   /**
@@ -1318,36 +1324,36 @@ export class PreMarketController {
 
       logger.debug(
         { renterId },
-        "Renter retrieving all requests with agent matches"
+        "Renter retrieving all requests with agent matches",
       );
 
       // Get all requests with their agents
       const result = await this.preMarketService.getRenterRequestsWithAgents(
         renterId,
-        validated.query
+        validated.query,
       );
 
       const totalAgents = result.data.reduce(
         (sum: number, r: any) => sum + (r.agentMatches?.totalCount || 0),
-        0
+        0,
       );
 
       logger.info(
         {
           renterId,
           requestCount: result.data.length,
-          totalAgents: totalAgents,
+          totalAgents,
         },
-        "Renter retrieved all requests with agents"
+        "Renter retrieved all requests with agents",
       );
 
       ApiResponse.paginated(
         res,
         result.data,
         result.pagination,
-        "All pre-market requests with matched agents retrieved successfully"
+        "All pre-market requests with matched agents retrieved successfully",
       );
-    }
+    },
   );
 
   /**
@@ -1374,9 +1380,9 @@ export class PreMarketController {
       ApiResponse.success(
         res,
         data,
-        "Consolidated Excel file info retrieved"
+        "Consolidated Excel file info retrieved",
       );
-    }
+    },
   );
 
   /**
@@ -1391,7 +1397,7 @@ export class PreMarketController {
 
     logger.info(
       { adminId, version: metadata.version },
-      "Admin viewed Excel stats"
+      "Admin viewed Excel stats",
     );
 
     ApiResponse.success(
@@ -1407,7 +1413,7 @@ export class PreMarketController {
           "On renter registration and request lifecycle changes",
         storageLocation: "uploads/pre-market/excel/master/",
       },
-      "Excel statistics"
+      "Excel statistics",
     );
   });
 
@@ -1418,22 +1424,22 @@ export class PreMarketController {
 
       logger.info(
         { userId, userRole },
-        "User requesting all listings with data"
+        "User requesting all listings with data",
       );
 
       const listings = await this.preMarketService.getAllListingsWithAllData();
 
       logger.info(
         { userId, totalListings: listings.length },
-        "All listings retrieved successfully"
+        "All listings retrieved successfully",
       );
 
       return ApiResponse.success(
         res,
         listings,
-        "All pre-market listings retrieved successfully"
+        "All pre-market listings retrieved successfully",
       );
-    }
+    },
   );
 
   downloadPreMarketListingsExcel = asyncHandler(
@@ -1443,17 +1449,17 @@ export class PreMarketController {
 
       logger.info(
         { userId, userRole },
-        "User requesting Pre-Market Listings Excel download"
+        "User requesting Pre-Market Listings Excel download",
       );
 
       try {
         // Generate Excel buffer
-        const excelBuffer =
-          await this.excelService.generatePreMarketListingsWithAgentsExcel();
+        const excelBuffer
+          = await this.excelService.generatePreMarketListingsWithAgentsExcel();
 
         // Upload to S3 and get download link
-        const { url, fileName, key } =
-          await this.excelService.uploadPreMarketListingsExcel(excelBuffer);
+        const { url, fileName, key }
+          = await this.excelService.uploadPreMarketListingsExcel(excelBuffer);
         const generatedAt = new Date().toISOString();
         const data = buildExcelDownloadResponse({
           fileName,
@@ -1465,23 +1471,24 @@ export class PreMarketController {
 
         logger.info(
           { userId, fileName, url, key },
-          "Pre-Market Listings Excel generated and uploaded"
+          "Pre-Market Listings Excel generated and uploaded",
         );
 
         // Return download link in response
         return ApiResponse.success(
           res,
           data,
-          "Pre-Market Listings Excel exported successfully"
+          "Pre-Market Listings Excel exported successfully",
         );
-      } catch (error) {
+      }
+      catch (error) {
         logger.error(
           { error, userId },
-          "Failed to export Pre-Market Listings Excel"
+          "Failed to export Pre-Market Listings Excel",
         );
 
         throw new Error("Failed to export Pre-Market Listings Excel");
       }
-    }
+    },
   );
 }

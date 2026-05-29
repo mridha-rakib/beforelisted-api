@@ -5,17 +5,17 @@ import { logger } from "@/middlewares/pino-logger";
 import { emailService } from "@/services/email.service";
 import { InternalServerException } from "@/utils/app-error.utils";
 
-export interface ContactAdminInput {
+export type ContactAdminInput = {
   email: string;
   subject: string;
   message: string;
   ipAddress?: string;
   userAgent?: string;
-}
+};
 
 export class SupportService {
   async sendContactMessage(
-    payload: ContactAdminInput
+    payload: ContactAdminInput,
   ): Promise<{ messageId?: string }> {
     const subject = payload.subject.replace(/[\r\n]+/g, " ").trim();
     const message = payload.message.trim();
@@ -36,7 +36,7 @@ export class SupportService {
           email: payload.email,
           error: result.error instanceof Error ? result.error.message : result.error,
         },
-        "Failed to deliver public contact message"
+        "Failed to deliver public contact message",
       );
       throw new InternalServerException("Failed to send message");
     }

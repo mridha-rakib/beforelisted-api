@@ -14,21 +14,14 @@ import {
   UnauthorizedException,
 } from "@/utils/app-error.utils";
 import { comparePassword, hashPassword } from "@/utils/password.utils";
+
 import type { IAgentProfile } from "../agent/agent.interface";
-import { AgentProfileRepository } from "../agent/agent.repository";
 import type { AgentProfileResponse } from "../agent/agent.type";
-import { BlockedEmailService } from "../blocked-email/blocked-email.service";
-import { EmailVerificationService } from "../email-verification/email-verification.service";
-import {
+import type {
   IResendOTPRequest,
   UserType,
 } from "../email-verification/email-verification.types";
-import { PasswordResetService } from "../password/password.service";
-import { PreMarketService } from "../pre-market/pre-market.service";
-import { ReferralService } from "../referral/referral.service";
-import { RenterRepository } from "../renter/renter.repository";
 import type { IUser } from "../user/user.interface";
-import { UserService } from "../user/user.service";
 import type { UserResponse } from "../user/user.type";
 import type {
   AuthServiceResponse,
@@ -36,6 +29,15 @@ import type {
   ReferralInfo,
   VerifyEmailPayload,
 } from "./auth.type";
+
+import { AgentProfileRepository } from "../agent/agent.repository";
+import { BlockedEmailService } from "../blocked-email/blocked-email.service";
+import { EmailVerificationService } from "../email-verification/email-verification.service";
+import { PasswordResetService } from "../password/password.service";
+import { PreMarketService } from "../pre-market/pre-market.service";
+import { ReferralService } from "../referral/referral.service";
+import { RenterRepository } from "../renter/renter.repository";
+import { UserService } from "../user/user.service";
 import { AuthUtil } from "./auth.utils";
 
 export class AuthService {
@@ -87,8 +89,8 @@ export class AuthService {
     }
 
     if (
-      (user.role === ROLES.AGENT || user.role === ROLES.RENTER) &&
-      !user.emailVerified
+      (user.role === ROLES.AGENT || user.role === ROLES.RENTER)
+      && !user.emailVerified
     ) {
       throw new UnauthorizedException(MESSAGES.AUTH.EMAIL_NOT_VERIFIED);
     }
@@ -133,8 +135,8 @@ export class AuthService {
 
       if (!hasReferrer) {
         if (!payload.referralCode) {
-          const defaultReferralAgent =
-            await this.getDefaultReferralAgentForError();
+          const defaultReferralAgent
+            = await this.getDefaultReferralAgentForError();
 
           throw new UnauthorizedException(
             "No referral is associated with your account. Please provide a valid agent or admin referral code to continue.",
@@ -147,8 +149,8 @@ export class AuthService {
           payload.referralCode,
         );
 
-        const registrationType =
-          referrer.role === ROLES.ADMIN ? "admin_referral" : "agent_referral";
+        const registrationType
+          = referrer.role === ROLES.ADMIN ? "admin_referral" : "agent_referral";
 
         await this.renterRepository.assignReferralByUserId(
           user._id.toString(),
@@ -177,21 +179,22 @@ export class AuthService {
         if (!renter) {
           throw new NotFoundException("Renter profile not found");
         }
-      } else if (payload.referralCode) {
-        const currentReferrer =
-          renter.registrationType === "agent_referral"
+      }
+      else if (payload.referralCode) {
+        const currentReferrer
+          = renter.registrationType === "agent_referral"
             ? (renter.referredByAgentId as any)
             : renter.registrationType === "admin_referral"
               ? (renter.referredByAdminId as any)
               : null;
-        const currentReferralCode =
-          currentReferrer && typeof currentReferrer === "object"
+        const currentReferralCode
+          = currentReferrer && typeof currentReferrer === "object"
             ? currentReferrer.referralCode || null
             : null;
 
         if (
-          !currentReferralCode ||
-          currentReferralCode !== payload.referralCode
+          !currentReferralCode
+          || currentReferralCode !== payload.referralCode
         ) {
           logger.info(
             {
@@ -208,9 +211,9 @@ export class AuthService {
       if (renter?.registrationType === "agent_referral") {
         const referrer = renter.referredByAgentId as any;
         if (referrer) {
-          const referrerId =
-            referrer?._id?.toString?.() ??
-            (typeof referrer === "string" ? referrer : null);
+          const referrerId
+            = referrer?._id?.toString?.()
+              ?? (typeof referrer === "string" ? referrer : null);
           let referrerTitle: string | null = null;
           let referrerBrokerageName: string | null = null;
 
@@ -235,7 +238,8 @@ export class AuthService {
                 referralCode: referrer.referralCode ?? null,
               },
             };
-          } else {
+          }
+          else {
             referralInfo = {
               registrationType: "agent_referral",
               referrer: {
@@ -252,15 +256,16 @@ export class AuthService {
             };
           }
         }
-      } else if (renter?.registrationType === "admin_referral") {
+      }
+      else if (renter?.registrationType === "admin_referral") {
         const referrer = renter.referredByAdminId as any;
         if (referrer) {
           let assignedAgentTitle: string | null = null;
           let assignedAgentBrokerageName: string | null = null;
           let assignedAgentActivationLink: string | null = null;
-          const assignedAgentId =
-            renter.referredByAgentId &&
-            typeof renter.referredByAgentId === "object"
+          const assignedAgentId
+            = renter.referredByAgentId
+              && typeof renter.referredByAgentId === "object"
               ? renter.referredByAgentId._id?.toString?.() || null
               : typeof renter.referredByAgentId === "string"
                 ? renter.referredByAgentId
@@ -268,17 +273,18 @@ export class AuthService {
 
           if (assignedAgentId) {
             const agentRepository = new AgentProfileRepository();
-            const assignedAgentProfile =
-              await agentRepository.findByUserId(assignedAgentId);
+            const assignedAgentProfile
+              = await agentRepository.findByUserId(assignedAgentId);
 
-            assignedAgentTitle =
-              assignedAgentProfile?.title || SYSTEM_DEFAULT_AGENT.title;
-            assignedAgentBrokerageName =
-              assignedAgentProfile?.brokerageName ||
-              SYSTEM_DEFAULT_AGENT.brokerageName;
-            assignedAgentActivationLink =
-              assignedAgentProfile?.activationLink || null;
-          } else {
+            assignedAgentTitle
+              = assignedAgentProfile?.title || SYSTEM_DEFAULT_AGENT.title;
+            assignedAgentBrokerageName
+              = assignedAgentProfile?.brokerageName
+                || SYSTEM_DEFAULT_AGENT.brokerageName;
+            assignedAgentActivationLink
+              = assignedAgentProfile?.activationLink || null;
+          }
+          else {
             const defaultAgent = await this.getDefaultReferralAgentForError();
             assignedAgentTitle = defaultAgent.title;
             assignedAgentBrokerageName = defaultAgent.brokerageName;
@@ -347,18 +353,18 @@ export class AuthService {
       throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
     }
 
-    const updatedUser =
-      (await this.userService.markEmailAsVerified(result.userId)) || user;
+    const updatedUser
+      = (await this.userService.markEmailAsVerified(result.userId)) || user;
     const userResponse = this.userService.toUserResponse(updatedUser);
     let agentTitle: string | null = null;
     let agentActivationLink: string | null = null;
     let renterRegisteredAgent:
       | {
-          fullName?: string;
-          title?: string;
-          brokerage?: string;
-          email?: string;
-        }
+        fullName?: string;
+        title?: string;
+        brokerage?: string;
+        email?: string;
+      }
       | undefined;
 
     logger.info(
@@ -372,8 +378,8 @@ export class AuthService {
       agentTitle = agentProfile?.title ?? null;
       agentActivationLink = agentProfile?.activationLink ?? null;
 
-      const { NotificationService } =
-        await import("../notification/notification.service");
+      const { NotificationService }
+        = await import("../notification/notification.service");
       const notificationService = new NotificationService();
 
       try {
@@ -383,7 +389,8 @@ export class AuthService {
           agentName: user.fullName,
           licenseNumber: user.referralCode || "N/A",
         });
-      } catch (error) {
+      }
+      catch (error) {
         logger.error(
           { error, userId: user._id },
           "Failed to send agent approval notification",
@@ -393,7 +400,8 @@ export class AuthService {
       const adminEmail = env.ADMIN_EMAIL;
       if (!adminEmail) {
         logger.warn("ADMIN_EMAIL not configured in environment");
-      } else {
+      }
+      else {
         const nameParts = user.fullName?.trim().split(/\s+/).filter(Boolean);
         const agentFirstName = nameParts?.[0] || user.fullName || "Agent";
         const agentLastName = nameParts?.slice(1).join(" ") || "";
@@ -401,8 +409,8 @@ export class AuthService {
           user.createdAt ? new Date(user.createdAt) : new Date(),
         );
         const agentTitleForAdminEmail = agentProfile?.title || "N/A";
-        const agentBrokerageForAdminEmail =
-          agentProfile?.brokerageName || "N/A";
+        const agentBrokerageForAdminEmail
+          = agentProfile?.brokerageName || "N/A";
         const agentPhoneNumber = user.phoneNumber || "N/A";
         const agentRegistrationLink = user.referralCode
           ? `${env.CLIENT_URL}/signup/renter?ref=${encodeURIComponent(user.referralCode)}`
@@ -422,7 +430,8 @@ export class AuthService {
               agentRegistrationLink,
             },
           );
-        } catch (error) {
+        }
+        catch (error) {
           logger.error(
             { error, userId: user._id },
             "Failed to send agent registration verified email to admin",
@@ -438,31 +447,32 @@ export class AuthService {
         );
 
         const referredAgent = renter?.referredByAgentId as any;
-        const referredAgentId =
-          referredAgent?._id?.toString?.() ??
-          (typeof renter?.referredByAgentId === "string"
-            ? renter.referredByAgentId
-            : null);
+        const referredAgentId
+          = referredAgent?._id?.toString?.()
+            ?? (typeof renter?.referredByAgentId === "string"
+              ? renter.referredByAgentId
+              : null);
 
         if (referredAgentId) {
           const agentRepository = new AgentProfileRepository();
-          const agentProfile =
-            await agentRepository.findByUserId(referredAgentId);
+          const agentProfile
+            = await agentRepository.findByUserId(referredAgentId);
           const agentUser = referredAgent?.email
             ? null
             : await this.userService.getById(referredAgentId);
 
           renterRegisteredAgent = {
             fullName:
-              referredAgent?.fullName ||
-              agentUser?.fullName ||
-              "Your Registered Agent",
+              referredAgent?.fullName
+              || agentUser?.fullName
+              || "Your Registered Agent",
             title: agentProfile?.title || "Licensed Real Estate Agent",
             brokerage: agentProfile?.brokerageName || "BeforeListed",
             email: referredAgent?.email || agentUser?.email || undefined,
           };
         }
-      } catch (error) {
+      }
+      catch (error) {
         logger.warn(
           { error, userId: user._id },
           "Failed to resolve renter referral and registered agent details",
@@ -472,7 +482,8 @@ export class AuthService {
       const adminEmail = env.ADMIN_EMAIL;
       if (!adminEmail) {
         logger.warn("ADMIN_EMAIL not configured in environment");
-      } else {
+      }
+      else {
         const nameParts = user.fullName?.trim().split(/\s+/).filter(Boolean);
         const renterFirstName = nameParts?.[0] || user.fullName || "Renter";
         const renterLastName = nameParts?.slice(1).join(" ") || "";
@@ -495,7 +506,8 @@ export class AuthService {
               registeredAgentEmail: renterRegisteredAgent?.email,
             },
           );
-        } catch (error) {
+        }
+        catch (error) {
           logger.error(
             { error, userId: user._id },
             "Failed to send renter registration verified email to admin",
@@ -516,9 +528,9 @@ export class AuthService {
     });
 
     if (
-      result.userType === ROLES.RENTER &&
-      renterRegisteredAgent?.email?.toLowerCase() ===
-        SYSTEM_DEFAULT_AGENT.email.toLowerCase()
+      result.userType === ROLES.RENTER
+      && renterRegisteredAgent?.email?.toLowerCase()
+      === SYSTEM_DEFAULT_AGENT.email.toLowerCase()
     ) {
       logger.info(
         {
@@ -529,8 +541,8 @@ export class AuthService {
         "Triggering moving discount codes email after renter OTP verification",
       );
 
-      const movingDiscountEmailResult =
-        await this.emailService.sendMovingDiscountCodesEmail({
+      const movingDiscountEmailResult
+        = await this.emailService.sendMovingDiscountCodesEmail({
           to: user.email,
           renterName: user.fullName,
         });
@@ -544,7 +556,8 @@ export class AuthService {
           },
           "Moving discount codes email sent after renter OTP verification",
         );
-      } else {
+      }
+      else {
         logger.warn(
           {
             userId: user._id,
@@ -554,7 +567,8 @@ export class AuthService {
           "Moving discount codes email failed after renter OTP verification",
         );
       }
-    } else if (result.userType === ROLES.RENTER) {
+    }
+    else if (result.userType === ROLES.RENTER) {
       logger.info(
         {
           userId: user._id,
@@ -756,7 +770,8 @@ export class AuthService {
       });
 
       return { accessToken };
-    } catch (error) {
+    }
+    catch {
       throw new UnauthorizedException(MESSAGES.AUTH.REFRESH_TOKEN_INVALID);
     }
   }
@@ -835,7 +850,7 @@ export class AuthService {
   async logout(token: string, userId: string): Promise<{ message: string }> {
     try {
       logger.info(
-        { userId, token: token.substring(0, 20) + "..." },
+        { userId, token: `${token.substring(0, 20)}...` },
         "User logged out",
       );
 
@@ -844,7 +859,8 @@ export class AuthService {
       // await this.authTokenService.revokeToken(token);
 
       return { message: "Logged out successfully" };
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error, userId }, "Logout failed");
       throw new BadRequestException("Logout failed");
     }
@@ -974,8 +990,8 @@ export class AuthService {
         fullName: defaultAgentUser.fullName || SYSTEM_DEFAULT_AGENT.fullName,
         title: defaultAgentProfile?.title || SYSTEM_DEFAULT_AGENT.title,
         brokerageName:
-          defaultAgentProfile?.brokerageName ||
-          SYSTEM_DEFAULT_AGENT.brokerageName,
+          defaultAgentProfile?.brokerageName
+          || SYSTEM_DEFAULT_AGENT.brokerageName,
         activationLink: defaultAgentProfile?.activationLink || null,
         email: defaultAgentUser.email || SYSTEM_DEFAULT_AGENT.email,
         phoneNumber:
@@ -984,7 +1000,8 @@ export class AuthService {
         referralLink: buildReferralLink(defaultAgentUser.referralCode || null),
         loginLink: buildLoginLink(defaultAgentUser.referralCode || null),
       };
-    } catch (error) {
+    }
+    catch (error) {
       logger.warn(
         { error },
         "Failed to resolve default referral agent for no-referral login error",

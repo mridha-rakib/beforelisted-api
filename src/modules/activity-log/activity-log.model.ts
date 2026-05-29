@@ -1,12 +1,17 @@
-import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 import type { Document, Types } from "mongoose";
+
 import { model, models } from "mongoose";
+
+import { BaseSchemaUtil } from "@/utils/base-schema.utils";
+
+import type { ActivityLogActionType } from "./activity-log.type";
+
 import {
   ACTIVITY_LOG_ACTION_TYPES,
-  type ActivityLogActionType,
+
 } from "./activity-log.type";
 
-export interface IActivityLog extends Document {
+export type IActivityLog = {
   _id: Types.ObjectId;
   email: string;
   actionType: ActivityLogActionType;
@@ -14,7 +19,7 @@ export interface IActivityLog extends Document {
   ipAddress?: string | null;
   createdAt: Date;
   updatedAt: Date;
-}
+} & Document;
 
 const activityLogSchema = BaseSchemaUtil.createSchema<IActivityLog>(
   {
@@ -48,7 +53,6 @@ const activityLogSchema = BaseSchemaUtil.createSchema<IActivityLog>(
 activityLogSchema.index({ email: 1, createdAt: -1 });
 activityLogSchema.index({ actionType: 1, createdAt: -1 });
 
-export const ActivityLog =
-  models.ActivityLog ||
-  model<IActivityLog>("ActivityLog", activityLogSchema);
-
+export const ActivityLog
+  = models.ActivityLog
+    || model<IActivityLog>("ActivityLog", activityLogSchema);

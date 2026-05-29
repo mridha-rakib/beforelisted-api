@@ -1,31 +1,31 @@
 // file: src/utils/otp.utils.ts
 
-export interface IOTPConfig {
+export type IOTPConfig = {
   length: number;
   expiryMinutes: number;
   allowDuplicates: boolean;
-}
+};
 
 /**
  * OTP Result Interface
  * Standard response structure
  */
-export interface IOTPResult {
+export type IOTPResult = {
   code: string;
   expiresAt: Date;
   expiresInSeconds: number;
   createdAt: Date;
-}
+};
 
 /**
  * OTP Validation Result Interface
  */
-export interface IOTPValidationResult {
+export type IOTPValidationResult = {
   isValid: boolean;
   message: string;
   isExpired?: boolean;
   remainingSeconds?: number;
-}
+};
 
 /**
  * OTP Utility Class
@@ -48,7 +48,7 @@ export class OTPUtil {
 
   static generate(
     config?: Partial<IOTPConfig>,
-    moduleKey?: string
+    moduleKey?: string,
   ): IOTPResult {
     // Merge with default config
     const finalConfig = { ...OTPUtil.DEFAULT_CONFIG, ...config };
@@ -83,7 +83,7 @@ export class OTPUtil {
     // Calculate expiration
     const createdAt = new Date();
     const expiresAt = new Date(
-      createdAt.getTime() + finalConfig.expiryMinutes * 60 * 1000
+      createdAt.getTime() + finalConfig.expiryMinutes * 60 * 1000,
     );
     const expiresInSeconds = finalConfig.expiryMinutes * 60;
 
@@ -98,7 +98,7 @@ export class OTPUtil {
   static validate(
     otp: string,
     expiresAt: Date,
-    expectedLength: number = 4
+    expectedLength: number = 4,
   ): IOTPValidationResult {
     if (!otp) {
       return {
@@ -135,7 +135,7 @@ export class OTPUtil {
 
     // Calculate remaining time
     const remainingSeconds = Math.floor(
-      (expiresAt.getTime() - now.getTime()) / 1000
+      (expiresAt.getTime() - now.getTime()) / 1000,
     );
 
     return {
@@ -159,7 +159,8 @@ export class OTPUtil {
   static clearOTPs(moduleKey?: string): void {
     if (moduleKey) {
       OTPUtil.recentOTPs.delete(moduleKey);
-    } else {
+    }
+    else {
       OTPUtil.recentOTPs.clear();
     }
   }
@@ -174,8 +175,8 @@ export class OTPUtil {
   }
 
   private static generateRandomOTP(length: number): string {
-    const min = Math.pow(10, length - 1); // 10^(length-1)
-    const max = Math.pow(10, length) - 1; // 10^length - 1
+    const min = 10 ** (length - 1); // 10^(length-1)
+    const max = 10 ** length - 1; // 10^length - 1
     const randomNumber = Math.floor(Math.random() * (max - min + 1) + min);
     return randomNumber.toString();
   }
@@ -223,7 +224,7 @@ export function generateOTP(): IOTPResult {
 export function validateOTP(
   otp: string,
   expiresAt: Date,
-  length?: number
+  length?: number,
 ): IOTPValidationResult {
   return OTPUtil.validate(otp, expiresAt, length);
 }

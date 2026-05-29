@@ -8,8 +8,10 @@
  */
 import { logger } from "@/middlewares/pino-logger";
 import { BaseRepository } from "@/modules/base/base.repository";
-import { EmailVerificationOTP } from "./email-verification.model";
+
 import type { IEmailVerificationOTP } from "./email-verification.types";
+
+import { EmailVerificationOTP } from "./email-verification.model";
 
 /**
  * Email Verification OTP Repository
@@ -26,10 +28,10 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
    * @param code - OTP code
    * @param expiresAt - Expiration time
    * @returns Created document
-  
+   
    */
   async createOTP(
-    data: Partial<IEmailVerificationOTP>
+    data: Partial<IEmailVerificationOTP>,
   ): Promise<IEmailVerificationOTP> {
     const record = await EmailVerificationOTP.create({
       userId: data.userId,
@@ -49,7 +51,7 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
         email: data.email,
         expiresAt: data.expiresAt,
       },
-      "Email verification OTP created"
+      "Email verification OTP created",
     );
 
     return record;
@@ -63,7 +65,7 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
    * @returns OTP record or null
    */
   async findActiveByUserId(
-    userId: string
+    userId: string,
   ): Promise<IEmailVerificationOTP | null> {
     const record = await EmailVerificationOTP.findOne({
       userId,
@@ -83,7 +85,7 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
    */
   async findByEmail(
     email: string,
-    userType?: string
+    userType?: string,
   ): Promise<IEmailVerificationOTP | null> {
     const query: any = {
       email,
@@ -98,7 +100,7 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
     if (userType) {
       logger.debug(
         { userType },
-        "Filtering active email verification OTP by user type"
+        "Filtering active email verification OTP by user type",
       );
     }
 
@@ -111,7 +113,7 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
 
   async findByEmailIgnoreExpiry(
     email: string,
-    userType?: string
+    userType?: string,
   ): Promise<IEmailVerificationOTP | null> {
     const query: any = {
       email,
@@ -140,7 +142,7 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
    */
   async findByCode(
     code: string,
-    email: string
+    email: string,
   ): Promise<IEmailVerificationOTP | null> {
     const record = await EmailVerificationOTP.findOne({
       code,
@@ -166,7 +168,7 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
         verified: true,
         verifiedAt: new Date(),
       },
-      { new: true }
+      { new: true },
     );
 
     if (record) {
@@ -190,7 +192,7 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
         $inc: { attempts: 1 },
         lastAttemptAt: new Date(),
       },
-      { new: true }
+      { new: true },
     );
 
     return record || null;
@@ -214,7 +216,7 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
           verified: true,
           verifiedAt: new Date(),
         },
-      }
+      },
     );
 
     logger.debug(
@@ -222,7 +224,7 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
         userId,
         count: result.modifiedCount,
       },
-      "Previous OTPs invalidated"
+      "Previous OTPs invalidated",
     );
 
     return result.modifiedCount || 0;
@@ -238,7 +240,7 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
    */
   async countResendAttemptsLastHour(
     userId: string,
-    email: string
+    email: string,
   ): Promise<number> {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 

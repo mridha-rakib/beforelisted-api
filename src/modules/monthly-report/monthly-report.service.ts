@@ -5,7 +5,9 @@ import {
   BadRequestException,
   NotFoundException,
 } from "@/utils/app-error.utils";
+
 import type { IMonthlyReport } from "./monthly-report.model";
+
 import { MonthlyReportRepository } from "./monthly-report.repository";
 
 export class MonthlyReportService {
@@ -57,12 +59,12 @@ export class MonthlyReportService {
     // Check if report already exists for this month/year
     const exists = await this.reportRepository.reportExists(
       data.year!,
-      data.month!
+      data.month!,
     );
 
     if (exists) {
       throw new BadRequestException(
-        `Report already exists for ${data.month}/${data.year}`
+        `Report already exists for ${data.month}/${data.year}`,
       );
     }
 
@@ -70,7 +72,7 @@ export class MonthlyReportService {
 
     logger.info(
       { adminId, reportId: report._id, month: report.month, year: report.year },
-      "Report created"
+      "Report created",
     );
 
     return report;
@@ -82,7 +84,7 @@ export class MonthlyReportService {
   async updateReport(
     id: string,
     data: Partial<IMonthlyReport>,
-    adminId: string
+    adminId: string,
   ): Promise<IMonthlyReport> {
     const report = await this.reportRepository.getReportById(id);
 
@@ -96,12 +98,12 @@ export class MonthlyReportService {
 
       const exists = await this.reportRepository.getReportByYearMonth(
         checkYear,
-        checkMonth
+        checkMonth,
       );
 
       if (exists && exists._id.toString() !== id) {
         throw new BadRequestException(
-          `Report already exists for ${checkMonth}/${checkYear}`
+          `Report already exists for ${checkMonth}/${checkYear}`,
         );
       }
     }
@@ -157,7 +159,7 @@ export class MonthlyReportService {
         month: report.month,
         year: report.year,
       },
-      "Report hard deleted (permanent)"
+      "Report hard deleted (permanent)",
     );
   }
 

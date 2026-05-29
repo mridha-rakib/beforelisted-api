@@ -1,6 +1,6 @@
 // file: src/modules/auth/auth.interface.ts
 
-export interface IRegisterRequest {
+export type IRegisterRequest = {
   email: string;
   password: string;
   fullName: string;
@@ -8,38 +8,38 @@ export interface IRegisterRequest {
   role: "Agent" | "Renter";
   licenseNumber?: string;
   brokerageName?: string;
-}
+};
 
-export interface ILoginRequest {
+export type ILoginRequest = {
   email: string;
   password: string;
   referralCode?: string;
-}
+};
 
-export interface IVerifyEmailRequest {
+export type IVerifyEmailRequest = {
   token: string;
-}
+};
 
-export interface IRequestPasswordResetRequest {
+export type IRequestPasswordResetRequest = {
   email: string;
-}
+};
 
-export interface IVerifyOTPRequest {
+export type IVerifyOTPRequest = {
   email: string;
   otp: string;
-}
+};
 
-export interface IResetPasswordRequest {
+export type IResetPasswordRequest = {
   email: string;
   otp: string;
   newPassword: string;
-}
+};
 
-export interface IRefreshTokenRequest {
+export type IRefreshTokenRequest = {
   refreshToken: string;
-}
+};
 
-export interface IAuthResponse {
+export type IAuthResponse = {
   success: boolean;
   message: string;
   data?: {
@@ -47,4 +47,4 @@ export interface IAuthResponse {
     refreshToken?: string;
     user?: any;
   };
-}
+};

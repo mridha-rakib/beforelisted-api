@@ -1,8 +1,10 @@
 // file: src/modules/password-reset/password-reset.model.ts
 
+import { model } from "mongoose";
+
 import { OTP } from "@/constants/app.constants";
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
-import { model } from "mongoose";
+
 import type { IPasswordResetOTP } from "./password.interface";
 
 /**
@@ -49,5 +51,5 @@ passwordResetOTPSchema.index({ userId: 1, expiresAt: 1 });
 
 export const PasswordResetOTP = model<IPasswordResetOTP>(
   "PasswordResetOTP",
-  passwordResetOTPSchema
+  passwordResetOTPSchema,
 );

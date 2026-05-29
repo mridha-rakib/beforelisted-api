@@ -20,7 +20,7 @@ export const authPaths = {
         },
       },
       responses: {
-        "200": {
+        200: {
           description: "Login successful",
           content: {
             "application/json": {
@@ -30,10 +30,10 @@ export const authPaths = {
             },
           },
         },
-        "400": {
+        400: {
           description: "Invalid credentials",
         },
-        "401": {
+        401: {
           description: "Unauthorized",
         },
       },
@@ -58,7 +58,7 @@ export const authPaths = {
         },
       },
       responses: {
-        "200": {
+        200: {
           description: "Login successful",
           content: {
             "application/json": {
@@ -68,7 +68,7 @@ export const authPaths = {
             },
           },
         },
-        "400": {
+        400: {
           description: "Invalid credentials",
           content: {
             "application/json": {
@@ -78,10 +78,10 @@ export const authPaths = {
             },
           },
         },
-        "401": {
+        401: {
           description: "Unauthorized - Invalid email or password",
         },
-        "404": {
+        404: {
           description: "User not found",
         },
       },
@@ -105,7 +105,7 @@ export const authPaths = {
         },
       },
       responses: {
-        "200": {
+        200: {
           description: "Email verified successfully",
           content: {
             "application/json": {
@@ -115,10 +115,10 @@ export const authPaths = {
             },
           },
         },
-        "400": {
+        400: {
           description: "Invalid or expired verification code",
         },
-        "404": {
+        404: {
           description: "User not found",
         },
       },
@@ -142,7 +142,7 @@ export const authPaths = {
         },
       },
       responses: {
-        "200": {
+        200: {
           description: "Verification code sent successfully",
           content: {
             "application/json": {
@@ -152,10 +152,10 @@ export const authPaths = {
             },
           },
         },
-        "400": {
+        400: {
           description: "Bad request",
         },
-        "404": {
+        404: {
           description: "User not found",
         },
       },
@@ -179,7 +179,7 @@ export const authPaths = {
         },
       },
       responses: {
-        "200": {
+        200: {
           description: "OTP verified successfully",
           content: {
             "application/json": {
@@ -189,10 +189,10 @@ export const authPaths = {
             },
           },
         },
-        "400": {
+        400: {
           description: "Invalid or expired OTP",
         },
-        "404": {
+        404: {
           description: "User not found",
         },
       },
@@ -206,7 +206,7 @@ export const authPaths = {
       description: "Get a new access token using the refresh token stored in cookie.",
       operationId: "refreshAccessToken",
       responses: {
-        "200": {
+        200: {
           description: "Access token refreshed successfully",
           content: {
             "application/json": {
@@ -216,7 +216,7 @@ export const authPaths = {
             },
           },
         },
-        "401": {
+        401: {
           description: "Refresh token expired or invalid",
         },
       },
@@ -240,7 +240,7 @@ export const authPaths = {
         },
       },
       responses: {
-        "200": {
+        200: {
           description: "Password reset OTP sent to email",
           content: {
             "application/json": {
@@ -250,7 +250,7 @@ export const authPaths = {
             },
           },
         },
-        "404": {
+        404: {
           description: "User not found",
         },
       },
@@ -274,7 +274,7 @@ export const authPaths = {
         },
       },
       responses: {
-        "200": {
+        200: {
           description: "OTP verified successfully",
           content: {
             "application/json": {
@@ -284,7 +284,7 @@ export const authPaths = {
             },
           },
         },
-        "400": {
+        400: {
           description: "Invalid or expired OTP",
         },
       },
@@ -308,7 +308,7 @@ export const authPaths = {
         },
       },
       responses: {
-        "200": {
+        200: {
           description: "Password reset successfully",
           content: {
             "application/json": {
@@ -318,7 +318,7 @@ export const authPaths = {
             },
           },
         },
-        "400": {
+        400: {
           description: "Invalid or expired OTP",
         },
       },
@@ -342,7 +342,7 @@ export const authPaths = {
         },
       },
       responses: {
-        "200": {
+        200: {
           description: "Password reset OTP resent to email",
           content: {
             "application/json": {
@@ -378,7 +378,7 @@ export const authPaths = {
         },
       },
       responses: {
-        "200": {
+        200: {
           description: "Password changed successfully",
           content: {
             "application/json": {
@@ -388,10 +388,10 @@ export const authPaths = {
             },
           },
         },
-        "400": {
+        400: {
           description: "Invalid current password",
         },
-        "401": {
+        401: {
           description: "Unauthorized",
         },
       },
@@ -410,7 +410,7 @@ export const authPaths = {
         },
       ],
       responses: {
-        "200": {
+        200: {
           description: "Logout successful",
           content: {
             "application/json": {
@@ -420,7 +420,7 @@ export const authPaths = {
             },
           },
         },
-        "401": {
+        401: {
           description: "Unauthorized",
         },
       },

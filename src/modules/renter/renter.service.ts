@@ -1,5 +1,8 @@
 // file: src/modules/renter/renter.service.ts
 
+import type { UserResponse } from "@/modules/user/user.type";
+import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
+
 import { ROLES, SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 import { EmailService } from "@/services/email.service";
@@ -12,11 +15,7 @@ import {
 } from "@/utils/app-error.utils";
 import { hashPassword } from "@/utils/password.utils";
 import { ReferralParser } from "@/utils/referral-parser.utils";
-import { AuthUtil } from "../auth/auth.utils";
-import { EmailVerificationService } from "../email-verification/email-verification.service";
-import { PasswordResetService } from "../password/password.service";
-import { UserService } from "../user/user.service";
-import { RenterRepository } from "./renter.repository";
+
 import type {
   AdminReferralRenterRegisterPayload,
   AgentReferralRenterRegisterPayload,
@@ -25,16 +24,19 @@ import type {
   ResetPasswordPayload,
   UpdateRenterProfilePayload,
 } from "./renter.type";
-import { RenterUtil } from "./renter.utils";
 
-import { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import { AgentProfileRepository } from "../agent/agent.repository";
+import { AuthUtil } from "../auth/auth.utils";
 import { BlockedEmailService } from "../blocked-email/blocked-email.service";
+import { EmailVerificationService } from "../email-verification/email-verification.service";
+import { PasswordResetService } from "../password/password.service";
 import { PreMarketRepository } from "../pre-market/pre-market.repository";
 import { PreMarketService } from "../pre-market/pre-market.service";
 import { ReferralService } from "../referral/referral.service";
-import type { UserResponse } from "@/modules/user/user.type";
 import { UserRepository } from "../user/user.repository";
+import { UserService } from "../user/user.service";
+import { RenterRepository } from "./renter.repository";
+import { RenterUtil } from "./renter.utils";
 
 export class RenterService {
   private repository: RenterRepository;
@@ -66,7 +68,7 @@ export class RenterService {
    */
   async registerRenter(
     payload: any,
-    context?: { ipAddress?: string | null }
+    context?: { ipAddress?: string | null },
   ): Promise<RenterRegistrationResponse> {
     await this.blockedEmailService.assertEmailNotBlocked(payload.email, {
       action: "register",
@@ -78,18 +80,21 @@ export class RenterService {
       const parsed = ReferralParser.parse(payload.referralCode);
       if (parsed.type === "agent_referral") {
         return this.registerAgentReferralRenter(
-          payload as AgentReferralRenterRegisterPayload
+          payload as AgentReferralRenterRegisterPayload,
         );
-      } else if (parsed.type === "admin_referral") {
+      }
+      else if (parsed.type === "admin_referral") {
         return this.registerAdminReferralRenter(
-          payload as AdminReferralRenterRegisterPayload
+          payload as AdminReferralRenterRegisterPayload,
         );
-      } else {
+      }
+      else {
         throw new BadRequestException("Invalid referral code format");
       }
-    } else {
+    }
+    else {
       throw new BadRequestException(
-        "Referral code is required. Renters must register using an agent or admin referral code."
+        "Referral code is required. Renters must register using an agent or admin referral code.",
       );
     }
   }
@@ -103,8 +108,8 @@ export class RenterService {
     active: boolean;
     role: string;
   }> {
-    const referrer =
-      await this.referralService.validateReferralCode(referralCode);
+    const referrer
+      = await this.referralService.validateReferralCode(referralCode);
 
     return {
       active: true,
@@ -118,7 +123,7 @@ export class RenterService {
    * Can fail when the code is invalid, the email already exists, OTP creation fails, or referral counting fails.
    */
   private async registerAgentReferralRenter(
-    payload: AgentReferralRenterRegisterPayload
+    payload: AgentReferralRenterRegisterPayload,
   ): Promise<RenterRegistrationResponse> {
     const parsed = ReferralParser.parse(payload.referralCode);
 
@@ -131,7 +136,7 @@ export class RenterService {
     }
 
     const agentId = await this.validateAndGetAgentFromReferralCode(
-      payload.referralCode
+      payload.referralCode,
     );
 
     const hashedPassword = await hashPassword(payload.password);
@@ -167,7 +172,7 @@ export class RenterService {
       user._id.toString(),
       user.email,
       user.role,
-      user.accountStatus
+      user.accountStatus,
     );
 
     this.updateRenterConsolidatedExcel().catch((error) => {
@@ -195,7 +200,7 @@ export class RenterService {
    * Can fail when the code is invalid, default agent is not configured, email already exists, or welcome/admin emails fail non-blockingly.
    */
   private async registerAdminReferralRenter(
-    payload: AdminReferralRenterRegisterPayload
+    payload: AdminReferralRenterRegisterPayload,
   ): Promise<RenterRegistrationResponse> {
     const parsed = ReferralParser.parse(payload.referralCode);
     if (!parsed.isValid || parsed.type !== "admin_referral") {
@@ -210,7 +215,7 @@ export class RenterService {
     const hashedPassword = await hashPassword(temporaryPassword);
 
     const adminId = await this.validateAndGetAdminFromReferralCode(
-      payload.referralCode
+      payload.referralCode,
     );
     const assignedAgentId = await this.getDefaultAssignedAgentId();
 
@@ -243,14 +248,14 @@ export class RenterService {
         : undefined,
     });
     const registeredAgent = await this.getAssignedAgentWelcomeDetails(
-      assignedAgentId
+      assignedAgentId,
     );
 
     let emailResult: any = null;
     try {
       logger.debug(
         { email: user.email, userName: user.fullName },
-        "Attempting to send admin referral email"
+        "Attempting to send admin referral email",
       );
 
       emailResult = await this.emailService.sendAdminReferralEmail({
@@ -267,13 +272,14 @@ export class RenterService {
             email: user.email,
             messageId: emailResult.messageId,
           },
-          "✅ Admin referral email sent successfully"
+          "✅ Admin referral email sent successfully",
         );
 
         const adminEmail = process.env.ADMIN_EMAIL;
         if (!adminEmail) {
           logger.warn("ADMIN_EMAIL not configured in environment");
-        } else {
+        }
+        else {
           try {
             await this.emailService.sendRenterRegistrationVerifiedAdminNotification(
               {
@@ -282,14 +288,15 @@ export class RenterService {
                 renterPhone: user.phoneNumber || "N/A",
                 renterEmail: user.email,
                 registrationDate: this.formatEasternTime(
-                  user.createdAt ? new Date(user.createdAt) : new Date()
+                  user.createdAt ? new Date(user.createdAt) : new Date(),
                 ),
                 registeredAgentName: registeredAgent.fullName || "N/A",
                 registeredAgentBrokerage: registeredAgent.brokerage || "N/A",
                 registeredAgentEmail: registeredAgent.email,
-              }
+              },
             );
-          } catch (adminNotificationError) {
+          }
+          catch (adminNotificationError) {
             logger.error(
               {
                 userId: user._id,
@@ -299,7 +306,7 @@ export class RenterService {
                     ? adminNotificationError.message
                     : String(adminNotificationError),
               },
-              "❌ Error sending admin notification for admin referral renter registration"
+              "❌ Error sending admin notification for admin referral renter registration",
             );
           }
         }
@@ -320,19 +327,21 @@ export class RenterService {
                 email: user.email,
                 messageId: welcomeEmailResult.messageId,
               },
-              "✅ Admin referral renter welcome email sent successfully"
+              "✅ Admin referral renter welcome email sent successfully",
             );
-          } else {
+          }
+          else {
             logger.warn(
               {
                 userId: user._id,
                 email: user.email,
                 error: welcomeEmailResult?.error,
               },
-              "⚠️ Welcome email send failed after admin referral password email"
+              "⚠️ Welcome email send failed after admin referral password email",
             );
           }
-        } catch (welcomeEmailError) {
+        }
+        catch (welcomeEmailError) {
           logger.error(
             {
               userId: user._id,
@@ -342,20 +351,22 @@ export class RenterService {
                   ? welcomeEmailError.message
                   : String(welcomeEmailError),
             },
-            "❌ Error sending admin referral renter welcome email"
+            "❌ Error sending admin referral renter welcome email",
           );
         }
-      } else {
+      }
+      else {
         logger.warn(
           {
             userId: user._id,
             email: user.email,
             error: emailResult?.error,
           },
-          "⚠️ Email send failed but registration completed"
+          "⚠️ Email send failed but registration completed",
         );
       }
-    } catch (emailError) {
+    }
+    catch (emailError) {
       logger.error(
         {
           userId: user._id,
@@ -365,14 +376,14 @@ export class RenterService {
               ? emailError.message
               : String(emailError),
         },
-        "❌ Error during email send - continuing with registration"
+        "❌ Error during email send - continuing with registration",
       );
     }
 
     await this.sendMovingDiscountCodesEmailForRenter(
       user._id.toString(),
       user.email,
-      user.fullName
+      user.fullName,
     );
 
     // Step 10: Generate JWT tokens
@@ -380,7 +391,7 @@ export class RenterService {
       user._id.toString(),
       user.email,
       user.role,
-      user.accountStatus
+      user.accountStatus,
     );
 
     this.updateRenterConsolidatedExcel().catch((error) => {
@@ -413,7 +424,7 @@ export class RenterService {
    * Request password reset (forgot password)
    */
   async requestPasswordReset(
-    email: string
+    email: string,
   ): Promise<{ message: string; expiresAt?: Date; expiresInMinutes?: number }> {
     const user = await this.userService.getUserByEmail(email);
     if (!user) {
@@ -424,7 +435,7 @@ export class RenterService {
     const result = await this.passwordResetService.requestPasswordReset(
       user._id.toString(),
       user.email,
-      user.fullName
+      user.fullName,
     );
 
     logger.info({ userId: user._id, email }, "Password reset requested");
@@ -447,16 +458,16 @@ export class RenterService {
   private async sendMovingDiscountCodesEmailForRenter(
     userId: string,
     email: string,
-    renterName: string
+    renterName: string,
   ): Promise<void> {
     try {
       logger.info(
         { userId, email },
-        "Triggering moving discount codes email after renter registration"
+        "Triggering moving discount codes email after renter registration",
       );
 
-      const movingDiscountEmailResult =
-        await this.emailService.sendMovingDiscountCodesEmail({
+      const movingDiscountEmailResult
+        = await this.emailService.sendMovingDiscountCodesEmail({
           to: email,
           renterName,
         });
@@ -468,7 +479,7 @@ export class RenterService {
             email,
             messageId: movingDiscountEmailResult.messageId,
           },
-          "Moving discount codes email sent after renter registration"
+          "Moving discount codes email sent after renter registration",
         );
         return;
       }
@@ -479,16 +490,17 @@ export class RenterService {
           email,
           error: movingDiscountEmailResult.error,
         },
-        "Moving discount codes email failed after renter registration"
+        "Moving discount codes email failed after renter registration",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           userId,
           email,
           error: error instanceof Error ? error.message : String(error),
         },
-        "Error sending moving discount codes email after renter registration"
+        "Error sending moving discount codes email after renter registration",
       );
     }
   }
@@ -497,7 +509,7 @@ export class RenterService {
    * Reset password with OTP
    */
   async resetPassword(
-    payload: ResetPasswordPayload
+    payload: ResetPasswordPayload,
   ): Promise<{ message: string }> {
     const user = await this.userService.getUserByEmail(payload.email);
     if (!user) {
@@ -520,12 +532,12 @@ export class RenterService {
     // Step 5: Send confirmation email
     await this.emailService.sendPasswordResetConfirmation(
       user.fullName,
-      user.email
+      user.email,
     );
 
     logger.info(
       { userId: user._id, email: payload.email },
-      "Password reset successfully"
+      "Password reset successfully",
     );
 
     return {
@@ -558,7 +570,7 @@ export class RenterService {
    */
   async updateRenterProfile(
     userId: string,
-    payload: UpdateRenterProfilePayload
+    payload: UpdateRenterProfilePayload,
   ): Promise<RenterResponse> {
     // Update Renter model
     const renter = await this.repository.updateProfile(userId, payload);
@@ -567,8 +579,10 @@ export class RenterService {
     }
 
     const syncPayload: Record<string, any> = {};
-    if (payload.fullName) syncPayload.fullName = payload.fullName;
-    if (payload.phoneNumber) syncPayload.phoneNumber = payload.phoneNumber;
+    if (payload.fullName)
+      syncPayload.fullName = payload.fullName;
+    if (payload.phoneNumber)
+      syncPayload.phoneNumber = payload.phoneNumber;
 
     if (Object.keys(syncPayload).length > 0) {
       const { UserRepository } = await import("../user/user.repository");
@@ -600,8 +614,8 @@ export class RenterService {
 
     await this.preMarketService.deleteRequestsByRenterId(userId);
 
-    const renterUser =
-      renter.userId && typeof renter.userId === "object"
+    const renterUser
+      = renter.userId && typeof renter.userId === "object"
         ? (renter.userId as { fullName?: string; email?: string })
         : null;
     const renterEmail = renterUser?.email || renter.email;
@@ -621,8 +635,8 @@ export class RenterService {
 
     if (renterEmail) {
       try {
-        const emailResult =
-          await this.emailService.sendRenterAccountDeletedEmail({
+        const emailResult
+          = await this.emailService.sendRenterAccountDeletedEmail({
             to: renterEmail,
             userName: renterName,
           });
@@ -633,7 +647,8 @@ export class RenterService {
             "Account deletion email failed to send",
           );
         }
-      } catch (error) {
+      }
+      catch (error) {
         logger.error(
           {
             userId,
@@ -649,7 +664,7 @@ export class RenterService {
   }
 
   async toggleEmailSubscription(
-    userId: string
+    userId: string,
   ): Promise<{ emailSubscriptionEnabled: boolean }> {
     const renter = await this.repository.findByUserId(userId);
     if (!renter) {
@@ -673,7 +688,7 @@ export class RenterService {
     userId: string,
     email: string,
     role: string,
-    accountStatus: string
+    accountStatus: string,
   ): { accessToken: string; refreshToken: string; expiresIn: string } {
     const accessToken = AuthUtil.generateAccessToken({
       userId,
@@ -696,8 +711,8 @@ export class RenterService {
    */
   private toRenterResponse(renter: any): RenterResponse {
     // Handle populated userId - can be object or ObjectId
-    const isUserIdPopulated =
-      renter.userId && typeof renter.userId === "object" && renter.userId._id;
+    const isUserIdPopulated
+      = renter.userId && typeof renter.userId === "object" && renter.userId._id;
     const userIdValue = isUserIdPopulated
       ? renter.userId._id.toString()
       : renter.userId?.toString();
@@ -735,7 +750,7 @@ export class RenterService {
    * Can fail through referral validation when the code is invalid or the agent cannot refer.
    */
   private async validateAndGetAgentFromReferralCode(
-    code: string
+    code: string,
   ): Promise<string> {
     const referrer = await this.referralService.validateReferralCode(code);
     return referrer._id.toString();
@@ -747,7 +762,7 @@ export class RenterService {
    * Can fail through referral validation when the code is invalid or the admin cannot refer.
    */
   private async validateAndGetAdminFromReferralCode(
-    code: string
+    code: string,
   ): Promise<string> {
     const referrer = await this.referralService.validateReferralCode(code);
     return referrer._id.toString();
@@ -755,12 +770,12 @@ export class RenterService {
 
   private async getDefaultAssignedAgentId(): Promise<string> {
     const defaultAgent = await this.userService.getUserByEmail(
-      SYSTEM_DEFAULT_AGENT.email
+      SYSTEM_DEFAULT_AGENT.email,
     );
 
     if (!defaultAgent || defaultAgent.role !== ROLES.AGENT) {
       throw new NotFoundException(
-        "Default assigned agent is not configured. Please contact support."
+        "Default assigned agent is not configured. Please contact support.",
       );
     }
 
@@ -783,8 +798,8 @@ export class RenterService {
     try {
       const agent = await new AgentProfileRepository().findByUserId(agentId);
       const agentUser = await this.userService.getById(agentId);
-      const populatedUser =
-        agent?.userId && typeof agent.userId === "object"
+      const populatedUser
+        = agent?.userId && typeof agent.userId === "object"
           ? (agent.userId as { fullName?: string; email?: string })
           : null;
 
@@ -794,13 +809,14 @@ export class RenterService {
         brokerage: agent?.brokerageName || fallbackAgent.brokerage,
         email: populatedUser?.email || agentUser?.email || fallbackAgent.email,
       };
-    } catch (error) {
+    }
+    catch (error) {
       logger.warn(
         {
           agentId,
           error: error instanceof Error ? error.message : String(error),
         },
-        "Failed to resolve assigned agent details for renter welcome email"
+        "Failed to resolve assigned agent details for renter welcome email",
       );
 
       return fallbackAgent;
@@ -822,7 +838,7 @@ export class RenterService {
 
   private schedulePreMarketConsolidatedExcelRefresh(
     context: Record<string, unknown>,
-    message: string
+    message: string,
   ): void {
     this.preMarketService.refreshConsolidatedExcel().catch((error) => {
       logger.error({ error, ...context }, message);
@@ -836,11 +852,11 @@ export class RenterService {
    */
   async getAllRenters(
     query: PaginationQuery,
-    accountStatus?: string
+    accountStatus?: string,
   ): Promise<PaginatedResponse<any>> {
     const result = await this.repository.findAllWithListingCount(
       query,
-      accountStatus
+      accountStatus,
     );
 
     const data = await Promise.all(
@@ -851,7 +867,7 @@ export class RenterService {
 
         if (renter.referredByAgentId) {
           const agent = await new AgentProfileRepository().findByUserId(
-            renter.referredByAgentId.toString()
+            renter.referredByAgentId.toString(),
           );
 
           if (agent && agent.userId) {
@@ -866,8 +882,8 @@ export class RenterService {
         }
 
         if (
-          renter.registrationType === "admin_referral" &&
-          renter.referredByAdmin
+          renter.registrationType === "admin_referral"
+          && renter.referredByAdmin
         ) {
           referralInfo.referredByAdmin = {
             referredBy: "Admin",
@@ -888,14 +904,14 @@ export class RenterService {
           referralInfo,
           createdAt: renter.createdAt,
         };
-      })
+      }),
     );
 
     const blockedEmailSet = await this.blockedEmailService.getActiveEmailSet(
-      data.map((item) => item.email),
+      data.map(item => item.email),
     );
 
-    const enrichedData = data.map((item) => ({
+    const enrichedData = data.map(item => ({
       ...item,
       isBlocked: blockedEmailSet.has(item.email.trim().toLowerCase()),
     }));
@@ -920,7 +936,7 @@ export class RenterService {
 
     if (renter.referredByAgentId) {
       const agent = await new AgentProfileRepository().findByUserId(
-        renter.referredByAgentId.toString()
+        renter.referredByAgentId.toString(),
       );
 
       if (agent && agent.userId) {
@@ -937,7 +953,7 @@ export class RenterService {
 
     if (renter.referredByAdminId) {
       const admin = await new UserRepository().findById(
-        renter.referredByAdminId.toString()
+        renter.referredByAdminId.toString(),
       );
 
       referralInfo.referredByAdmin = admin
@@ -951,11 +967,11 @@ export class RenterService {
 
     const listings = await new PreMarketRepository().findByRenterIdAll(
       renter.userId._id.toString(),
-      true
+      true,
     );
 
-    const profileImageUrl =
-      renter.userId && typeof renter.userId === "object"
+    const profileImageUrl
+      = renter.userId && typeof renter.userId === "object"
         ? (renter.userId as any).profileImageUrl
         : undefined;
 
@@ -995,11 +1011,11 @@ export class RenterService {
 
   async getRenterListings(
     renterId: string,
-    includeInactive: boolean = true
+    includeInactive: boolean = true,
   ): Promise<any[]> {
     return new PreMarketRepository().findByRenterIdAll(
       renterId,
-      includeInactive
+      includeInactive,
     );
   }
 
@@ -1007,8 +1023,8 @@ export class RenterService {
     try {
       const buffer = await this.excelService.generateConsolidatedRenterExcel();
 
-      const { url, fileName } =
-        await this.excelService.uploadConsolidatedRenterExcel(buffer);
+      const { url, fileName }
+        = await this.excelService.uploadConsolidatedRenterExcel(buffer);
 
       const totalRenters = await this.repository.count();
 
@@ -1020,18 +1036,19 @@ export class RenterService {
         fileName,
         fileUrl: url,
         totalRenters,
-        version: version,
+        version,
         lastUpdated: new Date(),
       });
 
       logger.info(
         { fileName, totalRenters },
-        "Renter Excel updated successfully"
+        "Renter Excel updated successfully",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error },
-        "Failed to update Renter Excel (non-blocking, continuing)"
+        "Failed to update Renter Excel (non-blocking, continuing)",
       );
     }
   }

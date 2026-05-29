@@ -1,9 +1,11 @@
 // file: src/config/email.config.ts
 
+import { z } from "zod";
+
+import type { IEmailConfig, IPostmarkConfig } from "@/services/email.types";
+
 import { env } from "@/env";
 import { normalizeEmailLogoUrl } from "@/services/email-branding";
-import type { IEmailConfig, IPostmarkConfig } from "@/services/email.types";
-import { z } from "zod";
 
 const emailConfigSchema = z.object({
   POSTMARK_API_TOKEN: z.string().min(1, "POSTMARK_API_TOKEN is required"),
@@ -17,10 +19,10 @@ const emailConfigSchema = z.object({
   EMAIL_LOGO_URL: z
     .string()
     .optional()
-    .transform((value) => normalizeEmailLogoUrl(value)),
+    .transform(value => normalizeEmailLogoUrl(value)),
   EMAIL_BRAND_COLOR: z
     .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .regex(/^#[0-9A-F]{6}$/i)
     .optional(),
   EMAIL_MAX_RETRIES: z.coerce.number().int(),
   EMAIL_RETRY_DELAY_MS: z.coerce.number().int(),

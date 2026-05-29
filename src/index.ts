@@ -3,7 +3,8 @@ import app from "@/app";
 import { connectDB } from "@/config/database.config";
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
-import { bootstrapApplication } from "./config/bootstrap";
+
+import { bootstrapApplication } from "./config/bootstrap.js";
 
 const port = env.PORT;
 
@@ -31,7 +32,8 @@ async function startServer() {
       logger.fatal(
         `Port ${env.PORT} is already in use. Please choose another port or stop the process using it.`,
       );
-    } else {
+    }
+    else {
       logger.fatal({ err }, "Failed to start server");
     }
 

@@ -1,8 +1,8 @@
 // file: src/modules/agent/agent.schema.ts
 
 import { z } from "zod";
-import { AGENT_TITLES } from "./agent.type";
 
+import { AGENT_TITLES } from "./agent.type";
 
 export const agentRegisterSchema = z.object({
   body: z.object({
@@ -19,7 +19,6 @@ export const agentRegisterSchema = z.object({
   }),
 });
 
-
 export const createAgentProfileSchema = z.object({
   body: z.object({
     licenseNumber: z.string().min(1, "License number is required").max(100),
@@ -27,7 +26,6 @@ export const createAgentProfileSchema = z.object({
     title: z.enum(AGENT_TITLES),
   }),
 });
-
 
 export const updateAgentProfileSchema = z.object({
   body: z.object({
@@ -39,7 +37,6 @@ export const updateAgentProfileSchema = z.object({
     emailSubscriptionEnabled: z.boolean().optional(),
   }),
 });
-
 
 export const getAgentProfileSchema = z.object({
   params: z.object({
@@ -77,12 +74,12 @@ export const activateAgentWithLinkSchema = z.object({
       reason: z.string().trim().optional(),
     })
     .refine(
-      (data) =>
+      data =>
         Boolean(
-          data.activationLink ||
-            data.registrationLink ||
-            data.disclosureLink ||
-            data.link,
+          data.activationLink
+          || data.registrationLink
+          || data.disclosureLink
+          || data.link,
         ),
       {
         message: "A PowerForm link is required",
@@ -95,12 +92,12 @@ export const activateAgentWithLinkSchema = z.object({
         activationLink:
           data.linkType === "disclosure" ? undefined : genericLink,
         disclosureLink:
-          data.disclosureLink ??
-          (data.linkType === "disclosure" ? genericLink : undefined),
+          data.disclosureLink
+          ?? (data.linkType === "disclosure" ? genericLink : undefined),
         reason: data.reason,
       };
     })
-    .refine((data) => Boolean(data.activationLink || data.disclosureLink), {
+    .refine(data => Boolean(data.activationLink || data.disclosureLink), {
       message: "A registration or disclosure link is required",
       path: ["activationLink"],
     }),

@@ -1,6 +1,8 @@
 import { logger } from "@/middlewares/pino-logger";
-import { ActivityLogRepository } from "./activity-log.repository";
+
 import type { ActivityLogActionType } from "./activity-log.type";
+
+import { ActivityLogRepository } from "./activity-log.repository";
 
 type CreateActivityLogPayload = {
   email: string;

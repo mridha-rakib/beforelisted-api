@@ -1,14 +1,19 @@
 // file: src/modules/renter/renter.repository.ts
 
-import { logger } from "@/middlewares/pino-logger";
-import { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
-import { PaginationHelper } from "@/utils/pagination-helper";
 import type { ObjectId, Types } from "mongoose";
+
 import mongoose from "mongoose";
-import { BaseRepository } from "../base/base.repository";
+
+import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
+
+import { logger } from "@/middlewares/pino-logger";
+import { PaginationHelper } from "@/utils/pagination-helper";
+
 import type { IRenterModel } from "./renter.model";
-import { RenterModel } from "./renter.model";
 import type { UpdateRenterProfilePayload } from "./renter.type";
+
+import { BaseRepository } from "../base/base.repository";
+import { RenterModel } from "./renter.model";
 
 /**
  * Renter Repository
@@ -45,7 +50,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
   // }
 
   async findByUserId(
-    userId: string | Types.ObjectId
+    userId: string | Types.ObjectId,
   ): Promise<IRenterModel | null> {
     return this.model
       .findOne({ userId })
@@ -68,7 +73,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
    * Find renter by registration type
    */
   async findByRegistrationType(
-    type: "normal" | "agent_referral" | "admin_referral"
+    type: "normal" | "agent_referral" | "admin_referral",
   ): Promise<IRenterModel[]> {
     return this.model.find({ registrationType: type, isDeleted: false });
   }
@@ -77,7 +82,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
    * Find renters referred by specific agent
    */
   async findRentersByAgent(
-    agentId: string | Types.ObjectId
+    agentId: string | Types.ObjectId,
   ): Promise<IRenterModel[]> {
     return this.model.find({
       referredByAgentId: new mongoose.Types.ObjectId(agentId as string),
@@ -90,10 +95,10 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
    * Used when an agent account is deleted by the agent owner.
    */
   async clearReferredAgentFromRenters(
-    agentId: string | Types.ObjectId
+    agentId: string | Types.ObjectId,
   ): Promise<{ modifiedCount: number; renterUserIds: string[] }> {
-    const objectId =
-      typeof agentId === "string"
+    const objectId
+      = typeof agentId === "string"
         ? new mongoose.Types.ObjectId(agentId)
         : agentId;
 
@@ -122,7 +127,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
         },
         {
           $unset: { referredByAgentId: "" },
-        }
+        },
       )
       .exec();
 
@@ -136,7 +141,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
    * Find renters referred by specific admin
    */
   async findRentersByAdmin(
-    adminId: string | Types.ObjectId
+    adminId: string | Types.ObjectId,
   ): Promise<IRenterModel[]> {
     return this.model.find({
       referredByAdminId: new mongoose.Types.ObjectId(adminId as string),
@@ -217,12 +222,12 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
    */
   async updateByUserId(
     userId: string | Types.ObjectId,
-    data: Partial<IRenterModel>
+    data: Partial<IRenterModel>,
   ): Promise<IRenterModel | null> {
     return this.model.findOneAndUpdate(
       { userId, isDeleted: false },
       { $set: data },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -231,12 +236,12 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
    */
   async updateProfile(
     userId: string | Types.ObjectId,
-    data: UpdateRenterProfilePayload
+    data: UpdateRenterProfilePayload,
   ): Promise<IRenterModel | null> {
     return this.model.findOneAndUpdate(
       { userId, isDeleted: false },
       { $set: data },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -249,7 +254,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
     payload: {
       registrationType: "agent_referral" | "admin_referral";
       referrerId: string | Types.ObjectId;
-    }
+    },
   ): Promise<IRenterModel | null> {
     const setData: Record<string, any> = {
       registrationType: payload.registrationType,
@@ -259,7 +264,8 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
     if (payload.registrationType === "agent_referral") {
       setData.referredByAgentId = payload.referrerId;
       unsetData.referredByAdminId = "";
-    } else {
+    }
+    else {
       setData.referredByAdminId = payload.referrerId;
       unsetData.referredByAgentId = "";
     }
@@ -270,7 +276,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
         $set: setData,
         $unset: unsetData,
       },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -279,12 +285,12 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
    */
   async addQuestionnaire(
     userId: string | Types.ObjectId,
-    questionnaire: any
+    questionnaire: any,
   ): Promise<IRenterModel | null> {
     return this.model.findOneAndUpdate(
       { userId, isDeleted: false },
       { $set: { questionnaire } },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -292,12 +298,12 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
    * Suspend renter
    */
   async suspendRenter(
-    userId: string | Types.ObjectId
+    userId: string | Types.ObjectId,
   ): Promise<IRenterModel | null> {
     return this.model.findOneAndUpdate(
       { userId, isDeleted: false },
       { $set: { accountStatus: "suspended" } },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -305,12 +311,12 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
    * Unsuspend renter
    */
   async unsuspendRenter(
-    userId: string | Types.ObjectId
+    userId: string | Types.ObjectId,
   ): Promise<IRenterModel | null> {
     return this.model.findOneAndUpdate(
       { userId, isDeleted: false },
       { $set: { accountStatus: "active" } },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -322,7 +328,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
    * Soft delete renter
    */
   async softDeleteRenter(
-    userId: string | Types.ObjectId
+    userId: string | Types.ObjectId,
   ): Promise<IRenterModel | null> {
     return this.model.findOneAndUpdate(
       { userId },
@@ -332,7 +338,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
           deletedAt: new Date(),
         },
       },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -340,7 +346,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
    * Restore soft-deleted renter
    */
   async restoreRenter(
-    userId: string | Types.ObjectId
+    userId: string | Types.ObjectId,
   ): Promise<IRenterModel | null> {
     return this.model.findOneAndUpdate(
       { userId },
@@ -350,7 +356,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
           deletedAt: null,
         },
       },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -358,7 +364,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
    * Permanently delete renter by user ID
    */
   async permanentlyDeleteRenter(
-    userId: string | Types.ObjectId
+    userId: string | Types.ObjectId,
   ): Promise<void> {
     await this.model.deleteOne({ userId }).exec();
   }
@@ -480,7 +486,8 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
       ]);
 
       return result;
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "Error in Renter findAll aggregation");
       throw error;
     }
@@ -564,7 +571,8 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
       ]);
 
       return result;
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error },
         "Error in Renter findAllForPreMarketExcel aggregation",
@@ -584,7 +592,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
       .updateOne(
         { type: "renters_data" },
         { $set: { ...metadata, updatedAt: new Date() } },
-        { upsert: true }
+        { upsert: true },
       );
   }
 
@@ -628,7 +636,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
 
   async findAllWithListingCount(
     query: PaginationQuery,
-    accountStatus?: string
+    accountStatus?: string,
   ): Promise<PaginatedResponse<any>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
     const page = paginateOptions.page || 1;
@@ -748,7 +756,7 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
   }
 
   async findByIdWithReferralInfo(
-    renterId: string
+    renterId: string,
   ): Promise<IRenterModel | null> {
     return this.model
       .findById(renterId)

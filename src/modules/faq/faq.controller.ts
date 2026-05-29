@@ -1,10 +1,12 @@
 // file: src/modules/faq/faq.controller.ts
 
+import type { Request, Response } from "express";
+
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
-import type { Request, Response } from "express";
+
 import { createFAQSchema, updateFAQSchema } from "./faq.schema";
 import { FAQService } from "./faq.service";
 
@@ -53,7 +55,7 @@ export class FAQController {
 
     logger.info(
       { adminId: req.user?.userId, count: faqs.length },
-      "Admin accessed all FAQs"
+      "Admin accessed all FAQs",
     );
 
     ApiResponse.success(res, faqs, "All FAQs retrieved for admin");
@@ -124,7 +126,7 @@ export class FAQController {
     ApiResponse.success(
       res,
       { message: "FAQ permanently deleted" },
-      "FAQ permanently deleted successfully"
+      "FAQ permanently deleted successfully",
     );
   });
 }

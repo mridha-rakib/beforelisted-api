@@ -1,7 +1,8 @@
 // file: src/utils/password.utils.ts
 
-import { env } from "@/env";
 import bcryptjs from "bcryptjs";
+
+import { env } from "@/env";
 
 export class PasswordUtil {
   static async hashPassword(password: string): Promise<string> {
@@ -11,7 +12,7 @@ export class PasswordUtil {
 
   static async comparePassword(
     password: string,
-    hash: string
+    hash: string,
   ): Promise<boolean> {
     return bcryptjs.compare(password, hash);
   }

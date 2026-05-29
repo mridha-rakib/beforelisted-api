@@ -4,16 +4,17 @@ import {
   DEFAULT_EMAIL_LOGO_URL,
   normalizeEmailLogoUrl,
   renderEmailLogo,
-} from "./email-branding";
+} from "./email-branding.js";
 
 export class EmailTemplates {
   private logoUrl: string = DEFAULT_EMAIL_LOGO_URL;
   private brandColor: string = "#1890FF";
   private contactUrl: string = "mailto:support@beforelisted.com";
-  private privacyUrl: string =
-    "https://rental-pennymore-frontend.vercel.app/privacy-policy";
-  private termsUrl: string =
-    "https://rental-pennymore-frontend.vercel.app/terms-conditions";
+  private privacyUrl: string
+    = "https://rental-pennymore-frontend.vercel.app/privacy-policy";
+
+  private termsUrl: string
+    = "https://rental-pennymore-frontend.vercel.app/terms-conditions";
 
   private getLogoStyles(): string {
     return `
@@ -234,7 +235,7 @@ export class EmailTemplates {
       fullName?: string;
       title?: string;
       brokerage?: string;
-    }
+    },
   ): string {
     const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
@@ -247,8 +248,8 @@ export class EmailTemplates {
       ? `<strong>${agentName}${agentTitle ? `, ${agentTitle}` : ""}${agentBrokerage ? ` with ${agentBrokerage}` : ""}</strong>`
       : "<strong>your assigned licensed real estate agent</strong>";
     const registeredAgentLine = `Your renter account is currently registered with ${registeredAgentIdentity}.`;
-    const registeredAgentSupportLine =
-      "Rental requests you submit will be shared with this agent. They may begin assisting you with your search once all required agency disclosures and agreements are reviewed and completed.";
+    const registeredAgentSupportLine
+      = "Rental requests you submit will be shared with this agent. They may begin assisting you with your search once all required agency disclosures and agreements are reviewed and completed.";
     const contentHtml = isRenter
       ? `
             <h2>Hi ${firstName},</h2>
@@ -638,7 +639,7 @@ export class EmailTemplates {
     loginLink: string,
     userType: "Agent" | "Renter",
     logoUrl?: string,
-    brandColor?: string
+    brandColor?: string,
   ): string {
     const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
@@ -872,7 +873,7 @@ export class EmailTemplates {
     expiresIn: string,
     // userType: "Agent" | "Renter" | "Admin" | undefined,
     logoUrl?: string,
-    brandColor?: string
+    brandColor?: string,
   ): string {
     const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
@@ -1013,7 +1014,7 @@ export class EmailTemplates {
     resetLink: string,
     expiresIn: string,
     logoUrl?: string,
-    brandColor?: string
+    brandColor?: string,
   ): string {
     const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
@@ -1170,7 +1171,7 @@ export class EmailTemplates {
     userName: string,
     changeDate: Date,
     logoUrl?: string,
-    brandColor?: string
+    brandColor?: string,
   ): string {
     const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
@@ -1345,11 +1346,11 @@ export class EmailTemplates {
     expiresIn: number,
     userType?: string,
     logoUrl?: string,
-    brandColor: string = "#1890FF"
+    brandColor: string = "#1890FF",
   ): string => {
-    const displayName =
-      userName && userName.trim() ? userName.split(" ")[0] : "there";
-    const userTypeLabel = userType
+    const displayName
+      = userName && userName.trim() ? userName.split(" ")[0] : "there";
+    const _userTypeLabel = userType
       ? userType.charAt(0).toUpperCase() + userType.slice(1)
       : "User"; //
 
@@ -1473,11 +1474,11 @@ export class EmailTemplates {
     userName: string | undefined,
     userType?: string,
     logoUrl?: string,
-    brandColor: string = "#1890FF"
+    brandColor: string = "#1890FF",
   ): string => {
-    const displayName =
-      userName && userName.trim() ? userName.split(" ")[0] : "there";
-    const userTypeLabel = userType
+    const displayName
+      = userName && userName.trim() ? userName.split(" ")[0] : "there";
+    const _userTypeLabel = userType
       ? userType.charAt(0).toUpperCase() + userType.slice(1)
       : "User"; //
 
@@ -1590,12 +1591,12 @@ export class EmailTemplates {
   accountDeletedRenter(
     userName: string | undefined,
     logoUrl?: string,
-    brandColor?: string
+    brandColor?: string,
   ): string {
     const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
-    const displayName =
-      userName && userName.trim() ? userName.split(" ")[0] : "there";
+    const displayName
+      = userName && userName.trim() ? userName.split(" ")[0] : "there";
 
     return `
 <!DOCTYPE html>
@@ -1726,12 +1727,12 @@ export class EmailTemplates {
   accountDeletedAgent(
     userName: string | undefined,
     logoUrl?: string,
-    brandColor?: string
+    brandColor?: string,
   ): string {
     const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
-    const displayName =
-      userName && userName.trim() ? userName.split(" ")[0] : "there";
+    const displayName
+      = userName && userName.trim() ? userName.split(" ")[0] : "there";
 
     return `
 <!DOCTYPE html>
@@ -1867,20 +1868,20 @@ export class EmailTemplates {
 
   registeredAgentNoLongerActiveRenter(
     userName: string | undefined,
-    notificationReason: "inactive" | "deleted" = "inactive",
+    _notificationReason: "inactive" | "deleted" = "inactive",
     defaultAgentReferralLoginLink?: string,
     logoUrl?: string,
-    brandColor?: string
+    brandColor?: string,
   ): string {
     const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;
-    const displayName =
-      userName && userName.trim() ? userName.split(" ")[0] : "there";
+    const displayName
+      = userName && userName.trim() ? userName.split(" ")[0] : "there";
     const emailTitle = "Your Registered Agent Is No Longer Active on BeforeListed";
-    const headerTitle =
-      "Your Registered Agent Is No Longer Active on BeforeListed";
-    const referralLoginLink =
-      defaultAgentReferralLoginLink || "https://beforelisted.com/signin";
+    const headerTitle
+      = "Your Registered Agent Is No Longer Active on BeforeListed";
+    const referralLoginLink
+      = defaultAgentReferralLoginLink || "https://beforelisted.com/signin";
     const contentHtml = `
             <p>Your originally registered agent is no longer participating in the BeforeListed intake service. You may contact that agent directly if you wish. Your request will remain private on the BeforeListed website and will not be shared with any other agents unless you choose to continue.</p>
 
@@ -2037,9 +2038,9 @@ export class EmailTemplates {
     email: string,
     temporaryPassword: string,
     loginLink: string,
-    accountType: string = "Renter",
+    _accountType: string = "Renter",
     logoUrl?: string,
-    brandColor?: string
+    brandColor?: string,
   ): string {
     const logo = normalizeEmailLogoUrl(logoUrl || this.logoUrl);
     const color = brandColor || this.brandColor;

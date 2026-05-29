@@ -1,8 +1,10 @@
 // file: src/modules/monthly-report/monthly-report.model.ts
 
-import mongoose, { Document, Schema } from "mongoose";
+import type { Document } from "mongoose";
 
-export interface IMonthlyReport extends Document {
+import mongoose, { Schema } from "mongoose";
+
+export type IMonthlyReport = {
   _id: mongoose.Types.ObjectId;
   link: string;
   month: number;
@@ -12,7 +14,7 @@ export interface IMonthlyReport extends Document {
   updatedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
-}
+} & Document;
 
 const monthlyReportSchema = new Schema<IMonthlyReport>(
   {
@@ -46,7 +48,7 @@ const monthlyReportSchema = new Schema<IMonthlyReport>(
   {
     timestamps: true,
     collection: "monthly_reports",
-  }
+  },
 );
 
 // Index for sorting by year and month
@@ -56,5 +58,5 @@ monthlyReportSchema.index({ year: 1, month: 1, isActive: 1 });
 
 export const MonthlyReport = mongoose.model<IMonthlyReport>(
   "MonthlyReport",
-  monthlyReportSchema
+  monthlyReportSchema,
 );

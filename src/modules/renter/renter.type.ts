@@ -1,8 +1,9 @@
 // file: src/modules/renter/renter.type.ts
 
-import { Types } from "mongoose";
-import { z } from "zod";
-import { renterDetailSchema, renterListSchema } from "./renter.schema";
+import type { Types } from "mongoose";
+import type { z } from "zod";
+
+import type { renterDetailSchema, renterListSchema } from "./renter.schema";
 
 // ============================================
 // REGISTRATION PAYLOADS
@@ -45,9 +46,9 @@ export type AdminReferralRenterRegisterPayload = {
 /**
  * Union type for all registration payloads
  */
-export type RenterRegisterPayload =
-  | AgentReferralRenterRegisterPayload
-  | AdminReferralRenterRegisterPayload;
+export type RenterRegisterPayload
+  = | AgentReferralRenterRegisterPayload
+    | AdminReferralRenterRegisterPayload;
 
 /**
  * Renter Response (for API)

@@ -1,8 +1,10 @@
 // file: src/utils/base-schema.utils.ts
 
-import { mongoosePaginate } from "@/config/paginate.config";
 import type { SchemaDefinition, SchemaOptions } from "mongoose";
+
 import { Schema } from "mongoose";
+
+import { mongoosePaginate } from "@/config/paginate.config";
 
 /**
 Base Schema Utility
@@ -10,14 +12,14 @@ Create a standard schema with timestamps and pagination
 @param definition - Schema field definitions
 @param options - Additional schema options
 @returns Configured Mongoose Schema
-*/
+ */
 
 // file: src/utils/base-schema.utils.ts
 
 export class BaseSchemaUtil {
   static createSchema<T>(
     definition: SchemaDefinition<T>,
-    options: SchemaOptions<T> = {}
+    options: SchemaOptions<T> = {},
   ): Schema<T> {
     // Create schema with ONLY timestamps - no spread operator
     const schema = new Schema<T>(definition, {
@@ -43,7 +45,7 @@ export class BaseSchemaUtil {
   static createIndexedSchema<T>(
     definition: SchemaDefinition<T>,
     indexConfig?: Record<string, any>,
-    options: SchemaOptions<T> = {}
+    options: SchemaOptions<T> = {},
   ): Schema<T> {
     const schema = this.createSchema<T>(definition, options);
 

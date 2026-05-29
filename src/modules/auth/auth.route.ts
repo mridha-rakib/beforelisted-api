@@ -1,7 +1,9 @@
 // file: src/modules/auth/auth.route.ts
 
-import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
+
+import { authMiddleware } from "@/middlewares/auth.middleware";
+
 import passwordResetRoutes from "../password/password.route";
 import { AuthController } from "./auth.controller";
 
@@ -24,7 +26,7 @@ router.use("/", passwordResetRoutes);
 router.put(
   "/change-password",
   authMiddleware.verifyToken,
-  authController.changePassword
+  authController.changePassword,
 );
 
 router.post("/logout", authMiddleware.verifyToken, authController.logout);

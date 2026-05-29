@@ -26,7 +26,8 @@ export class NoticeSeeder {
       });
       await notice.save();
       logger.info(notice, "Notice created successfully");
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(error, "Error running admin seeder");
       throw error;
     }

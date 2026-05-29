@@ -1,7 +1,9 @@
 // file: src/utils/validators.utils.ts
 import type { Request } from "express";
 import type z from "zod";
-import { ZodError, type ZodTypeAny } from "zod";
+import type { ZodTypeAny } from "zod";
+
+import { ZodError } from "zod";
 
 export async function zParse<T extends ZodTypeAny>(
   schema: T,
@@ -17,7 +19,8 @@ export async function zParse<T extends ZodTypeAny>(
     });
 
     return result;
-  } catch (error) {
+  }
+  catch (error) {
     if (error instanceof ZodError) {
       throw error;
     }

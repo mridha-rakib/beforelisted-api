@@ -1,6 +1,6 @@
 // file: src/modules/user/user.type.ts
 
-import { ACCOUNT_STATUS } from "@/constants";
+import type { ACCOUNT_STATUS } from "@/constants";
 import type { ROLES } from "@/constants/app.constants";
 
 /**

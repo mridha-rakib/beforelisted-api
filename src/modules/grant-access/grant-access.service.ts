@@ -1,6 +1,5 @@
 // file: src/modules/grant-access/grant-access.service.ts
 
-import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import { emailService } from "@/services/email.service";
 import {
@@ -9,15 +8,18 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@/utils/app-error.utils";
+
+import type { IPreMarketRequest } from "../pre-market/pre-market.model";
+import type { IGrantAccessRequest } from "./grant-access.model";
+
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { NotificationService } from "../notification/notification.service";
 import { PaymentService } from "../payment/payment.service";
-import { PreMarketNotifier } from "../pre-market/pre-market-notifier";
-import type { IPreMarketRequest } from "../pre-market/pre-market.model";
+import { resolveRenterOpportunityEmailScope } from "../pre-market/pre-market-email-scope.utils";
+import { PreMarketNotifier } from "../pre-market/pre-market-notifier.js";
 import { PreMarketRepository } from "../pre-market/pre-market.repository";
 import { RenterRepository } from "../renter/renter.repository";
 import { UserRepository } from "../user/user.repository";
-import type { IGrantAccessRequest } from "./grant-access.model";
 import { GrantAccessRepository } from "./grant-access.repository";
 
 export class GrantAccessService {
@@ -40,6 +42,7 @@ export class GrantAccessService {
     this.agentRepository = new AgentProfileRepository();
     this.renterRepository = new RenterRepository();
   }
+
   async getRequestById(requestId: string): Promise<IPreMarketRequest | null> {
     return await this.preMarketRepository.getRequestById(requestId);
   }
@@ -51,16 +54,16 @@ export class GrantAccessService {
    */
   public async enrichRequestWithFullRenterInfo(
     request: IPreMarketRequest,
-    agentId: string
+    _agentId: string,
   ) {
     const renter = await this.renterRepository.findRenterWithReferrer(
-      request.renterId.toString()
+      request.renterId.toString(),
     );
 
     if (!renter) {
       logger.warn(
         { renterId: request.renterId, requestId: request.requestId },
-        "Renter not found for request"
+        "Renter not found for request",
       );
       return { ...request, renterInfo: null };
     }
@@ -70,7 +73,7 @@ export class GrantAccessService {
 
     if (renter.referredByAgentId) {
       const referrer = await this.userRepository.findById(
-        renter.referredByAgentId.toString()
+        renter.referredByAgentId.toString(),
       );
       if (referrer) {
         const referrerId = referrer._id?.toString();
@@ -85,9 +88,10 @@ export class GrantAccessService {
           referralType: "agent_referral",
         };
       }
-    } else if (renter.referredByAdminId) {
+    }
+    else if (renter.referredByAdminId) {
       const referrer = await this.userRepository.findById(
-        renter.referredByAdminId._id
+        renter.referredByAdminId._id,
       );
       if (referrer) {
         referrerInfo = {
@@ -128,9 +132,9 @@ export class GrantAccessService {
       | "owner_representation"
       | "renter_representation" = "renter_representation",
   ): Promise<IGrantAccessRequest> {
-    const listingActivationCheck =
-      await this.preMarketRepository.findByIdWithActivationStatus(
-        preMarketRequestId
+    const listingActivationCheck
+      = await this.preMarketRepository.findByIdWithActivationStatus(
+        preMarketRequestId,
       );
 
     if (!listingActivationCheck) {
@@ -139,26 +143,26 @@ export class GrantAccessService {
 
     if (!listingActivationCheck.isActive) {
       throw new ForbiddenException(
-        "This listing is no longer accepting requests"
+        "This listing is no longer accepting requests",
       );
     }
 
     const existing = await this.grantAccessRepository.findByAgentAndRequest(
       agentId,
-      preMarketRequestId
+      preMarketRequestId,
     );
 
     if (existing) {
       if (existing.status === "free" || existing.status === "paid") {
         throw new ConflictException(
-          "You already have access to this pre-market request"
+          "You already have access to this pre-market request",
         );
       }
 
       throw new ConflictException(
-        `You have already requested access to this property. ` +
-          `Current status: ${existing.status}. ` +
-          `Please wait for admin decision or contact support.`
+        `You have already requested access to this property. `
+        + `Current status: ${existing.status}. `
+        + `Please wait for admin decision or contact support.`,
       );
     }
 
@@ -173,7 +177,8 @@ export class GrantAccessService {
         representationSelectedAt: new Date(),
         createdAt: new Date(),
       });
-    } catch (error) {
+    }
+    catch (error) {
       throw error;
     }
 
@@ -201,7 +206,7 @@ export class GrantAccessService {
           propertyTitle: listingActivationCheck.requestName,
           location:
             listingActivationCheck.locations
-              ?.map((l) => l.borough)
+              ?.map(l => l.borough)
               .join(", ") || "Unknown Location",
           renterName: listingActivationCheck.renterId
             ? `Renter ${listingActivationCheck.renterId}`
@@ -215,17 +220,18 @@ export class GrantAccessService {
             preMarketRequestId,
             grantAccessId: grantAccess._id,
           },
-          "✅ Admin notification created for grant access request"
+          "✅ Admin notification created for grant access request",
         );
       }
-    } catch (notificationError) {
+    }
+    catch (notificationError) {
       logger.error(
         {
           error: notificationError,
           agentId,
           preMarketRequestId,
         },
-        "⚠️ Failed to create admin notification (non-blocking)"
+        "⚠️ Failed to create admin notification (non-blocking)",
       );
     }
 
@@ -248,20 +254,20 @@ export class GrantAccessService {
       isFree?: boolean;
       chargeAmount?: number;
       notes?: string;
-    }
+    },
   ): Promise<IGrantAccessRequest> {
-    const grantAccess =
-      await this.grantAccessRepository.findById(grantAccessId);
+    const grantAccess
+      = await this.grantAccessRepository.findById(grantAccessId);
 
     if (!grantAccess) {
       throw new NotFoundException("Grant access request not found");
     }
 
     const agent = await this.userRepository.findById(
-      grantAccess.agentId.toString()
+      grantAccess.agentId.toString(),
     );
     const preMarketRequest = await this.preMarketRepository.findById(
-      grantAccess.preMarketRequestId.toString()
+      grantAccess.preMarketRequestId.toString(),
     );
 
     // REJECT
@@ -290,7 +296,7 @@ export class GrantAccessService {
             propertyTitle: preMarketRequest.requestName || "Pre-Market Request",
             location:
               preMarketRequest.locations
-                ?.map((loc) => loc?.borough)
+                ?.map(loc => loc?.borough)
                 .filter(Boolean)
                 .join(", ") || "Unknown Location",
             rejectionReason: decision.notes,
@@ -300,13 +306,14 @@ export class GrantAccessService {
 
           logger.info(
             { grantAccessId, agentId: grantAccess.agentId },
-            "✅ Agent notification sent for rejection"
+            "✅ Agent notification sent for rejection",
           );
         }
-      } catch (notificationError) {
+      }
+      catch (notificationError) {
         logger.error(
           { error: notificationError, grantAccessId },
-          "⚠️ Failed to send agent rejection notification (non-blocking)"
+          "⚠️ Failed to send agent rejection notification (non-blocking)",
         );
       }
 
@@ -335,7 +342,7 @@ export class GrantAccessService {
       await this.preMarketRepository.addAgentToViewedBy(
         grantAccess.preMarketRequestId.toString(),
         grantAccess.agentId.toString(),
-        "normalAgents"
+        "normalAgents",
       );
 
       await this.grantAccessRepository.updateById(grantAccessId, grantAccess);
@@ -364,7 +371,7 @@ export class GrantAccessService {
             propertyTitle: preMarketRequest.requestName || "Pre-Market Request",
             location:
               preMarketRequest.locations
-                ?.map((loc) => loc?.borough)
+                ?.map(loc => loc?.borough)
                 .filter(Boolean)
                 .join(", ") || "Unknown Location",
             approvedBy: decision.adminId,
@@ -374,13 +381,14 @@ export class GrantAccessService {
 
           logger.info(
             { grantAccessId, agentId: grantAccess.agentId },
-            "✅ Agent notification sent for free approval"
+            "✅ Agent notification sent for free approval",
           );
         }
-      } catch (notificationError) {
+      }
+      catch (notificationError) {
         logger.error(
           { error: notificationError, grantAccessId },
-          "⚠️ Failed to send agent approval notification (non-blocking)"
+          "⚠️ Failed to send agent approval notification (non-blocking)",
         );
       }
 
@@ -430,7 +438,7 @@ export class GrantAccessService {
             propertyTitle: preMarketRequest.requestName || "Pre-Market Request",
             location:
               preMarketRequest.locations
-                ?.map((loc) => loc?.borough)
+                ?.map(loc => loc?.borough)
                 .filter(Boolean)
                 .join(", ") || "Unknown Location",
             chargeAmount: decision.chargeAmount,
@@ -446,18 +454,19 @@ export class GrantAccessService {
               agentId: grantAccess.agentId,
               amount: decision.chargeAmount,
             },
-            "✅ Agent notification sent for charge"
+            "✅ Agent notification sent for charge",
           );
         }
-      } catch (notificationError) {
+      }
+      catch (notificationError) {
         logger.error(
           { error: notificationError, grantAccessId },
-          "⚠️ Failed to send agent charge notification (non-blocking)"
+          "⚠️ Failed to send agent charge notification (non-blocking)",
         );
       }
 
       logger.info(
-        `Grant access charged: ${grantAccessId} - $${decision.chargeAmount}`
+        `Grant access charged: ${grantAccessId} - $${decision.chargeAmount}`,
       );
 
       return grantAccess;
@@ -476,18 +485,18 @@ export class GrantAccessService {
    * Can fail when the grant-access request is missing, payment state is invalid, or Stripe intent creation fails.
    */
   async createPaymentIntent(
-    grantAccessId: string
+    grantAccessId: string,
   ): Promise<{ clientSecret: string; amount: number }> {
-    const grantAccess =
-      await this.grantAccessRepository.findById(grantAccessId);
+    const grantAccess
+      = await this.grantAccessRepository.findById(grantAccessId);
 
     if (!grantAccess) {
       throw new NotFoundException("Grant access request not found");
     }
 
     if (
-      (grantAccess.status !== "approved" && grantAccess.status !== "pending") ||
-      !grantAccess.payment
+      (grantAccess.status !== "approved" && grantAccess.status !== "pending")
+      || !grantAccess.payment
     ) {
       throw new BadRequestException("Invalid payment status");
     }
@@ -563,8 +572,8 @@ export class GrantAccessService {
 
     // Enrich with additional info
     const enrichedData = result.data.map((item: any) => {
-      const resolvedAgentId =
-        typeof item.agentId === "object" && item.agentId !== null
+      const resolvedAgentId
+        = typeof item.agentId === "object" && item.agentId !== null
           ? item.agentId?._id?.toString?.() || item.agentId?.id?.toString?.() || ""
           : item.agentId?.toString?.() || "";
 
@@ -595,7 +604,7 @@ export class GrantAccessService {
 
     logger.info(
       { count: enrichedData.length, total: result.pagination.total },
-      "Admin payments retrieved"
+      "Admin payments retrieved",
     );
 
     return {
@@ -632,12 +641,14 @@ export class GrantAccessService {
     };
   }
 
-  async deleteAdminPayment(paymentId: string, adminId: string): Promise<any> {
+  async deleteAdminPayment(paymentId: string, _adminId: string): Promise<any> {
     const payment = await this.grantAccessRepository.findById(paymentId);
-    if (!payment) throw new NotFoundException("Payment not found");
+    if (!payment)
+      throw new NotFoundException("Payment not found");
 
     const deleted = await this.grantAccessRepository.deletePayment(paymentId);
-    if (!deleted) throw new Error("Failed to delete payment");
+    if (!deleted)
+      throw new Error("Failed to delete payment");
 
     return {
       success: true,
@@ -652,7 +663,7 @@ export class GrantAccessService {
 
   async getPaymentDeletionHistory(paymentId: string): Promise<any> {
     return await this.grantAccessRepository.getPaymentDeletionHistory(
-      paymentId
+      paymentId,
     );
   }
 
@@ -681,7 +692,7 @@ export class GrantAccessService {
 
     const detail = await this.grantAccessRepository.getMonthlyIncomeDetail(
       year,
-      month
+      month,
     );
 
     logger.info({ year, month }, "Monthly income details retrieved");
@@ -708,7 +719,7 @@ export class GrantAccessService {
 
     const range = await this.grantAccessRepository.getIncomeByDateRange(
       start,
-      end
+      end,
     );
 
     logger.info({ startDate, endDate }, "Income range retrieved");
@@ -736,8 +747,8 @@ export class GrantAccessService {
   async getPaymentDetailsForAdmin(paymentId: string): Promise<any> {
     logger.info({ paymentId }, "Admin fetching payment details");
 
-    const paymentDetails =
-      await this.grantAccessRepository.getPaymentDetailsById(paymentId);
+    const paymentDetails
+      = await this.grantAccessRepository.getPaymentDetailsById(paymentId);
 
     if (!paymentDetails) {
       logger.warn({ paymentId }, "Payment not found");
@@ -746,7 +757,7 @@ export class GrantAccessService {
 
     logger.info(
       { paymentId, agentId: paymentDetails.agent.userId },
-      "Payment details retrieved successfully"
+      "Payment details retrieved successfully",
     );
 
     return paymentDetails;
@@ -785,11 +796,14 @@ export class GrantAccessService {
     let registeredAgentId: string | null = null;
     if (typeof referralAgentFromRequest === "string") {
       registeredAgentId = referralAgentFromRequest;
-    } else if (referralAgentFromRequest?._id) {
+    }
+    else if (referralAgentFromRequest?._id) {
       registeredAgentId = referralAgentFromRequest._id.toString();
-    } else if (typeof referredByAgent === "string") {
+    }
+    else if (typeof referredByAgent === "string") {
       registeredAgentId = referredByAgent;
-    } else if (referredByAgent?._id) {
+    }
+    else if (referredByAgent?._id) {
       registeredAgentId = referredByAgent._id.toString();
     }
 
@@ -797,35 +811,35 @@ export class GrantAccessService {
       registeredAgentId ? this.userRepository.findById(registeredAgentId) : null,
       registeredAgentId ? this.agentRepository.findByUserId(registeredAgentId) : null,
     ]);
-    const matchingAgentProfile =
-      await this.agentRepository.findByUserId(matchingAgentId);
+    const matchingAgentProfile
+      = await this.agentRepository.findByUserId(matchingAgentId);
 
-    const registeredAgentFullName =
-      registeredAgentUser?.fullName ||
-      (typeof referredByAgent === "object" ? referredByAgent?.fullName : "") ||
-      "Agent";
-    const registeredAgentEmail =
-      registeredAgentUser?.email ||
-      (typeof referredByAgent === "object" ? referredByAgent?.email : "") ||
-      "support@beforelisted.com";
-    const registeredAgentPhone =
-      registeredAgentUser?.phoneNumber ||
-      (typeof referredByAgent === "object" ? referredByAgent?.phoneNumber : "") ||
-      "N/A";
-    const registeredAgentTitle =
-      registeredAgentProfile?.title || "Licensed Real Estate Agent";
-    const registeredAgentBrokerage =
-      registeredAgentProfile?.brokerageName || "BeforeListed";
-    const isRegisteredAgentMatch =
-      (registeredAgentId && registeredAgentId === matchingAgentId) ||
-      (matchingAgentUser.email &&
-        registeredAgentEmail &&
-        matchingAgentUser.email.toLowerCase() ===
-          registeredAgentEmail.toLowerCase());
+    const registeredAgentFullName
+      = registeredAgentUser?.fullName
+        || (typeof referredByAgent === "object" ? referredByAgent?.fullName : "")
+        || "Agent";
+    const registeredAgentEmail
+      = registeredAgentUser?.email
+        || (typeof referredByAgent === "object" ? referredByAgent?.email : "")
+        || "support@beforelisted.com";
+    const registeredAgentPhone
+      = registeredAgentUser?.phoneNumber
+        || (typeof referredByAgent === "object" ? referredByAgent?.phoneNumber : "")
+        || "N/A";
+    const registeredAgentTitle
+      = registeredAgentProfile?.title || "Licensed Real Estate Agent";
+    const registeredAgentBrokerage
+      = registeredAgentProfile?.brokerageName || "BeforeListed";
+    const isRegisteredAgentMatch
+      = (registeredAgentId && registeredAgentId === matchingAgentId)
+        || (matchingAgentUser.email
+          && registeredAgentEmail
+          && matchingAgentUser.email.toLowerCase()
+          === registeredAgentEmail.toLowerCase());
 
     if (isRegisteredAgentMatch) {
-      const result =
-        await emailService.sendRenterOpportunityFoundByRegisteredAgent({
+      const result
+        = await emailService.sendRenterOpportunityFoundByRegisteredAgent({
           to: renter.email,
           renterName: renter.fullName,
           registeredAgentFullName,
@@ -848,28 +862,35 @@ export class GrantAccessService {
       return;
     }
 
-    // Template #6A applies only to Upcoming / Upcoming(M) flows.
-    if (preMarketRequest.scope === "All Market") {
-      return;
-    }
+    const requestId = preMarketRequest._id?.toString()
+      || grantAccess.preMarketRequestId.toString();
+    const alreadyMatched
+      = await this.preMarketRepository.shouldDisplayMatchedScopeForRequest(
+        requestId,
+        { excludeGrantAccessId: grantAccess._id },
+      );
+    const requestScope = resolveRenterOpportunityEmailScope(
+      preMarketRequest.scope,
+      alreadyMatched,
+    );
 
     const ccEmails = [registeredAgentEmail, matchingAgentUser.email]
       .filter((email): email is string => Boolean(email && email.trim()))
-      .map((email) => email.trim())
+      .map(email => email.trim())
       .filter(
         (email, index, list) =>
-          list.findIndex((item) => item.toLowerCase() === email.toLowerCase()) ===
-          index,
+          list.findIndex(item => item.toLowerCase() === email.toLowerCase())
+          === index,
       )
-      .filter((email) => email.toLowerCase() !== renter.email.toLowerCase());
+      .filter(email => email.toLowerCase() !== renter.email.toLowerCase());
 
-    const otherAgentEmailResult =
-      await emailService.sendRenterOpportunityFoundByOtherAgent({
+    const otherAgentEmailResult
+      = await emailService.sendRenterOpportunityFoundByOtherAgent({
         to: renter.email,
         renterName: renter.fullName,
         cc: ccEmails.length > 0 ? ccEmails : undefined,
         replyTo: registeredAgentEmail || "support@beforelisted.com",
-        requestScope: "Upcoming",
+        requestScope,
         matchedAgentFullName:
           matchingAgentUser.fullName || matchingAgentUser.email || "N/A",
         matchedAgentTitle:

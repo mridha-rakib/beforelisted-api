@@ -1,7 +1,9 @@
 // file: src/modules/monthly-report/monthly-report.route.ts
 
-import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
+
+import { authMiddleware } from "@/middlewares/auth.middleware";
+
 import { MonthlyReportController } from "./monthly-report.controller";
 
 const router = Router();
@@ -42,7 +44,7 @@ router.get(
   "/admin/all",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.getAllReports.bind(controller)
+  controller.getAllReports.bind(controller),
 );
 
 /**
@@ -54,7 +56,7 @@ router.post(
   "/admin",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.createReport.bind(controller)
+  controller.createReport.bind(controller),
 );
 
 /**
@@ -66,7 +68,7 @@ router.put(
   "/admin/:id",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.updateReport.bind(controller)
+  controller.updateReport.bind(controller),
 );
 
 /**
@@ -78,7 +80,7 @@ router.delete(
   "/admin/:id",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.deleteReport.bind(controller)
+  controller.deleteReport.bind(controller),
 );
 
 /**
@@ -90,7 +92,7 @@ router.delete(
   "/admin/:id/hard-delete",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.hardDeleteReport.bind(controller)
+  controller.hardDeleteReport.bind(controller),
 );
 
 export default router;

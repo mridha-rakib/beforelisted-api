@@ -1,7 +1,9 @@
 // file: src/modules/faq/faq.route.ts
 
-import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
+
+import { authMiddleware } from "@/middlewares/auth.middleware";
+
 import { FAQController } from "./faq.controller";
 
 const router = Router();
@@ -36,7 +38,7 @@ router.get(
   "/admin/all",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.getAllFAQsForAdmin.bind(controller)
+  controller.getAllFAQsForAdmin.bind(controller),
 );
 
 /**
@@ -48,7 +50,7 @@ router.post(
   "/admin",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.createFAQ.bind(controller)
+  controller.createFAQ.bind(controller),
 );
 
 /**
@@ -60,7 +62,7 @@ router.put(
   "/admin/:id",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.updateFAQ.bind(controller)
+  controller.updateFAQ.bind(controller),
 );
 
 /**
@@ -72,7 +74,7 @@ router.delete(
   "/admin/:id",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.deleteFAQ.bind(controller)
+  controller.deleteFAQ.bind(controller),
 );
 
 /**
@@ -84,7 +86,7 @@ router.delete(
   "/admin/:id/hard-delete",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.hardDeleteFAQ.bind(controller)
+  controller.hardDeleteFAQ.bind(controller),
 );
 
 export default router;

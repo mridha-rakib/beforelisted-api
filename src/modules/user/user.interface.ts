@@ -1,8 +1,9 @@
-import { ACCOUNT_STATUS } from "@/constants";
-import { ROLES } from "@/constants/app.constants";
 import type { Document, Types } from "mongoose";
 
-export interface IUser extends Document {
+import type { ACCOUNT_STATUS } from "@/constants";
+import type { ROLES } from "@/constants/app.constants";
+
+export type IUser = {
   _id: Types.ObjectId;
   email: string;
   password?: string;
@@ -48,15 +49,15 @@ export interface IUser extends Document {
   canRefer?: boolean;
 
   // Instance methods (functions, not data)
-  isReferredByAdmin(): boolean;
-  isReferredByAgent(): boolean;
-  needsPasswordChange(): boolean;
-}
+  isReferredByAdmin: () => boolean;
+  isReferredByAgent: () => boolean;
+  needsPasswordChange: () => boolean;
+} & Document;
 
 /**
  * IAgentProfile - Agent-specific profile data
  */
-export interface IAgentProfile extends Document {
+export type IAgentProfile = {
   userId: Types.ObjectId | string;
   licenseNumber: string;
   brokerageName: string;
@@ -70,12 +71,12 @@ export interface IAgentProfile extends Document {
   profileCompleted: boolean;
   createdAt: Date;
   updatedAt: Date;
-}
+} & Document;
 
 /**
  * User Statistics (denormalized)
  */
-export interface IUserStats {
+export type IUserStats = {
   agentStats?: {
     totalRequests: number;
     grantAccessStatus: "pending" | "granted" | "denied";
@@ -86,12 +87,12 @@ export interface IUserStats {
     totalSavedRequests: number;
     totalRequests: number;
   };
-}
+};
 
 /**
  *Password Reset OTP Document Interface
  */
-export interface IPasswordResetOTP extends Document {
+export type IPasswordResetOTP = {
   userId: string;
   otp: string;
   expiresAt: Date;
@@ -100,14 +101,14 @@ export interface IPasswordResetOTP extends Document {
   isUsed: boolean;
   usedAt?: Date;
   createdAt: Date;
-}
+} & Document;
 
 // 🔑 REFRESH TOKEN BLACKLIST
-export interface IRefreshTokenBlacklist extends Document {
+export type IRefreshTokenBlacklist = {
   userId: Types.ObjectId | string;
   token: string;
   expiresAt: Date;
   reason: "password_change" | "security_incident" | "admin_action";
   createdAt: Date;
   updatedAt?: Date;
-}
+} & Document;

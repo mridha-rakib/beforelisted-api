@@ -5,7 +5,7 @@ import type { Document } from "mongoose";
 /**
  * Email Verification OTP Document
  */
-export interface IEmailVerificationOTP extends Document {
+export type IEmailVerificationOTP = {
   userId: string;
   email: string;
   code: string;
@@ -18,32 +18,32 @@ export interface IEmailVerificationOTP extends Document {
   isUsed: boolean;
   createdAt: Date;
   updatedAt: Date;
-}
+} & Document;
 
 /**
  * Email Verification Service Response Types
  */
-export interface ICreateOTPResponse {
+export type ICreateOTPResponse = {
   otp: string;
   expiresAt: Date;
   expiresInMinutes: number;
-}
+};
 
-export interface IVerifyOTPResponse {
+export type IVerifyOTPResponse = {
   userId: string;
   email: string;
   verified: true;
-}
+};
 
-export interface IResendOTPResponse {
+export type IResendOTPResponse = {
   message: string;
   expiresAt: Date;
   expiresInMinutes: number;
-}
+};
 
-export interface IOTPResendStatus {
+export type IOTPResendStatus = {
   canResend: boolean;
   reason?: string;
   nextResendTime?: Date;
   attemptsRemaining?: number;
-}
+};

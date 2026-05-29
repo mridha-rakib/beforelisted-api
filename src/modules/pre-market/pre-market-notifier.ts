@@ -1,24 +1,27 @@
 // file: src/modules/pre-market/pre-market-notifier.ts
 
-import { env } from "@/env";
+import type { ObjectId } from "mongoose";
+
 import { SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
+import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import { NotificationService } from "@/modules/notification/notification.service";
 import { emailService } from "@/services/email.service";
-import { type ObjectId } from "mongoose";
+
+import type { IGrantAccessRequest } from "../grant-access/grant-access.model";
+import type { IPreMarketNotificationCreateResponse } from "./pre-market-notification.types";
+import type { IPreMarketRequest } from "./pre-market.model";
+
 import { AgentProfileRepository } from "../agent/agent.repository";
-import { IGrantAccessRequest } from "../grant-access/grant-access.model";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
 import { RenterRepository } from "../renter/renter.repository";
 import { UserRepository } from "../user/user.repository";
-import { IPreMarketNotificationCreateResponse } from "./pre-market-notification.types";
-import { IPreMarketRequest } from "./pre-market.model";
 import { PreMarketRepository } from "./pre-market.repository";
 
 const DEFAULT_REFERRAL_AGENT_EMAIL = SYSTEM_DEFAULT_AGENT.email;
 const DEFAULT_REFERRAL_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
 
-interface IPreMarketNotificationPayload {
+type IPreMarketNotificationPayload = {
   preMarketRequestId: string;
   requestId: string;
   title: string;
@@ -30,11 +33,11 @@ interface IPreMarketNotificationPayload {
   renterEmail?: string;
   renterPhone?: string;
   listingUrl: string;
-}
+};
 
 type PreMarketRequestEmailStatus = "sent" | "failed" | "skipped";
 
-interface IPreMarketRequestEmailLog {
+type IPreMarketRequestEmailLog = {
   emailType:
     | "PRE_MARKET_RENTER_CONFIRMATION"
     | "PRE_MARKET_REQUEST_CONFIRMATION_AGENT";
@@ -46,7 +49,7 @@ interface IPreMarketRequestEmailLog {
   messageId?: string;
   error?: string;
   skipReason?: string;
-}
+};
 
 export class PreMarketNotifier {
   private agentRepository = new AgentProfileRepository();
@@ -73,7 +76,7 @@ export class PreMarketNotifier {
       referringAgentBrokerage?: string;
       registrationType?: string;
       registeredAgentUserId?: string | null;
-    }
+    },
   ): Promise<void> {
     try {
       // Build comprehensive description from request details
@@ -83,17 +86,17 @@ export class PreMarketNotifier {
         // Price range
         if (request.priceRange) {
           parts.push(
-            `Price: $${request.priceRange.min} - $${request.priceRange.max}`
+            `Price: $${request.priceRange.min} - $${request.priceRange.max}`,
           );
         }
 
         // Moving dates
         if (request.movingDateRange) {
           const earliest = new Date(
-            request.movingDateRange.earliest
+            request.movingDateRange.earliest,
           ).toLocaleDateString();
           const latest = new Date(
-            request.movingDateRange.latest
+            request.movingDateRange.latest,
           ).toLocaleDateString();
           parts.push(`Move Date: ${earliest} - ${latest}`);
         }
@@ -111,8 +114,8 @@ export class PreMarketNotifier {
         // Locations with neighborhoods
         if (request.locations && request.locations.length > 0) {
           const locParts = request.locations.map(
-            (l) =>
-              `${l.borough}${l.neighborhoods && l.neighborhoods.length > 0 ? ` (${l.neighborhoods.join(", ")})` : ""}`
+            l =>
+              `${l.borough}${l.neighborhoods && l.neighborhoods.length > 0 ? ` (${l.neighborhoods.join(", ")})` : ""}`,
           );
           parts.push(`Location: ${locParts.join(", ")}`);
         }
@@ -133,7 +136,7 @@ export class PreMarketNotifier {
             selectedUnitFeatures.length > 0
               ? selectedUnitFeatures.join(", ")
               : "Not specified"
-          }`
+          }`,
         );
 
         // Building features
@@ -152,7 +155,7 @@ export class PreMarketNotifier {
             selectedBuildingFeatures.length > 0
               ? selectedBuildingFeatures.join(", ")
               : "Not specified"
-          }`
+          }`,
         );
 
         // Pet policy
@@ -168,7 +171,7 @@ export class PreMarketNotifier {
             selectedPetPolicy.length > 0
               ? selectedPetPolicy.join(", ")
               : "Not specified"
-          }`
+          }`,
         );
 
         // Guarantor requirement
@@ -184,7 +187,7 @@ export class PreMarketNotifier {
             selectedGuarantorOptions.length > 0
               ? selectedGuarantorOptions.join(", ")
               : "Not specified"
-          }`
+          }`,
         );
 
         // Preferences
@@ -201,8 +204,8 @@ export class PreMarketNotifier {
         title: preMarketRequest.requestName || "New Pre-Market Listing",
         listingDescription: buildDescription(preMarketRequest),
         location:
-          preMarketRequest.locations?.map((l) => l.borough).join(", ") ||
-          "Multiple Locations",
+          preMarketRequest.locations?.map(l => l.borough).join(", ")
+          || "Multiple Locations",
         serviceType: "Pre-Market Rental Request",
         renterId: renterData.renterId.toString(),
         renterName: renterData.renterName,
@@ -236,15 +239,16 @@ export class PreMarketNotifier {
 
       logger.info(
         { preMarketRequestId: preMarketRequest._id },
-        "✅ All notifications sent"
+        "✅ All notifications sent",
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
           preMarketRequestId: preMarketRequest._id,
         },
-        "Error in notifyNewRequest"
+        "Error in notifyNewRequest",
       );
 
       throw error;
@@ -255,35 +259,35 @@ export class PreMarketNotifier {
     preMarketRequest: IPreMarketRequest,
     changedFields: string[],
     changedFieldNewValues: string[],
-    updatedAt: Date
+    updatedAt: Date,
   ): Promise<void> {
     try {
-      const { recipients, renterName } =
-        await this.getRegisteredAndMatchedAgentsForRequestUpdate(
-          preMarketRequest
+      const { recipients, renterName }
+        = await this.getRegisteredAndMatchedAgentsForRequestUpdate(
+          preMarketRequest,
         );
 
       if (recipients.length === 0) {
         logger.info(
           { preMarketRequestId: preMarketRequest._id },
-          "No registered or matched agents to notify about request update"
+          "No registered or matched agents to notify about request update",
         );
         return;
       }
 
       const formattedUpdatedAt = this.formatEasternTime(updatedAt);
-      const requestId =
-        preMarketRequest.requestId || preMarketRequest._id?.toString() || "";
-      const normalizedFields =
-        changedFields.length > 0 ? changedFields : ["Request details updated"];
-      const normalizedFieldValues =
-        changedFieldNewValues.length > 0
+      const requestId
+        = preMarketRequest.requestId || preMarketRequest._id?.toString() || "";
+      const normalizedFields
+        = changedFields.length > 0 ? changedFields : ["Request details updated"];
+      const normalizedFieldValues
+        = changedFieldNewValues.length > 0
           ? changedFieldNewValues
           : ["Not specified"];
 
       for (const recipient of recipients) {
-        const emailResult =
-          await emailService.sendPreMarketRequestUpdatedNotificationToAgent({
+        const emailResult
+          = await emailService.sendPreMarketRequestUpdatedNotificationToAgent({
             to: recipient.email,
             agentName: recipient.name,
             requestId,
@@ -296,32 +300,34 @@ export class PreMarketNotifier {
         if (emailResult.success) {
           logger.debug(
             { email: recipient.email, requestId },
-            "? Agent update notification sent"
+            "? Agent update notification sent",
           );
-        } else {
-          const errorMessage =
-            emailResult.error instanceof Error
+        }
+        else {
+          const errorMessage
+            = emailResult.error instanceof Error
               ? emailResult.error.message
               : String(emailResult.error);
           logger.warn(
             { email: recipient.email, error: errorMessage },
-            "? Agent update notification failed"
+            "? Agent update notification failed",
           );
         }
       }
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
           preMarketRequestId: preMarketRequest._id,
         },
-        "Failed to notify agents about request update"
+        "Failed to notify agents about request update",
       );
     }
   }
 
   private async notifyAdminAboutNewRequest(
-    payload: IPreMarketNotificationPayload
+    payload: IPreMarketNotificationPayload,
   ): Promise<{
     adminNotified: boolean;
     emailsSent: number;
@@ -335,7 +341,7 @@ export class PreMarketNotifier {
 
       logger.debug(
         { adminEmail, preMarketRequestId: payload.preMarketRequestId },
-        "Sending notification to admin with renter info"
+        "Sending notification to admin with renter info",
       );
 
       const emailResult = await emailService.sendPreMarketNotificationToAdmin({
@@ -356,19 +362,21 @@ export class PreMarketNotifier {
         emailsSent++;
         logger.debug(
           { adminEmail, messageId: emailResult.messageId },
-          "✅ Admin email sent"
+          "✅ Admin email sent",
         );
-      } else {
+      }
+      else {
         const errorMsg = `Admin email failed: ${emailResult.error}`;
         errors.push(errorMsg);
         logger.warn(
           { adminEmail, error: emailResult.error },
-          "❌ Admin email failed"
+          "❌ Admin email failed",
         );
       }
 
       return { adminNotified: emailsSent > 0, emailsSent, errors };
-    } catch (error) {
+    }
+    catch (error) {
       const errorMsg = `Failed to notify admin: ${error instanceof Error ? error.message : String(error)}`;
       errors.push(errorMsg);
       logger.error({ error }, "❌ Failed to notify admin");
@@ -386,7 +394,7 @@ export class PreMarketNotifier {
       referringAgentName?: string;
       referringAgentTitle?: string;
       referringAgentBrokerage?: string;
-    }
+    },
   ): Promise<IPreMarketRequestEmailLog> {
     const emailLogBase = {
       emailType: "PRE_MARKET_RENTER_CONFIRMATION" as const,
@@ -397,8 +405,8 @@ export class PreMarketNotifier {
     };
 
     try {
-      const emailResult =
-        await emailService.sendPreMarketRequestConfirmationToRenter({
+      const emailResult
+        = await emailService.sendPreMarketRequestConfirmationToRenter({
           to: renterData.renterEmail,
           renterName: renterData.renterName,
           taggedAgentEmail:
@@ -414,7 +422,7 @@ export class PreMarketNotifier {
       if (emailResult.success) {
         logger.debug(
           { email: renterData.renterEmail, requestId: payload.requestId },
-          "? Renter confirmation email sent"
+          "? Renter confirmation email sent",
         );
         return {
           ...emailLogBase,
@@ -423,13 +431,13 @@ export class PreMarketNotifier {
         };
       }
 
-      const errorMessage =
-        emailResult.error instanceof Error
+      const errorMessage
+        = emailResult.error instanceof Error
           ? emailResult.error.message
           : String(emailResult.error);
       logger.warn(
         { email: renterData.renterEmail, error: errorMessage },
-        "? Renter confirmation email failed"
+        "? Renter confirmation email failed",
       );
 
       return {
@@ -437,12 +445,13 @@ export class PreMarketNotifier {
         status: "failed",
         error: errorMessage,
       };
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+    }
+    catch (error) {
+      const errorMessage
+        = error instanceof Error ? error.message : String(error);
       logger.error(
         { error: errorMessage, email: renterData.renterEmail },
-        "? Failed to send renter confirmation email"
+        "? Failed to send renter confirmation email",
       );
       return {
         ...emailLogBase,
@@ -462,11 +471,11 @@ export class PreMarketNotifier {
       referringAgentName?: string;
     },
   ): Promise<IPreMarketRequestEmailLog> {
-    const requestId =
-      preMarketRequest.requestId || preMarketRequest._id?.toString() || "";
+    const requestId
+      = preMarketRequest.requestId || preMarketRequest._id?.toString() || "";
     const agentEmail = renterData.referringAgentEmail?.trim() || null;
-    const agentName =
-      renterData.referringAgentName || DEFAULT_REFERRAL_AGENT_NAME;
+    const agentName
+      = renterData.referringAgentName || DEFAULT_REFERRAL_AGENT_NAME;
     const emailLogBase = {
       emailType: "PRE_MARKET_REQUEST_CONFIRMATION_AGENT" as const,
       recipientRole: "Registered Agent" as const,
@@ -488,21 +497,6 @@ export class PreMarketNotifier {
         };
       }
 
-      const shouldNotify = await this.isAgentEmailSubscriptionEnabledByEmail(
-        agentEmail
-      );
-      if (!shouldNotify) {
-        logger.info(
-          { email: agentEmail },
-          "Agent email subscription disabled; skipping referral notification"
-        );
-        return {
-          ...emailLogBase,
-          triggered: false,
-          status: "skipped",
-          skipReason: "Agent email subscription disabled",
-        };
-      }
       const minPrice = this.formatCurrency(preMarketRequest.priceRange?.min);
       const maxPrice = this.formatCurrency(preMarketRequest.priceRange?.max);
       const earliestDate = this.formatDate(
@@ -522,11 +516,11 @@ export class PreMarketNotifier {
         "Not specified",
       );
       const submittedAt = this.formatEasternTime(
-        new Date(preMarketRequest.createdAt ?? Date.now())
+        new Date(preMarketRequest.createdAt ?? Date.now()),
       );
 
-      const emailResult =
-        await emailService.sendRenterRequestConfirmationToAgent({
+      const emailResult
+        = await emailService.sendRenterRequestConfirmationToAgent({
           to: agentEmail,
           agentName,
           renterName: renterData.renterName,
@@ -549,7 +543,7 @@ export class PreMarketNotifier {
       if (emailResult.success) {
         logger.debug(
           { email: agentEmail, requestId },
-          "? Referring agent request confirmation sent"
+          "? Referring agent request confirmation sent",
         );
         return {
           ...emailLogBase,
@@ -559,13 +553,13 @@ export class PreMarketNotifier {
         };
       }
 
-      const errorMessage =
-        emailResult.error instanceof Error
+      const errorMessage
+        = emailResult.error instanceof Error
           ? emailResult.error.message
           : String(emailResult.error);
       logger.warn(
         { email: agentEmail, error: errorMessage },
-        "? Referring agent request confirmation failed"
+        "? Referring agent request confirmation failed",
       );
       return {
         ...emailLogBase,
@@ -573,12 +567,13 @@ export class PreMarketNotifier {
         status: "failed",
         error: errorMessage,
       };
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+    }
+    catch (error) {
+      const errorMessage
+        = error instanceof Error ? error.message : String(error);
       logger.error(
         { error: errorMessage, preMarketRequestId: preMarketRequest._id },
-        "? Failed to notify referring agent about new request"
+        "? Failed to notify referring agent about new request",
       );
       return {
         ...emailLogBase,
@@ -598,16 +593,16 @@ export class PreMarketNotifier {
     emailNotifications: IPreMarketRequestEmailLog[],
   ): void {
     const triggeredEmails = emailNotifications.filter(
-      (emailNotification) => emailNotification.triggered,
+      emailNotification => emailNotification.triggered,
     );
     const sentEmails = emailNotifications.filter(
-      (emailNotification) => emailNotification.status === "sent",
+      emailNotification => emailNotification.status === "sent",
     );
     const failedEmails = emailNotifications.filter(
-      (emailNotification) => emailNotification.status === "failed",
+      emailNotification => emailNotification.status === "failed",
     );
     const skippedEmails = emailNotifications.filter(
-      (emailNotification) => emailNotification.status === "skipped",
+      emailNotification => emailNotification.status === "skipped",
     );
 
     logger.info(
@@ -620,7 +615,7 @@ export class PreMarketNotifier {
         sentEmailCount: sentEmails.length,
         failedEmailCount: failedEmails.length,
         skippedEmailCount: skippedEmails.length,
-        recipients: sentEmails.map((emailNotification) => ({
+        recipients: sentEmails.map(emailNotification => ({
           emailType: emailNotification.emailType,
           recipientRole: emailNotification.recipientRole,
           recipientEmail: emailNotification.recipientEmail,
@@ -634,7 +629,7 @@ export class PreMarketNotifier {
   }
 
   private async getRegisteredAndMatchedAgentsForRequestUpdate(
-    preMarketRequest: IPreMarketRequest
+    preMarketRequest: IPreMarketRequest,
   ): Promise<{ recipients: Array<{ name: string; email: string }>; renterName: string }> {
     const recipients = new Map<string, { name: string; email: string }>();
     let renterName = "Renter";
@@ -642,33 +637,33 @@ export class PreMarketNotifier {
     const renterUserId = preMarketRequest.renterId?.toString();
     if (renterUserId) {
       // NOTE: preMarketRequest.renterId stores renter userId, not renter document _id.
-      const renterProfile =
-        await this.renterRepository.findRenterWithReferrer(renterUserId);
+      const renterProfile
+        = await this.renterRepository.findRenterWithReferrer(renterUserId);
 
       if (renterProfile?.fullName) {
         renterName = renterProfile.fullName;
       }
 
       if (
-        renterProfile?.registrationType === "agent_referral" &&
-        renterProfile.referredByAgentId
+        renterProfile?.registrationType === "agent_referral"
+        && renterProfile.referredByAgentId
       ) {
         const referredAgent = renterProfile.referredByAgentId as any;
-        const registeredAgentId =
-          typeof referredAgent === "object" && referredAgent?._id
+        const registeredAgentId
+          = typeof referredAgent === "object" && referredAgent?._id
             ? referredAgent._id.toString()
             : typeof referredAgent === "string"
               ? referredAgent
               : undefined;
 
-        let registeredAgentName =
-          typeof referredAgent === "object" ? referredAgent.fullName : undefined;
-        let registeredAgentEmail =
-          typeof referredAgent === "object" ? referredAgent.email : undefined;
+        let registeredAgentName
+          = typeof referredAgent === "object" ? referredAgent.fullName : undefined;
+        let registeredAgentEmail
+          = typeof referredAgent === "object" ? referredAgent.email : undefined;
 
         if (registeredAgentId && (!registeredAgentName || !registeredAgentEmail)) {
           const registeredAgentUser = await this.userRepository.findById(
-            registeredAgentId
+            registeredAgentId,
           );
           if (registeredAgentUser?.fullName) {
             registeredAgentName = registeredAgentUser.fullName;
@@ -693,23 +688,23 @@ export class PreMarketNotifier {
       return { recipients: Array.from(recipients.values()), renterName };
     }
 
-    const matchedAccessRecords =
-      await this.grantAccessRepository.findByPreMarketRequestId(
-        preMarketRequestId
+    const matchedAccessRecords
+      = await this.grantAccessRepository.findByPreMarketRequestId(
+        preMarketRequestId,
       );
 
     const matchedAgentIds = Array.from(
       new Set(
         matchedAccessRecords
           .filter(
-            (record) => record.status === "free" || record.status === "paid"
+            record => record.status === "free" || record.status === "paid",
           )
-          .map((record) => record.agentId.toString())
-      )
+          .map(record => record.agentId.toString()),
+      ),
     );
 
     const matchedAgentUsers = await Promise.all(
-      matchedAgentIds.map((agentId) => this.userRepository.findById(agentId))
+      matchedAgentIds.map(agentId => this.userRepository.findById(agentId)),
     );
 
     for (const agentUser of matchedAgentUsers) {
@@ -755,9 +750,9 @@ export class PreMarketNotifier {
     const boroughs = Array.from(
       new Set(
         locations
-          .map((location) => location.borough?.trim())
-          .filter((borough): borough is string => Boolean(borough))
-      )
+          .map(location => location.borough?.trim())
+          .filter((borough): borough is string => Boolean(borough)),
+      ),
     );
 
     return boroughs.length > 0 ? boroughs.join(", ") : "Not specified";
@@ -798,32 +793,11 @@ export class PreMarketNotifier {
         name: adminName,
         email: adminEmail,
       };
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "❌ Error fetching admin information");
       throw error;
     }
-  }
-
-  private async isAgentEmailSubscriptionEnabledByEmail(
-    agentEmail: string
-  ): Promise<boolean> {
-    if (!agentEmail) {
-      return false;
-    }
-
-    const agentUser = await this.userRepository.findByEmail(agentEmail);
-    if (!agentUser) {
-      return true;
-    }
-
-    const agentProfile = await this.agentRepository.findByUserId(
-      agentUser._id.toString()
-    );
-    if (!agentProfile) {
-      return true;
-    }
-
-    return agentProfile.emailSubscriptionEnabled !== false;
   }
 
   private formatCurrency(value?: number): string {
@@ -923,55 +897,55 @@ export class PreMarketNotifier {
   }
 
   async notifyAdminOfGrantAccessRequest(
-    grantAccess: IGrantAccessRequest
+    grantAccess: IGrantAccessRequest,
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const adminInfo = await this.getAdmin();
-      const adminEmail =
-        adminInfo?.email || env.ADMIN_EMAIL || "admin@beforelisted.com";
+      const adminEmail
+        = adminInfo?.email || env.ADMIN_EMAIL || "admin@beforelisted.com";
       const adminName = adminInfo?.name || "Admin";
       const agentUser = await this.userRepository.findById(
-        grantAccess.agentId.toString()
+        grantAccess.agentId.toString(),
       );
       const agentProfile = await this.agentRepository.findByUserId(
-        grantAccess.agentId.toString()
+        grantAccess.agentId.toString(),
       );
 
       if (!agentUser) {
         logger.warn(
           { agentId: grantAccess.agentId },
-          "Agent not found for admin notification"
+          "Agent not found for admin notification",
         );
         return { success: false, error: "Agent not found" };
       }
 
       const preMarketRequest = await this.preMarketRepository.findById(
-        grantAccess.preMarketRequestId.toString()
+        grantAccess.preMarketRequestId.toString(),
       );
 
       if (!preMarketRequest) {
         logger.warn(
           { preMarketRequestId: grantAccess.preMarketRequestId },
-          "Pre-market request not found for admin notification"
+          "Pre-market request not found for admin notification",
         );
         return { success: false, error: "Pre-market request not found" };
       }
 
-      const propertyTitle =
-        preMarketRequest.requestName || "Pre-Market Listing";
-      const location =
-        preMarketRequest.locations
-          ?.map((l) =>
+      const propertyTitle
+        = preMarketRequest.requestName || "Pre-Market Listing";
+      const location
+        = preMarketRequest.locations
+          ?.map(l =>
             l?.neighborhoods && l.neighborhoods.length > 0
               ? `${l.borough} (${l.neighborhoods.join(", ")})`
-              : l.borough
+              : l.borough,
           )
           .filter(Boolean)
           .join(", ") || "Multiple Locations";
 
       logger.info(
         { grantAccessId: grantAccess._id, adminEmail },
-        "📧 Sending grant access request notification to admin"
+        "📧 Sending grant access request notification to admin",
       );
 
       const emailResult = await emailService.sendGrantAccessRequestToAdmin({
@@ -981,12 +955,12 @@ export class PreMarketNotifier {
         agentEmail: agentUser.email,
         agentCompany: agentProfile?.brokerageName || null,
         preMarketRequestId:
-          preMarketRequest.requestId ||
-          grantAccess.preMarketRequestId.toString(),
+          preMarketRequest.requestId
+          || grantAccess.preMarketRequestId.toString(),
         propertyTitle,
         location,
         requestedAt: this.formatEasternTime(
-          new Date(grantAccess.createdAt || Date.now())
+          new Date(grantAccess.createdAt || Date.now()),
         ),
         adminDashboardLink: `${env.CLIENT_URL}/admin/pre-market/${preMarketRequest._id}?grantAccessId=${grantAccess._id}`,
       });
@@ -994,21 +968,23 @@ export class PreMarketNotifier {
       if (emailResult.success) {
         logger.info(
           { messageId: emailResult.messageId },
-          "✅ Grant access request notification sent to admin"
+          "✅ Grant access request notification sent to admin",
         );
         return { success: true };
-      } else {
+      }
+      else {
         logger.warn(
           { error: emailResult.error },
-          "Failed to send grant access request notification"
+          "Failed to send grant access request notification",
         );
-        const errorMessage =
-          emailResult.error instanceof Error
+        const errorMessage
+          = emailResult.error instanceof Error
             ? emailResult.error.message
             : emailResult.error;
         return { success: false, error: errorMessage };
       }
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, " Error notifying admin of grant access request");
       return {
         success: false,
@@ -1019,48 +995,37 @@ export class PreMarketNotifier {
 
   async notifyAgentOfApproval(
     grantAccess: IGrantAccessRequest,
-    isFree: boolean
+    isFree: boolean,
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const agentUser = await this.userRepository.findById(
-        grantAccess.agentId.toString()
-      );
-      const agentProfile = await this.agentRepository.findByUserId(
-        grantAccess.agentId.toString()
+        grantAccess.agentId.toString(),
       );
       if (!agentUser) {
         logger.warn(
           { agentId: grantAccess.agentId },
-          "Agent not found for approval notification"
+          "Agent not found for approval notification",
         );
         return { success: false, error: "Agent not found" };
       }
 
-      if (agentProfile?.emailSubscriptionEnabled === false) {
-        logger.info(
-          { agentId: grantAccess.agentId, email: agentUser.email },
-          "Agent email subscription disabled; skipping approval notification"
-        );
-        return { success: true };
-      }
-
       const preMarketRequest = await this.preMarketRepository.findById(
-        grantAccess.preMarketRequestId.toString()
+        grantAccess.preMarketRequestId.toString(),
       );
 
       if (!preMarketRequest) {
         logger.warn(
           { preMarketRequestId: grantAccess.preMarketRequestId },
-          "Pre-market request not found for approval notification"
+          "Pre-market request not found for approval notification",
         );
         return { success: false, error: "Pre-market request not found" };
       }
 
-      const propertyTitle =
-        preMarketRequest.requestName || "Pre-Market Listing";
-      const location =
-        preMarketRequest.locations
-          ?.map((l) => l.borough)
+      const propertyTitle
+        = preMarketRequest.requestName || "Pre-Market Listing";
+      const location
+        = preMarketRequest.locations
+          ?.map(l => l.borough)
           .filter(Boolean)
           .join(", ") || "Multiple Locations";
       const accessLink = `${env.CLIENT_URL}/listings/${preMarketRequest._id}`;
@@ -1068,7 +1033,7 @@ export class PreMarketNotifier {
 
       logger.info(
         { grantAccessId: grantAccess._id, agentEmail: agentUser.email },
-        "📧 Sending approval notification to agent"
+        "📧 Sending approval notification to agent",
       );
 
       const emailResult = await emailService.sendGrantAccessApprovalToAgent({
@@ -1084,21 +1049,23 @@ export class PreMarketNotifier {
       if (emailResult.success) {
         logger.info(
           { messageId: emailResult.messageId },
-          "✅ Approval notification sent to agent"
+          "✅ Approval notification sent to agent",
         );
         return { success: true };
-      } else {
-        const errorMessage =
-          emailResult.error instanceof Error
+      }
+      else {
+        const errorMessage
+          = emailResult.error instanceof Error
             ? emailResult.error.message
             : emailResult.error;
         logger.warn(
           { error: emailResult.error },
-          "❌ Failed to send approval notification"
+          "❌ Failed to send approval notification",
         );
         return { success: false, error: errorMessage };
       }
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "❌ Error notifying agent of approval");
       return {
         success: false,
@@ -1108,50 +1075,39 @@ export class PreMarketNotifier {
   }
 
   async notifyAgentOfRejection(
-    grantAccess: IGrantAccessRequest
+    grantAccess: IGrantAccessRequest,
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const agentProfile = await this.agentRepository.findByUserId(
-        grantAccess.agentId.toString()
-      );
       const agentUser = await this.userRepository.findById(
-        grantAccess.agentId.toString()
+        grantAccess.agentId.toString(),
       );
 
-      if (!agentProfile || !agentUser) {
+      if (!agentUser) {
         logger.warn(
           { agentId: grantAccess.agentId },
-          "Agent not found for rejection notification"
+          "Agent not found for rejection notification",
         );
         return { success: false, error: "Agent not found" };
       }
 
-      if (agentProfile.emailSubscriptionEnabled === false) {
-        logger.info(
-          { agentId: grantAccess.agentId, email: agentUser.email },
-          "Agent email subscription disabled; skipping rejection notification"
-        );
-        return { success: true };
-      }
-
       const preMarketRequest = await this.preMarketRepository.findById(
-        grantAccess.preMarketRequestId.toString()
+        grantAccess.preMarketRequestId.toString(),
       );
 
       if (!preMarketRequest) {
         logger.warn(
           { preMarketRequestId: grantAccess.preMarketRequestId },
-          "Pre-market request not found for rejection notification"
+          "Pre-market request not found for rejection notification",
         );
         return { success: false, error: "Pre-market request not found" };
       }
 
-      const propertyTitle =
-        preMarketRequest.requestName || "Pre-Market Listing";
+      const propertyTitle
+        = preMarketRequest.requestName || "Pre-Market Listing";
 
       logger.info(
         { grantAccessId: grantAccess._id, agentEmail: agentUser.email },
-        "📧 Sending rejection notification to agent"
+        "📧 Sending rejection notification to agent",
       );
 
       const emailResult = await emailService.sendGrantAccessRejectionToAgent({
@@ -1166,21 +1122,23 @@ export class PreMarketNotifier {
       if (emailResult.success) {
         logger.info(
           { messageId: emailResult.messageId },
-          "✅ Rejection notification sent to agent"
+          "✅ Rejection notification sent to agent",
         );
         return { success: true };
-      } else {
-        const errorMessage =
-          emailResult.error instanceof Error
+      }
+      else {
+        const errorMessage
+          = emailResult.error instanceof Error
             ? emailResult.error.message
             : emailResult.error;
         logger.warn(
           { error: emailResult.error },
-          "❌ Failed to send rejection notification"
+          "❌ Failed to send rejection notification",
         );
         return { success: false, error: errorMessage };
       }
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "❌ Error notifying agent of rejection");
       return {
         success: false,
@@ -1190,46 +1148,35 @@ export class PreMarketNotifier {
   }
 
   async sendPaymentLinkToAgent(
-    grantAccess: IGrantAccessRequest
+    grantAccess: IGrantAccessRequest,
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const agentProfile = await this.agentRepository.findByUserId(
-        grantAccess.agentId.toString()
-      );
       const agentUser = await this.userRepository.findById(
-        grantAccess.agentId.toString()
+        grantAccess.agentId.toString(),
       );
 
-      if (!agentProfile || !agentUser) {
+      if (!agentUser) {
         logger.warn(
           { agentId: grantAccess.agentId },
-          "Agent not found for payment notification"
+          "Agent not found for payment notification",
         );
         return { success: false, error: "Agent not found" };
       }
 
-      if (agentProfile.emailSubscriptionEnabled === false) {
-        logger.info(
-          { agentId: grantAccess.agentId, email: agentUser.email },
-          "Agent email subscription disabled; skipping payment link"
-        );
-        return { success: true };
-      }
-
       const preMarketRequest = await this.preMarketRepository.findById(
-        grantAccess.preMarketRequestId.toString()
+        grantAccess.preMarketRequestId.toString(),
       );
 
       if (!preMarketRequest) {
         logger.warn(
           { preMarketRequestId: grantAccess.preMarketRequestId },
-          "Pre-market request not found for payment notification"
+          "Pre-market request not found for payment notification",
         );
         return { success: false, error: "Pre-market request not found" };
       }
 
-      const propertyTitle =
-        preMarketRequest.requestName || "Pre-Market Listing";
+      const propertyTitle
+        = preMarketRequest.requestName || "Pre-Market Listing";
       const chargeAmount = grantAccess.payment?.amount || 0;
 
       logger.info(
@@ -1238,7 +1185,7 @@ export class PreMarketNotifier {
           agentEmail: agentUser.email,
           chargeAmount,
         },
-        "📧 Sending payment link to agent"
+        "📧 Sending payment link to agent",
       );
 
       const emailResult = await emailService.sendPaymentLinkToAgent({
@@ -1248,28 +1195,30 @@ export class PreMarketNotifier {
         chargeAmount,
         paymentLink: `${process.env.FRONTEND_URL || "https://app.beforelisted.com"}/payment/${grantAccess._id}`,
         paymentDeadline: new Date(
-          Date.now() + 7 * 24 * 60 * 60 * 1000
+          Date.now() + 7 * 24 * 60 * 60 * 1000,
         ).toLocaleString(), // 7 days
       });
 
       if (emailResult.success) {
         logger.info(
           { messageId: emailResult.messageId },
-          "✅ Payment link sent to agent"
+          "✅ Payment link sent to agent",
         );
         return { success: true };
-      } else {
-        const errorMessage =
-          emailResult.error instanceof Error
+      }
+      else {
+        const errorMessage
+          = emailResult.error instanceof Error
             ? emailResult.error.message
             : emailResult.error;
         logger.warn(
           { error: emailResult.error },
-          "❌ Failed to send payment link"
+          "❌ Failed to send payment link",
         );
         return { success: false, error: errorMessage };
       }
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "❌ Error sending payment link to agent");
       return {
         success: false,
@@ -1287,28 +1236,28 @@ export class PreMarketNotifier {
       renterPhone?: string;
       referringAgentEmail?: string;
       referringAgentName?: string;
-    }
+    },
   ): Promise<IPreMarketNotificationCreateResponse> {
     try {
       logger.info(
         { preMarketRequestId: preMarketRequest._id },
-        "Creating in-app notifications for new pre-market listing"
+        "Creating in-app notifications for new pre-market listing",
       );
 
       const referralAgentIdRaw = preMarketRequest.referralAgentId;
-      const referralAgentId =
-        typeof referralAgentIdRaw === "string"
+      const referralAgentId
+        = typeof referralAgentIdRaw === "string"
           ? referralAgentIdRaw
           : referralAgentIdRaw?.toString?.() || null;
       const agentIds = referralAgentId ? [referralAgentId] : [];
 
-      const adminId =
-        await this.preMarketRepository.getAdminIdForNotification();
+      const adminId
+        = await this.preMarketRepository.getAdminIdForNotification();
 
       if (!adminId) {
         logger.warn(
           { adminEmail: env.ADMIN_EMAIL },
-          "No admin found for notification"
+          "No admin found for notification",
         );
       }
 
@@ -1318,7 +1267,7 @@ export class PreMarketNotifier {
       // NOTIFY ONLY THE REGISTERED/REFERRAL AGENT
       if (agentIds.length > 0) {
         try {
-          const agentNotificationPromises = agentIds.map((agentId) =>
+          const agentNotificationPromises = agentIds.map(agentId =>
             this.notificationService.createNotification({
               recipientId: agentId,
               recipientRole: "Agent",
@@ -1335,7 +1284,7 @@ export class PreMarketNotifier {
                 listingTitle: preMarketRequest.requestName,
                 location: preMarketRequest.locations,
               },
-            })
+            }),
           );
 
           await Promise.all(agentNotificationPromises);
@@ -1343,21 +1292,23 @@ export class PreMarketNotifier {
 
           logger.info(
             { agentCount: agentNotificationsCreated },
-            "✅ Agent notifications created"
+            "✅ Agent notifications created",
           );
-        } catch (error) {
+        }
+        catch (error) {
           logger.error(
             {
               error: error instanceof Error ? error.message : String(error),
               preMarketRequestId: preMarketRequest._id,
             },
-            "Failed to create agent notifications"
+            "Failed to create agent notifications",
           );
         }
-      } else {
+      }
+      else {
         logger.info(
           { preMarketRequestId: preMarketRequest._id },
-          "No registered agent found for in-app notification"
+          "No registered agent found for in-app notification",
         );
       }
 
@@ -1390,14 +1341,15 @@ export class PreMarketNotifier {
           adminNotificationCreated = true;
 
           logger.info({ adminId }, "✅ Admin notification created");
-        } catch (error) {
+        }
+        catch (error) {
           logger.error(
             {
               error: error instanceof Error ? error.message : String(error),
               preMarketRequestId: preMarketRequest._id,
               adminId,
             },
-            "Failed to create admin notification"
+            "Failed to create admin notification",
           );
         }
       }
@@ -1407,16 +1359,17 @@ export class PreMarketNotifier {
         adminNotificationCreated,
         success: agentNotificationsCreated > 0 || adminNotificationCreated,
         message:
-          `Created ${agentNotificationsCreated} agent notifications` +
-          (adminNotificationCreated ? " and 1 admin notification" : ""),
+          `Created ${agentNotificationsCreated} agent notifications${
+            adminNotificationCreated ? " and 1 admin notification" : ""}`,
       };
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
           preMarketRequestId: preMarketRequest._id,
         },
-        "❌ Error creating in-app notifications"
+        "❌ Error creating in-app notifications",
       );
 
       return {

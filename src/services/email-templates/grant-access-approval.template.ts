@@ -1,6 +1,6 @@
 // file: src/services/email-templates/grant-access-approval.template.ts
 
-import { BaseEmailTemplate } from "./base-email-template";
+import { BaseEmailTemplate } from "./base-email-template.js";
 
 /**
  * Email template for grant access approval (Agent notification)
@@ -21,7 +21,7 @@ export class GrantAccessApprovalTemplate extends BaseEmailTemplate {
     chargeAmount: number | null,
     accessLink: string,
     logoUrl: string | undefined,
-    brandColor: string = "#1890FF"
+    brandColor: string = "#1890FF",
   ) {
     super(logoUrl, brandColor);
     this.agentName = agentName;
@@ -39,27 +39,27 @@ export class GrantAccessApprovalTemplate extends BaseEmailTemplate {
   render(): string {
     this.logRender("GrantAccessApproval");
 
-    const approvalTitle =
-      this.approvalType === "free"
+    const approvalTitle
+      = this.approvalType === "free"
         ? "🎉 Your Access Request Approved - Free!"
         : "✅ Payment Received - Access Granted!";
 
-    const approvalMessage =
-      this.approvalType === "free"
+    const approvalMessage
+      = this.approvalType === "free"
         ? "Your access request has been approved by our admin team at no charge. You now have full access to renter contact information for this property."
         : `Your payment of $${this.chargeAmount?.toFixed(2)} has been received. Thank you! You now have full access to renter contact information.`;
 
     const header = this.generateHeader(approvalTitle);
 
-    const successBanner =
-      this.approvalType === "free"
+    const successBanner
+      = this.approvalType === "free"
         ? this.generateAlert(
             "✅ Your access has been approved. No payment required!",
-            "success"
+            "success",
           )
         : this.generateAlert(
             "✅ Payment confirmed. Access granted immediately!",
-            "success"
+            "success",
           );
 
     const introduction = `
@@ -91,7 +91,7 @@ export class GrantAccessApprovalTemplate extends BaseEmailTemplate {
 
     // const cta = this.generateButton("View Property Details", this.accessLink);
 
-    const note = `
+    const _note = `
       <div class="section">
         <p style="font-size: 13px; color: #6B7280; margin: 0;">
           This access is permanent for this property. You can reference this information at any time.

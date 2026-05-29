@@ -1,13 +1,14 @@
 // file: src/modules/pre-market/pre-market.schema.ts
 
+import { z } from "zod";
+
 import {
-  PREMARKET_CONFIG,
   bathroomSchema,
   bedroomSchema,
   movingDateRangeSchema,
+  PREMARKET_CONFIG,
   priceRangeSchema,
 } from "@/config/pre-market.config";
-import { z } from "zod";
 
 export const createPreMarketRequestSchema = z.object({
   body: z
@@ -24,10 +25,10 @@ export const createPreMarketRequestSchema = z.object({
                   .string()
                   .min(1, "Neighborhood cannot be empty")
                   .max(100)
-                  .trim()
+                  .trim(),
               )
               .min(1, "At least one neighborhood required"),
-          })
+          }),
         )
         .min(1, "At least one location required"),
       bedrooms: z.array(bedroomSchema).optional(),
@@ -69,13 +70,13 @@ export const createPreMarketRequestSchema = z.object({
       scope: z.enum(["Upcoming", "All Market"]).default("Upcoming"),
     })
     .refine(
-      (data) => data.movingDateRange.earliest < data.movingDateRange.latest,
+      data => data.movingDateRange.earliest < data.movingDateRange.latest,
       {
         message: "Earliest date must be before latest date",
         path: ["movingDateRange"],
-      }
+      },
     )
-    .refine((data) => data.priceRange.min <= data.priceRange.max, {
+    .refine(data => data.priceRange.min <= data.priceRange.max, {
       message: "Minimum price must be less than maximum price",
       path: ["priceRange"],
     }),
@@ -96,10 +97,10 @@ export const updatePreMarketRequestSchema = z.object({
                   .string()
                   .min(1, "Neighborhood cannot be empty")
                   .max(100)
-                  .trim()
+                  .trim(),
               )
               .min(1, "At least one neighborhood required"),
-          })
+          }),
         )
         .optional(),
       bedrooms: z.array(bedroomSchema).optional(),
@@ -133,23 +134,25 @@ export const updatePreMarketRequestSchema = z.object({
     })
     .refine(
       (data) => {
-        if (!data.movingDateRange) return true;
+        if (!data.movingDateRange)
+          return true;
         return data.movingDateRange.earliest < data.movingDateRange.latest;
       },
       {
         message: "Earliest date must be before latest date",
         path: ["movingDateRange"],
-      }
+      },
     )
     .refine(
       (data) => {
-        if (!data.priceRange) return true;
+        if (!data.priceRange)
+          return true;
         return data.priceRange.min <= data.priceRange.max;
       },
       {
         message: "Minimum price must be less than maximum price",
         path: ["priceRange"],
-      }
+      },
     ),
 });
 
@@ -214,9 +217,20 @@ export const preMarketListSchema = z.object({
       .default(PREMARKET_CONFIG.DEFAULT_LIMIT),
     sort: z.string().default("-createdAt"),
     locations: z.string().optional(),
+    borough: z.string().optional(),
     bedroomType: z.string().optional(),
+    bedrooms: z.string().optional(),
+    bathrooms: z.string().optional(),
     minPrice: z.coerce.number().optional(),
     maxPrice: z.coerce.number().optional(),
+    rent: z.coerce.number().optional(),
+    movingDateEarliest: z.string().optional(),
+    movingDateLatest: z.string().optional(),
+    unitFeatures: z.string().optional(),
+    buildingFeatures: z.string().optional(),
+    petPolicy: z.string().optional(),
+    guarantorRequired: z.string().optional(),
+    availableFeatures: z.string().optional(),
   }),
 });
 

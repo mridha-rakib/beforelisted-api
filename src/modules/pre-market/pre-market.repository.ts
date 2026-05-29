@@ -1,16 +1,23 @@
 // file: src/modules/pre-market/pre-market.repository.ts
 
+import type { PopulateOptions, ProjectionType, SortOrder } from "mongoose";
+
+import { Types } from "mongoose";
+
+import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
+
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
-import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import { PaginationHelper } from "@/utils/pagination-helper";
-import { Types, type PopulateOptions, type ProjectionType, type SortOrder } from "mongoose";
+
+import type { IPreMarketRequest } from "./pre-market.model";
+
 import { AgentProfile } from "../agent/agent.model";
 import { BaseRepository } from "../base/base.repository";
 import { GrantAccessRequestModel } from "../grant-access/grant-access.model";
 import {
+
   PreMarketRequestModel,
-  type IPreMarketRequest,
 } from "./pre-market.model";
 
 const MATCHED_SCOPE_GRANT_ACCESS_STATUSES = [
@@ -77,12 +84,40 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       },
     ]);
 
-    return new Set(records.map((record) => record._id.toString()));
+    return new Set(records.map(record => record._id.toString()));
   }
 
   async shouldDisplayMatchedScopeForRequest(
     requestId: string | Types.ObjectId,
+    options: { excludeGrantAccessId?: string | Types.ObjectId } = {},
   ): Promise<boolean> {
+    if (options.excludeGrantAccessId) {
+      const normalizedRequestId = requestId instanceof Types.ObjectId
+        ? requestId
+        : Types.ObjectId.isValid(requestId)
+          ? new Types.ObjectId(requestId)
+          : null;
+
+      if (!normalizedRequestId) {
+        return false;
+      }
+
+      const filter: Record<string, unknown> = {
+        preMarketRequestId: normalizedRequestId,
+        status: { $in: [...MATCHED_SCOPE_GRANT_ACCESS_STATUSES] },
+      };
+
+      const excludeGrantAccessId = options.excludeGrantAccessId;
+      if (excludeGrantAccessId instanceof Types.ObjectId) {
+        filter._id = { $ne: excludeGrantAccessId };
+      }
+      else if (Types.ObjectId.isValid(excludeGrantAccessId)) {
+        filter._id = { $ne: new Types.ObjectId(excludeGrantAccessId) };
+      }
+
+      return Boolean(await GrantAccessRequestModel.exists(filter));
+    }
+
     const matchedRequestIds = await this.getMatchedScopeRequestIdSet([requestId]);
 
     return matchedRequestIds.has(requestId.toString());
@@ -97,14 +132,14 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
     const matchedRequestIds = await this.getMatchedScopeRequestIdSet(
       requests
-        .map((request) => request._id)
+        .map(request => request._id)
         .filter(
           (requestId): requestId is string | Types.ObjectId =>
             typeof requestId === "string" || requestId instanceof Types.ObjectId,
         ),
     );
 
-    return requests.map((request) => ({
+    return requests.map(request => ({
       ...request,
       scope: this.resolveAgentVisibleScope(
         request.scope,
@@ -152,13 +187,13 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
   async findAllWithPagination(
     query: PaginationQuery,
-    filters: Record<string, any> = {}
+    filters: Record<string, any> = {},
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
 
     const result = await (this.model as any).paginate(
       { isDeleted: false, ...filters },
-      { ...paginateOptions, useEstimatedCount: false }
+      { ...paginateOptions, useEstimatedCount: false },
     );
 
     return PaginationHelper.formatResponse(result);
@@ -173,7 +208,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
     const result = await (this.model as any).paginate(
       {
-        isDeleted: false,
+        "isDeleted": false,
         "agentArchives.agentId": agentObjectId,
       },
       { ...paginateOptions, useEstimatedCount: false },
@@ -185,7 +220,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   async findAllWithPaginationExcludingIds(
     query: PaginationQuery,
     excludedIds: string[],
-    filters: Record<string, any> = {}
+    filters: Record<string, any> = {},
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
     const filter: Record<string, any> = { isDeleted: false, ...filters };
@@ -209,7 +244,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   }
 
   async findByRequestIdIncludingDeleted(
-    requestId: string
+    requestId: string,
   ): Promise<IPreMarketRequest | null> {
     return this.model
       .findOne({ requestId })
@@ -219,7 +254,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
   async findByRenterId(
     renterId: string,
-    query: PaginationQuery
+    query: PaginationQuery,
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
     const page = paginateOptions.page ?? 1;
@@ -257,7 +292,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
   async findAllByRenterId(
     renterId: string,
-    includeDeleted: boolean = false
+    includeDeleted: boolean = false,
   ): Promise<IPreMarketRequest[]> {
     let queryBuilder = this.model.find({ renterId });
 
@@ -270,7 +305,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
   async findByLocations(
     locations: string[],
-    query: PaginationQuery
+    query: PaginationQuery,
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
 
@@ -279,7 +314,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
         locations: { $in: locations },
         status: "active",
       },
-      paginateOptions
+      paginateOptions,
     );
 
     return PaginationHelper.formatResponse<IPreMarketRequest>(result);
@@ -288,7 +323,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   async findByPriceRange(
     minPrice: number,
     maxPrice: number,
-    query: PaginationQuery
+    query: PaginationQuery,
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
 
@@ -296,9 +331,9 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       {
         "priceRange.min": { $gte: minPrice },
         "priceRange.max": { $lte: maxPrice },
-        status: "active",
+        "status": "active",
       },
-      paginateOptions
+      paginateOptions,
     );
 
     return PaginationHelper.formatResponse<IPreMarketRequest>(result);
@@ -307,12 +342,12 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   async findByFilters(
     filters: Record<string, any>,
     query: PaginationQuery,
-    searchFields: string[] = []
+    searchFields: string[] = [],
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
     const searchFilter = PaginationHelper.createSearchFilter(
       query,
-      searchFields
+      searchFields,
     );
 
     const combinedFilter = {
@@ -323,7 +358,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
     const result = await (this.model as any).paginate(
       combinedFilter,
-      paginateOptions
+      paginateOptions,
     );
 
     return PaginationHelper.formatResponse<IPreMarketRequest>(result);
@@ -332,28 +367,28 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   async addAgentToViewedBy(
     requestId: string,
     agentId: string,
-    type: "grantAccessAgents" | "normalAgents"
+    type: "grantAccessAgents" | "normalAgents",
   ): Promise<IPreMarketRequest | null> {
     return this.model.findByIdAndUpdate(
       requestId,
       {
         $addToSet: { [`viewedBy.${type}`]: agentId },
       },
-      { new: true }
+      { new: true },
     );
   }
 
   async removeAgentFromViewedBy(
     requestId: string,
     agentId: string,
-    type: "grantAccessAgents" | "normalAgents"
+    type: "grantAccessAgents" | "normalAgents",
   ): Promise<IPreMarketRequest | null> {
     return this.model.findByIdAndUpdate(
       requestId,
       {
         $pull: { [`viewedBy.${type}`]: agentId },
       },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -366,7 +401,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
         status: "deleted",
         isActive: false,
       },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -379,7 +414,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
         status: "Available",
         isActive: true,
       },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -447,13 +482,13 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   }
 
   async getRequestsWithStats(
-    query: PaginationQuery
+    query: PaginationQuery,
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
 
     const result = await (this.model as any).paginate(
       { status: "active", isDeleted: false },
-      paginateOptions
+      paginateOptions,
     );
 
     return PaginationHelper.formatResponse<IPreMarketRequest>(result);
@@ -462,7 +497,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   async findForGrantAccessAgents(
     agentId: string,
     query: PaginationQuery,
-    filters: Record<string, any> = {}
+    filters: Record<string, any> = {},
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
 
@@ -473,20 +508,20 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
         // isDeleted: false,
         // "viewedBy.grantAccessAgents": { $ne: agentId },
       },
-      paginateOptions
+      paginateOptions,
     );
 
     return PaginationHelper.formatResponse(result);
   }
 
   async findAllForAdmin(
-    query: PaginationQuery
+    query: PaginationQuery,
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
 
     const result = await (this.model as any).paginate(
       { isDeleted: false },
-      paginateOptions
+      paginateOptions,
     );
 
     return PaginationHelper.formatResponse<IPreMarketRequest>(result);
@@ -499,18 +534,18 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   async findAvailableForNormalAgents(
     agentId: string,
     query: PaginationQuery,
-    filters: Record<string, any> = {}
+    filters: Record<string, any> = {},
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
 
     const result = await (this.model as any).paginate(
       {
-        status: "Available",
-        isDeleted: false,
+        "status": "Available",
+        "isDeleted": false,
         ...filters,
         "viewedBy.normalAgents": { $ne: agentId },
       },
-      paginateOptions
+      paginateOptions,
     );
 
     return PaginationHelper.formatResponse(result);
@@ -519,7 +554,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   async findVisibleForAgent(
     agentId: string,
     query: PaginationQuery,
-    hasAdminAccess: boolean
+    hasAdminAccess: boolean,
   ): Promise<PaginatedResponse<IPreMarketRequest>> {
     const paginateOptions = PaginationHelper.parsePaginationParams(query);
 
@@ -532,7 +567,8 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       // Admin-granted agents see "match" status requests
       filter.status = "match";
       filter["viewedBy.grantAccessAgents"] = { $ne: agentId };
-    } else {
+    }
+    else {
       // Normal agents see "Available" status requests
       filter.status = "Available";
       filter["viewedBy.normalAgents"] = { $ne: agentId };
@@ -552,7 +588,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
   async claimRequestLock(
     requestId: string,
-    agentId: string
+    agentId: string,
   ): Promise<IPreMarketRequest | null> {
     return this.model
       .findOneAndUpdate(
@@ -571,7 +607,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
             lockedAt: new Date(),
           },
         },
-        { new: true }
+        { new: true },
       )
       .lean()
       .exec() as Promise<IPreMarketRequest | null>;
@@ -579,7 +615,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
   async releaseRequestLock(
     requestId: string,
-    agentId?: string
+    agentId?: string,
   ): Promise<IPreMarketRequest | null> {
     const filter: Record<string, any> = {
       _id: requestId,
@@ -599,7 +635,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
             lockedAt: "",
           },
         },
-        { new: true }
+        { new: true },
       )
       .lean()
       .exec() as Promise<IPreMarketRequest | null>;
@@ -614,8 +650,8 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return this.model
       .findOneAndUpdate(
         {
-          _id: requestId,
-          isDeleted: { $ne: true },
+          "_id": requestId,
+          "isDeleted": { $ne: true },
           "registrationDisclosureConfirmations.agentId": { $ne: agentObjectId },
         },
         {
@@ -654,8 +690,8 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       const archivedByObjectId = new Types.ObjectId(record.archivedByAgentId);
       const result = await this.model.updateOne(
         {
-          _id: requestId,
-          isDeleted: { $ne: true },
+          "_id": requestId,
+          "isDeleted": { $ne: true },
           "agentArchives.agentId": { $ne: agentObjectId },
         },
         {
@@ -684,8 +720,8 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return this.model
       .findOneAndUpdate(
         {
-          _id: requestId,
-          isDeleted: { $ne: true },
+          "_id": requestId,
+          "isDeleted": { $ne: true },
           "agentArchives.agentId": new Types.ObjectId(agentId),
         },
         {
@@ -713,8 +749,8 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return this.model
       .findOneAndUpdate(
         {
-          _id: requestId,
-          isDeleted: { $ne: true },
+          "_id": requestId,
+          "isDeleted": { $ne: true },
           "agentArchives.reason": reason,
         },
         {
@@ -748,7 +784,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   ): Promise<IPreMarketRequest | null> {
     return this.model
       .findOne({
-        isDeleted: false,
+        "isDeleted": false,
         "searchActivity.pendingConfirmationToken": token,
       })
       .lean<IPreMarketRequest | null>()
@@ -771,8 +807,8 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return this.model
       .findOneAndUpdate(
         {
-          _id: requestId,
-          isDeleted: { $ne: true },
+          "_id": requestId,
+          "isDeleted": { $ne: true },
           "ownerRepresentationMatches.agentId": { $ne: agentObjectId },
         },
         {
@@ -832,7 +868,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
   async toggleListingActive(
     id: string,
-    isActive: boolean
+    isActive: boolean,
   ): Promise<IPreMarketRequest | null> {
     return this.model.findByIdAndUpdate(id, { isActive }, { new: true });
   }
@@ -845,7 +881,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
   async findByRenterIdAll(
     renterId: string,
-    includeInactive: boolean = true
+    includeInactive: boolean = true,
   ): Promise<IPreMarketRequest[]> {
     const query: any = {
       renterId,
@@ -869,7 +905,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
   }
 
   async findByIdWithActivationStatus(
-    id: string
+    id: string,
   ): Promise<IPreMarketRequest | null> {
     return this.model
       .findOne({ _id: id, isActive: true })
@@ -891,7 +927,8 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
     if (referralAgentId) {
       setData.referralAgentId = referralAgentId;
-    } else {
+    }
+    else {
       unsetData.referralAgentId = "";
     }
 
@@ -913,7 +950,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return this.model
       .find({
         "movingDateRange.latest": { $lt: now },
-        isDeleted: false,
+        "isDeleted": false,
       })
       .exec();
   }
@@ -1040,7 +1077,8 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       ]);
 
       return result;
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "Error in findAll aggregation");
       throw error;
     }
@@ -1063,7 +1101,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       .updateOne(
         { type: "pre_market" },
         { $set: { ...metadata, updatedAt: new Date() } },
-        { upsert: true }
+        { upsert: true },
       );
   }
 
@@ -1105,7 +1143,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     const paginationOptions = PaginationHelper.parsePaginationParams(query);
     return (this.model as any).paginate(
       { _id: { $in: ids }, isDeleted: false },
-      paginationOptions
+      paginationOptions,
     );
   }
 
@@ -1165,10 +1203,11 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
         .toArray();
 
       return agents.map((agent: any) => agent.userId.toString());
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
-        "Failed to get active agent IDs"
+        "Failed to get active agent IDs",
       );
       return [];
     }
@@ -1189,14 +1228,15 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
         },
         {
           projection: { _id: 1 },
-        }
+        },
       );
 
       return admin ? admin._id.toString() : null;
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
-        "Failed to get admin ID"
+        "Failed to get admin ID",
       );
       return null;
     }
@@ -1244,7 +1284,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
             preMarketRequestId: listing._id.toString(),
             $or: [
               { status: "free" },
-              { status: "paid", "payment.paymentStatus": "succeeded" },
+              { "status": "paid", "payment.paymentStatus": "succeeded" },
             ],
           })
             .populate("agentId", "fullName email phoneNumber")
@@ -1276,8 +1316,8 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
             ),
           );
 
-          const agentProfiles =
-            agentIdsForListing.length > 0
+          const agentProfiles
+            = agentIdsForListing.length > 0
               ? await AgentProfile.find({
                   userId: { $in: agentIdsForListing },
                 })
@@ -1316,7 +1356,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
               accessType: "grant_access",
               paymentAmount: null,
               paymentStatus: null,
-            })
+            }),
           );
 
           const allConfirmedAgents = [
@@ -1348,10 +1388,10 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
           // Get access breakdown
           const freeCount = confirmedAccess.filter(
-            (a: any) => a.status === "free"
+            (a: any) => a.status === "free",
           ).length;
           const paidCount = confirmedAccess.filter(
-            (a: any) => a.status === "paid"
+            (a: any) => a.status === "paid",
           ).length;
 
           return {
@@ -1400,11 +1440,12 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
               rejected: formattedRejected,
             },
           };
-        })
+        }),
       );
 
       return listingsWithData;
-    } catch (error) {
+    }
+    catch (error) {
       throw error;
     }
   }

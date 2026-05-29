@@ -5,7 +5,7 @@ import type { Document, Types } from "mongoose";
 /**
  * Password Reset OTP Document Interface
  */
-export interface IPasswordResetOTP extends Document {
+export type IPasswordResetOTP = {
   _id: Types.ObjectId;
   userId: string;
   otp: string;
@@ -16,4 +16,4 @@ export interface IPasswordResetOTP extends Document {
   usedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
-}
+} & Document;

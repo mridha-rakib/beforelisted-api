@@ -1,10 +1,12 @@
 // file: src/services/file.service.ts
 
+import { randomBytes } from "node:crypto";
+import { extname } from "node:path";
+
 import { logger } from "@/middlewares/pino-logger";
 import { UserRepository } from "@/modules/user/user.repository";
 import { BadRequestException } from "@/utils/app-error.utils";
-import { randomBytes } from "crypto";
-import { extname } from "path";
+
 import { S3Service } from "./s3.service";
 
 /**
@@ -24,6 +26,7 @@ export class FileService {
     "application/vnd.ms-excel",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   ];
+
   private MAX_EXCEL_SIZE = 10 * 1024 * 1024; // 10MB
 
   private ALLOWED_PDF_TYPES = ["application/pdf"];
@@ -46,20 +49,20 @@ export class FileService {
     userId: string,
     fileBuffer: Buffer,
     originalFileName: string,
-    mimeType: string
+    mimeType: string,
   ): Promise<{ profileImageUrl: string; fileName: string }> {
     try {
       // Validate file type
       if (!this.ALLOWED_IMAGE_TYPES.includes(mimeType)) {
         throw new BadRequestException(
-          "Invalid file type. Only JPEG, PNG, and WebP formats are allowed"
+          "Invalid file type. Only JPEG, PNG, and WebP formats are allowed",
         );
       }
 
       // Validate file size
       if (fileBuffer.length > this.MAX_IMAGE_SIZE) {
         throw new BadRequestException(
-          `File size must not exceed ${this.MAX_IMAGE_SIZE / 1024 / 1024}MB`
+          `File size must not exceed ${this.MAX_IMAGE_SIZE / 1024 / 1024}MB`,
         );
       }
 
@@ -71,16 +74,16 @@ export class FileService {
 
       logger.info(
         { userId, fileName: uniqueFileName },
-        "Starting profile image upload"
+        "Starting profile image upload",
       );
 
       // Upload to S3 - returns { url, key }
-      const { url: profileImageUrl, key: imageKey } =
-        await this.s3Service.uploadFile(
+      const { url: profileImageUrl }
+        = await this.s3Service.uploadFile(
           fileBuffer,
           uniqueFileName,
           mimeType,
-          `uploads/profiles/${userId}`
+          `uploads/profiles/${userId}`,
         );
 
       // Delete old profile image if exists
@@ -90,7 +93,7 @@ export class FileService {
         if (user?.profileImageUrl) {
           logger.info(
             { userId, oldImageUrl: user.profileImageUrl },
-            "Deleting old profile image"
+            "Deleting old profile image",
           );
 
           // Extract key from URL
@@ -99,17 +102,19 @@ export class FileService {
           try {
             await this.s3Service.deleteFile(oldImageKey);
             logger.info({ userId }, "Old profile image deleted successfully");
-          } catch (deleteError) {
+          }
+          catch (deleteError) {
             logger.warn(
               { userId, error: deleteError },
-              "Failed to delete old profile image - continuing anyway"
+              "Failed to delete old profile image - continuing anyway",
             );
           }
         }
-      } catch (error) {
+      }
+      catch (error) {
         logger.warn(
           { userId, error },
-          "Failed to retrieve user for old image cleanup"
+          "Failed to retrieve user for old image cleanup",
         );
       }
 
@@ -120,14 +125,15 @@ export class FileService {
 
       logger.info(
         { userId, fileName: uniqueFileName },
-        "Profile image uploaded successfully"
+        "Profile image uploaded successfully",
       );
 
       return {
         profileImageUrl,
         fileName: uniqueFileName,
       };
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ userId, error }, "Profile image upload failed");
       throw error;
     }
@@ -147,7 +153,7 @@ export class FileService {
 
       logger.info(
         { userId, imageUrl: user.profileImageUrl },
-        "Starting profile image deletion"
+        "Starting profile image deletion",
       );
 
       // Extract key from URL
@@ -162,7 +168,8 @@ export class FileService {
       });
 
       logger.info({ userId }, "Profile image deleted successfully");
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ userId, error }, "Profile image deletion failed");
       throw error;
     }
@@ -180,20 +187,20 @@ export class FileService {
     fileBuffer: Buffer,
     originalFileName: string,
     mimeType: string,
-    folder: string = "uploads/documents/excel"
+    folder: string = "uploads/documents/excel",
   ): Promise<{ fileUrl: string; fileName: string }> {
     try {
       // Validate file type
       if (!this.ALLOWED_EXCEL_TYPES.includes(mimeType)) {
         throw new BadRequestException(
-          "Invalid file type. Only Excel (.xlsx, .xls) files are allowed"
+          "Invalid file type. Only Excel (.xlsx, .xls) files are allowed",
         );
       }
 
       // Validate file size
       if (fileBuffer.length > this.MAX_EXCEL_SIZE) {
         throw new BadRequestException(
-          `File size must not exceed ${this.MAX_EXCEL_SIZE / 1024 / 1024}MB`
+          `File size must not exceed ${this.MAX_EXCEL_SIZE / 1024 / 1024}MB`,
         );
       }
 
@@ -202,26 +209,27 @@ export class FileService {
 
       logger.info(
         { fileName: uniqueFileName, folder },
-        "Starting Excel file upload"
+        "Starting Excel file upload",
       );
 
       const { url: fileUrl } = await this.s3Service.uploadFile(
         fileBuffer,
         uniqueFileName,
         mimeType,
-        folder
+        folder,
       );
 
       logger.info(
         { fileName: uniqueFileName, folder },
-        "Excel file uploaded successfully"
+        "Excel file uploaded successfully",
       );
 
       return { fileUrl, fileName: uniqueFileName };
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { fileName: originalFileName, error },
-        "Excel file upload failed"
+        "Excel file upload failed",
       );
       throw error;
     }
@@ -239,20 +247,20 @@ export class FileService {
     fileBuffer: Buffer,
     originalFileName: string,
     mimeType: string,
-    folder: string = "uploads/documents/pdf"
+    folder: string = "uploads/documents/pdf",
   ): Promise<{ fileUrl: string; fileName: string }> {
     try {
       // Validate file type
       if (!this.ALLOWED_PDF_TYPES.includes(mimeType)) {
         throw new BadRequestException(
-          "Invalid file type. Only PDF files are allowed"
+          "Invalid file type. Only PDF files are allowed",
         );
       }
 
       // Validate file size
       if (fileBuffer.length > this.MAX_PDF_SIZE) {
         throw new BadRequestException(
-          `File size must not exceed ${this.MAX_PDF_SIZE / 1024 / 1024}MB`
+          `File size must not exceed ${this.MAX_PDF_SIZE / 1024 / 1024}MB`,
         );
       }
 
@@ -261,26 +269,27 @@ export class FileService {
 
       logger.info(
         { fileName: uniqueFileName, folder },
-        "Starting PDF file upload"
+        "Starting PDF file upload",
       );
 
       const { url: fileUrl } = await this.s3Service.uploadFile(
         fileBuffer,
         uniqueFileName,
         mimeType,
-        folder
+        folder,
       );
 
       logger.info(
         { fileName: uniqueFileName, folder },
-        "PDF file uploaded successfully"
+        "PDF file uploaded successfully",
       );
 
       return { fileUrl, fileName: uniqueFileName };
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { fileName: originalFileName, error },
-        "PDF file upload failed"
+        "PDF file upload failed",
       );
       throw error;
     }
@@ -295,7 +304,8 @@ export class FileService {
   async getSignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
     try {
       return await this.s3Service.getSignedUrl(key, expiresIn);
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ key, error }, "Failed to generate signed URL");
       throw error;
     }

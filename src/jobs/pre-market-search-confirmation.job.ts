@@ -1,4 +1,5 @@
 import cron from "node-cron";
+
 import { logger } from "@/middlewares/pino-logger";
 import { PreMarketService } from "@/modules/pre-market/pre-market.service";
 
@@ -6,9 +7,7 @@ const SEARCH_CONFIRMATION_CRON_SCHEDULE = "*/5 * * * *";
 
 let isRunning = false;
 
-const runSearchConfirmationSweep = async (
-  service: PreMarketService,
-): Promise<void> => {
+async function runSearchConfirmationSweep(service: PreMarketService): Promise<void> {
   if (isRunning) {
     logger.warn("Pre-market search confirmation sweep already running; skipping");
     return;
@@ -19,20 +18,22 @@ const runSearchConfirmationSweep = async (
   try {
     const result = await service.processAutomaticSearchConfirmationSweep();
     if (
-      result.remindersSent > 0 ||
-      result.archivedRequests > 0 ||
-      result.failedCount > 0
+      result.remindersSent > 0
+      || result.archivedRequests > 0
+      || result.failedCount > 0
     ) {
       logger.info(result, "Pre-market search confirmation sweep processed");
     }
-  } catch (error) {
+  }
+  catch (error) {
     logger.error({ error }, "Failed to process pre-market search confirmation sweep");
-  } finally {
+  }
+  finally {
     isRunning = false;
   }
-};
+}
 
-export const startPreMarketSearchConfirmationJob = (): void => {
+export function startPreMarketSearchConfirmationJob(): void {
   const service = new PreMarketService();
 
   cron.schedule(SEARCH_CONFIRMATION_CRON_SCHEDULE, () => {
@@ -45,4 +46,4 @@ export const startPreMarketSearchConfirmationJob = (): void => {
   );
 
   void runSearchConfirmationSweep(service);
-};
+}

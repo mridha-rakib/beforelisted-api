@@ -92,7 +92,7 @@ const options = {
           scheme: "bearer",
           bearerFormat: "JWT",
           description:
-            'JWT token in Authorization header. Format: "Authorization: Bearer {token}"',
+            "JWT token in Authorization header. Format: \"Authorization: Bearer {token}\"",
         },
         cookieAuth: {
           type: "apiKey",

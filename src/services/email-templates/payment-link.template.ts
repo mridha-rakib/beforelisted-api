@@ -1,6 +1,6 @@
 // file: src/services/email-templates/payment-link.template.ts
 
-import { BaseEmailTemplate } from "./base-email-template";
+import { BaseEmailTemplate } from "./base-email-template.js";
 
 /**
  * Email template for payment link (Agent notification)
@@ -19,7 +19,7 @@ export class PaymentLinkTemplate extends BaseEmailTemplate {
     paymentLink: string,
     paymentDeadline: string,
     logoUrl: string | undefined,
-    brandColor: string = "#1890FF"
+    brandColor: string = "#1890FF",
   ) {
     super(logoUrl, brandColor);
     this.agentName = agentName;
@@ -41,7 +41,7 @@ export class PaymentLinkTemplate extends BaseEmailTemplate {
     this.logRender("PaymentLink");
 
     const header = this.generateHeader(
-      "💳 Complete Payment to Access Property"
+      "💳 Complete Payment to Access Property",
     );
 
     const priceBox = `
@@ -80,7 +80,7 @@ export class PaymentLinkTemplate extends BaseEmailTemplate {
 
     const warning = this.generateAlert(
       `<strong>⏰ Important:</strong> Please complete payment by ${this.paymentDeadline} to secure your access. After this date, you may need to submit a new request.`,
-      "warning"
+      "warning",
     );
 
     const benefits = `
@@ -103,14 +103,14 @@ export class PaymentLinkTemplate extends BaseEmailTemplate {
       </div>
     `;
 
-    const body =
-      priceBox +
-      introduction +
-      propertySection +
+    const body
+      = priceBox
+        + introduction
+        + propertySection
       // cta +
-      warning +
-      benefits +
-      tip;
+        + warning
+        + benefits
+        + tip;
 
     return this.wrapInHTML(header, body);
   }

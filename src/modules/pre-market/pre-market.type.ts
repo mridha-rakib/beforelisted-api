@@ -1,9 +1,11 @@
 // file: src/modules/pre-market/pre-market.type.ts
 
+import type { Types } from "mongoose";
+
 import type { PREMARKET_CONFIG } from "@/config/pre-market.config";
-import { PaginatedResponse } from "@/ts/pagination.types";
-import { Types } from "mongoose";
-import { IPreMarketRequest } from "./pre-market.model";
+import type { PaginatedResponse } from "@/ts/pagination.types";
+
+import type { IPreMarketRequest } from "./pre-market.model";
 
 export type PreMarketLocation = {
   borough: string;
@@ -11,8 +13,8 @@ export type PreMarketLocation = {
 };
 export type PreMarketBedroom = (typeof PREMARKET_CONFIG.BEDROOMS)[number];
 export type PreMarketBathroom = (typeof PREMARKET_CONFIG.BATHROOMS)[number];
-export type PreMarketStatus =
-  (typeof PREMARKET_CONFIG.REQUEST_STATUSES)[number];
+export type PreMarketStatus
+  = (typeof PREMARKET_CONFIG.REQUEST_STATUSES)[number];
 export type PreMarketScope = "Upcoming" | "All Market";
 
 export type CreatePreMarketRequestPayload = {
@@ -50,15 +52,15 @@ export type CreatePreMarketRequestPayload = {
   scope?: PreMarketScope;
 };
 
-export type UpdatePreMarketRequestPayload =
-  Partial<CreatePreMarketRequestPayload>;
+export type UpdatePreMarketRequestPayload
+  = Partial<CreatePreMarketRequestPayload>;
 
-export type GrantAccessStatus =
-  | "pending"
-  | "approved"
-  | "free"
-  | "rejected"
-  | "paid";
+export type GrantAccessStatus
+  = | "pending"
+    | "approved"
+    | "free"
+    | "rejected"
+    | "paid";
 export type PaymentStatus = "pending" | "succeeded" | "failed";
 
 export type RequestAccessPayload = {
@@ -73,7 +75,7 @@ export type AdminDecisionPayload = {
   notes?: string;
 };
 
-export interface AdminReferrerInfo {
+export type AdminReferrerInfo = {
   referrerId: string;
   referrerName: string;
   referrerType: "AGENT" | "ADMIN";
@@ -81,9 +83,9 @@ export interface AdminReferrerInfo {
   referralCode?: string | null;
   referrerEmail?: string | null;
   referrerPhoneNumber?: string | null;
-}
+};
 
-export interface AdminRenterInfo {
+export type AdminRenterInfo = {
   renterId: string;
   fullName: string;
   email: string;
@@ -91,7 +93,7 @@ export interface AdminRenterInfo {
   profileImageUrl?: string | null;
   registrationType: "normal" | "agent_referral" | "admin_referral";
   referralInfo?: AdminReferrerInfo;
-}
+};
 
 export type AdminPreMarketRenterInfo = {
   renterId: string;
@@ -116,10 +118,10 @@ export type AdminPreMarketRequestItem = IPreMarketRequest & {
   agentRequests: AgentRequestDetail[];
 };
 
-export type AdminPreMarketPaginatedResponse =
-  PaginatedResponse<AdminPreMarketRequestItem>;
+export type AdminPreMarketPaginatedResponse
+  = PaginatedResponse<AdminPreMarketRequestItem>;
 
-export interface AgentRequestDetail {
+export type AgentRequestDetail = {
   _id: string | Types.ObjectId;
   agentId: string;
   agent: {
@@ -138,4 +140,4 @@ export interface AgentRequestDetail {
     currency: string;
     status: string;
   };
-}
+};

@@ -1,7 +1,5 @@
 // file: src/services/s3.service.ts
 
-import { logger } from "@/middlewares/pino-logger";
-import { BadRequestException } from "@/utils/app-error.utils";
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -9,6 +7,9 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
+import { logger } from "@/middlewares/pino-logger";
+import { BadRequestException } from "@/utils/app-error.utils";
 
 /**
  * S3 Service
@@ -23,8 +24,8 @@ export class S3Service {
   constructor() {
     this.bucket = process.env.HETZNER_BUCKET_NAME || "before-listed-uploads";
     this.endpoint = this.normalizeEndpoint(
-      process.env.HETZNER_S3_ENDPOINT ||
-        "https://hel1.your-objectstorage.com"
+      process.env.HETZNER_S3_ENDPOINT
+      || "https://hel1.your-objectstorage.com",
     );
 
     this.s3Client = new S3Client({
@@ -51,7 +52,7 @@ export class S3Service {
     fileBuffer: Buffer,
     fileName: string,
     mimeType: string,
-    folder: string
+    folder: string,
   ): Promise<{ url: string; key: string }> {
     const key = `${folder}/${fileName}`;
 
@@ -70,7 +71,8 @@ export class S3Service {
 
       logger.info({ fileName, folder, key }, "File uploaded to S3");
       return { url, key };
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error, fileName, folder }, "S3 upload failed");
       throw new BadRequestException("Failed to upload file to storage");
     }
@@ -82,7 +84,7 @@ export class S3Service {
   async uploadFileToKey(
     fileBuffer: Buffer,
     key: string,
-    mimeType: string
+    mimeType: string,
   ): Promise<{ url: string; key: string }> {
     const command = new PutObjectCommand({
       Bucket: this.bucket,
@@ -98,7 +100,8 @@ export class S3Service {
       const url = this.getPublicUrl(key);
       logger.info({ key }, "File uploaded to S3 by key");
       return { url, key };
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error, key }, "S3 upload by key failed");
       throw new BadRequestException("Failed to upload file to storage");
     }
@@ -117,7 +120,8 @@ export class S3Service {
     try {
       await this.s3Client.send(command);
       logger.info({ key }, "File deleted from S3");
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error, key }, "S3 delete failed");
       throw new BadRequestException("Failed to delete file from storage");
     }
@@ -139,7 +143,8 @@ export class S3Service {
       const url = await getSignedUrl(this.s3Client, command, { expiresIn });
       logger.info({ key, expiresIn }, "Signed URL generated");
       return url;
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error, key }, "Failed to generate signed URL");
       throw new BadRequestException("Failed to generate signed URL");
     }
@@ -180,7 +185,8 @@ export class S3Service {
       }
 
       throw new BadRequestException("Unsupported file stream format");
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error, key }, "Failed to download file from S3");
       throw new BadRequestException("Failed to download file from storage");
     }
@@ -203,7 +209,7 @@ export class S3Service {
       const parsed = new URL(url);
       const pathname = decodeURIComponent(parsed.pathname || "").replace(
         /^\/+/,
-        ""
+        "",
       );
       const bucketLower = this.bucket.toLowerCase();
       const pathLower = pathname.toLowerCase();
@@ -218,8 +224,8 @@ export class S3Service {
       // Virtual-host style URL: https://<bucket>.<endpoint>/<key>
       const hostLower = parsed.hostname.toLowerCase();
       if (
-        hostLower === bucketLower ||
-        hostLower.startsWith(`${bucketLower}.`)
+        hostLower === bucketLower
+        || hostLower.startsWith(`${bucketLower}.`)
       ) {
         return pathname.length > 0 ? pathname : null;
       }
@@ -231,7 +237,8 @@ export class S3Service {
       }
 
       return null;
-    } catch (error) {
+    }
+    catch (error) {
       logger.warn({ error, url }, "Failed to parse S3 key from URL");
       return null;
     }
@@ -240,14 +247,15 @@ export class S3Service {
   private encodeObjectKey(key: string): string {
     return key
       .split("/")
-      .map((segment) => encodeURIComponent(segment))
+      .map(segment => encodeURIComponent(segment))
       .join("/");
   }
 
   private safeHostname(url: string): string | null {
     try {
       return new URL(url).hostname;
-    } catch {
+    }
+    catch {
       return null;
     }
   }
@@ -276,19 +284,21 @@ export class S3Service {
       // Remove accidental "/<bucket>" suffix in endpoint env values.
       const normalizedPath = parsed.pathname.replace(/^\/+|\/+$/g, "");
       if (
-        normalizedPath.length === 0 ||
-        normalizedPath.toLowerCase() === this.bucket.toLowerCase()
+        normalizedPath.length === 0
+        || normalizedPath.toLowerCase() === this.bucket.toLowerCase()
       ) {
         parsed.pathname = "";
-      } else {
+      }
+      else {
         parsed.pathname = `/${normalizedPath}`;
       }
 
       return parsed.toString().replace(/\/+$/, "");
-    } catch (error) {
+    }
+    catch (error) {
       logger.warn(
         { rawEndpoint, error },
-        "Invalid HETZNER_S3_ENDPOINT provided, using default endpoint"
+        "Invalid HETZNER_S3_ENDPOINT provided, using default endpoint",
       );
       return "https://hel1.your-objectstorage.com";
     }

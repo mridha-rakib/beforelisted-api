@@ -1,7 +1,10 @@
 // file: src/modules/monthly-report/monthly-report.repository.ts
 
 import { BaseRepository } from "@/modules/base/base.repository";
-import { MonthlyReport, type IMonthlyReport } from "./monthly-report.model";
+
+import type { IMonthlyReport } from "./monthly-report.model";
+
+import { MonthlyReport } from "./monthly-report.model";
 
 export class MonthlyReportRepository extends BaseRepository<IMonthlyReport> {
   constructor() {
@@ -44,7 +47,7 @@ export class MonthlyReportRepository extends BaseRepository<IMonthlyReport> {
    */
   async getReportByYearMonth(
     year: number,
-    month: number
+    month: number,
   ): Promise<IMonthlyReport | null> {
     return this.model
       .findOne({ year, month })
@@ -56,7 +59,7 @@ export class MonthlyReportRepository extends BaseRepository<IMonthlyReport> {
    */
   async createReport(
     data: Partial<IMonthlyReport>,
-    createdBy: string
+    createdBy: string,
   ): Promise<IMonthlyReport> {
     const report = new this.model({
       ...data,
@@ -71,7 +74,7 @@ export class MonthlyReportRepository extends BaseRepository<IMonthlyReport> {
   async updateReport(
     id: string,
     data: Partial<IMonthlyReport>,
-    updatedBy: string
+    updatedBy: string,
   ): Promise<IMonthlyReport | null> {
     return this.model.findByIdAndUpdate(
       id,
@@ -80,7 +83,7 @@ export class MonthlyReportRepository extends BaseRepository<IMonthlyReport> {
         updatedBy,
         updatedAt: new Date(),
       },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -89,7 +92,7 @@ export class MonthlyReportRepository extends BaseRepository<IMonthlyReport> {
    */
   async deleteReport(
     id: string,
-    updatedBy: string
+    updatedBy: string,
   ): Promise<IMonthlyReport | null> {
     return this.model.findByIdAndUpdate(
       id,
@@ -98,7 +101,7 @@ export class MonthlyReportRepository extends BaseRepository<IMonthlyReport> {
         updatedBy,
         updatedAt: new Date(),
       },
-      { new: true }
+      { new: true },
     );
   }
 

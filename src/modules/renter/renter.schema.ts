@@ -1,8 +1,9 @@
 // file: src/modules/renter/renter.schema.ts
 
+import { z } from "zod";
+
 import { MESSAGES } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
-import { z } from "zod";
 
 // ============================================
 // REGISTRATION SCHEMAS
@@ -22,7 +23,7 @@ export const agentReferralRenterRegisterSchema = z.object({
         .string()
         .regex(
           /^AGT-[A-Z0-9]{8}$/,
-          "Invalid agent referral code format (must start with AGT-)"
+          "Invalid agent referral code format (must start with AGT-)",
         ),
     })
     .superRefine((data, ctx) => {
@@ -49,7 +50,7 @@ export const adminReferralRenterRegisterSchema = z.object({
         .string()
         .regex(
           /^ADM-[A-Z0-9]{8}$/,
-          "Invalid admin referral code format (must start with ADM-)"
+          "Invalid admin referral code format (must start with ADM-)",
         ),
       questionnaire: z
         .object({
@@ -97,8 +98,8 @@ export const renterRegisterSchema = z.object({
         .optional(),
     })
     .superRefine((data, ctx) => {
-      const ReferralParser =
-        require("@/utils/referral-parser.utils").ReferralParser;
+      const ReferralParser
+        = require("@/utils/referral-parser.utils").ReferralParser;
 
       const validation = ReferralParser.validate(data.referralCode);
 
@@ -120,7 +121,8 @@ export const renterRegisterSchema = z.object({
             path: ["password"],
           });
         }
-      } else if (validation.type === "admin_referral") {
+      }
+      else if (validation.type === "admin_referral") {
         if (data.password) {
           ctx.addIssue({
             code: "custom",
@@ -219,16 +221,16 @@ export const renterListSchema = z.object({
     page: z
       .string()
       .optional()
-      .transform((val) => (val ? parseInt(val, 10) : 1))
-      .refine((val) => val >= 1, "Page must be >= 1"),
+      .transform(val => (val ? Number.parseInt(val, 10) : 1))
+      .refine(val => val >= 1, "Page must be >= 1"),
 
     limit: z
       .string()
       .optional()
-      .transform((val) => (val ? parseInt(val, 10) : 10))
+      .transform(val => (val ? Number.parseInt(val, 10) : 10))
       .refine(
-        (val) => val >= 1 && val <= 100,
-        "Limit must be between 1 and 100"
+        val => val >= 1 && val <= 100,
+        "Limit must be between 1 and 100",
       ),
 
     accountStatus: z

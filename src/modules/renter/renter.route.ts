@@ -1,7 +1,9 @@
 // file: src/modules/renter/renter.route.ts
 
-import { authMiddleware } from "@/middlewares/auth.middleware";
 import { Router } from "express";
+
+import { authMiddleware } from "@/middlewares/auth.middleware";
+
 import { RenterController } from "./renter.controller";
 
 const router = Router();
@@ -20,7 +22,7 @@ router.get(
   authMiddleware.verifyToken,
   authMiddleware.verifyEmailVerified,
   authMiddleware.authorize("Renter"),
-  controller.getRenterProfile
+  controller.getRenterProfile,
 );
 
 router.put(
@@ -28,7 +30,7 @@ router.put(
   authMiddleware.verifyToken,
   authMiddleware.verifyEmailVerified,
   authMiddleware.authorize("Renter"),
-  controller.updateRenterProfile
+  controller.updateRenterProfile,
 );
 
 /**
@@ -40,7 +42,7 @@ router.delete(
   authMiddleware.verifyToken,
   authMiddleware.verifyEmailVerified,
   authMiddleware.authorize("Renter"),
-  controller.deleteRenterProfile
+  controller.deleteRenterProfile,
 );
 
 /**
@@ -52,14 +54,14 @@ router.post(
   authMiddleware.verifyToken,
   authMiddleware.verifyEmailVerified,
   authMiddleware.authorize("Renter"),
-  controller.toggleEmailSubscription
+  controller.toggleEmailSubscription,
 );
 
 router.get(
   "/admin/excel-download",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.downloadRentersConsolidatedExcel
+  controller.downloadRentersConsolidatedExcel,
 );
 
 // ============================================
@@ -76,7 +78,7 @@ router.get(
   "/admin/renters",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.getAllRenters.bind(controller)
+  controller.getAllRenters.bind(controller),
 );
 
 /**
@@ -88,7 +90,7 @@ router.get(
   "/admin/renters/:renterId",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.getRenterDetailsForAdmin.bind(controller)
+  controller.getRenterDetailsForAdmin.bind(controller),
 );
 
 /**
@@ -100,7 +102,7 @@ router.get(
   "/admin/:userId",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
-  controller.adminGetRenterProfile.bind(controller)
+  controller.adminGetRenterProfile.bind(controller),
 );
 
 export default router;

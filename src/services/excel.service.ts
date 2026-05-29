@@ -1,16 +1,19 @@
 // src/services/excel.service.ts
 
+import ExcelJS from "exceljs";
+
 import { SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
 import { AgentProfileRepository } from "@/modules/agent/agent.repository";
 import { PreMarketRepository } from "@/modules/pre-market/pre-market.repository";
 import { RenterRepository } from "@/modules/renter/renter.repository";
-import ExcelJS from "exceljs";
+
 import { S3Service } from "./s3.service";
 
 export class ExcelService {
-  private static readonly EXCEL_MIME_TYPE =
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  private static readonly EXCEL_MIME_TYPE
+    = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
   private static readonly CONSOLIDATED_SHEET_NAME = "All Requests";
   private static readonly REQUEST_ID_HEADER = "Request ID";
   private static readonly STATUS_HEADER = "Status";
@@ -108,7 +111,7 @@ export class ExcelService {
 
       logger.info(
         { totalRows: rows.length },
-        "Fetched renter/request rows for Excel"
+        "Fetched renter/request rows for Excel",
       );
 
       // Add data rows
@@ -163,7 +166,7 @@ export class ExcelService {
         15, // Created Date
       ];
 
-      worksheet.columns = columnWidths.map((width) => ({
+      worksheet.columns = columnWidths.map(width => ({
         width,
       }));
 
@@ -179,11 +182,12 @@ export class ExcelService {
 
       logger.info(
         { size: typedBuffer.length, rows: rows.length },
-        "Excel buffer generated successfully"
+        "Excel buffer generated successfully",
       );
 
       return typedBuffer;
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "Failed to generate consolidated Excel");
       throw error;
     }
@@ -255,9 +259,33 @@ export class ExcelService {
 
         // Set column widths
         worksheet.columns = [
-          18, 15, 20, 15, 26, 18, 18, 20, 20, 15, 15, 12, 12, 15, 25, 10, 10,
-          20, 20, 12, 15, 20, 14, 14, 12, 15,
-        ].map((width) => ({ width }));
+          18,
+          15,
+          20,
+          15,
+          26,
+          18,
+          18,
+          20,
+          20,
+          15,
+          15,
+          12,
+          12,
+          15,
+          25,
+          10,
+          10,
+          20,
+          20,
+          12,
+          15,
+          20,
+          14,
+          14,
+          12,
+          15,
+        ].map(width => ({ width }));
       }
 
       // Add summary sheet
@@ -266,10 +294,10 @@ export class ExcelService {
       summarySheet.addRow(["Total Requests", requests.length]);
       summarySheet.addRow(["Requests by Month"]);
 
-      let row = 4;
+      let _row = 4;
       for (const [monthKey, monthRequests] of requestsByMonth) {
         summarySheet.addRow([monthKey, monthRequests.length]);
-        row++;
+        _row++;
       }
 
       // FIX #2: Proper Buffer conversion
@@ -278,7 +306,8 @@ export class ExcelService {
 
       logger.info({ size: typedBuffer.length }, "Monthly Excel generated");
       return typedBuffer;
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "Failed to generate monthly Excel");
       throw error;
     }
@@ -288,7 +317,7 @@ export class ExcelService {
    * Upload consolidated Excel to S3
    */
   async uploadConsolidatedExcel(
-    buffer: Buffer
+    buffer: Buffer,
   ): Promise<{ url: string; fileName: string; key: string }> {
     try {
       // Generate filename with date
@@ -304,16 +333,17 @@ export class ExcelService {
         buffer,
         fileName,
         ExcelService.EXCEL_MIME_TYPE,
-        folder
+        folder,
       );
 
       logger.info(
         { url: uploaded.url, fileName, key: uploaded.key },
-        "Consolidated Excel uploaded successfully"
+        "Consolidated Excel uploaded successfully",
       );
 
       return { url: uploaded.url, fileName, key: uploaded.key };
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "Failed to upload Excel to S3");
       throw error;
     }
@@ -324,20 +354,20 @@ export class ExcelService {
    * without generating a new file.
    */
   async updateConsolidatedPreMarketStatuses(
-    updates: Array<{ requestId: string; status: string }>
+    updates: Array<{ requestId: string; status: string }>,
   ): Promise<number> {
     const normalizedUpdates = updates
-      .map((item) => ({
+      .map(item => ({
         requestId: item.requestId?.trim(),
         status: item.status?.trim(),
       }))
       .filter(
         (
-          item
+          item,
         ): item is {
           requestId: string;
           status: string;
-        } => Boolean(item.requestId && item.status)
+        } => Boolean(item.requestId && item.status),
       );
 
     if (normalizedUpdates.length === 0) {
@@ -354,7 +384,7 @@ export class ExcelService {
     if (!key) {
       logger.warn(
         { metadata },
-        "Skipped consolidated Excel status update because file key could not be resolved"
+        "Skipped consolidated Excel status update because file key could not be resolved",
       );
       return 0;
     }
@@ -363,9 +393,9 @@ export class ExcelService {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(sourceBuffer as unknown as any);
 
-    const worksheet =
-      workbook.getWorksheet(ExcelService.CONSOLIDATED_SHEET_NAME) ||
-      workbook.worksheets[0];
+    const worksheet
+      = workbook.getWorksheet(ExcelService.CONSOLIDATED_SHEET_NAME)
+        || workbook.worksheets[0];
 
     if (!worksheet) {
       logger.warn("Skipped consolidated Excel status update: worksheet missing");
@@ -374,11 +404,11 @@ export class ExcelService {
 
     const requestIdColumnIndex = this.findColumnIndexByHeader(
       worksheet,
-      ExcelService.REQUEST_ID_HEADER
+      ExcelService.REQUEST_ID_HEADER,
     );
     const statusColumnIndex = this.findColumnIndexByHeader(
       worksheet,
-      ExcelService.STATUS_HEADER
+      ExcelService.STATUS_HEADER,
     );
 
     if (!requestIdColumnIndex || !statusColumnIndex) {
@@ -387,7 +417,7 @@ export class ExcelService {
           requestIdHeader: ExcelService.REQUEST_ID_HEADER,
           statusHeader: ExcelService.STATUS_HEADER,
         },
-        "Skipped consolidated Excel status update because required headers are missing"
+        "Skipped consolidated Excel status update because required headers are missing",
       );
       return 0;
     }
@@ -402,7 +432,7 @@ export class ExcelService {
     for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
       const row = worksheet.getRow(rowNumber);
       const requestId = this.normalizeCellValue(
-        row.getCell(requestIdColumnIndex).value
+        row.getCell(requestIdColumnIndex).value,
       );
 
       if (!requestId) {
@@ -420,7 +450,7 @@ export class ExcelService {
     }
 
     const missingRequestIds = Array.from(updatesByRequestId.keys()).filter(
-      (requestId) => !matchedRequestIds.has(requestId)
+      requestId => !matchedRequestIds.has(requestId),
     );
     let appendedCount = 0;
 
@@ -429,7 +459,7 @@ export class ExcelService {
         worksheet.getRow(1).cellCount,
         worksheet.columnCount,
         requestIdColumnIndex,
-        statusColumnIndex
+        statusColumnIndex,
       );
 
       for (const requestId of missingRequestIds) {
@@ -454,19 +484,19 @@ export class ExcelService {
     if (totalUpdated === 0) {
       logger.warn(
         { requestIds: Array.from(updatesByRequestId.keys()) },
-        "No consolidated Excel rows matched the provided request IDs"
+        "No consolidated Excel rows matched the provided request IDs",
       );
       return 0;
     }
 
     const updatedBuffer = Buffer.from(
-      (await workbook.xlsx.writeBuffer()) as ArrayBuffer
+      (await workbook.xlsx.writeBuffer()) as ArrayBuffer,
     );
 
     const uploaded = await this.s3Service.uploadFileToKey(
       updatedBuffer,
       key,
-      ExcelService.EXCEL_MIME_TYPE
+      ExcelService.EXCEL_MIME_TYPE,
     );
 
     await this.preMarketRepository.updateExcelMetadata({
@@ -479,7 +509,7 @@ export class ExcelService {
 
     logger.info(
       { updatedCount, appendedCount, key, fileUrl: uploaded.url },
-      "Updated consolidated Excel statuses in-place"
+      "Updated consolidated Excel statuses in-place",
     );
 
     return totalUpdated;
@@ -492,7 +522,7 @@ export class ExcelService {
     }
 
     logger.warn(
-      "Consolidated Excel metadata was missing or invalid; regenerating workbook before status update"
+      "Consolidated Excel metadata was missing or invalid; regenerating workbook before status update",
     );
 
     try {
@@ -514,10 +544,11 @@ export class ExcelService {
 
       await this.preMarketRepository.updateExcelMetadata(nextMetadata);
       return nextMetadata;
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error },
-        "Failed to bootstrap consolidated Excel metadata for status update"
+        "Failed to bootstrap consolidated Excel metadata for status update",
       );
       return null;
     }
@@ -577,43 +608,43 @@ export class ExcelService {
       this.getBorough(rowSource),
       this.getNeighborhoods(rowSource),
       this.formatListValue(
-        rowSource.bedrooms ?? rowSource.bedroomType ?? rowSource.bedroom
+        rowSource.bedrooms ?? rowSource.bedroomType ?? rowSource.bedroom,
       ),
       this.formatListValue(
-        rowSource.bathrooms ?? rowSource.bathroomType ?? rowSource.bathroom
+        rowSource.bathrooms ?? rowSource.bathroomType ?? rowSource.bathroom,
       ),
       this.formatUnitFeatures(
         this.resolveFirstObject(rowSource, [
           "unitFeatures",
           "unitFeaturePreferences",
           "unitAmenities",
-        ])
+        ]),
       ),
       this.formatBuildingFeatures(
         this.resolveFirstObject(rowSource, [
           "buildingFeatures",
           "buildingFeaturePreferences",
           "buildingAmenities",
-        ])
+        ]),
       ),
       this.formatPetPolicy(
         this.resolveFirstObject(rowSource, [
           "petPolicy",
           "petPreferences",
           "petsPolicy",
-        ])
+        ]),
       ),
       this.formatGuarantorRequired(
         this.resolveFirstObject(rowSource, [
           "guarantorRequired",
           "guarantorRequirement",
           "guarantor",
-        ])
+        ]),
       ),
       this.formatListValue(
-        rowSource.preferences ??
-          rowSource.preference ??
-          rowSource.specialPreferences
+        rowSource.preferences
+        ?? rowSource.preference
+        ?? rowSource.specialPreferences,
       ),
       this.getMarketScope(rowSource),
       this.resolveRegisteredAgentRegistrationStatus(rowSource),
@@ -643,9 +674,9 @@ export class ExcelService {
 
   private resolveRegisteredAgentRegistrationStatus(request: any): "Check" | "None" {
     const registeredAgentId = this.normalizeId(
-      request.referralAgentId ??
-        request.renterInfo?.referredByAgentId ??
-        request.referredByAgentId
+      request.referralAgentId
+      ?? request.renterInfo?.referredByAgentId
+      ?? request.referredByAgentId,
     );
 
     if (!registeredAgentId) {
@@ -659,7 +690,7 @@ export class ExcelService {
       (confirmation: { agentId?: unknown }) => {
         const confirmationAgentId = this.normalizeId(confirmation?.agentId);
         return confirmationAgentId === registeredAgentId;
-      }
+      },
     );
 
     return hasRegisteredAgentConfirmation ? "Check" : "None";
@@ -667,10 +698,10 @@ export class ExcelService {
 
   private isArchivedConsolidatedRequest(request: any): boolean {
     if (
-      request?.isDeleted === true ||
-      request?.isActive === false ||
-      request?.status === "deleted" ||
-      request?.requestStatus === "deleted"
+      request?.isDeleted === true
+      || request?.isActive === false
+      || request?.status === "deleted"
+      || request?.requestStatus === "deleted"
     ) {
       return true;
     }
@@ -687,14 +718,15 @@ export class ExcelService {
     }
     // Check if renterId is a populated Renter document
     if (
-      request.renterId &&
-      typeof request.renterId === "object" &&
-      request.renterId.fullName
+      request.renterId
+      && typeof request.renterId === "object"
+      && request.renterId.fullName
     ) {
       return request.renterId.fullName;
     }
     // Fallback to legacy fields
-    if (request.renterName) return request.renterName;
+    if (request.renterName)
+      return request.renterName;
     return "N/A";
   }
 
@@ -705,14 +737,15 @@ export class ExcelService {
     }
     // Check if renterId is a populated Renter document
     if (
-      request.renterId &&
-      typeof request.renterId === "object" &&
-      request.renterId.email
+      request.renterId
+      && typeof request.renterId === "object"
+      && request.renterId.email
     ) {
       return request.renterId.email;
     }
     // Fallback to legacy fields
-    if (request.renterEmail) return request.renterEmail;
+    if (request.renterEmail)
+      return request.renterEmail;
     return "N/A";
   }
 
@@ -722,14 +755,15 @@ export class ExcelService {
     }
 
     if (
-      request.renterId &&
-      typeof request.renterId === "object" &&
-      request.renterId.phoneNumber
+      request.renterId
+      && typeof request.renterId === "object"
+      && request.renterId.phoneNumber
     ) {
       return request.renterId.phoneNumber;
     }
 
-    if (request.renterPhone) return request.renterPhone;
+    if (request.renterPhone)
+      return request.renterPhone;
     return "N/A";
   }
 
@@ -741,32 +775,32 @@ export class ExcelService {
 
     const directReferralInfo = request.renterInfo?.referralInfo;
     if (
-      directReferralInfo &&
-      (directReferralInfo.referrerName || directReferralInfo.referrerEmail)
+      directReferralInfo
+      && (directReferralInfo.referrerName || directReferralInfo.referrerEmail)
     ) {
       return this.formatNameEmail(
         directReferralInfo.referrerName,
-        directReferralInfo.referrerEmail
+        directReferralInfo.referrerEmail,
       );
     }
 
-    const referrer =
-      registrationType === "admin_referral"
-        ? request.referredByAdminInfo ??
-          request.renterInfo?.referredByAdmin ??
-          request.renterId?.referredByAdminId
+    const referrer
+      = registrationType === "admin_referral"
+        ? request.referredByAdminInfo
+        ?? request.renterInfo?.referredByAdmin
+        ?? request.renterId?.referredByAdminId
         : registrationType === "agent_referral"
-          ? request.referredByAgentInfo ??
-            request.renterInfo?.referredByAgent ??
-            request.renterId?.referredByAgentId
-          : request.referredByAdminInfo ??
-            request.renterInfo?.referredByAdmin ??
-            request.referredByAgentInfo ??
-            request.renterInfo?.referredByAgent;
+          ? request.referredByAgentInfo
+          ?? request.renterInfo?.referredByAgent
+          ?? request.renterId?.referredByAgentId
+          : request.referredByAdminInfo
+            ?? request.renterInfo?.referredByAdmin
+            ?? request.referredByAgentInfo
+            ?? request.renterInfo?.referredByAgent;
 
     return this.formatNameEmail(
       referrer?.fullName ?? referrer?.referrerName,
-      referrer?.email ?? referrer?.referrerEmail
+      referrer?.email ?? referrer?.referrerEmail,
     );
   }
 
@@ -778,8 +812,8 @@ export class ExcelService {
   }
 
   private getLocations(request: any): Array<Record<string, unknown>> {
-    const candidate =
-      request.locations || request.locationPreferences || request.location;
+    const candidate
+      = request.locations || request.locationPreferences || request.location;
 
     if (!candidate) {
       return [];
@@ -787,7 +821,7 @@ export class ExcelService {
 
     if (Array.isArray(candidate)) {
       return candidate.filter(
-        (item) => item && typeof item === "object"
+        item => item && typeof item === "object",
       ) as Array<Record<string, unknown>>;
     }
 
@@ -822,22 +856,23 @@ export class ExcelService {
 
     const allNeighborhoods: string[] = [];
     for (const loc of locations) {
-      const neighborhoodValue =
-        (loc.neighborhoods as unknown) ||
-        (loc.neighborhood as unknown) ||
-        (loc.areas as unknown);
+      const neighborhoodValue
+        = (loc.neighborhoods as unknown)
+          || (loc.neighborhood as unknown)
+          || (loc.areas as unknown);
 
       if (Array.isArray(neighborhoodValue)) {
         allNeighborhoods.push(
           ...neighborhoodValue
             .filter(
-              (item) => typeof item === "string" && item.trim().length > 0
+              item => typeof item === "string" && item.trim().length > 0,
             )
-            .map((item) => item.trim())
+            .map(item => item.trim()),
         );
-      } else if (
-        typeof neighborhoodValue === "string" &&
-        neighborhoodValue.trim().length > 0
+      }
+      else if (
+        typeof neighborhoodValue === "string"
+        && neighborhoodValue.trim().length > 0
       ) {
         allNeighborhoods.push(neighborhoodValue.trim());
       }
@@ -853,9 +888,9 @@ export class ExcelService {
       return request.renterInfo.registrationType;
     }
     if (
-      request.renterId &&
-      typeof request.renterId === "object" &&
-      request.renterId.registrationType
+      request.renterId
+      && typeof request.renterId === "object"
+      && request.renterId.registrationType
     ) {
       return request.renterId.registrationType;
     }
@@ -866,15 +901,15 @@ export class ExcelService {
   }
 
   private getRenterQuestionnaire(
-    request: any
+    request: any,
   ): Record<string, unknown> | null {
     if (request.renterInfo?.questionnaire) {
       return request.renterInfo.questionnaire;
     }
     if (
-      request.renterId &&
-      typeof request.renterId === "object" &&
-      request.renterId.questionnaire
+      request.renterId
+      && typeof request.renterId === "object"
+      && request.renterId.questionnaire
     ) {
       return request.renterId.questionnaire;
     }
@@ -883,7 +918,7 @@ export class ExcelService {
 
   private getQuestionnaireFlag(
     request: any,
-    keys: string | string[]
+    keys: string | string[],
   ): string {
     if (this.getRenterRegistrationType(request) !== "admin_referral") {
       return "N/A";
@@ -907,7 +942,7 @@ export class ExcelService {
 
   private getQuestionnaireValue(
     request: any,
-    keys: string | string[]
+    keys: string | string[],
   ): string {
     if (this.getRenterRegistrationType(request) !== "admin_referral") {
       return "N/A";
@@ -931,12 +966,12 @@ export class ExcelService {
 
   private formatNameEmail(
     name: unknown,
-    email: unknown
+    email: unknown,
   ): string {
-    const normalizedName =
-      typeof name === "string" && name.trim().length > 0 ? name.trim() : "";
-    const normalizedEmail =
-      typeof email === "string" && email.trim().length > 0 ? email.trim() : "";
+    const normalizedName
+      = typeof name === "string" && name.trim().length > 0 ? name.trim() : "";
+    const normalizedEmail
+      = typeof email === "string" && email.trim().length > 0 ? email.trim() : "";
 
     if (normalizedName && normalizedEmail) {
       return `${normalizedName} | ${normalizedEmail}`;
@@ -1006,7 +1041,7 @@ export class ExcelService {
 
       logger.info(
         { totalRenters: renters.length },
-        "Fetched renters for Excel"
+        "Fetched renters for Excel",
       );
 
       let rowCount = 1;
@@ -1035,7 +1070,7 @@ export class ExcelService {
       // Set column widths
       const columnWidths = [18, 20, 15, 18, 15, 15];
 
-      worksheet.columns = columnWidths.map((width) => ({
+      worksheet.columns = columnWidths.map(width => ({
         width,
       }));
 
@@ -1052,18 +1087,19 @@ export class ExcelService {
 
       logger.info(
         { size: typedBuffer.length, rows: renters.length },
-        "Renter Excel buffer generated successfully"
+        "Renter Excel buffer generated successfully",
       );
 
       return typedBuffer;
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "Failed to generate Renter Excel");
       throw error;
     }
   }
 
   async uploadConsolidatedRenterExcel(
-    buffer: Buffer
+    buffer: Buffer,
   ): Promise<{ url: string; fileName: string }> {
     try {
       const date = new Date();
@@ -1078,13 +1114,14 @@ export class ExcelService {
         buffer,
         fileName,
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        folder
+        folder,
       );
 
       logger.info({ url, fileName }, "Renter Excel uploaded successfully");
 
       return { url, fileName } as any;
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "Failed to upload Renter Excel to S3");
       throw error;
     }
@@ -1214,14 +1251,15 @@ export class ExcelService {
 
       logger.info(
         { fileName, agentCount: agents.length },
-        "Generated agent Excel"
+        "Generated agent Excel",
       );
 
       return { buffer: typedBuffer, fileName };
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
-        "Error generating agent Excel"
+        "Error generating agent Excel",
       );
       throw error;
     }
@@ -1231,7 +1269,7 @@ export class ExcelService {
    * ✅ Upload Agent Excel to S3
    */
   async uploadConsolidatedAgentExcel(
-    buffer: Buffer
+    buffer: Buffer,
   ): Promise<{ url: string; fileName: string }> {
     try {
       const date = new Date();
@@ -1246,13 +1284,14 @@ export class ExcelService {
         buffer,
         fileName,
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        folder
+        folder,
       );
 
       logger.info({ url, fileName }, "Agent Excel uploaded successfully");
 
       return { url, fileName } as any;
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "Failed to upload Agent Excel to S3");
       throw error;
     }
@@ -1278,21 +1317,23 @@ export class ExcelService {
    * Helper: Format date for Excel
    */
   private formatDate(date: Date | undefined): string {
-    if (!date) return "N/A";
+    if (!date)
+      return "N/A";
     try {
       const d = new Date(date);
       return d.toISOString().split("T")[0];
-    } catch {
+    }
+    catch {
       return "N/A";
     }
   }
 
   private getMoveDate(
     request: any,
-    key: "earliest" | "latest"
+    key: "earliest" | "latest",
   ): Date | undefined {
-    const aliases =
-      key === "earliest"
+    const aliases
+      = key === "earliest"
         ? [
             ["movingDateRange", "earliest"],
             ["movingDateRange", "from"],
@@ -1326,8 +1367,8 @@ export class ExcelService {
   }
 
   private getPriceValue(request: any, key: "min" | "max"): number | string {
-    const aliases =
-      key === "min"
+    const aliases
+      = key === "min"
         ? [
             ["priceRange", "min"],
             ["budgetRange", "min"],
@@ -1345,12 +1386,12 @@ export class ExcelService {
 
     for (const path of aliases) {
       const value = this.getValueByPath(request, path);
-      const numeric =
-        typeof value === "number"
+      const numeric
+        = typeof value === "number"
           ? value
           : typeof value === "string"
-          ? Number(value)
-          : NaN;
+            ? Number(value)
+            : Number.NaN;
 
       if (Number.isFinite(numeric)) {
         return numeric;
@@ -1375,7 +1416,7 @@ export class ExcelService {
 
   private resolveFirstObject(
     source: any,
-    keys: string[]
+    keys: string[],
   ): Record<string, unknown> | undefined {
     for (const key of keys) {
       const value = source[key];
@@ -1394,8 +1435,8 @@ export class ExcelService {
 
     if (Array.isArray(value)) {
       const normalized = value
-        .map((item) => this.normalizeCellValue(item))
-        .filter((item) => item.length > 0);
+        .map(item => this.normalizeCellValue(item))
+        .filter(item => item.length > 0);
       return normalized.length > 0 ? normalized.join(", ") : "N/A";
     }
 
@@ -1417,7 +1458,7 @@ export class ExcelService {
 
   private findColumnIndexByHeader(
     worksheet: ExcelJS.Worksheet,
-    headerName: string
+    headerName: string,
   ): number | null {
     const headerRow = worksheet.getRow(1);
     for (let column = 1; column <= headerRow.cellCount; column += 1) {
@@ -1436,9 +1477,9 @@ export class ExcelService {
     }
 
     if (
-      typeof value === "string" ||
-      typeof value === "number" ||
-      typeof value === "boolean"
+      typeof value === "string"
+      || typeof value === "number"
+      || typeof value === "boolean"
     ) {
       return String(value).trim();
     }
@@ -1460,7 +1501,7 @@ export class ExcelService {
 
       if (Array.isArray(objectValue.richText)) {
         return objectValue.richText
-          .map((part) => part.text || "")
+          .map(part => part.text || "")
           .join("")
           .trim();
       }
@@ -1512,8 +1553,10 @@ export class ExcelService {
    * Helper: Serialize objects to string
    */
   private serializeObject(obj: any): string {
-    if (!obj) return "N/A";
-    if (typeof obj === "string") return obj;
+    if (!obj)
+      return "N/A";
+    if (typeof obj === "string")
+      return obj;
     if (typeof obj === "object") {
       if (Array.isArray(obj)) {
         return obj.join(", ");
@@ -1525,14 +1568,14 @@ export class ExcelService {
 
   private formatFeatureFlags(
     source: Record<string, unknown> | undefined | null,
-    features: Array<{ label: string; keys: string[] }>
+    features: Array<{ label: string; keys: string[] }>,
   ): string {
     if (!source || typeof source !== "object") {
       return "N/A";
     }
 
     const enabled = features
-      .filter(({ keys }) => keys.some((key) => this.isEnabledFlag(source[key])))
+      .filter(({ keys }) => keys.some(key => this.isEnabledFlag(source[key])))
       .map(({ label }) => label);
 
     if (enabled.length === 0) {
@@ -1560,7 +1603,7 @@ export class ExcelService {
   }
 
   private formatBuildingFeatures(
-    source: Record<string, unknown> | undefined | null
+    source: Record<string, unknown> | undefined | null,
   ) {
     return this.formatFeatureFlags(source, [
       { label: "Doorman", keys: ["doorman", "hasDoorman"] },
@@ -1573,7 +1616,7 @@ export class ExcelService {
   }
 
   private formatPetPolicy(
-    source: Record<string, unknown> | undefined | null
+    source: Record<string, unknown> | undefined | null,
   ) {
     return this.formatFeatureFlags(source, [
       { label: "Cats Allowed", keys: ["catsAllowed", "allowCats", "catFriendly"] },
@@ -1582,7 +1625,7 @@ export class ExcelService {
   }
 
   private formatGuarantorRequired(
-    source: Record<string, unknown> | undefined | null
+    source: Record<string, unknown> | undefined | null,
   ) {
     return this.formatFeatureFlags(source, [
       {
@@ -1622,7 +1665,7 @@ export class ExcelService {
     for (const request of requests) {
       const date = new Date(request.createdAt);
       const monthKey = `${date.getFullYear()}-${String(
-        date.getMonth() + 1
+        date.getMonth() + 1,
       ).padStart(2, "0")}`;
 
       if (!grouped.has(monthKey)) {
@@ -1632,7 +1675,7 @@ export class ExcelService {
     }
 
     return new Map(
-      [...grouped.entries()].sort((a, b) => b[0].localeCompare(a[0]))
+      [...grouped.entries()].sort((a, b) => b[0].localeCompare(a[0])),
     );
   }
 
@@ -1700,12 +1743,12 @@ export class ExcelService {
       ];
 
       // Fetch ALL listings with complete data including grant-access agents
-      const listingsData =
-        await this.preMarketRepository.getAllListingsWithAllData();
+      const listingsData
+        = await this.preMarketRepository.getAllListingsWithAllData();
 
       logger.info(
         { totalListings: listingsData.length },
-        "Fetched listings with agent data for Excel"
+        "Fetched listings with agent data for Excel",
       );
 
       // Add data rows
@@ -1717,28 +1760,34 @@ export class ExcelService {
         const agents = listingData.agents;
 
         const formatAgentDetails = (agentsList: any[]): string => {
-          if (!agentsList || agentsList.length === 0) return "None";
+          if (!agentsList || agentsList.length === 0)
+            return "None";
           return agentsList
             .map((a: any) => {
               const parts = [];
-              if (a.name) parts.push(a.name);
-              if (a.email) parts.push(a.email);
-              if (a.phone) parts.push(a.phone);
-              if (a.licenseNumber) parts.push(`Lic: ${a.licenseNumber}`);
-              if (a.brokerageName) parts.push(`Brokerage: ${a.brokerageName}`);
+              if (a.name)
+                parts.push(a.name);
+              if (a.email)
+                parts.push(a.email);
+              if (a.phone)
+                parts.push(a.phone);
+              if (a.licenseNumber)
+                parts.push(`Lic: ${a.licenseNumber}`);
+              if (a.brokerageName)
+                parts.push(`Brokerage: ${a.brokerageName}`);
               return parts.join(" | ");
             })
             .join("\n");
         };
 
         const grantAccessAgents = agents.confirmed.filter(
-          (a: any) => a.accessType === "grant_access"
+          (a: any) => a.accessType === "grant_access",
         );
         const freeAccessAgents = agents.confirmed.filter(
-          (a: any) => a.accessType === "free"
+          (a: any) => a.accessType === "free",
         );
         const paidAccessAgents = agents.confirmed.filter(
-          (a: any) => a.accessType === "paid"
+          (a: any) => a.accessType === "paid",
         );
 
         const grantAccessDetails = formatAgentDetails(grantAccessAgents);
@@ -1804,7 +1853,7 @@ export class ExcelService {
         15, // Created Date
       ];
 
-      worksheet.columns = columnWidths.map((width) => ({ width }));
+      worksheet.columns = columnWidths.map(width => ({ width }));
 
       // Add auto filter if data exists
       if (listingsData.length > 0) {
@@ -1861,11 +1910,12 @@ export class ExcelService {
 
       logger.info(
         { size: typedBuffer.length, listings: listingsData.length },
-        "Pre-Market Listings Excel buffer generated successfully"
+        "Pre-Market Listings Excel buffer generated successfully",
       );
 
       return typedBuffer;
-    } catch (error) {
+    }
+    catch (error) {
       logger.error({ error }, "Failed to generate Pre-Market Listings Excel");
       throw error;
     }
@@ -1875,7 +1925,7 @@ export class ExcelService {
    * Upload Pre-Market Listings Excel to S3
    */
   async uploadPreMarketListingsExcel(
-    buffer: Buffer
+    buffer: Buffer,
   ): Promise<{ url: string; fileName: string; key: string }> {
     try {
       // Generate filename with date and timestamp
@@ -1887,26 +1937,27 @@ export class ExcelService {
 
       logger.info(
         { fileName, folder },
-        "Uploading Pre-Market Listings Excel to S3"
+        "Uploading Pre-Market Listings Excel to S3",
       );
 
       const uploaded = await this.s3Service.uploadFile(
         buffer,
         fileName,
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        folder
+        folder,
       );
 
       logger.info(
         { url: uploaded.url, key: uploaded.key, fileName },
-        "Pre-Market Listings Excel uploaded successfully"
+        "Pre-Market Listings Excel uploaded successfully",
       );
 
       return { url: uploaded.url, fileName, key: uploaded.key };
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error },
-        "Failed to upload Pre-Market Listings Excel to S3"
+        "Failed to upload Pre-Market Listings Excel to S3",
       );
       throw error;
     }
@@ -1916,11 +1967,13 @@ export class ExcelService {
    * Helper: Serialize array to string
    */
   private serializeArray(arr: any): string {
-    if (!arr) return "N/A";
+    if (!arr)
+      return "N/A";
     if (Array.isArray(arr)) {
       if (typeof arr[0] === "string") {
         return arr.join(", ");
-      } else if (typeof arr[0] === "object" && arr[0].name) {
+      }
+      else if (typeof arr[0] === "object" && arr[0].name) {
         return arr.map((item: any) => item.name).join(", ");
       }
     }
@@ -1928,7 +1981,8 @@ export class ExcelService {
   }
 
   private serializeLocations(locations: any): string {
-    if (!locations || locations.length === 0) return "N/A";
+    if (!locations || locations.length === 0)
+      return "N/A";
 
     return locations
       .map((loc: any) => {
@@ -1941,9 +1995,9 @@ export class ExcelService {
 
         // Add neighborhoods in parentheses
         if (
-          loc.neighborhoods &&
-          Array.isArray(loc.neighborhoods) &&
-          loc.neighborhoods.length > 0
+          loc.neighborhoods
+          && Array.isArray(loc.neighborhoods)
+          && loc.neighborhoods.length > 0
         ) {
           const neighborhoods = loc.neighborhoods.join(", ");
           parts.push(`(${neighborhoods})`);

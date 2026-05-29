@@ -1,11 +1,13 @@
 // file: src/modules/monthly-report/monthly-report.controller.ts
 
+import type { Request, Response } from "express";
+
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
 import { BadRequestException } from "@/utils/app-error.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
-import type { Request, Response } from "express";
+
 import {
   createMonthlyReportSchema,
   deleteReportSchema,
@@ -71,7 +73,7 @@ export class MonthlyReportController {
 
     const report = await this.reportService.createReport(
       validated.body,
-      adminId
+      adminId,
     );
 
     logger.info({ adminId, reportId: report._id }, "Report created");
@@ -92,7 +94,7 @@ export class MonthlyReportController {
     const report = await this.reportService.updateReport(
       id,
       validated.body,
-      adminId
+      adminId,
     );
 
     logger.info({ adminId, reportId: id }, "Report updated");
@@ -134,7 +136,7 @@ export class MonthlyReportController {
     ApiResponse.success(
       res,
       { message: "Report permanently deleted" },
-      "Report permanently deleted successfully"
+      "Report permanently deleted successfully",
     );
   });
 
@@ -144,7 +146,7 @@ export class MonthlyReportController {
    */
   getReportsByYear = asyncHandler(async (req: Request, res: Response) => {
     const { year } = req.params;
-    const yearNum = parseInt(year);
+    const yearNum = Number.parseInt(year);
 
     if (isNaN(yearNum) || yearNum < 2000 || yearNum > 2100) {
       throw new BadRequestException("Invalid year");

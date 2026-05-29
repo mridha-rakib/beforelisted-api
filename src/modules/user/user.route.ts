@@ -1,8 +1,10 @@
 // file: src/modules/user/user.route.ts
 
+import { Router } from "express";
+
 import { ROLES } from "@/constants/app.constants";
 import { authMiddleware } from "@/middlewares/auth.middleware";
-import { Router } from "express";
+
 import { UserController } from "./user.controller";
 
 const router = Router();
@@ -13,7 +15,7 @@ router.get("/profile", authMiddleware.verifyToken, userController.getProfile);
 router.put(
   "/profile",
   authMiddleware.verifyToken,
-  userController.updateProfile
+  userController.updateProfile,
 );
 
 router.delete("/", authMiddleware.verifyToken, userController.deleteAccount);
@@ -22,14 +24,14 @@ router.get(
   "/admin/referral-link",
   authMiddleware.verifyToken,
   authMiddleware.authorize(ROLES.ADMIN),
-  userController.getReferralLink
+  userController.getReferralLink,
 );
 
 router.get(
   "/:userId",
   authMiddleware.verifyToken,
   authMiddleware.authorize(ROLES.ADMIN),
-  userController.adminGetUser
+  userController.adminGetUser,
 );
 
 export default router;

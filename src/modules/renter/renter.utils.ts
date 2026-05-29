@@ -1,6 +1,6 @@
 // file: src/modules/renter/renter.utils.ts
 
-import { IGeneratedPasswordResponse } from "./renter.interface";
+import type { IGeneratedPasswordResponse } from "./renter.interface";
 import type { RenterQuestionnairePayload } from "./renter.type";
 
 export class RenterUtil {
@@ -22,8 +22,8 @@ export class RenterUtil {
     password += numbers[Math.floor(Math.random() * numbers.length)];
 
     for (let i = 0; i < 9; i++) {
-      password +=
-        allCharacters[Math.floor(Math.random() * allCharacters.length)];
+      password
+        += allCharacters[Math.floor(Math.random() * allCharacters.length)];
     }
 
     password = password
@@ -63,7 +63,7 @@ export class RenterUtil {
       };
     }
 
-    if (!/[0-9]/.test(password)) {
+    if (!/\d/.test(password)) {
       return {
         isValid: false,
         message: "Password must contain at least one number",
@@ -77,7 +77,7 @@ export class RenterUtil {
   }
 
   static validateEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
     return emailRegex.test(email);
   }
 
@@ -100,7 +100,7 @@ export class RenterUtil {
     }
 
     // Allow letters, spaces, hyphens, apostrophes
-    const nameRegex = /^[a-zA-Z\s\-']+$/;
+    const nameRegex = /^[a-z\s\-']+$/i;
     if (!nameRegex.test(fullName)) {
       return {
         isValid: false,
@@ -122,11 +122,12 @@ export class RenterUtil {
    * @returns true if valid, false otherwise
    */
   static validatePhoneNumber(phoneNumber: string): boolean {
-    if (!phoneNumber) return true; // Phone is optional
-    const phoneRegex = /^[\d\s\-\(\)\+\.]+$/;
+    if (!phoneNumber)
+      return true; // Phone is optional
+    const phoneRegex = /^[\d\s\-()+.]+$/;
     return (
-      phoneRegex.test(phoneNumber) &&
-      phoneNumber.replace(/\D/g, "").length >= 10
+      phoneRegex.test(phoneNumber)
+      && phoneNumber.replace(/\D/g, "").length >= 10
     );
   }
 
@@ -147,8 +148,9 @@ export class RenterUtil {
    * @returns Normalized phone number
    */
   static normalizePhoneNumber(phoneNumber: string): string {
-    if (!phoneNumber) return "";
-    return phoneNumber.replace(/[^\d\+]/g, "");
+    if (!phoneNumber)
+      return "";
+    return phoneNumber.replace(/[^\d+]/g, "");
   }
 
   /**
@@ -162,7 +164,7 @@ export class RenterUtil {
    */
   static validateReferralCode(
     code: string,
-    type?: "agent" | "admin"
+    type?: "agent" | "admin",
   ): { isValid: boolean; type?: "agent" | "admin"; code?: string } {
     if (!code || code.trim() === "") {
       return { isValid: false };
@@ -206,7 +208,7 @@ export class RenterUtil {
   }
 
   static getRegistrationType(
-    referralCode?: string
+    referralCode?: string,
   ): "normal" | "agent_referral" | "admin_referral" {
     if (!referralCode) {
       return "normal";
@@ -234,15 +236,15 @@ export class RenterUtil {
    * being answered "Yes" drives this to true.
    */
   static shouldTreatAsAdminReferralFromQuestionnaire(
-    questionnaire?: RenterQuestionnairePayload
+    questionnaire?: RenterQuestionnairePayload,
   ): boolean {
     if (!questionnaire) {
       return false;
     }
 
     const wantsBeforeListedRequest = questionnaire.lookingToPurchase === true;
-    const optedForRenterSpecialist =
-      questionnaire.renterSpecialistNeeded === true;
+    const optedForRenterSpecialist
+      = questionnaire.renterSpecialistNeeded === true;
 
     return wantsBeforeListedRequest || optedForRenterSpecialist;
   }
@@ -290,8 +292,8 @@ export class RenterUtil {
    * @returns Secure random token (32 chars)
    */
   static generateSecureToken(): string {
-    const chars =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const chars
+      = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     let token = "";
     for (let i = 0; i < 32; i++) {
       token += chars.charAt(Math.floor(Math.random() * chars.length));

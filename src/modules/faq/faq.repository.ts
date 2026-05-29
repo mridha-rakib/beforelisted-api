@@ -1,7 +1,9 @@
 // file: src/modules/faq/faq.repository.ts
 
+import type { IFAQ } from "./faq.model";
+
 import { BaseRepository } from "../base/base.repository";
-import { FAQ, type IFAQ } from "./faq.model";
+import { FAQ } from "./faq.model";
 
 export class FAQRepository extends BaseRepository<IFAQ> {
   constructor() {
@@ -23,7 +25,7 @@ export class FAQRepository extends BaseRepository<IFAQ> {
    */
   async getFAQsByCategory(
     category: string,
-    isActive: boolean = true
+    isActive: boolean = true,
   ): Promise<IFAQ[]> {
     return this.model
       .find({ category, isActive })
@@ -58,7 +60,7 @@ export class FAQRepository extends BaseRepository<IFAQ> {
   async updateFAQ(
     id: string,
     data: Partial<IFAQ>,
-    updatedBy: string
+    updatedBy: string,
   ): Promise<IFAQ | null> {
     return this.model.findByIdAndUpdate(
       id,
@@ -67,7 +69,7 @@ export class FAQRepository extends BaseRepository<IFAQ> {
         updatedBy,
         updatedAt: new Date(),
       },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -82,7 +84,7 @@ export class FAQRepository extends BaseRepository<IFAQ> {
         updatedBy,
         updatedAt: new Date(),
       },
-      { new: true }
+      { new: true },
     );
   }
 

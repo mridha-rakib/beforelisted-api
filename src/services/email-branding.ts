@@ -1,12 +1,13 @@
-export const DEFAULT_EMAIL_LOGO_URL =
-  "cid:beforelisted-email-logo.png";
+export const DEFAULT_EMAIL_LOGO_URL
+  = "cid:beforelisted-email-logo.png";
 export const EMAIL_LOGO_CONTENT_ID = "cid:beforelisted-email-logo.png";
 
-const stripWrappingQuotes = (value: string): string =>
-  value
+function stripWrappingQuotes(value: string): string {
+  return value
     .trim()
-    .replace(/^(["']|%22|%27)+/i, "")
-    .replace(/(["']|%22|%27)+$/i, "");
+    .replace(/^(["']|%22|%27)+/, "")
+    .replace(/(["']|%22|%27)+$/, "");
+}
 
 export function normalizeEmailLogoUrl(logoUrl?: string): string {
   const candidate = stripWrappingQuotes(logoUrl || DEFAULT_EMAIL_LOGO_URL);
@@ -26,7 +27,8 @@ export function normalizeEmailLogoUrl(logoUrl?: string): string {
     }
 
     return parsedUrl.toString();
-  } catch {
+  }
+  catch {
     return DEFAULT_EMAIL_LOGO_URL;
   }
 }

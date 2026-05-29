@@ -16,18 +16,18 @@ export class PaginationHelper {
   static parsePaginationParams(query: PaginationQuery): PaginateOptions {
     const page = Math.max(
       1,
-      Number.parseInt(String(query.page)) || this.DEFAULT_PAGE
+      Number.parseInt(String(query.page)) || this.DEFAULT_PAGE,
     );
 
     const limit = Math.min(
       Math.max(1, Number.parseInt(String(query.limit)) || this.DEFAULT_LIMIT),
-      this.MAX_LIMIT
+      this.MAX_LIMIT,
     );
 
     if (page > 10000) {
       throw new BadRequestException(
         "Page number too large",
-        ErrorCodeEnum.PAGINATION_INVALID_PAGE
+        ErrorCodeEnum.PAGINATION_INVALID_PAGE,
       );
     }
 
@@ -49,7 +49,7 @@ export class PaginationHelper {
   }
 
   static parseSortString(
-    sortString: string
+    sortString: string,
   ): Record<string, number | "asc" | "desc"> {
     if (!sortString?.trim()) {
       return { createdAt: -1 };
@@ -58,7 +58,7 @@ export class PaginationHelper {
     const sortObj: Record<string, number | "asc" | "desc"> = {};
     const fields = sortString
       .split(",")
-      .map((field) => field.trim())
+      .map(field => field.trim())
       .filter(Boolean);
 
     for (const field of fields) {
@@ -67,7 +67,8 @@ export class PaginationHelper {
         if (fieldName) {
           sortObj[fieldName] = -1;
         }
-      } else if (field) {
+      }
+      else if (field) {
         sortObj[field] = 1;
       }
     }
@@ -82,7 +83,7 @@ export class PaginationHelper {
 
     return populateString
       .split(",")
-      .map((field) => field.trim())
+      .map(field => field.trim())
       .filter(Boolean)
       .map((field) => {
         // Support nested populate like "user.profile"
@@ -130,7 +131,7 @@ export class PaginationHelper {
     data: T[],
     total: number,
     page: number,
-    limit: number
+    limit: number,
   ): PaginatedResponse<T> {
     const totalPages = Math.ceil(total / limit);
     const currentPage = Math.max(1, page);
@@ -159,14 +160,14 @@ export class PaginationHelper {
 
   static createSearchFilter(
     query: PaginationQuery,
-    searchFields: string[] = []
+    searchFields: string[] = [],
   ): Record<string, any> {
     const filter: Record<string, any> = {};
 
     // Add search functionality
     if (query.search?.trim() && searchFields.length > 0) {
       const searchTerm = String(query.search).trim();
-      filter.$or = searchFields.map((field) => ({
+      filter.$or = searchFields.map(field => ({
         [field]: { $regex: searchTerm, $options: "i" },
       }));
     }
@@ -195,17 +196,18 @@ export class PaginationHelper {
 
     Object.entries(query).forEach(([key, value]) => {
       if (
-        !excludedKeys.includes(key) &&
-        value !== undefined &&
-        value !== null
+        !excludedKeys.includes(key)
+        && value !== undefined
+        && value !== null
       ) {
         // Handle boolean strings
         if (
-          typeof value === "string" &&
-          (value === "true" || value === "false")
+          typeof value === "string"
+          && (value === "true" || value === "false")
         ) {
           filter[key] = value === "true";
-        } else {
+        }
+        else {
           filter[key] = value;
         }
       }
@@ -218,7 +220,7 @@ export class PaginationHelper {
   static createSearchPipeline(
     query: PaginationQuery,
     searchFields: string[] = [],
-    additionalFilters: Record<string, any> = {}
+    additionalFilters: Record<string, any> = {},
   ): Array<Record<string, any>> {
     const pipeline: Array<Record<string, any>> = [];
 

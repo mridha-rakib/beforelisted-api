@@ -1,10 +1,12 @@
 // file: src/modules/notice/notice.controller.ts
 
+import type { Request, Response } from "express";
+
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
-import type { Request, Response } from "express";
+
 import { updateNoticeSchema } from "./notice.schema";
 import { NoticeService } from "./notice.service";
 
@@ -42,7 +44,7 @@ export class NoticeController {
 
     const notice = await this.noticeService.updateNotice(
       validated.body,
-      adminId
+      adminId,
     );
 
     logger.info({ adminId }, "Notice updated");
@@ -60,7 +62,7 @@ export class NoticeController {
     ApiResponse.success(
       res,
       notice,
-      `Notice ${notice.isActive ? "activated" : "deactivated"} successfully`
+      `Notice ${notice.isActive ? "activated" : "deactivated"} successfully`,
     );
   });
 }

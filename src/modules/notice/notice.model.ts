@@ -1,8 +1,10 @@
 // file: src/modules/notice/notice.model.ts
 
-import mongoose, { Document, Schema, Types } from "mongoose";
+import type { Document, Types } from "mongoose";
 
-export interface INotice extends Document {
+import mongoose, { Schema } from "mongoose";
+
+export type INotice = {
   _id: Types.ObjectId;
 
   content: string;
@@ -10,7 +12,7 @@ export interface INotice extends Document {
   createdBy: Types.ObjectId;
   updatedBy?: Types.ObjectId;
   updatedAt: Date;
-}
+} & Document;
 
 const noticeSchema = new Schema<INotice>(
   {
@@ -37,7 +39,7 @@ const noticeSchema = new Schema<INotice>(
   {
     timestamps: true,
     collection: "notices",
-  }
+  },
 );
 
 export const Notice = mongoose.model<INotice>("Notice", noticeSchema);

@@ -7,19 +7,21 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@/utils/app-error.utils";
+
 import type { IBlockedEmail } from "./blocked-email.model";
-import { BlockedEmailRepository } from "./blocked-email.repository";
 import type {
   BlockedEmailStatus,
   CreateBlockedEmailPayload,
 } from "./blocked-email.type";
-import { UserRepository } from "../user/user.repository";
 
-type PopulatedUser =
-  | {
-      fullName?: string;
-      email?: string;
-    }
+import { UserRepository } from "../user/user.repository";
+import { BlockedEmailRepository } from "./blocked-email.repository";
+
+type PopulatedUser
+  = | {
+    fullName?: string;
+    email?: string;
+  }
   | string
   | null
   | undefined;
@@ -38,10 +40,12 @@ export class BlockedEmailService {
     },
   ): Promise<void> {
     const value = email?.trim();
-    if (!value) return;
+    if (!value)
+      return;
 
     const blocked = await this.repository.findActiveByEmail(value);
-    if (!blocked) return;
+    if (!blocked)
+      return;
 
     if (context?.action) {
       await this.logBlockedAttempt(value, blocked.reason, {
@@ -58,7 +62,7 @@ export class BlockedEmailService {
 
   async list(status?: BlockedEmailStatus) {
     const blockedEmails = await this.repository.list(status);
-    return blockedEmails.map((blockedEmail) => this.toResponse(blockedEmail));
+    return blockedEmails.map(blockedEmail => this.toResponse(blockedEmail));
   }
 
   async getActiveEmailSet(emails: string[]): Promise<Set<string>> {
@@ -127,14 +131,14 @@ export class BlockedEmailService {
     },
   ): Promise<void> {
     const normalizedEmail = email.trim().toLowerCase();
-    const notificationActionLabel =
-      context.action === "login"
+    const notificationActionLabel
+      = context.action === "login"
         ? "Login"
         : context.action === "register"
           ? "Register"
           : "Submit Request";
-    const logActionType =
-      context.action === "login"
+    const logActionType
+      = context.action === "login"
         ? "Blocked login attempt"
         : context.action === "register"
           ? "Blocked registration attempt"

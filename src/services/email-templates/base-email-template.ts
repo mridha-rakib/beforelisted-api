@@ -70,7 +70,7 @@ export abstract class BaseEmailTemplate {
   protected generateButton(
     text: string,
     url: string,
-    color: string = this.brandColor
+    color: string = this.brandColor,
   ): string {
     return `
       <div class="button-container">
@@ -83,16 +83,16 @@ export abstract class BaseEmailTemplate {
    * Generate info box HTML
    */
   protected generateInfoBox(
-    items: Array<{ label: string; value: string }>
+    items: Array<{ label: string; value: string }>,
   ): string {
     const rows = items
       .map(
-        (item) => `
+        item => `
       <div class="info-row">
         <span class="label">${item.label}</span>
         <span class="value">${item.value}</span>
       </div>
-    `
+    `,
       )
       .join("");
 
@@ -108,7 +108,7 @@ export abstract class BaseEmailTemplate {
    */
   protected generateAlert(
     message: string,
-    type: "success" | "warning" | "error" | "info" = "info"
+    type: "success" | "warning" | "error" | "info" = "info",
   ): string {
     const colors = {
       success: { bg: "#ECFDF5", border: "#10B981", text: "#047857" },
@@ -232,7 +232,7 @@ export abstract class BaseEmailTemplate {
   protected logRender(templateName: string): void {
     logger.debug(
       { template: templateName, brandColor: this.brandColor },
-      `Rendering ${templateName} email template`
+      `Rendering ${templateName} email template`,
     );
   }
 

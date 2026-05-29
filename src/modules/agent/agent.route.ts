@@ -1,9 +1,11 @@
 // file: src/modules/agent/agent.route.ts
 
+import { Router } from "express";
+
 import { ROLES } from "@/constants/app.constants";
 import { agentActivationMiddleware } from "@/middlewares/agent-activation.middleware";
 import { authMiddleware } from "@/middlewares/auth.middleware";
-import { Router } from "express";
+
 import { AgentController } from "./agent.controller";
 
 const router = Router();
@@ -17,7 +19,7 @@ router.get(
   authMiddleware.verifyEmailVerified,
   agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
-  controller.getAgentProfile
+  controller.getAgentProfile,
 );
 
 /**
@@ -31,7 +33,7 @@ router.put(
   authMiddleware.verifyEmailVerified,
   agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
-  controller.updateAgentProfile
+  controller.updateAgentProfile,
 );
 
 /**
@@ -44,7 +46,7 @@ router.delete(
   authMiddleware.verifyEmailVerified,
   agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
-  controller.deleteProfile
+  controller.deleteProfile,
 );
 
 /**
@@ -57,7 +59,7 @@ router.post(
   authMiddleware.verifyEmailVerified,
   agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
-  controller.toggleEmailSubscription
+  controller.toggleEmailSubscription,
 );
 
 /**
@@ -70,7 +72,7 @@ router.post(
   authMiddleware.verifyEmailVerified,
   agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
-  controller.toggleAcceptingRequests
+  controller.toggleAcceptingRequests,
 );
 
 /**
@@ -83,7 +85,7 @@ router.get(
   authMiddleware.verifyEmailVerified,
   agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
-  controller.getAcceptingRequestsStatus
+  controller.getAcceptingRequestsStatus,
 );
 
 /**
@@ -96,7 +98,7 @@ router.get(
   authMiddleware.verifyEmailVerified,
   agentActivationMiddleware.verify,
   authMiddleware.authorize(ROLES.AGENT),
-  controller.getReferralLink
+  controller.getReferralLink,
 );
 
 // ============================================
@@ -111,7 +113,7 @@ router.get(
   "/admin/all",
   authMiddleware.verifyToken,
   authMiddleware.authorize(ROLES.ADMIN),
-  controller.adminGetAllAgents
+  controller.adminGetAllAgents,
 );
 
 /**
@@ -123,14 +125,14 @@ router.get(
   "/admin/excel-download",
   authMiddleware.verifyToken,
   authMiddleware.authorize(ROLES.ADMIN),
-  controller.downloadAgentConsolidatedExcel
+  controller.downloadAgentConsolidatedExcel,
 );
 
 router.get(
   "/admin/:userId",
   authMiddleware.verifyToken,
   authMiddleware.authorize(ROLES.ADMIN),
-  controller.getSpecificAgent
+  controller.getSpecificAgent,
 );
 
 /**
@@ -141,7 +143,7 @@ router.delete(
   "/admin/:userId",
   authMiddleware.verifyToken,
   authMiddleware.authorize(ROLES.ADMIN),
-  controller.adminDeleteProfile
+  controller.adminDeleteProfile,
 );
 
 // /**
@@ -164,7 +166,7 @@ router.post(
   "/:agentId/toggle-access",
   authMiddleware.verifyToken,
   authMiddleware.authorize(ROLES.ADMIN),
-  controller.toggleAccess
+  controller.toggleAccess,
 );
 
 /**
@@ -176,7 +178,7 @@ router.get(
   "/:agentId/access-status",
   authMiddleware.verifyToken,
   authMiddleware.authorize(ROLES.ADMIN),
-  controller.getAccessStatus
+  controller.getAccessStatus,
 );
 
 /**
@@ -187,7 +189,7 @@ router.post(
   "/admin/:userId/toggle-active",
   authMiddleware.verifyToken,
   authMiddleware.authorize(ROLES.ADMIN),
-  controller.toggleAgentActive
+  controller.toggleAgentActive,
 );
 
 /**
@@ -198,7 +200,7 @@ router.post(
   "/admin/:userId/activate-with-link",
   authMiddleware.verifyToken,
   authMiddleware.authorize(ROLES.ADMIN),
-  controller.activateAgentWithLink
+  controller.activateAgentWithLink,
 );
 /**
  * GET /agent/admin/:userId/activation-history
@@ -208,7 +210,7 @@ router.get(
   "/admin/:userId/activation-history",
   authMiddleware.verifyToken,
   authMiddleware.authorize(ROLES.ADMIN),
-  controller.getActivationHistory
+  controller.getActivationHistory,
 );
 
 export default router;

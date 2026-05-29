@@ -1,11 +1,13 @@
 // file: src/modules/email-verification/email-verification.model.ts
 
-import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 import { model } from "mongoose";
+
+import { BaseSchemaUtil } from "@/utils/base-schema.utils";
+
 import type { IEmailVerificationOTP } from "./email-verification.types";
 
-const emailVerificationOTPSchema =
-  BaseSchemaUtil.createSchema<IEmailVerificationOTP>({
+const emailVerificationOTPSchema
+  = BaseSchemaUtil.createSchema<IEmailVerificationOTP>({
     userId: {
       type: String,
       required: true,
@@ -72,10 +74,10 @@ emailVerificationOTPSchema.index({ userId: 1, email: 1, expiresAt: 1 });
 // TTL index - auto-delete after 24 hours
 emailVerificationOTPSchema.index(
   { expiresAt: 1 },
-  { expireAfterSeconds: 86400 }
+  { expireAfterSeconds: 86400 },
 );
 
 export const EmailVerificationOTP = model<IEmailVerificationOTP>(
   "EmailVerificationOTP",
-  emailVerificationOTPSchema
+  emailVerificationOTPSchema,
 );

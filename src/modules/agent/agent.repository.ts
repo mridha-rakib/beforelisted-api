@@ -1,9 +1,12 @@
 // file: src/modules/agent/agent.repository.ts
 
+import type { Types } from "mongoose";
+
 import { BaseRepository } from "@/modules/base/base.repository";
 import { NotFoundException } from "@/utils/app-error.utils";
-import { Types } from "mongoose";
+
 import type { IAgentProfile } from "./agent.interface";
+
 import { AgentProfile } from "./agent.model";
 
 /**
@@ -18,7 +21,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
    * Find agent by user ID
    */
   async findByUserId(
-    userId: string | Types.ObjectId
+    userId: string | Types.ObjectId,
   ): Promise<IAgentProfile | null> {
     return this.model
       .findOne({ userId })
@@ -34,7 +37,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
    * Find agent by license number
    */
   async findByLicenseNumber(
-    licenseNumber: string
+    licenseNumber: string,
   ): Promise<IAgentProfile | null> {
     return this.model.findOne({ licenseNumber }).exec();
   }
@@ -68,7 +71,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
       .findOneAndUpdate(
         { userId },
         { isVerified: true, verifiedAt: new Date() },
-        { new: true }
+        { new: true },
       )
       .exec();
   }
@@ -77,13 +80,13 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
    * Increment grant access count
    */
   async incrementGrantAccessCount(
-    userId: string
+    userId: string,
   ): Promise<IAgentProfile | null> {
     return this.model
       .findOneAndUpdate(
         { userId },
         { $inc: { grantAccessCount: 1 } },
-        { new: true }
+        { new: true },
       )
       .exec();
   }
@@ -96,7 +99,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
       .findOneAndUpdate(
         { userId },
         { $inc: { totalMatches: 1 } },
-        { new: true }
+        { new: true },
       )
       .exec();
   }
@@ -105,13 +108,13 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
    * Increment successful matches
    */
   async incrementSuccessfulMatches(
-    userId: string
+    userId: string,
   ): Promise<IAgentProfile | null> {
     return this.model
       .findOneAndUpdate(
         { userId },
         { $inc: { successfulMatches: 1 } },
-        { new: true }
+        { new: true },
       )
       .exec();
   }
@@ -147,7 +150,8 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
   } | null> {
     const agent = await this.model.findOne({ userId }).exec();
 
-    if (!agent) return null;
+    if (!agent)
+      return null;
 
     return {
       grantAccessCount: agent.grantAccessCount,
@@ -165,7 +169,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
    */
   async updateByUserId(
     userId: string | Types.ObjectId,
-    data: Partial<IAgentProfile>
+    data: Partial<IAgentProfile>,
   ): Promise<IAgentProfile | null> {
     return this.model
       .findOneAndUpdate({ userId }, { $set: data }, { new: true })
@@ -177,12 +181,12 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
    */
   async updateProfile(
     userId: string | Types.ObjectId,
-    data: Partial<IAgentProfile>
+    data: Partial<IAgentProfile>,
   ): Promise<IAgentProfile | null> {
     return this.model.findOneAndUpdate(
       { userId },
       { $set: data },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -209,7 +213,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
   async toggleAccess(
     agentId: string,
     adminId: string,
-    reason?: string
+    reason?: string,
   ): Promise<any> {
     const agent = await this.model.findById(agentId);
 
@@ -236,7 +240,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
             },
           },
         },
-        { new: true }
+        { new: true },
       )
       .populate("hasGrantAccess.toggledBy", "email fullName");
 
@@ -268,7 +272,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
   async toggleActive(
     userId: string,
     adminId: string,
-    reason?: string
+    reason?: string,
   ): Promise<IAgentProfile> {
     const agent = await this.model.findOne({ userId });
 
@@ -295,7 +299,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
             },
           },
         },
-        { new: true }
+        { new: true },
       )
       .populate("activationHistory.changedBy", "email fullName")
       .exec() as any;
@@ -306,7 +310,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
     adminId: string,
     activationLink: string,
     disclosureLink: string,
-    reason?: string
+    reason?: string,
   ): Promise<IAgentProfile> {
     const agent = await this.model.findOne({ userId }).exec();
 
@@ -487,7 +491,7 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
         type: "agent_data",
       },
       { $set: { ...metadata, updatedAt: new Date() } },
-      { upsert: true }
+      { upsert: true },
     );
   }
 

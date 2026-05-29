@@ -1,11 +1,15 @@
-import mongoose, { Document, Schema, Types } from "mongoose";
+import type { Document, Types } from "mongoose";
+
+import mongoose, { Schema } from "mongoose";
+
+import type { BlockedEmailReason, BlockedEmailStatus } from "./blocked-email.type";
+
 import {
   BLOCKED_EMAIL_REASONS,
-  type BlockedEmailReason,
-  type BlockedEmailStatus,
+
 } from "./blocked-email.type";
 
-export interface IBlockedEmail extends Document {
+export type IBlockedEmail = {
   _id: Types.ObjectId;
   email: string;
   reason: BlockedEmailReason;
@@ -16,7 +20,7 @@ export interface IBlockedEmail extends Document {
   removedBy?: Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
-}
+} & Document;
 
 const blockedEmailSchema = new Schema<IBlockedEmail>(
   {
@@ -65,6 +69,6 @@ const blockedEmailSchema = new Schema<IBlockedEmail>(
   },
 );
 
-export const BlockedEmail =
-  mongoose.models.BlockedEmail ||
-  mongoose.model<IBlockedEmail>("BlockedEmail", blockedEmailSchema);
+export const BlockedEmail
+  = mongoose.models.BlockedEmail
+    || mongoose.model<IBlockedEmail>("BlockedEmail", blockedEmailSchema);
