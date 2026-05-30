@@ -1034,7 +1034,7 @@ export class EmailService {
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
         replyTo: payload.taggedAgentEmail || "support@beforelisted.com",
-        subject: "Your request has been received - BeforeListed",
+        subject: "Your request has been received \u2013 BeforeListed",
         html,
       };
 

@@ -579,6 +579,15 @@ export class EmailTemplates {
                 <li>Review renter requests associated with your registration link.</li>
                 <li>Review and match renter requests shared with you by other agents, when applicable.</li>
                 <li>Submit match requests through the website, subject to required approvals and disclosures.</li>
+                <li>
+                    Archive renter requests or matched requests when applicable, selecting from the following reasons:
+                    <ul class="features-list">
+                        <li>Registration or disclosure missing</li>
+                        <li>Renter is no longer actively searching</li>
+                        <li>Client placed (apartment secured)</li>
+                    </ul>
+                </li>
+                <li>Unarchive previously archived requests to reactivate them at any time.</li>
             </ul>
 
             <p>If you cannot match renter requests immediately, your account may still be pending Grant Access configuration.</p>

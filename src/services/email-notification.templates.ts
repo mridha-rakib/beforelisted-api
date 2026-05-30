@@ -477,7 +477,7 @@ export function renterRequestConfirmationTemplate(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your request has been received - BeforeListed</title>
+    <title>Your request has been received &ndash; BeforeListed</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -577,8 +577,9 @@ export function renterRequestConfirmationTemplate(
                 <li>BeforeListed&trade; is a renter-initiated intake website.</li>
                 <li>Requests focused on opportunities that may not be publicly advertised may take longer than on-market searches.</li>
                 <li>You will be notified if a relevant opportunity is identified.</li>
-                <li>Another licensed agent may be involved only with your consent and required disclosures.</li>
+                <li>Other licensed agents may be involved only with your consent and required disclosures.</li>
                 <li>A broker fee is payable only if you successfully rent an apartment presented by a licensed agent with required disclosures.</li>
+                <li>A check-in email with a confirmation link will be sent every 14 days from your last interaction. Please click the link to keep your request active. Unconfirmed requests may be archived.</li>
             </ul>
 
             <p>If you have questions, you may reply directly to this email.</p>
@@ -752,7 +753,7 @@ export function agentRenterRequestConfirmationTemplate(
   const safeLocation = escapeHtml(location || "N/A");
   const safeFeatures = escapeHtml(features || "Not specified");
   const safePreferencesByOrder = escapeHtml(
-    preferencesByOrder || "Not specified",
+    limitPreferencesByOrder(preferencesByOrder),
   );
   const safeSubmittedAt = escapeHtml(submittedAt || "N/A");
 
@@ -2871,4 +2872,27 @@ function escapeHtml(value: string): string {
         return char;
     }
   });
+}
+
+function limitPreferencesByOrder(
+  preferencesByOrder: string,
+  limit: number = 4,
+  fallback: string = "Not specified",
+): string {
+  const value = preferencesByOrder?.trim();
+
+  if (!value) {
+    return fallback;
+  }
+
+  const preferences = value
+    .split(/\s*,\s*|\r?\n/)
+    .map(preference => preference.trim())
+    .filter(Boolean);
+
+  if (preferences.length === 0) {
+    return fallback;
+  }
+
+  return preferences.slice(0, limit).join(", ");
 }
