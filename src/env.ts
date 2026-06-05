@@ -112,6 +112,8 @@ const envSchema = z.object({
 
   // Public frontend base URL used in links, redirects, and CORS; set to the deployed frontend domain.
   CLIENT_URL: z.string().url().default("https://beforelisted.com"),
+  // Optional comma-separated additional frontend origins for CORS, such as ngrok dev URLs.
+  CORS_ORIGINS: z.string().optional(),
   // Public API base URL including BASE_URL, used for email links that must record state immediately.
   PUBLIC_API_BASE_URL: z.string().url().optional(),
   // Pino log verbosity; choose per environment, usually info in production and debug locally.

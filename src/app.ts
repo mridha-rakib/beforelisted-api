@@ -23,18 +23,49 @@ import { PreMarketController } from "./modules/pre-market/pre-market.controller.
 const app: Application = express();
 const controller = new PreMarketController();
 
-const allowedOrigins = new Set([
+const configuredOrigins = [
   env.CLIENT_URL,
   "https://beforelisted.com",
   "https://www.beforelisted.com",
   "https://dashboard.beforelisted.com",
+  ...(env.CORS_ORIGINS?.split(",") ?? []),
+];
+
+const allowedOrigins = new Set(
+  configuredOrigins
+    .map((origin) => origin.trim().replace(/\/$/, ""))
+    .filter(Boolean),
+);
+
+const allowedDevOriginPatterns =
+  env.NODE_ENV === "production"
+    ? []
+    : [
+        /^https?:\/\/localhost(?::\d+)?$/,
+        /^https?:\/\/127\.0\.0\.1(?::\d+)?$/,
+        /^https:\/\/[a-z0-9-]+\.ngrok-free\.dev$/,
+        /^https:\/\/[a-z0-9-]+\.ngrok\.app$/,
+        /^https:\/\/[a-z0-9-]+\.ngrok\.io$/,
+      ];
+
+[
   "http://localhost:3000",
   "http://127.0.0.1:3000",
   "http://127.0.0.1:3001",
   "http://localhost:3001",
   "http://localhost:3002",
   "http://127.0.0.1:6060",
-]);
+  "https://evict-spender-unaware.ngrok-free.dev",
+].forEach((origin) => allowedOrigins.add(origin));
+
+function isAllowedOrigin(origin: string) {
+  const normalizedOrigin = origin.trim().replace(/\/$/, "");
+
+  return (
+    allowedOrigins.has(normalizedOrigin) ||
+    allowedDevOriginPatterns.some((pattern) => pattern.test(normalizedOrigin))
+  );
+}
 
 app.use(
   cors({
@@ -44,7 +75,7 @@ app.use(
         return;
       }
 
-      if (allowedOrigins.has(origin)) {
+      if (isAllowedOrigin(origin)) {
         callback(null, true);
         return;
       }
@@ -60,10 +91,16 @@ app.use(
       "Accept",
       "Origin",
     ],
+    optionsSuccessStatus: 204,
   }),
 );
 
-function captureRawBody(req: any, res: any, buf: Buffer, _encoding: string | undefined) {
+function captureRawBody(
+  req: any,
+  res: any,
+  buf: Buffer,
+  _encoding: string | undefined,
+) {
   if (buf && buf.length) {
     req.rawBody = buf;
   }
@@ -72,8 +109,8 @@ function captureRawBody(req: any, res: any, buf: Buffer, _encoding: string | und
 const normalizedBaseUrl = env.BASE_URL.startsWith("/")
   ? env.BASE_URL
   : `/${env.BASE_URL}`;
-const basePath
-  = normalizedBaseUrl === "/" ? "" : normalizedBaseUrl.replace(/\/$/, "");
+const basePath =
+  normalizedBaseUrl === "/" ? "" : normalizedBaseUrl.replace(/\/$/, "");
 const stripeWebhookPath = `${basePath}/pre-market/payment/webhook`;
 
 app.post(

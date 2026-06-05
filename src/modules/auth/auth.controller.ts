@@ -125,7 +125,7 @@ export class AuthController {
     async (req: Request, res: Response, _next: NextFunction) => {
       const refreshToken = req.cookies[COOKIE_CONFIG.REFRESH_TOKEN.name];
       if (!refreshToken) {
-        throw new Error("Refresh token not found");
+        throw new UnauthorizedException("Refresh token not found");
       }
 
       const result = await this.authService.refreshAccessToken(refreshToken);

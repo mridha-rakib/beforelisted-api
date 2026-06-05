@@ -38,8 +38,8 @@ import { GrantAccessRepository } from "../grant-access/grant-access.repository";
 import { PaymentService } from "../payment/payment.service";
 import { RenterRepository } from "../renter/renter.repository";
 import { UserRepository } from "../user/user.repository";
-import { preMarketNotifier, PreMarketNotifier } from "./pre-market-notifier.js";
 import { resolveRenterOpportunityEmailScope } from "./pre-market-email-scope.utils";
+import { preMarketNotifier, PreMarketNotifier } from "./pre-market-notifier.js";
 import { PreMarketRepository } from "./pre-market.repository";
 
 type NormalAgentListingResponse = Record<string, any> & {
@@ -82,6 +82,7 @@ const ARCHIVE_REASON_LABELS: Record<AgentArchiveReason, string> = {
 
 const SEARCH_CONFIRMATION_INTERVAL_MS = 14 * 24 * 60 * 60 * 1000;
 const SEARCH_CONFIRMATION_EXPIRY_MS = 3 * 24 * 60 * 60 * 1000;
+const DEFAULT_PRODUCTION_API_ORIGIN = "https://api.beforelisted.com";
 
 const DEFAULT_REGISTERED_AGENT_EMAIL = SYSTEM_DEFAULT_AGENT.email;
 const _DEFAULT_REGISTERED_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
@@ -1548,6 +1549,10 @@ export class PreMarketService {
   }
 
   private getPublicApiBaseUrl(): string {
+    const basePath = (env.BASE_URL.startsWith("/")
+      ? env.BASE_URL
+      : `/${env.BASE_URL}`).replace(/\/+$/, "");
+
     if (env.PUBLIC_API_BASE_URL) {
       return env.PUBLIC_API_BASE_URL.replace(/\/+$/, "");
     }
@@ -1556,11 +1561,20 @@ export class PreMarketService {
       /\/+$/,
       "",
     );
-    const basePath = env.BASE_URL.startsWith("/")
-      ? env.BASE_URL
-      : `/${env.BASE_URL}`;
 
-    return `${clientUrl}${basePath.replace(/\/+$/, "")}`;
+    try {
+      const clientHostname = new URL(clientUrl).hostname.toLowerCase();
+      const normalizedClientHostname = clientHostname.replace(/^www\./, "");
+
+      if (normalizedClientHostname === "beforelisted.com") {
+        return `${DEFAULT_PRODUCTION_API_ORIGIN}${basePath}`;
+      }
+    }
+    catch {
+      // Fall back to the configured client URL below if it is not parseable.
+    }
+
+    return `${clientUrl}${basePath}`;
   }
 
   private getSearchConfirmationAnchor(
@@ -3501,10 +3515,33 @@ export class PreMarketService {
     request: IPreMarketRequest,
     now: Date,
   ): Promise<boolean> {
+    const requestId = request._id.toString();
+    const latestRequest = await this.preMarketRepository.getRequestById(
+      requestId,
+    );
+
+    if (
+      !latestRequest
+      || latestRequest.isDeleted
+      || latestRequest.status === "deleted"
+      || latestRequest.isActive === false
+    ) {
+      return false;
+    }
+
+    const latestSearchActivity = this.getSearchActivity(latestRequest);
+    if (
+      !latestSearchActivity.pendingConfirmationToken
+      || !latestSearchActivity.pendingConfirmationExpiresAt
+      || latestSearchActivity.pendingConfirmationExpiresAt.getTime() > now.getTime()
+    ) {
+      return false;
+    }
+
     const registeredAgentId
-      = await this.resolveRegisteredAgentIdForRequest(request);
+      = await this.resolveRegisteredAgentIdForRequest(latestRequest);
     const matchedAgentIds = await this.getMatchedAgentIdsForArchive(
-      request._id.toString(),
+      requestId,
     );
     const affectedAgentIds = Array.from(
       new Set(
@@ -3520,7 +3557,7 @@ export class PreMarketService {
 
     const archiveActorId = registeredAgentId || affectedAgentIds[0];
     const archivedAgents = await this.preMarketRepository.addAgentArchiveRecords(
-      request._id.toString(),
+      requestId,
       affectedAgentIds.map(affectedAgentId => ({
         agentId: affectedAgentId,
         archivedByAgentId: archiveActorId,
@@ -3530,11 +3567,11 @@ export class PreMarketService {
       })),
     );
 
-    await this.preMarketRepository.releaseRequestLock(request._id.toString());
-    await this.preMarketRepository.updateById(request._id.toString(), {
+    await this.preMarketRepository.releaseRequestLock(requestId);
+    await this.preMarketRepository.updateById(requestId, {
       visibility: "PRIVATE",
       searchActivity: this.clearPendingSearchConfirmationState(
-        (request as any)?.searchActivity,
+        (latestRequest as any)?.searchActivity,
       ),
     } as Partial<IPreMarketRequest>);
 
@@ -3543,7 +3580,7 @@ export class PreMarketService {
     }
 
     const renter = await this.renterRepository.findRenterWithReferrer(
-      request.renterId.toString(),
+      latestRequest.renterId.toString(),
     );
     if (renter?.email) {
       const [registeredAgent, matchedAgents] = await Promise.all([
