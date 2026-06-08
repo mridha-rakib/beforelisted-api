@@ -28,14 +28,31 @@ const configuredOrigins = [
   "https://beforelisted.com",
   "https://www.beforelisted.com",
   "https://dashboard.beforelisted.com",
+  "https://rental-pennymore-frontend.vercel.app",
+  "https://rental-pennymore-dashboard.vercel.app",
   ...(env.CORS_ORIGINS?.split(",") ?? []),
 ];
 
+function normalizeOrigin(origin: string) {
+  try {
+    const url = new URL(origin.trim());
+    return `${url.protocol}//${url.host}`;
+  }
+  catch {
+    return origin.trim().replace(/\/$/, "");
+  }
+}
+
 const allowedOrigins = new Set(
   configuredOrigins
-    .map((origin) => origin.trim().replace(/\/$/, ""))
+    .map(normalizeOrigin)
     .filter(Boolean),
 );
+
+const allowedVercelOriginPatterns = [
+  /^https:\/\/rental-pennymore-frontend(?:-[a-z0-9-]+)?\.vercel\.app$/,
+  /^https:\/\/rental-pennymore-dashboard(?:-[a-z0-9-]+)?\.vercel\.app$/,
+];
 
 const allowedDevOriginPatterns =
   env.NODE_ENV === "production"
@@ -59,10 +76,13 @@ const allowedDevOriginPatterns =
 ].forEach((origin) => allowedOrigins.add(origin));
 
 function isAllowedOrigin(origin: string) {
-  const normalizedOrigin = origin.trim().replace(/\/$/, "");
+  const normalizedOrigin = normalizeOrigin(origin);
 
   return (
     allowedOrigins.has(normalizedOrigin) ||
+    allowedVercelOriginPatterns.some(pattern =>
+      pattern.test(normalizedOrigin),
+    ) ||
     allowedDevOriginPatterns.some((pattern) => pattern.test(normalizedOrigin))
   );
 }
@@ -90,6 +110,7 @@ app.use(
       "X-Requested-With",
       "Accept",
       "Origin",
+      "ngrok-skip-browser-warning",
     ],
     optionsSuccessStatus: 204,
   }),

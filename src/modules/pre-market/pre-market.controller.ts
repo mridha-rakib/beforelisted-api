@@ -25,7 +25,9 @@ import {
   adminApproveSchema,
   adminChargeSchema,
   adminRejectSchema,
+  agentBulkMatchRequestSchema,
   agentMatchRequestSchema,
+  agentMatchSearchSchema,
   archiveRequestSchema,
   confirmActiveSearchSchema,
   confirmRegistrationDisclosureSchema,
@@ -1145,6 +1147,46 @@ export class PreMarketController {
         res,
         responsePayload,
         "Pre-market request details retrieved",
+      );
+    },
+  );
+
+  searchApartmentMatchesForAgent = asyncHandler(
+    async (req: Request, res: Response) => {
+      const validated = await zParse(agentMatchSearchSchema, req);
+      const agentId = req.user!.userId;
+
+      const { page, limit, ...apartment } = validated.body;
+      const results = await this.preMarketService.searchApartmentMatchesForAgent(
+        agentId,
+        apartment,
+        { page, limit },
+      );
+
+      return ApiResponse.paginated(
+        res,
+        results.data,
+        results.pagination,
+        "Apartment match results retrieved",
+      );
+    },
+  );
+
+  matchCheckedRequestsForAgent = asyncHandler(
+    async (req: Request, res: Response) => {
+      const validated = await zParse(agentBulkMatchRequestSchema, req);
+      const agentId = req.user!.userId;
+
+      const result = await this.preMarketService.matchRequestsForAgent(
+        agentId,
+        validated.body.requestIds,
+        validated.body.representation_type ?? "renter_representation",
+      );
+
+      return ApiResponse.success(
+        res,
+        result,
+        "Selected requests matched",
       );
     },
   );

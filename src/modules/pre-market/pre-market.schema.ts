@@ -179,6 +179,90 @@ export const agentMatchRequestSchema = z.object({
     .default({}),
 });
 
+const matchSectionTogglesSchema = z
+  .object({
+    unitFeatures: z.boolean().default(true),
+    buildingFeatures: z.boolean().default(true),
+    petPolicy: z.boolean().default(true),
+    guarantorsPolicy: z.boolean().default(true),
+    priorityBonuses: z.boolean().default(true),
+  })
+  .default({
+    unitFeatures: true,
+    buildingFeatures: true,
+    petPolicy: true,
+    guarantorsPolicy: true,
+    priorityBonuses: true,
+  });
+
+export const agentMatchSearchSchema = z.object({
+  body: z.object({
+    page: z.coerce.number().positive().default(1),
+    limit: z.coerce.number().positive().max(100).default(10),
+    borough: z.enum(["Manhattan", "Brooklyn"]),
+    neighborhood: z.string().trim().min(1, "Neighborhood is required"),
+    bedrooms: bedroomSchema,
+    bathrooms: bathroomSchema,
+    rent: z.coerce.number().min(0, "Rent must be zero or greater"),
+    movingDateRange: movingDateRangeSchema,
+    unitFeatures: z
+      .object({
+        laundryInUnit: z.boolean().default(false),
+        privateOutdoorSpace: z.boolean().default(false),
+        dishwasher: z.boolean().default(false),
+      })
+      .default({
+        laundryInUnit: false,
+        privateOutdoorSpace: false,
+        dishwasher: false,
+      }),
+    buildingFeatures: z
+      .object({
+        doorman: z.boolean().default(false),
+        elevator: z.boolean().default(false),
+        laundryInBuilding: z.boolean().default(false),
+      })
+      .default({
+        doorman: false,
+        elevator: false,
+        laundryInBuilding: false,
+      }),
+    petPolicy: z
+      .object({
+        catsAllowed: z.boolean().default(false),
+        dogsAllowed: z.boolean().default(false),
+      })
+      .default({
+        catsAllowed: false,
+        dogsAllowed: false,
+      }),
+    guarantorPolicy: z
+      .object({
+        personalGuarantor: z.boolean().default(false),
+        thirdPartyGuarantor: z.boolean().default(false),
+      })
+      .default({
+        personalGuarantor: false,
+        thirdPartyGuarantor: false,
+      }),
+    availableFeatures: z
+      .record(z.string(), z.boolean())
+      .default({}),
+    toggles: matchSectionTogglesSchema,
+  }),
+});
+
+export const agentBulkMatchRequestSchema = z.object({
+  body: z.object({
+    requestIds: z
+      .array(z.string().min(24, "Invalid request ID"))
+      .min(1, "At least one request is required"),
+    representation_type: z
+      .enum(["owner_representation", "renter_representation"])
+      .optional(),
+  }),
+});
+
 export const adminApproveSchema = z.object({
   params: z.object({
     requestId: z.string().min(24, "Invalid request ID"),

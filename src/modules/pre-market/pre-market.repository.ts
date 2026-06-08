@@ -237,6 +237,16 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return PaginationHelper.formatResponse(result);
   }
 
+  async findAllForMatchSearch(
+    filters: Record<string, any> = {},
+  ): Promise<IPreMarketRequest[]> {
+    return this.model
+      .find({ isDeleted: false, ...filters })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec() as unknown as Promise<IPreMarketRequest[]>;
+  }
+
   async findByRequestId(requestId: string): Promise<IPreMarketRequest | null> {
     return this.model
       .findOne({ requestId })

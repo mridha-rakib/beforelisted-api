@@ -60,6 +60,20 @@ router.get(
   controller.getArchivedRequestsForAgent.bind(controller),
 );
 
+router.post(
+  "/agent/match-search",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.searchApartmentMatchesForAgent.bind(controller),
+);
+
+router.post(
+  "/agent/match-checked",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.matchCheckedRequestsForAgent.bind(controller),
+);
+
 /**
  * GET /pre-market/agent/:requestId
  * Grant Access Agents: View SPECIFIC request with FULL renter info

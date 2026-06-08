@@ -39,6 +39,10 @@ import { PaymentService } from "../payment/payment.service";
 import { RenterRepository } from "../renter/renter.repository";
 import { UserRepository } from "../user/user.repository";
 import { resolveRenterOpportunityEmailScope } from "./pre-market-email-scope.utils";
+import {
+  type MatchApartmentInput,
+  scorePreMarketRequest,
+} from "./pre-market-match-scoring";
 import { preMarketNotifier, PreMarketNotifier } from "./pre-market-notifier.js";
 import { PreMarketRepository } from "./pre-market.repository";
 
@@ -811,6 +815,192 @@ export class PreMarketService {
       ...paginated,
       data: enrichedData,
     } as any;
+  }
+
+  async searchApartmentMatchesForAgent(
+    agentId: string,
+    apartment: MatchApartmentInput,
+    query: { page: number; limit: number },
+  ): Promise<{
+    data: any[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+      nextPage: number | null;
+      prevPage: number | null;
+    };
+  }> {
+    const agent = await this.agentRepository.findByUserId(agentId);
+    if (!agent) {
+      throw new NotFoundException("Agent profile not found");
+    }
+
+    const hasGrantAccess = agent.hasGrantAccess === true;
+    const visibilityFilter = await this.buildRequestVisibilityFilterForAgent(
+      agentId,
+    );
+    const cutoffFilter = this.buildAgentVisibilityFilter(agent);
+    const archiveFilter = this.buildAgentArchiveExclusionFilter(agentId);
+    const combinedFilters = this.mergeFilters([
+      visibilityFilter,
+      cutoffFilter,
+      archiveFilter,
+    ]);
+    const requests
+      = await this.preMarketRepository.findAllForMatchSearch(combinedFilters);
+    const requestIds = requests
+      .map(request => request._id?.toString())
+      .filter((requestId): requestId is string => Boolean(requestId));
+
+    const [grantAccessRecords, globalMatchedScopeRequestIds] = await Promise.all([
+      this.grantAccessRepository.findByAgentIdAndRequestIds(agentId, requestIds),
+      this.getGlobalMatchedScopeRequestIdSet(requestIds),
+    ]);
+    const grantAccessByRequestId = new Map(
+      grantAccessRecords.map(record => [
+        record.preMarketRequestId.toString(),
+        record,
+      ]),
+    );
+
+    const scoredResults = await Promise.all(
+      requests.map(async (request) => {
+        const requestId = request._id?.toString() || "";
+        const grantAccess = grantAccessByRequestId.get(requestId) || null;
+        const isOwnerRepresentationAccess
+          = grantAccess?.representation_type === "owner_representation";
+        const isAlreadyMatchedByAgent = Boolean(
+          grantAccess
+          && !isOwnerRepresentationAccess
+          && ["pending", "approved", "free", "paid"].includes(
+            String(grantAccess.status),
+          ),
+        );
+        const currentRegisteredAgentId
+          = await this.resolveRegisteredAgentIdForRequest(request);
+        const isCurrentRegisteredAgent = currentRegisteredAgentId === agentId;
+        const registrationDisclosureStatus
+          = this.getRegistrationDisclosureStatus(request, agentId);
+        const scoreResult = scorePreMarketRequest(apartment, {
+          ...request,
+          registrationDisclosureConfirmed: isCurrentRegisteredAgent
+            ? registrationDisclosureStatus.registrationDisclosureConfirmed
+            : undefined,
+        });
+
+        if (scoreResult.disqualified) {
+          return null;
+        }
+
+        const accessSummary = this.buildAgentAccessSummary(
+          grantAccess,
+          hasGrantAccess,
+        );
+        const listingStatus = isAlreadyMatchedByAgent
+          ? "matched"
+          : request.status;
+        const displayStatus = isAlreadyMatchedByAgent
+          ? accessSummary.grantAccessStatus
+          : request.status;
+        const visibleScope = this.resolveAgentVisibleScope(
+          request.scope,
+          globalMatchedScopeRequestIds.has(requestId),
+        );
+        const referralInfo = request.renterId
+          ? await this.getReferralInfoForRenter(request.renterId.toString())
+          : null;
+        const ownerRepresentationStatus = isCurrentRegisteredAgent
+          ? this.getOwnerRepresentationStatus(request)
+          : {
+              ownerRepresentationMatchCount: 0,
+              hasOwnerRepresentationMatches: false,
+              hasNewOwnerRepresentationMatches: false,
+            };
+        const visibleRequest
+          = this.stripOwnerRepresentationMatchesForNonRegisteredAgent(
+            request,
+            isCurrentRegisteredAgent,
+          );
+
+        return {
+          ...visibleRequest,
+          scope: visibleScope,
+          referralAgentId:
+            currentRegisteredAgentId
+            ?? this.normalizeUserId(
+              (request as unknown as {
+                referralAgentId?: string | Types.ObjectId;
+              }).referralAgentId,
+            ),
+          referralInfo,
+          renterName: referralInfo?.renterName ?? null,
+          status: displayStatus,
+          listingStatus,
+          grantAccessStatus: accessSummary.grantAccessStatus,
+          grantAccessId: accessSummary.grantAccessId,
+          representation_type: accessSummary.representation_type,
+          representationSelectedAt: accessSummary.representationSelectedAt,
+          accessType: accessSummary.accessType,
+          canRequestAccess: accessSummary.canRequestAccess,
+          ownerRepresentationSelected: this.hasOwnerRepresentationMatchForAgent(
+            request,
+            agentId,
+          ),
+          alreadyMatchedByAgent: isAlreadyMatchedByAgent,
+          matchScore: scoreResult.score,
+          matchStarRating: scoreResult.starRating,
+          matchMissingFeatures: scoreResult.missingFeatures,
+          matchPreferenceMatches: apartment.toggles.priorityBonuses
+            ? scoreResult.preferenceMatches
+            : null,
+          matchPriorityBonus: scoreResult.priorityBonus,
+          matchPrimaryDeduction: scoreResult.primaryDeduction,
+          matchSecondaryDeduction: scoreResult.secondaryDeduction,
+          ...ownerRepresentationStatus,
+          ...registrationDisclosureStatus,
+        };
+      }),
+    );
+
+    const ranked = scoredResults
+      .filter((item): item is any => Boolean(item))
+      .sort((a, b) => {
+        if (b.matchScore !== a.matchScore) {
+          return b.matchScore - a.matchScore;
+        }
+
+        return (
+          new Date(b.createdAt ?? 0).getTime()
+          - new Date(a.createdAt ?? 0).getTime()
+        );
+      });
+    const limit = Math.max(1, Math.min(100, Number(query.limit) || 10));
+    const totalItems = ranked.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+    const currentPage = Math.min(
+      Math.max(1, Number(query.page) || 1),
+      totalPages,
+    );
+    const start = (currentPage - 1) * limit;
+    const data = ranked.slice(start, start + limit);
+
+    return {
+      data,
+      pagination: {
+        currentPage,
+        totalPages,
+        totalItems,
+        itemsPerPage: limit,
+        hasNext: currentPage < totalPages,
+        hasPrev: currentPage > 1,
+        nextPage: currentPage < totalPages ? currentPage + 1 : null,
+        prevPage: currentPage > 1 ? currentPage - 1 : null,
+      },
+    };
   }
 
   async getRenterRequests(
@@ -4612,6 +4802,41 @@ export class PreMarketService {
     }
 
     return matchRecord;
+  }
+
+  async matchRequestsForAgent(
+    agentId: string,
+    requestIds: string[],
+    representationType: MatchRepresentationType = "renter_representation",
+  ): Promise<{
+    matched: Array<{ requestId: string; result: any }>;
+    failed: Array<{ requestId: string; message: string }>;
+  }> {
+    const uniqueRequestIds = Array.from(new Set(requestIds.filter(Boolean)));
+    const matched: Array<{ requestId: string; result: any }> = [];
+    const failed: Array<{ requestId: string; message: string }> = [];
+
+    for (const requestId of uniqueRequestIds) {
+      try {
+        const result = await this.matchRequestForAgent(
+          agentId,
+          requestId,
+          representationType,
+        );
+        matched.push({ requestId, result });
+      }
+      catch (error) {
+        failed.push({
+          requestId,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to match this request",
+        });
+      }
+    }
+
+    return { matched, failed };
   }
 
   // ============================================
