@@ -107,13 +107,35 @@ export class RenterService {
   async getRegistrationLinkStatus(referralCode: string): Promise<{
     active: boolean;
     role: string;
+    referrerName: string | null;
+    brokerageName: string | null;
   }> {
     const referrer
       = await this.referralService.validateReferralCode(referralCode);
+    const agentProfile
+      = referrer.role === ROLES.AGENT
+        ? await new AgentProfileRepository().findByUserId(
+            referrer._id.toString(),
+          )
+        : null;
+    const adminReferralAgentDetails
+      = referrer.role === ROLES.ADMIN
+        ? await this.getAssignedAgentWelcomeDetails(
+            await this.getDefaultAssignedAgentId(),
+          )
+        : null;
+    const referrerName = referrer.role === ROLES.AGENT
+      ? referrer.fullName || null
+      : adminReferralAgentDetails?.fullName || null;
+    const brokerageName = referrer.role === ROLES.AGENT
+      ? agentProfile?.brokerageName || null
+      : adminReferralAgentDetails?.brokerage || null;
 
     return {
       active: true,
       role: referrer.role,
+      referrerName,
+      brokerageName,
     };
   }
 
