@@ -823,6 +823,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       email?: string;
       phoneNumber?: string;
     },
+    opportunityDetails?: string,
   ): Promise<IPreMarketRequest | null> {
     const agentObjectId = new Types.ObjectId(agentId);
 
@@ -850,6 +851,9 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
               ...(agentSnapshot?.email ? { email: agentSnapshot.email } : {}),
               ...(agentSnapshot?.phoneNumber
                 ? { phoneNumber: agentSnapshot.phoneNumber }
+                : {}),
+              ...(opportunityDetails
+                ? { opportunityDetails }
                 : {}),
             },
           },

@@ -131,7 +131,11 @@ export class GrantAccessService {
     representationType:
       | "owner_representation"
       | "renter_representation" = "renter_representation",
+    opportunityDetails?: string,
   ): Promise<IGrantAccessRequest> {
+    const normalizedOpportunityDetails = opportunityDetails?.trim()
+      ? opportunityDetails.trim().slice(0, 300)
+      : undefined;
     const listingActivationCheck
       = await this.preMarketRepository.findByIdWithActivationStatus(
         preMarketRequestId,
@@ -175,6 +179,9 @@ export class GrantAccessService {
         status: "pending",
         representation_type: representationType,
         representationSelectedAt: new Date(),
+        ...(normalizedOpportunityDetails
+          ? { opportunityDetails: normalizedOpportunityDetails }
+          : {}),
         createdAt: new Date(),
       });
     }
@@ -847,6 +854,7 @@ export class GrantAccessService {
           registeredAgentBrokerage,
           registeredAgentEmail,
           registeredAgentPhone,
+          opportunityDetails: grantAccess.opportunityDetails,
         });
 
       if (!result.success) {
@@ -899,6 +907,7 @@ export class GrantAccessService {
         matchedAgentEmail: matchingAgentUser.email || "N/A",
         matchedAgentPhone: matchingAgentUser.phoneNumber || "N/A",
         matchedAgentDisclosureLink: matchingAgentProfile?.disclosureLink || null,
+        opportunityDetails: grantAccess.opportunityDetails,
       });
 
     if (!otherAgentEmailResult.success) {

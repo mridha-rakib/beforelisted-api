@@ -996,6 +996,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
   registeredAgentBrokerage: string,
   registeredAgentEmail: string,
   registeredAgentPhone: string,
+  opportunityDetails?: string,
   logoUrl?: string,
   brandColor: string = "#1890FF",
 ): string {
@@ -1017,6 +1018,15 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
   const safeRegisteredAgentPhone = escapeHtml(
     registeredAgentPhone?.trim() || "N/A",
   );
+  const safeOpportunityDetails = escapeHtml(opportunityDetails?.trim() || "");
+  const opportunityDetailsMarkup = safeOpportunityDetails
+    ? `
+            <div class="agent-details">
+                <p><strong>Opportunity Details</strong></p>
+                <p>${safeOpportunityDetails}</p>
+            </div>
+`
+    : "";
 
   return `
 <!DOCTYPE html>
@@ -1106,6 +1116,8 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
 
             <p>Your agent may reach out separately with additional details and next steps. No action is required from you at this time unless requested by your agent.</p>
 
+${opportunityDetailsMarkup}
+
             <p>If you prefer, you may also contact your registered agent directly:</p>
 
             <div class="agent-details">
@@ -1143,6 +1155,7 @@ export function renterOpportunityFoundOtherAgentTemplate(
   matchedAgentEmail?: string,
   matchedAgentPhone?: string,
   matchedAgentDisclosureLink?: string | null,
+  opportunityDetails?: string,
   logoUrl?: string,
   brandColor: string = "#1890FF",
 ): string {
@@ -1163,10 +1176,19 @@ export function renterOpportunityFoundOtherAgentTemplate(
   const safeMatchedAgentDisclosureLink = escapeHtml(
     matchedAgentDisclosureLink?.trim() || "",
   );
+  const safeOpportunityDetails = escapeHtml(opportunityDetails?.trim() || "");
   const isAllMarket = requestScope === "All Market";
   const disclosureLinkMarkup = safeMatchedAgentDisclosureLink
     ? `<a href="${safeMatchedAgentDisclosureLink}">Agent Disclosure</a>`
     : "Agent Disclosure";
+  const opportunityDetailsMarkup = safeOpportunityDetails
+    ? `
+            <div class="notification-box">
+                <h2>Opportunity Details</h2>
+                <p>${safeOpportunityDetails}</p>
+            </div>
+`
+    : "";
 
   return `
 <!DOCTYPE html>
@@ -1275,6 +1297,8 @@ export function renterOpportunityFoundOtherAgentTemplate(
               Email: ${safeMatchedAgentEmail}<br>
               Phone: ${safeMatchedAgentPhone}
             </p>
+
+${opportunityDetailsMarkup}
 
             <p>Please sign the document using the link below:</p>
 
@@ -1488,6 +1512,7 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
   matchedAgentBrokerage: string,
   matchedAgentEmail: string,
   matchedAgentPhoneNumber: string,
+  opportunityDetails?: string,
   logoUrl?: string,
   brandColor: string = "#1890FF",
   requestRepresentedByTuvalMor: boolean = false,
@@ -1513,6 +1538,7 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
   const safeMatchedAgentPhoneNumber = escapeHtml(
     matchedAgentPhoneNumber || "N/A",
   );
+  const safeOpportunityDetails = escapeHtml(opportunityDetails?.trim() || "");
   const safeFacilitatorReferralLink = escapeHtml(
     facilitatorReferralLink || "",
   );
@@ -1525,6 +1551,11 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
                 <p>Matched Agent (Owner Representation):<br>${safeMatchedAgentFullName}, ${safeMatchedAgentTitle} with ${safeMatchedAgentBrokerage}</p>
                 <p>Email: ${safeMatchedAgentEmail}</p>
                 <p>Contact Number: ${safeMatchedAgentPhoneNumber}</p>
+                ${
+                  safeOpportunityDetails
+                    ? `<p>Opportunity Details: ${safeOpportunityDetails}</p>`
+                    : ""
+                }
             </div>
 `;
   const closingMarkup = requestRepresentedByTuvalMor

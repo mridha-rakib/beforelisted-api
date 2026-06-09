@@ -1313,6 +1313,7 @@ export class EmailService {
         payload.registeredAgentBrokerage,
         payload.registeredAgentEmail,
         payload.registeredAgentPhone,
+        payload.opportunityDetails,
         this.config.logoUrl,
         this.config.brandColor,
       );
@@ -1371,6 +1372,7 @@ export class EmailService {
         payload.matchedAgentEmail,
         payload.matchedAgentPhone,
         payload.matchedAgentDisclosureLink,
+        payload.opportunityDetails,
         this.config.logoUrl,
         this.config.brandColor,
       );
@@ -1519,6 +1521,7 @@ export class EmailService {
         payload.matchedAgentBrokerage,
         payload.matchedAgentEmail,
         payload.matchedAgentPhoneNumber,
+        payload.opportunityDetails,
         this.config.logoUrl,
         this.config.brandColor,
         payload.requestRepresentedByTuvalMor,

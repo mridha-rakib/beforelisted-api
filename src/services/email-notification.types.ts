@@ -100,6 +100,7 @@ export type IRenterOpportunityFoundRegisteredAgentPayload = {
   registeredAgentBrokerage: string;
   registeredAgentEmail: string;
   registeredAgentPhone: string;
+  opportunityDetails?: string;
 };
 
 export type IRenterOpportunityFoundOtherAgentPayload = {
@@ -114,6 +115,7 @@ export type IRenterOpportunityFoundOtherAgentPayload = {
   matchedAgentEmail?: string;
   matchedAgentPhone?: string;
   matchedAgentDisclosureLink?: string | null;
+  opportunityDetails?: string;
 };
 
 export type IMatchReferralAcknowledgmentToMatchingAgentPayload = {
@@ -141,6 +143,7 @@ export type IOwnerRepresentationMatchReferralAcknowledgmentPayload = {
   matchedAgentBrokerage: string;
   matchedAgentEmail: string;
   matchedAgentPhoneNumber: string;
+  opportunityDetails?: string;
   requestRepresentedByTuvalMor?: boolean;
   cc?: string[];
 };

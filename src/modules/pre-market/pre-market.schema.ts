@@ -162,6 +162,7 @@ export const requestAccessSchema = z.object({
     representation_type: z
       .enum(["owner_representation", "renter_representation"])
       .optional(),
+    opportunityDetails: z.string().trim().max(300).optional(),
   }),
 });
 
@@ -174,6 +175,7 @@ export const agentMatchRequestSchema = z.object({
       representation_type: z
         .enum(["owner_representation", "renter_representation"])
         .optional(),
+      opportunityDetails: z.string().trim().max(300).optional(),
     })
     .optional()
     .default({}),

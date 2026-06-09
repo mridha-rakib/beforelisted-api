@@ -549,6 +549,7 @@ export class PreMarketController {
       userId,
       validated.body.preMarketRequestId,
       validated.body.representation_type ?? "renter_representation",
+      validated.body.opportunityDetails,
     );
 
     logger.info(
@@ -1219,6 +1220,7 @@ export class PreMarketController {
         agentId,
         requestId,
         representationType,
+        validated.body.opportunityDetails,
       );
 
       logger.info(
@@ -1237,6 +1239,7 @@ export class PreMarketController {
       agentId,
       requestId,
       representationType,
+      validated.body.opportunityDetails,
     );
 
     logger.info({ agentId, requestId }, "Agent matched pre-market request");

@@ -14,6 +14,7 @@ export type IGrantAccessRequest = {
   status: "pending" | "approved" | "free" | "rejected" | "paid";
   representation_type?: "owner_representation" | "renter_representation";
   representationSelectedAt?: Date;
+  opportunityDetails?: string;
 
   payment?: {
     amount: number;
@@ -73,6 +74,12 @@ const grantAccessSchema = BaseSchemaUtil.createSchema({
 
   representationSelectedAt: {
     type: Date,
+  },
+
+  opportunityDetails: {
+    type: String,
+    trim: true,
+    maxlength: 300,
   },
 
   payment: {

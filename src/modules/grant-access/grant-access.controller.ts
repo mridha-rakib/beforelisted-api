@@ -310,7 +310,7 @@ export class GrantAccessController {
    */
   requestAccess = asyncHandler(async (req: Request, res: Response) => {
     const agentId = req.user!.userId;
-    const { preMarketRequestId } = req.body;
+    const { preMarketRequestId, representation_type, opportunityDetails } = req.body;
 
     logger.info(
       { agentId, preMarketRequestId },
@@ -324,6 +324,8 @@ export class GrantAccessController {
     const grantAccess = await this.grantAccessService.requestAccess(
       agentId,
       preMarketRequestId,
+      representation_type ?? "renter_representation",
+      opportunityDetails,
     );
 
     logger.info(

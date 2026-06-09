@@ -93,6 +93,7 @@ export type IPreMarketRequest = {
     brokerage?: string;
     email?: string;
     phoneNumber?: string;
+    opportunityDetails?: string;
   }>;
   referralAgentId?: Types.ObjectId | string;
   lockedByAgentId?: Types.ObjectId | string;
@@ -370,6 +371,11 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
       },
       phoneNumber: {
         type: String,
+      },
+      opportunityDetails: {
+        type: String,
+        trim: true,
+        maxlength: 300,
       },
       _id: false,
     },

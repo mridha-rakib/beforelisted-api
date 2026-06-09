@@ -130,6 +130,11 @@ export class PreMarketService {
     this.excelService = new ExcelService();
   }
 
+  private normalizeOpportunityDetails(value?: string | null): string | undefined {
+    const normalized = value?.trim();
+    return normalized ? normalized.slice(0, 300) : undefined;
+  }
+
   private async getDefaultReferralAgent(): Promise<{
     id: string;
     fullName: string;
@@ -4653,7 +4658,10 @@ export class PreMarketService {
     agentId: string,
     requestId: string,
     representationType: MatchRepresentationType = "renter_representation",
+    opportunityDetails?: string,
   ): Promise<any> {
+    const normalizedOpportunityDetails
+      = this.normalizeOpportunityDetails(opportunityDetails);
     const agent = await this.agentRepository.findByUserId(agentId);
     if (
       !agent
@@ -4700,6 +4708,7 @@ export class PreMarketService {
             requestId,
             agentId,
             agentSnapshot,
+            normalizedOpportunityDetails,
           );
       const currentRequest = updatedRequest || listingActivationCheck;
       const registeredAgentId
@@ -4718,6 +4727,7 @@ export class PreMarketService {
         this.notifyRegisteredAgentAboutOwnerRepresentationMatch(
           agentId,
           currentRequest as any,
+          normalizedOpportunityDetails,
         ).catch((error) => {
           logger.error(
             { error, requestId, agentId },
@@ -4755,6 +4765,9 @@ export class PreMarketService {
     const representationPayload = {
       representation_type: representationType,
       representationSelectedAt: new Date(),
+      ...(normalizedOpportunityDetails
+        ? { opportunityDetails: normalizedOpportunityDetails }
+        : {}),
     };
 
     try {
@@ -4793,6 +4806,7 @@ export class PreMarketService {
         agentId,
         listingActivationCheck,
         matchRecord._id,
+        normalizedOpportunityDetails,
       ).catch((error) => {
         logger.error(
           { error, requestId, agentId },
@@ -5642,6 +5656,7 @@ export class PreMarketService {
   private async notifyRegisteredAgentAboutOwnerRepresentationMatch(
     agentId: string,
     preMarketRequest: IPreMarketRequest,
+    opportunityDetails?: string,
   ): Promise<void> {
     const renter = await this.renterRepository.findRenterWithReferrer(
       preMarketRequest.renterId.toString(),
@@ -5711,6 +5726,7 @@ export class PreMarketService {
         matchedAgentProfile?.brokerageName || "The Corcoran Group",
       matchedAgentEmail: matchedAgent.email,
       matchedAgentPhoneNumber: matchedAgent.phoneNumber || "N/A",
+      opportunityDetails,
       requestRepresentedByTuvalMor,
       cc,
     });
@@ -5720,6 +5736,7 @@ export class PreMarketService {
     agentId: string,
     preMarketRequest: IPreMarketRequest,
     currentGrantAccessId?: string | Types.ObjectId,
+    opportunityDetails?: string,
   ): Promise<void> {
     const renter = await this.renterRepository.findRenterWithReferrer(
       preMarketRequest.renterId.toString(),
@@ -5856,6 +5873,7 @@ export class PreMarketService {
         registeredAgentBrokerage,
         registeredAgentEmail,
         registeredAgentPhone,
+        opportunityDetails,
       });
     }
     else {
@@ -5885,6 +5903,7 @@ export class PreMarketService {
         matchedAgentEmail: agent.email,
         matchedAgentPhone: agent.phoneNumber || "N/A",
         matchedAgentDisclosureLink: matchedAgentProfile?.disclosureLink || null,
+        opportunityDetails,
       });
 
       const agentAckCcEmails = buildCcList(
