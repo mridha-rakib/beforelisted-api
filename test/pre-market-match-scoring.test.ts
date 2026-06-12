@@ -320,3 +320,87 @@ describe("PreMarketService match search disclosure behavior", () => {
     expect(byId.get("shared-matched")?.listingStatus).toBe("matched");
   });
 });
+
+describe("PreMarketService registered-agent matching", () => {
+  const buildService = (registeredAgentId: string | null) => {
+    const agentId = "agent-own-renter";
+    const requestId = "507f1f77bcf86cd799439011";
+    const request = {
+      _id: requestId,
+      renterId: "renter-1",
+      requestName: "R-107748",
+      shareConsent: false,
+      visibility: "PRIVATE",
+      status: "Available",
+      isActive: true,
+      registrationDisclosureConfirmations: [
+        { agentId, confirmedAt: new Date("2026-06-12T00:00:00Z") },
+      ],
+    };
+    const service = new PreMarketService();
+    const serviceAny = service as any;
+    let createdGrantAccess: Record<string, unknown> | null = null;
+
+    serviceAny.agentRepository = {
+      findByUserId: async () => ({
+        _id: "agent-profile-1",
+        userId: agentId,
+        hasGrantAccess: false,
+      }),
+    };
+    serviceAny.preMarketRepository = {
+      findByIdWithActivationStatus: async () => request,
+      setAllMarketRequestPrivateAfterMatch: async () => undefined,
+    };
+    serviceAny.grantAccessRepository = {
+      findByAgentAndRequest: async () => null,
+      create: async (payload: Record<string, unknown>) => {
+        createdGrantAccess = { _id: "grant-1", ...payload };
+        return createdGrantAccess;
+      },
+    };
+    serviceAny.resolveRegisteredAgentIdForRequest = async () =>
+      registeredAgentId;
+    serviceAny.ensureAgentCanViewRequest = () => undefined;
+    serviceAny.notifyRenterAboutMatchedOpportunity = async () => undefined;
+
+    return {
+      agentId,
+      createdGrantAccess: () => createdGrantAccess,
+      requestId,
+      service,
+    };
+  };
+
+  it("allows the registered agent to match their own confirmed private renter without global grant access", async () => {
+    const { agentId, createdGrantAccess, requestId, service } =
+      buildService("agent-own-renter");
+
+    const result = await service.matchRequestForAgent(
+      agentId,
+      requestId,
+      "renter_representation",
+    );
+
+    expect(result).toMatchObject({
+      _id: "grant-1",
+      agentId,
+      preMarketRequestId: requestId,
+      representation_type: "renter_representation",
+      status: "free",
+    });
+    expect(createdGrantAccess()).toMatchObject({ status: "free" });
+  });
+
+  it("still blocks non-registered agents without global grant access from direct matching", async () => {
+    const { agentId, requestId, service } = buildService("other-agent");
+
+    await expect(
+      service.matchRequestForAgent(
+        agentId,
+        requestId,
+        "renter_representation",
+      ),
+    ).rejects.toThrow("You do not have permission to match requests");
+  });
+});

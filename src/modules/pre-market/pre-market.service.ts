@@ -26,6 +26,7 @@ import { PaginationHelper } from "@/utils/pagination-helper";
 
 import type { IAgentProfile } from "../agent/agent.interface";
 import type { IGrantAccessRequest } from "../grant-access/grant-access.model";
+import type { MatchApartmentInput } from "./pre-market-match-scoring.js";
 import type { IPreMarketRequest } from "./pre-market.model";
 import type {
   AdminAgentRequestSummary,
@@ -44,9 +45,8 @@ import { RenterRepository } from "../renter/renter.repository";
 import { UserRepository } from "../user/user.repository";
 import { resolveRenterOpportunityEmailScope } from "./pre-market-email-scope.utils";
 import {
-  type MatchApartmentInput,
   scorePreMarketRequest,
-} from "./pre-market-match-scoring";
+} from "./pre-market-match-scoring.js";
 import { preMarketNotifier, PreMarketNotifier } from "./pre-market-notifier.js";
 import { PreMarketRepository } from "./pre-market.repository";
 
@@ -984,7 +984,7 @@ export class PreMarketService {
 
         return (
           new Date(b.createdAt ?? 0).getTime()
-          - new Date(a.createdAt ?? 0).getTime()
+            - new Date(a.createdAt ?? 0).getTime()
         );
       });
     const limit = Math.max(1, Math.min(100, Number(query.limit) || 10));
@@ -2025,6 +2025,16 @@ export class PreMarketService {
       (request as unknown as { referralAgentId?: string | Types.ObjectId })
         .referralAgentId,
     );
+  }
+
+  public async isRegisteredAgentForRequest(
+    agentId: string,
+    request: IPreMarketRequest,
+  ): Promise<boolean> {
+    const registeredAgentId
+      = await this.resolveRegisteredAgentIdForRequest(request);
+
+    return registeredAgentId === agentId;
   }
 
   private parseCsvQueryValue(value: unknown): string[] {
@@ -4672,10 +4682,7 @@ export class PreMarketService {
     }
 
     const agent = await this.agentRepository.findByUserId(agentId);
-    if (
-      !agent
-      || (!agent.hasGrantAccess && representationType !== "owner_representation")
-    ) {
+    if (!agent) {
       throw new ForbiddenException(
         "You do not have permission to match requests",
       );
@@ -4686,6 +4693,20 @@ export class PreMarketService {
 
     if (!listingActivationCheck) {
       throw new NotFoundException("Pre-market request not found");
+    }
+
+    const isRegisteredAgent = await this.isRegisteredAgentForRequest(
+      agentId,
+      listingActivationCheck as any,
+    );
+    if (
+      !agent.hasGrantAccess
+      && representationType !== "owner_representation"
+      && !isRegisteredAgent
+    ) {
+      throw new ForbiddenException(
+        "You do not have permission to match requests",
+      );
     }
 
     this.ensureAgentCanViewRequest(agent, listingActivationCheck as any);

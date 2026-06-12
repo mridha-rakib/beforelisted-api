@@ -3,9 +3,9 @@
 import type { Request, Response } from "express";
 import type Stripe from "stripe";
 
+import { env } from "@/env";
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
-import { env } from "@/env";
 import { ExcelService } from "@/services/excel.service";
 import {
   BadRequestException,
@@ -1206,32 +1206,49 @@ export class PreMarketController {
 
     if (!agent.hasGrantAccess && representationType !== "owner_representation") {
       const request = await this.preMarketService.getRequestById(requestId);
-      this.preMarketService.ensureAgentCanViewRequest(agent, request as any);
-      await this.preMarketService.ensureAgentCanViewRequestVisibility(
-        agentId,
-        request as any,
-      );
+      if (!request) {
+        throw new NotFoundException("Pre-market request not found");
+      }
+
+      const isRegisteredAgent
+        = await this.preMarketService.isRegisteredAgentForRequest(
+          agentId,
+          request as any,
+        );
+
+      if (!isRegisteredAgent) {
+        this.preMarketService.ensureAgentCanViewRequest(agent, request as any);
+        await this.preMarketService.ensureAgentCanViewRequestVisibility(
+          agentId,
+          request as any,
+        );
+        await this.preMarketService.ensureRegisteredAgentCanMatchRequest(
+          agentId,
+          request as any,
+        );
+
+        const pendingAccess = await this.grantAccessService.requestAccess(
+          agentId,
+          requestId,
+          representationType,
+          validated.body.opportunityDetails,
+        );
+
+        logger.info(
+          { agentId, requestId, grantAccessId: pendingAccess._id },
+          "Agent without grant access attempted match; request sent for admin approval",
+        );
+
+        return ApiResponse.success(
+          res,
+          pendingAccess,
+          "Match request pending admin approval",
+        );
+      }
+
       await this.preMarketService.ensureRegisteredAgentCanMatchRequest(
         agentId,
         request as any,
-      );
-
-      const pendingAccess = await this.grantAccessService.requestAccess(
-        agentId,
-        requestId,
-        representationType,
-        validated.body.opportunityDetails,
-      );
-
-      logger.info(
-        { agentId, requestId, grantAccessId: pendingAccess._id },
-        "Agent without grant access attempted match; request sent for admin approval",
-      );
-
-      return ApiResponse.success(
-        res,
-        pendingAccess,
-        "Match request pending admin approval",
       );
     }
 
@@ -1252,7 +1269,7 @@ export class PreMarketController {
         ? "Owner representation selection saved"
         : validated.body.additionalOpportunity
           ? "Additional opportunity sent"
-        : "Request was moved to the Renter Matches section",
+          : "Request was moved to the Renter Matches section",
     );
   });
 
