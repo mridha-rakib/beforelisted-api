@@ -9,6 +9,19 @@ import {
   PREMARKET_CONFIG,
   priceRangeSchema,
 } from "@/config/pre-market.config";
+import {
+  hasRiskyOpportunityDetailsWording,
+  OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE,
+} from "@/utils/opportunity-details.utils";
+
+const opportunityDetailsSchema = z
+  .string()
+  .trim()
+  .max(300)
+  .refine(
+    value => !hasRiskyOpportunityDetailsWording(value),
+    OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE,
+  );
 
 export const createPreMarketRequestSchema = z.object({
   body: z
@@ -162,7 +175,7 @@ export const requestAccessSchema = z.object({
     representation_type: z
       .enum(["owner_representation", "renter_representation"])
       .optional(),
-    opportunityDetails: z.string().trim().max(300).optional(),
+    opportunityDetails: opportunityDetailsSchema.optional(),
   }),
 });
 
@@ -175,7 +188,8 @@ export const agentMatchRequestSchema = z.object({
       representation_type: z
         .enum(["owner_representation", "renter_representation"])
         .optional(),
-      opportunityDetails: z.string().trim().max(300).optional(),
+      opportunityDetails: opportunityDetailsSchema.optional(),
+      additionalOpportunity: z.boolean().optional(),
     })
     .optional()
     .default({}),

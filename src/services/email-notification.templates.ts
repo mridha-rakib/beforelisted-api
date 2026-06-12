@@ -999,6 +999,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
   opportunityDetails?: string,
   logoUrl?: string,
   brandColor: string = "#1890FF",
+  additionalOpportunity: boolean = false,
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = renterName?.trim().split(" ")[0] || renterName;
@@ -1022,7 +1023,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
   const opportunityDetailsMarkup = safeOpportunityDetails
     ? `
             <div class="agent-details">
-                <p><strong>Opportunity Details</strong></p>
+                <p><strong>Message from the agent ${safeRegisteredAgentFullName}:</strong></p>
                 <p>${safeOpportunityDetails}</p>
             </div>
 `
@@ -1034,7 +1035,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>An opportunity matching your request has been identified &ndash; BeforeListed</title>
+    <title>${additionalOpportunity ? "An additional opportunity matching your request has been identified" : "An opportunity matching your request has been identified"} &ndash; BeforeListed</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -1102,7 +1103,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
     <div class="container">
         <div class="header">
             ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
-            <h1>Opportunity Found</h1>
+            <h1>${additionalOpportunity ? "Additional Opportunity Found" : "Opportunity Found"}</h1>
         </div>
 
         <div class="content">
@@ -1110,13 +1111,15 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
                 Hi ${safeFirstName},
             </div>
 
-            <p>Your registered agent has indicated through the BeforeListed&trade; website that an opportunity related to your request has been identified.</p>
+            <p>Good news!</p>
+
+            <p>Your registered agent has indicated through the BeforeListed&trade; website that ${additionalOpportunity ? "an additional opportunity" : "an opportunity"} related to your request has been identified.</p>
 
             <p>This opportunity is based on the criteria you submitted and may not be publicly advertised.</p>
 
-            <p>Your agent may reach out separately with additional details and next steps. No action is required from you at this time unless requested by your agent.</p>
-
 ${opportunityDetailsMarkup}
+
+            <p>Your agent may reach out separately with additional details and next steps. No action is required from you at this time unless requested by your agent.</p>
 
             <p>If you prefer, you may also contact your registered agent directly:</p>
 
@@ -1158,6 +1161,7 @@ export function renterOpportunityFoundOtherAgentTemplate(
   opportunityDetails?: string,
   logoUrl?: string,
   brandColor: string = "#1890FF",
+  additionalOpportunity: boolean = false,
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = renterName?.trim().split(" ")[0] || renterName;
@@ -1181,14 +1185,58 @@ export function renterOpportunityFoundOtherAgentTemplate(
   const disclosureLinkMarkup = safeMatchedAgentDisclosureLink
     ? `<a href="${safeMatchedAgentDisclosureLink}">Agent Disclosure</a>`
     : "Agent Disclosure";
-  const opportunityDetailsMarkup = safeOpportunityDetails
+  const allMarketOpportunityDetailsMarkup = safeOpportunityDetails
     ? `
             <div class="notification-box">
-                <h2>Opportunity Details</h2>
+                <h2>Message from the agent ${safeMatchedAgentFullName}:</h2>
                 <p>${safeOpportunityDetails}</p>
             </div>
 `
     : "";
+  const upcomingOpportunityDetailsMarkup = safeOpportunityDetails
+    ? `
+            <p class="agent-message-label">Message from the agent ${safeMatchedAgentFullName}:</p>
+            <div class="agent-message-box">
+                <p>${safeOpportunityDetails}</p>
+            </div>
+`
+    : "";
+  const additionalOpportunityDetailsMarkup = safeOpportunityDetails
+    ? `
+            <p class="agent-message-label">Message from the agent ${safeMatchedAgentFullName}:</p>
+            <div class="agent-message-box">
+                <p>${safeOpportunityDetails}</p>
+            </div>
+`
+    : "";
+  const introMarkup = additionalOpportunity
+    ? `<p>Based on the preferences you selected when submitting your request on BeforeListed&trade;, the additional agent may be able to assist with your request for another rental opportunities that may not yet be publicly advertised.</p>
+
+${additionalOpportunityDetailsMarkup}
+
+            <p>For your reference, the additional agent&rsquo;s information is:</p>`
+    : isAllMarket
+      ? `<p>Based on the preferences you selected when submitting your request on BeforeListed&trade;, including assistance with publicly listed apartments, a renter specialist has been identified who may be able to assist with your rental search.</p>
+
+            <p>This may include guidance throughout the search process, landlord and building screening, scheduling and coordinating tours, negotiations, and support through the rental process, subject to completion of required agency disclosures.</p>
+
+${allMarketOpportunityDetailsMarkup}
+
+            <p>For your reference, the agent&apos;s information is:</p>`
+      : `<p>Based on the preferences you selected when submitting your request on BeforeListed&trade;, an additional agent has been identified who may be able to assist with your request for rental opportunities that may not yet be publicly advertised.</p>
+
+${upcomingOpportunityDetailsMarkup}
+
+            <p>For your reference, the additional agent&apos;s information is:</p>`;
+  const disclosureMarkup = additionalOpportunity
+    ? ""
+    : `
+            <p>Please sign the document using the link below:</p>
+
+            <p>${disclosureLinkMarkup}</p>
+
+            <p>In the meantime, you may just email reply all and confirm you received the disclosure, and the ${isAllMarket ? "renter specialist" : "assisting agent"} will reach out to you.</p>
+`;
 
   return `
 <!DOCTYPE html>
@@ -1249,6 +1297,22 @@ export function renterOpportunityFoundOtherAgentTemplate(
             color: ${brandColor};
             font-size: 18px;
         }
+        .agent-message-label {
+            margin: 18px 0 8px 0;
+            font-size: 16px;
+            color: #333333;
+        }
+        .agent-message-box {
+            border: 1px solid ${brandColor};
+            background-color: #ffffff;
+            padding: 12px;
+            margin: 0 0 18px 0;
+            min-height: 72px;
+        }
+        .agent-message-box p {
+            margin: 0;
+            white-space: pre-line;
+        }
         .footer {
             background-color: #f9f9f9;
             padding: 20px;
@@ -1276,17 +1340,7 @@ export function renterOpportunityFoundOtherAgentTemplate(
 
             <p>Good news!</p>
 
-            ${
-              isAllMarket
-                ? `<p>Based on the preferences you selected when submitting your request on BeforeListed&trade;, including assistance with publicly listed apartments, a renter specialist has been identified who may be able to assist with your rental search.</p>
-
-            <p>This may include guidance throughout the search process, landlord and building screening, scheduling and coordinating tours, negotiations, and support through the rental process, subject to completion of required agency disclosures.</p>
-
-            <p>For your reference, the agent&apos;s information is:</p>`
-                : `<p>Based on the preferences you selected when submitting your request on BeforeListed&trade;, an additional agent has been identified who may be able to assist with your request for rental opportunities that may not yet be publicly advertised.</p>
-
-            <p>For your reference, the additional agent&apos;s information is:</p>`
-            }
+            ${introMarkup}
 
             <p>
               ${
@@ -1298,13 +1352,7 @@ export function renterOpportunityFoundOtherAgentTemplate(
               Phone: ${safeMatchedAgentPhone}
             </p>
 
-${opportunityDetailsMarkup}
-
-            <p>Please sign the document using the link below:</p>
-
-            <p>${disclosureLinkMarkup}</p>
-
-            <p>In the meantime, you may just email reply all and confirm you received the disclosure, and the ${isAllMarket ? "renter specialist" : "assisting agent"} will reach out to you.</p>
+${disclosureMarkup}
 
             <p>As a reminder, a broker fee is only payable if you successfully rent an apartment presented to you by the agent assisting with your request, The fee is paid only once and does not change based on the number of agents assisting you.</p>
 
@@ -1542,6 +1590,14 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
   const safeFacilitatorReferralLink = escapeHtml(
     facilitatorReferralLink || "",
   );
+  const opportunityDetailsMarkup = safeOpportunityDetails
+    ? `
+            <p class="agent-message-label">Message from the agent ${safeMatchedAgentFullName}:</p>
+            <div class="agent-message-box">
+                <p>${safeOpportunityDetails}</p>
+            </div>
+`
+    : "";
   const detailsMarkup = `
             <div class="details">
                 <p>Renter: ${safeRenterFullName}</p>
@@ -1551,11 +1607,6 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
                 <p>Matched Agent (Owner Representation):<br>${safeMatchedAgentFullName}, ${safeMatchedAgentTitle} with ${safeMatchedAgentBrokerage}</p>
                 <p>Email: ${safeMatchedAgentEmail}</p>
                 <p>Contact Number: ${safeMatchedAgentPhoneNumber}</p>
-                ${
-                  safeOpportunityDetails
-                    ? `<p>Opportunity Details: ${safeOpportunityDetails}</p>`
-                    : ""
-                }
             </div>
 `;
   const closingMarkup = requestRepresentedByTuvalMor
@@ -1630,6 +1681,22 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
         .details p {
             margin: 8px 0;
         }
+        .agent-message-label {
+            margin: 18px 0 8px 0;
+            font-size: 16px;
+            color: #333333;
+        }
+        .agent-message-box {
+            border: 1px solid ${brandColor};
+            background-color: #ffffff;
+            padding: 12px;
+            margin: 0 0 18px 0;
+            min-height: 72px;
+        }
+        .agent-message-box p {
+            margin: 0;
+            white-space: pre-line;
+        }
         .footer {
             background-color: #f9f9f9;
             padding: 20px;
@@ -1656,6 +1723,8 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
             </div>
 
             <p>An agent has identified a potential apartment match for your renter and has indicated that they intend to represent the owner in this transaction.</p>
+
+${opportunityDetailsMarkup}
 
             <p>This email confirms that a renter request you registered has been matched through the BeforeListed&trade; service.</p>
 
@@ -2340,7 +2409,11 @@ export function nonRegisteredAgentRequestSubmissionNotificationTemplate(
         <div class="content">
             <p>Hi ${safeFirstName},</p>
 
-            <p>A renter who registered with another agent has chosen to share their request with participating BeforeListed&trade; agents.</p>
+            <p>A fellow Corcoran agent just shared a renter request with you.</p>
+
+            <p>The agent has confirmed that the renter is registered, has completed the fee disclosure, and is willing to pay a broker fee to the assisting agent.</p>
+
+            <p>View their request below and click Match on your BeforeListed&trade; dashboard if you can help.</p>
 
             <div class="details">
                 <p><strong>${safeRenterFirstName} Request details:</strong></p>

@@ -18,6 +18,10 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@/utils/app-error.utils";
+import {
+  hasRiskyOpportunityDetailsWording,
+  OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE,
+} from "@/utils/opportunity-details.utils";
 import { PaginationHelper } from "@/utils/pagination-helper";
 
 import type { IAgentProfile } from "../agent/agent.interface";
@@ -4659,9 +4663,14 @@ export class PreMarketService {
     requestId: string,
     representationType: MatchRepresentationType = "renter_representation",
     opportunityDetails?: string,
+    additionalOpportunity: boolean = false,
   ): Promise<any> {
     const normalizedOpportunityDetails
       = this.normalizeOpportunityDetails(opportunityDetails);
+    if (hasRiskyOpportunityDetailsWording(normalizedOpportunityDetails)) {
+      throw new BadRequestException(OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE);
+    }
+
     const agent = await this.agentRepository.findByUserId(agentId);
     if (
       !agent
@@ -4760,6 +4769,22 @@ export class PreMarketService {
 
     const shouldNotify
       = !existing || (existing.status !== "free" && existing.status !== "paid");
+    const shouldSendAdditionalOpportunity
+      = additionalOpportunity
+        && representationType === "renter_representation"
+        && Boolean(existing && (existing.status === "free" || existing.status === "paid"));
+
+    if (shouldSendAdditionalOpportunity) {
+      const registrationStatus = this.getRegistrationDisclosureStatus(
+        listingActivationCheck as any,
+        agentId,
+      );
+      if (!registrationStatus.registrationDisclosureConfirmed) {
+        throw new ForbiddenException(
+          "Registration / Disclosure confirmation is required before matching this request",
+        );
+      }
+    }
 
     let matchRecord: IGrantAccessRequest;
     const representationPayload = {
@@ -4773,6 +4798,30 @@ export class PreMarketService {
     try {
       if (existing) {
         if (existing.status === "free" || existing.status === "paid") {
+          if (shouldSendAdditionalOpportunity) {
+            this.notifyRenterAboutMatchedOpportunity(
+              agentId,
+              listingActivationCheck,
+              existing._id,
+              normalizedOpportunityDetails,
+              { additionalOpportunity: true },
+            ).catch((error) => {
+              logger.error(
+                { error, requestId, agentId },
+                "Failed to send additional renter opportunity notification (non-blocking)",
+              );
+            });
+
+            const existingObject = typeof (existing as any).toObject === "function"
+              ? (existing as any).toObject()
+              : existing;
+
+            return {
+              ...existingObject,
+              additionalOpportunity: true,
+            };
+          }
+
           return existing;
         }
 
@@ -5737,6 +5786,7 @@ export class PreMarketService {
     preMarketRequest: IPreMarketRequest,
     currentGrantAccessId?: string | Types.ObjectId,
     opportunityDetails?: string,
+    options: { additionalOpportunity?: boolean } = {},
   ): Promise<void> {
     const renter = await this.renterRepository.findRenterWithReferrer(
       preMarketRequest.renterId.toString(),
@@ -5874,27 +5924,28 @@ export class PreMarketService {
         registeredAgentEmail,
         registeredAgentPhone,
         opportunityDetails,
+        additionalOpportunity: options.additionalOpportunity,
       });
     }
     else {
       const matchedAgentProfile = await this.agentRepository.findByUserId(agentId);
       const ccEmails = buildCcList([registeredAgentEmail, agent.email]);
-      const alreadyMatched
-        = await this.shouldDisplayMatchedScopeForRequest(
-          preMarketRequest._id?.toString() || "",
-          currentGrantAccessId
-            ? { excludeGrantAccessId: currentGrantAccessId }
-            : undefined,
-        );
-      const requestScope = resolveRenterOpportunityEmailScope(
-        preMarketRequest.scope,
-        alreadyMatched,
-      );
+      const requestScope = options.additionalOpportunity
+        ? "Upcoming"
+        : resolveRenterOpportunityEmailScope(
+            preMarketRequest.scope,
+            await this.shouldDisplayMatchedScopeForRequest(
+              preMarketRequest._id?.toString() || "",
+              currentGrantAccessId
+                ? { excludeGrantAccessId: currentGrantAccessId }
+                : undefined,
+            ),
+          );
       await emailService.sendRenterOpportunityFoundByOtherAgent({
         to: renter.email,
         renterName: renter.fullName,
         cc: ccEmails,
-        replyTo: registeredAgentEmail,
+        replyTo: options.additionalOpportunity ? agent.email : registeredAgentEmail,
         requestScope,
         matchedAgentFullName: agent.fullName || agent.email || "N/A",
         matchedAgentTitle:
@@ -5904,7 +5955,12 @@ export class PreMarketService {
         matchedAgentPhone: agent.phoneNumber || "N/A",
         matchedAgentDisclosureLink: matchedAgentProfile?.disclosureLink || null,
         opportunityDetails,
+        additionalOpportunity: options.additionalOpportunity,
       });
+
+      if (options.additionalOpportunity) {
+        return;
+      }
 
       const agentAckCcEmails = buildCcList(
         [registeredAgentEmail, env.ADMIN_EMAIL],

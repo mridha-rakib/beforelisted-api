@@ -101,6 +101,7 @@ export type IRenterOpportunityFoundRegisteredAgentPayload = {
   registeredAgentEmail: string;
   registeredAgentPhone: string;
   opportunityDetails?: string;
+  additionalOpportunity?: boolean;
 };
 
 export type IRenterOpportunityFoundOtherAgentPayload = {
@@ -116,6 +117,7 @@ export type IRenterOpportunityFoundOtherAgentPayload = {
   matchedAgentPhone?: string;
   matchedAgentDisclosureLink?: string | null;
   opportunityDetails?: string;
+  additionalOpportunity?: boolean;
 };
 
 export type IMatchReferralAcknowledgmentToMatchingAgentPayload = {

@@ -8,6 +8,10 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@/utils/app-error.utils";
+import {
+  hasRiskyOpportunityDetailsWording,
+  OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE,
+} from "@/utils/opportunity-details.utils";
 
 import type { IPreMarketRequest } from "../pre-market/pre-market.model";
 import type { IGrantAccessRequest } from "./grant-access.model";
@@ -136,6 +140,10 @@ export class GrantAccessService {
     const normalizedOpportunityDetails = opportunityDetails?.trim()
       ? opportunityDetails.trim().slice(0, 300)
       : undefined;
+    if (hasRiskyOpportunityDetailsWording(normalizedOpportunityDetails)) {
+      throw new BadRequestException(OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE);
+    }
+
     const listingActivationCheck
       = await this.preMarketRepository.findByIdWithActivationStatus(
         preMarketRequestId,

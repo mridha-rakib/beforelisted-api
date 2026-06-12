@@ -1316,13 +1316,15 @@ export class EmailService {
         payload.opportunityDetails,
         this.config.logoUrl,
         this.config.brandColor,
+        payload.additionalOpportunity,
       );
 
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
         replyTo: payload.registeredAgentEmail || "support@beforelisted.com",
-        subject:
-          "An opportunity matching your request has been identified \u2013 BeforeListed",
+        subject: payload.additionalOpportunity
+          ? "An additional opportunity matching your request has been identified \u2013 BeforeListed"
+          : "An opportunity matching your request has been identified \u2013 BeforeListed",
         html,
       };
 
@@ -1375,9 +1377,12 @@ export class EmailService {
         payload.opportunityDetails,
         this.config.logoUrl,
         this.config.brandColor,
+        payload.additionalOpportunity,
       );
       const subject
-        = payload.requestScope === "All Market"
+        = payload.additionalOpportunity
+          ? "The additional agent may help your request with another opportunity \u2013 BeforeListed"
+          : payload.requestScope === "All Market"
           ? "A renter specialist may assist with your rental search \u2013 BeforeListed"
           : "An additional agent may help your request \u2013 BeforeListed";
 

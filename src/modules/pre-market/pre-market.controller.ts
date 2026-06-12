@@ -1240,6 +1240,7 @@ export class PreMarketController {
       requestId,
       representationType,
       validated.body.opportunityDetails,
+      validated.body.additionalOpportunity,
     );
 
     logger.info({ agentId, requestId }, "Agent matched pre-market request");
@@ -1249,6 +1250,8 @@ export class PreMarketController {
       matchRecord,
       representationType === "owner_representation"
         ? "Owner representation selection saved"
+        : validated.body.additionalOpportunity
+          ? "Additional opportunity sent"
         : "Request was moved to the Renter Matches section",
     );
   });
