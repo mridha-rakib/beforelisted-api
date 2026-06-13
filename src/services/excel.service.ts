@@ -72,6 +72,7 @@ export class ExcelService {
         "Market Scope",
         "Registration",
         "Status",
+        "Shared Visibility",
         "Created Date",
       ];
 
@@ -128,10 +129,11 @@ export class ExcelService {
           };
         }
 
-        // Center align registration, status and dates
+        // Center align registration, status, shared visibility and dates
         dataRow.getCell(24).alignment = { horizontal: "center" };
         dataRow.getCell(25).alignment = { horizontal: "center" };
         dataRow.getCell(26).alignment = { horizontal: "center" };
+        dataRow.getCell(27).alignment = { horizontal: "center" };
 
         rowCount++;
       }
@@ -163,6 +165,7 @@ export class ExcelService {
         14, // Market Scope
         14, // Registration
         12, // Status
+        16, // Shared Visibility
         15, // Created Date
       ];
 
@@ -173,7 +176,7 @@ export class ExcelService {
       if (rows.length > 0) {
         worksheet.autoFilter = {
           from: "A1",
-          to: `Z${rows.length + 1}`,
+          to: `AA${rows.length + 1}`,
         };
       }
 
@@ -241,6 +244,7 @@ export class ExcelService {
           "Market Scope",
           "Registration",
           "Status",
+          "Shared Visibility",
           "Created Date",
         ];
 
@@ -284,6 +288,7 @@ export class ExcelService {
           14,
           14,
           12,
+          16,
           15,
         ].map(width => ({ width }));
       }
@@ -649,8 +654,13 @@ export class ExcelService {
       this.getMarketScope(rowSource),
       this.resolveRegisteredAgentRegistrationStatus(rowSource),
       this.resolveConsolidatedRequestStatus(entry),
+      this.resolveSharedVisibilityStatus(latestRequest),
       this.formatDate(latestRequest.createdAt ?? entry.createdAt),
     ];
+  }
+
+  private resolveSharedVisibilityStatus(request: any): "True" | "False" {
+    return request?.visibility === "SHARED" ? "True" : "False";
   }
 
   private resolveConsolidatedRequestStatus(entry: any): string {

@@ -541,7 +541,7 @@ export class PreMarketService {
 
     await this.createRenterNotification({
       recipientId: renterId,
-      title: "Pre-market request submitted",
+      title: "Request submitted.",
       message: `We received your new request "${request.requestName}". We'll follow up if an agent is matched.`,
       type: "success",
       notificationType: "pre_market_request_created",
@@ -869,6 +869,13 @@ export class PreMarketService {
       this.grantAccessRepository.findByAgentIdAndRequestIds(agentId, requestIds),
       this.getGlobalMatchedScopeRequestIdSet(requestIds),
     ]);
+    const matchVisibleRequests = requests.filter((request) => {
+      const requestId = request._id?.toString() || "";
+      return (
+        request.scope !== "All Market"
+        || globalMatchedScopeRequestIds.has(requestId)
+      );
+    });
     const grantAccessByRequestId = new Map(
       grantAccessRecords.map(record => [
         record.preMarketRequestId.toString(),
@@ -877,7 +884,7 @@ export class PreMarketService {
     );
 
     const scoredResults = await Promise.all(
-      requests.map(async (request) => {
+      matchVisibleRequests.map(async (request) => {
         const requestId = request._id?.toString() || "";
         const grantAccess = grantAccessByRequestId.get(requestId) || null;
         const isOwnerRepresentationAccess

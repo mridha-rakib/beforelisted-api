@@ -1267,12 +1267,16 @@ export class PreMarketNotifier {
       // NOTIFY ONLY THE REGISTERED/REFERRAL AGENT
       if (agentIds.length > 0) {
         try {
-          const agentNotificationPromises = agentIds.map(agentId =>
-            this.notificationService.createNotification({
+          const agentNotificationPromises = agentIds.map((agentId) => {
+            const requestId
+              = preMarketRequest.requestId || preMarketRequest.requestName;
+            const borough = this.formatBorough(preMarketRequest.locations);
+
+            return this.notificationService.createNotification({
               recipientId: agentId,
               recipientRole: "Agent",
-              title: "New Pre-Market Listing Available",
-              message: `A new listing "${preMarketRequest.requestName}" was posted in ${preMarketRequest.locations}`,
+              title: "New Fee-Paying Renter Request Available",
+              message: `A new request "${requestId}" was submitted in ${borough}.`,
               type: "info",
               notificationType: "new_pre_market_listing",
               relatedEntityType: "Request",
@@ -1284,8 +1288,8 @@ export class PreMarketNotifier {
                 listingTitle: preMarketRequest.requestName,
                 location: preMarketRequest.locations,
               },
-            }),
-          );
+            });
+          });
 
           await Promise.all(agentNotificationPromises);
           agentNotificationsCreated = agentIds.length;
