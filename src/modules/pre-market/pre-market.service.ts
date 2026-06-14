@@ -3833,7 +3833,7 @@ export class PreMarketService {
       const bodyHtml = `
         <p>Hi ${this.escapeEmailHtml(firstName)},</p>
         <p>We didn&rsquo;t receive your search confirmation after our last email, so your request on BeforeListed&trade; has been <strong>paused and moved to our archive</strong>.</p>
-        <p>If you&rsquo;re still searching, simply <strong>reply to this email</strong> and we&rsquo;ll reactivate your request right away.</p>
+        <p>If you&rsquo;re still searching, you can log in to your BeforeListed&trade; dashboard and unarchive your request directly, or simply reply to this email and we&rsquo;ll reactivate it right away.</p>
         <p>Active requests allow agents to continue reaching out to owners on your behalf for upcoming apartments that may not yet be advertised.</p>
         <p>If your plans have changed, no action is needed.</p>
         <p>If you&rsquo;d like to continue your search, we&rsquo;re here to help.</p>
@@ -3857,7 +3857,7 @@ export class PreMarketService {
 
   private async sendUnarchiveNotification({
     request,
-    archiveReason: _archiveReason,
+    archiveReason,
     unarchivingAgent,
   }: {
     request: IPreMarketRequest;
@@ -3889,6 +3889,7 @@ export class PreMarketService {
     const bodyHtml = `
       <p>Hi ${this.escapeEmailHtml(firstName)},</p>
       <p>Your agent ${this.escapeEmailHtml(unarchivingAgent.fullName)} ${this.escapeEmailHtml(unarchivingAgent.title)} with ${this.escapeEmailHtml(unarchivingAgent.brokerage)}, has reactivated your request.</p>
+      <p>Your request was previously archived for the following reason:<br>${this.escapeEmailHtml(archiveReason ? ARCHIVE_REASON_LABELS[archiveReason] : "Not specified")}</p>
       <p><strong style="color: #000000;">Your request is now active.</strong></p>
       <p>If you have any questions, you may reply directly to this email.</p>
       <p>Thank you,<br>BeforeListed&trade; Support</p>`;
