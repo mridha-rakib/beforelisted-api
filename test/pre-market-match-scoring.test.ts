@@ -163,6 +163,79 @@ describe("scorePreMarketRequest", () => {
     }
   });
 
+  it("allows a cat request when the apartment accepts dogs per the reference scoring engine", () => {
+    const apartment: MatchApartmentInput = {
+      ...baseApartment,
+      petPolicy: {
+        catsAllowed: false,
+        dogsAllowed: true,
+      },
+    };
+    const request = {
+      ...baseRequest,
+      petPolicy: {
+        catsAllowed: true,
+        dogsAllowed: false,
+      },
+    };
+
+    const result = scorePreMarketRequest(apartment, request);
+
+    expect(result.disqualified).toBe(false);
+  });
+
+  it("uses the first duplicate neighborhood lookup entry to mirror Excel VLOOKUP", () => {
+    const apartment: MatchApartmentInput = {
+      ...baseApartment,
+      borough: "Brooklyn",
+      neighborhood: "Brooklyn Navy Yard",
+      bedrooms: "1BR",
+      bathrooms: "1",
+      rent: 3000,
+      movingDateRange: {
+        earliest: new Date("2026-05-15T00:00:00Z"),
+        latest: new Date("2026-06-15T00:00:00Z"),
+      },
+      unitFeatures: {
+        laundryInUnit: false,
+        privateOutdoorSpace: false,
+        dishwasher: false,
+      },
+      buildingFeatures: {
+        doorman: false,
+        elevator: false,
+        laundryInBuilding: false,
+      },
+      availableFeatures: {},
+    };
+    const request = {
+      ...baseRequest,
+      locations: [
+        {
+          borough: "Brooklyn",
+          neighborhoods: ["Fort Greene"],
+        },
+      ],
+      bedrooms: ["1BR"],
+      bathrooms: ["1"],
+      priceRange: {
+        min: 2500,
+        max: 3500,
+      },
+      preferences: [],
+    };
+
+    const result = scorePreMarketRequest(apartment, request);
+
+    expect(result.disqualified).toBe(false);
+    if (!result.disqualified) {
+      expect(result.regionLocationMatch).toBe(true);
+      expect(result.missingFeatures.map(feature => feature.code)).toContain(
+        "location",
+      );
+    }
+  });
+
   it("disqualifies requests with more than three soft misses", () => {
     const apartment: MatchApartmentInput = {
       ...baseApartment,

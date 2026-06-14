@@ -1703,10 +1703,10 @@ export class EmailService {
       const isRegisteredRegistrationMissing
         = payload.templateType === "ARCHIVE_REGISTERED_REGISTRATION_MISSING";
       const subject = isRegisteredRegistrationMissing
-        ? "Client registration missing, required to activate your request - BeforeListed"
+        ? "Action Required: Complete Your Registration to Activate Your Request \u2013 BeforeListed"
         : payload.subject;
       const headerTitle = isRegisteredRegistrationMissing
-        ? "Client Registration Missing"
+        ? "Complete Your Registration to Activate Your Request"
         : payload.headerTitle;
       logger.debug(
         { email: payload.to, templateType: payload.templateType },

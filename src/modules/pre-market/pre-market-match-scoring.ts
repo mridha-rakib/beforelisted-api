@@ -206,11 +206,15 @@ const normalizeText = (value: unknown): string =>
     .replace(/\s+/g, " ")
     .trim();
 
-const neighborhoodLookupByName = new Map(
-  PRE_MARKET_NEIGHBORHOOD_LOOKUP.map(entry => [
-    normalizeText(entry.neighborhood),
-    entry,
-  ]),
+const neighborhoodLookupByName = PRE_MARKET_NEIGHBORHOOD_LOOKUP.reduce(
+  (lookup, entry) => {
+    const key = normalizeText(entry.neighborhood);
+    if (!lookup.has(key)) {
+      lookup.set(key, entry);
+    }
+    return lookup;
+  },
+  new Map<string, PreMarketNeighborhoodLookupEntry>(),
 );
 
 export const getPreMarketNeighborhoodsByBorough = () => {
@@ -476,7 +480,9 @@ export const scorePreMarketRequest = (
 
   if (toggles.petPolicy) {
     if (
-      (isTruthy(request.petPolicy?.catsAllowed) && !apartment.petPolicy.catsAllowed)
+      (isTruthy(request.petPolicy?.catsAllowed)
+        && !apartment.petPolicy.catsAllowed
+        && !apartment.petPolicy.dogsAllowed)
       || (isTruthy(request.petPolicy?.dogsAllowed) && !apartment.petPolicy.dogsAllowed)
     ) {
       return { disqualified: true, reason: "petPolicy", missingFeatures };

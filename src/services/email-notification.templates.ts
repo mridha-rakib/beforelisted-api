@@ -2409,7 +2409,7 @@ export function nonRegisteredAgentRequestSubmissionNotificationTemplate(
         <div class="content">
             <p>Hi ${safeFirstName},</p>
 
-            <p>A fellow Corcoran agent just shared a renter request with you.</p>
+            <p>A fellow agent just shared a renter request with you.</p>
 
             <p>The agent has confirmed that the renter is registered, has completed the fee disclosure, and is willing to pay a broker fee to the assisting agent.</p>
 

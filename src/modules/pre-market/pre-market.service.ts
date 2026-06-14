@@ -3299,6 +3299,27 @@ export class PreMarketService {
         throw new BadRequestException("This confirmation link is invalid.");
       }
 
+      if (
+        confirmedRequest.isDeleted
+        || confirmedRequest.status === "deleted"
+        || confirmedRequest.isActive === false
+      ) {
+        throw new BadRequestException("This request is no longer active.");
+      }
+
+      if (
+        Array.isArray((confirmedRequest as any)?.agentArchives)
+        && (confirmedRequest as any).agentArchives.length > 0
+      ) {
+        throw new BadRequestException("This request has already been archived.");
+      }
+
+      if (confirmedSearchActivity.pendingConfirmationToken) {
+        throw new BadRequestException(
+          "A newer confirmation email was sent. Please use the latest Confirm My Search link.",
+        );
+      }
+
       const renter = await this.renterRepository.findRenterWithReferrer(
         confirmedRequest.renterId.toString(),
       );
@@ -3959,20 +3980,20 @@ export class PreMarketService {
 
     if (source === "registered_agent" && reason === "registration_missing") {
       subject
-        = "Client registration missing, required to activate your request - BeforeListed";
-      headerTitle = "Client Registration Missing";
+        = "Action Required: Complete Your Registration to Activate Your Request \u2013 BeforeListed";
+      headerTitle = "Complete Your Registration to Activate Your Request";
       replyTo = registeredAgentEmail || replyTo;
       templateType = "ARCHIVE_REGISTERED_REGISTRATION_MISSING";
       bodyHtml = `
         <p>Hi ${firstName},</p>
         <p>Thank you for submitting your request on BeforeListed&trade;.</p>
-        <p>Our system shows that the required client registration and disclosure document, which was needed during your submission, has not yet been signed.</p>
-        <p>Due to this, ${registeredName}, ${registeredTitle} with ${registeredBrokerage}, is not permitted to contact owners on your behalf until the registration is completed.</p>
-        <p>Your request is currently inactive.</p>
-        <p>To activate your request, please sign the document using the link below:</p>
+        <p>To activate your request, you&rsquo;ll need to complete the required client registration and disclosure form.</p>
+        <p><strong>Your request is currently inactive until this step is completed.</strong></p>
+        <p>This step can take less than a minute.</p>
+        <p>Please complete your registration using the link below:</p>
         <p>${registrationLinkMarkup}</p>
-        <p>Once the document is signed, your request may be reactivated.</p>
-        <p>If you have any questions, you may reply directly to this email.</p>
+        <p>Once completed, your request may be activated and ${registeredName} will be able to begin assisting you immediately.</p>
+        <p>If you have any questions, feel free to reply to this email.</p>
         <p>Thank you,<br>BeforeListed&trade; Support</p>`;
     }
     else if (source === "matched_agent" && reason === "disclosure_missing") {
@@ -4009,12 +4030,17 @@ export class PreMarketService {
         = source === "registered_agent"
           ? `${registeredName}, ${registeredTitle} with ${registeredBrokerage}`
           : `${actorName}, ${actorTitle} with ${actorBrokerage}`;
+      const closingWish
+        = source === "matched_agent"
+          ? "<p>We wish you the best of luck in your new home.</p>"
+          : "";
       bodyHtml = `
         <p>Hi ${firstName},</p>
         <p>We understand that you informed ${indicatedTo}, that you are no longer actively searching for an apartment.</p>
         <p><strong>Your BeforeListed&trade; request has been archived.</strong></p>
         <p>If this is not correct, please reply to this email and we&rsquo;ll update it right away.</p>
         <p>If you begin your search again in the future, you&rsquo;re always welcome to use BeforeListed&trade; to explore new opportunities.</p>
+        ${closingWish}
         <p>Thank you,<br>BeforeListed&trade; Support</p>`;
     }
     else if (reason === "client_placed") {
