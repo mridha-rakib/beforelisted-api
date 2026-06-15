@@ -339,9 +339,11 @@ const buildPreferenceSources = (
     { label: "Large Apartment", present: Boolean(available.largeApartment) },
     { label: "Lots of Light", present: Boolean(available.lotsOfLight) },
     { label: "New Renovation", present: Boolean(available.newRenovation) },
+    { label: "New Ranovation", present: Boolean(available.newRenovation) },
     { label: "High Ceilings", present: Boolean(available.highCeilings) },
     { label: "Not Ground Floor", present: Boolean(available.notGroundFloor) },
     { label: "Avoid Ground Floor", present: Boolean(available.notGroundFloor) },
+    { label: "Avoid the Ground Floor", present: Boolean(available.notGroundFloor) },
     { label: "Lots of Storage", present: Boolean(available.lotsOfStorage) },
     { label: "Gym in Building", present: Boolean(available.gymInBuilding) },
     {
@@ -363,6 +365,10 @@ const buildPreferenceSources = (
     { label: "Elevator", present: apartment.buildingFeatures.elevator },
     {
       label: "Laundry in Building",
+      present: apartment.buildingFeatures.laundryInBuilding,
+    },
+    {
+      label: "Laundry in the Building",
       present: apartment.buildingFeatures.laundryInBuilding,
     },
   ];
