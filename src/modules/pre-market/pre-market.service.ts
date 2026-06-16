@@ -4930,6 +4930,7 @@ export class PreMarketService {
     agentId: string,
     requestIds: string[],
     representationType: MatchRepresentationType = "renter_representation",
+    opportunityDetails?: string,
   ): Promise<{
     matched: Array<{ requestId: string; result: any }>;
     failed: Array<{ requestId: string; message: string }>;
@@ -4944,6 +4945,7 @@ export class PreMarketService {
           agentId,
           requestId,
           representationType,
+          opportunityDetails,
         );
         matched.push({ requestId, result });
       }

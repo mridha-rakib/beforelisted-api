@@ -1182,6 +1182,7 @@ export class PreMarketController {
         agentId,
         validated.body.requestIds,
         validated.body.representation_type ?? "renter_representation",
+        validated.body.opportunityDetails,
       );
 
       return ApiResponse.success(

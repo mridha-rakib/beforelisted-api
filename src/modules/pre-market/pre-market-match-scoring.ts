@@ -258,6 +258,27 @@ const smallestRequestedValue = (
 
 const isTruthy = (value: unknown): boolean => value === true;
 
+const hasCompatibleGuarantorPolicy = (
+  apartment: MatchApartmentInput,
+  request: RequestWithMatchContext,
+): boolean => {
+  const renterAcceptsPersonal = isTruthy(
+    request.guarantorRequired?.personalGuarantor,
+  );
+  const renterAcceptsThirdParty = isTruthy(
+    request.guarantorRequired?.thirdPartyGuarantor,
+  );
+
+  if (!renterAcceptsPersonal && !renterAcceptsThirdParty) {
+    return true;
+  }
+
+  return (
+    (renterAcceptsPersonal && apartment.guarantorPolicy.personalGuarantor)
+    || (renterAcceptsThirdParty && apartment.guarantorPolicy.thirdPartyGuarantor)
+  );
+};
+
 const missingFeature = (code: MissingFeatureCode): MatchMissingFeature => ({
   code,
   ...MISSING_FEATURE_META[code],
@@ -496,12 +517,7 @@ export const scorePreMarketRequest = (
   }
 
   if (toggles.guarantorsPolicy) {
-    if (
-      (isTruthy(request.guarantorRequired?.personalGuarantor)
-        && !apartment.guarantorPolicy.personalGuarantor)
-      || (isTruthy(request.guarantorRequired?.thirdPartyGuarantor)
-        && !apartment.guarantorPolicy.thirdPartyGuarantor)
-    ) {
+    if (!hasCompatibleGuarantorPolicy(apartment, request)) {
       return { disqualified: true, reason: "guarantorPolicy", missingFeatures };
     }
   }

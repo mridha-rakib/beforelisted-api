@@ -184,6 +184,72 @@ describe("scorePreMarketRequest", () => {
     expect(result.disqualified).toBe(false);
   });
 
+  it("allows a request that accepts either guarantor type when the apartment accepts personal guarantors", () => {
+    const apartment: MatchApartmentInput = {
+      ...baseApartment,
+      guarantorPolicy: {
+        personalGuarantor: true,
+        thirdPartyGuarantor: false,
+      },
+    };
+    const request = {
+      ...baseRequest,
+      guarantorRequired: {
+        personalGuarantor: true,
+        thirdPartyGuarantor: true,
+      },
+    };
+
+    const result = scorePreMarketRequest(apartment, request);
+
+    expect(result.disqualified).toBe(false);
+  });
+
+  it("allows a request that accepts either guarantor type when the apartment accepts third-party guarantors", () => {
+    const apartment: MatchApartmentInput = {
+      ...baseApartment,
+      guarantorPolicy: {
+        personalGuarantor: false,
+        thirdPartyGuarantor: true,
+      },
+    };
+    const request = {
+      ...baseRequest,
+      guarantorRequired: {
+        personalGuarantor: true,
+        thirdPartyGuarantor: true,
+      },
+    };
+
+    const result = scorePreMarketRequest(apartment, request);
+
+    expect(result.disqualified).toBe(false);
+  });
+
+  it("still disqualifies a single-method guarantor request when that method is unavailable", () => {
+    const apartment: MatchApartmentInput = {
+      ...baseApartment,
+      guarantorPolicy: {
+        personalGuarantor: true,
+        thirdPartyGuarantor: false,
+      },
+    };
+    const request = {
+      ...baseRequest,
+      guarantorRequired: {
+        personalGuarantor: false,
+        thirdPartyGuarantor: true,
+      },
+    };
+
+    const result = scorePreMarketRequest(apartment, request);
+
+    expect(result.disqualified).toBe(true);
+    if (result.disqualified) {
+      expect(result.reason).toBe("guarantorPolicy");
+    }
+  });
+
   it("uses the first duplicate neighborhood lookup entry to mirror Excel VLOOKUP", () => {
     const apartment: MatchApartmentInput = {
       ...baseApartment,
