@@ -156,7 +156,7 @@ const MISSING_FEATURE_META: Record<MissingFeatureCode, Omit<MatchMissingFeature,
   },
   moveDateTotalMiss: {
     label: "Move date total miss",
-    description: "Move date does not overlap by more than 16 days",
+    description: "Move-in date is more than 16 days from the apartment's availability",
     deduction: -50,
   },
   moveDateNearMiss: {
