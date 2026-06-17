@@ -19,9 +19,10 @@ export class SupportService {
   ): Promise<{ messageId?: string }> {
     const subject = payload.subject.replace(/[\r\n]+/g, " ").trim();
     const message = payload.message.trim();
+    const contactRecipient = env.EMAIL_REPLY_TO || env.ADMIN_EMAIL;
 
     const result = await emailService.sendAdminContactRequest({
-      to: env.ADMIN_EMAIL,
+      to: contactRecipient,
       senderEmail: payload.email.trim().toLowerCase(),
       subject: subject || "New contact message from public user",
       message,
@@ -34,7 +35,8 @@ export class SupportService {
       logger.error(
         {
           email: payload.email,
-          error: result.error instanceof Error ? result.error.message : result.error,
+          error:
+            result.error instanceof Error ? result.error.message : result.error,
         },
         "Failed to deliver public contact message",
       );
