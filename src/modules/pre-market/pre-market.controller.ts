@@ -374,6 +374,11 @@ export class PreMarketController {
       archiveSource: archiveStatus.archiveSource,
       archivedAt: archiveStatus.archivedAt,
     };
+    const registrationDisclosureStatus
+      = this.preMarketService.getRegistrationDisclosureStatus(
+        request as any,
+        userId,
+      );
 
     if (agent.hasGrantAccess) {
       const matchRecord = await this.preMarketService.getMatchedAccessRecord(
@@ -408,9 +413,12 @@ export class PreMarketController {
           listingStatus,
           grantAccessStatus,
           grantAccessId: matchRecord._id?.toString(),
+          representation_type: matchRecord.representation_type,
+          representationSelectedAt: matchRecord.representationSelectedAt,
           accessType: "admin-granted",
           canRequestAccess: false,
           ...archiveFields,
+          ...registrationDisclosureStatus,
         });
       }
 
@@ -426,6 +434,7 @@ export class PreMarketController {
         accessType: "none",
         canRequestAccess: false,
         ...archiveFields,
+        ...registrationDisclosureStatus,
         ...(includeCreatorRenterInfo
           ? {}
           : { message: "Match this request to view renter information" }),
@@ -470,6 +479,7 @@ export class PreMarketController {
       grantAccessId: accessSummary.grantAccessId,
       accessType: accessSummary.accessType,
       ...archiveFields,
+      ...registrationDisclosureStatus,
       canRequestAccess: accessSummary.canRequestAccess,
       chargeAmount: accessSummary.chargeAmount ?? null,
     };
@@ -1183,6 +1193,7 @@ export class PreMarketController {
         validated.body.requestIds,
         validated.body.representation_type ?? "renter_representation",
         validated.body.opportunityDetails,
+        validated.body.additionalOpportunity,
       );
 
       return ApiResponse.success(

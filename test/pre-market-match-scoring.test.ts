@@ -543,3 +543,49 @@ describe("PreMarketService registered-agent matching", () => {
     ).rejects.toThrow("You do not have permission to match requests");
   });
 });
+
+describe("PreMarketService bulk matching", () => {
+  it("passes the additional opportunity flag through each selected request", async () => {
+    const service = new PreMarketService();
+    const calls: Array<{
+      agentId: string;
+      requestId: string;
+      additionalOpportunity: boolean;
+    }> = [];
+    const serviceAny = service as any;
+
+    serviceAny.matchRequestForAgent = async (
+      agentId: string,
+      requestId: string,
+      _representationType: string,
+      _opportunityDetails: string | undefined,
+      additionalOpportunity: boolean,
+    ) => {
+      calls.push({ agentId, requestId, additionalOpportunity });
+      return { requestId };
+    };
+
+    const result = await service.matchRequestsForAgent(
+      "agent-1",
+      ["request-1", "request-1", "request-2"],
+      "renter_representation",
+      "123 W 85th St - Available Thursday at 3pm.",
+      true,
+    );
+
+    expect(result.failed).toEqual([]);
+    expect(result.matched).toHaveLength(2);
+    expect(calls).toEqual([
+      {
+        agentId: "agent-1",
+        requestId: "request-1",
+        additionalOpportunity: true,
+      },
+      {
+        agentId: "agent-1",
+        requestId: "request-2",
+        additionalOpportunity: true,
+      },
+    ]);
+  });
+});

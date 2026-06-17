@@ -277,6 +277,7 @@ export const agentBulkMatchRequestSchema = z.object({
       .enum(["owner_representation", "renter_representation"])
       .optional(),
     opportunityDetails: opportunityDetailsSchema.optional(),
+    additionalOpportunity: z.boolean().optional(),
   }),
 });
 

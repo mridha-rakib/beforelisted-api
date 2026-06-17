@@ -1434,7 +1434,7 @@ export class PreMarketService {
     );
   }
 
-  private getRegistrationDisclosureStatus(
+  public getRegistrationDisclosureStatus(
     request: IPreMarketRequest | Record<string, any>,
     agentId: string,
   ): {
@@ -4931,6 +4931,7 @@ export class PreMarketService {
     requestIds: string[],
     representationType: MatchRepresentationType = "renter_representation",
     opportunityDetails?: string,
+    additionalOpportunity: boolean = false,
   ): Promise<{
     matched: Array<{ requestId: string; result: any }>;
     failed: Array<{ requestId: string; message: string }>;
@@ -4946,6 +4947,7 @@ export class PreMarketService {
           requestId,
           representationType,
           opportunityDetails,
+          additionalOpportunity,
         );
         matched.push({ requestId, result });
       }
