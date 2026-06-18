@@ -4,6 +4,7 @@ import { Types } from "mongoose";
 import { randomBytes, randomInt } from "node:crypto";
 
 import type { NotificationType } from "@/modules/notification/notification.interface";
+import type { IMatchCompatibilitySummary } from "@/services/email-notification.types";
 import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 
 import { ACCOUNT_STATUS, ROLES, SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
@@ -11,7 +12,6 @@ import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import { NotificationService } from "@/modules/notification/notification.service";
 import { emailService } from "@/services/email.service";
-import type { IMatchCompatibilitySummary } from "@/services/email-notification.types";
 import { ExcelService } from "@/services/excel.service";
 import {
   BadRequestException,
@@ -3465,6 +3465,10 @@ export class PreMarketService {
           continue;
         }
 
+        if (Array.isArray((request as any)?.agentArchives) && (request as any).agentArchives.length > 0) {
+          continue;
+        }
+
         const searchActivity = this.getSearchActivity(request);
         if (
           searchActivity.pendingConfirmationToken
@@ -3481,10 +3485,6 @@ export class PreMarketService {
               archivedRequests += 1;
             }
           }
-          continue;
-        }
-
-        if (Array.isArray((request as any)?.agentArchives) && (request as any).agentArchives.length > 0) {
           continue;
         }
 
@@ -3803,6 +3803,10 @@ export class PreMarketService {
       !latestSearchActivity.pendingConfirmationToken
       || !latestSearchActivity.pendingConfirmationExpiresAt
       || latestSearchActivity.pendingConfirmationExpiresAt.getTime() > now.getTime()
+      || (
+        Array.isArray((latestRequest as any)?.agentArchives)
+        && (latestRequest as any).agentArchives.length > 0
+      )
     ) {
       return false;
     }
@@ -3825,31 +3829,41 @@ export class PreMarketService {
     }
 
     const archiveActorId = registeredAgentId || affectedAgentIds[0];
-    const archivedAgents = await this.preMarketRepository.addAgentArchiveRecords(
-      requestId,
-      affectedAgentIds.map(affectedAgentId => ({
-        agentId: affectedAgentId,
-        archivedByAgentId: archiveActorId,
-        reason: "search_inactive_automatic",
-        source: "system" as const,
-        archivedAt: now,
-      })),
+    const archivedRequest
+      = await this.preMarketRepository.archiveExpiredSearchConfirmation(
+        requestId,
+        latestSearchActivity.pendingConfirmationToken,
+        now,
+        affectedAgentIds.map(affectedAgentId => ({
+          agentId: affectedAgentId,
+          archivedByAgentId: archiveActorId,
+          reason: "search_inactive_automatic",
+          source: "system" as const,
+          archivedAt: now,
+        })),
+      );
+
+    if (!archivedRequest) {
+      return false;
+    }
+
+    const currentRequest = await this.preMarketRepository.getRequestById(requestId);
+    const isStillSystemArchived = affectedAgentIds.every(affectedAgentId =>
+      Array.isArray((currentRequest as any)?.agentArchives)
+      && (currentRequest as any).agentArchives.some(
+        (archive: any) =>
+          archive?.agentId?.toString() === affectedAgentId
+          && archive?.reason === "search_inactive_automatic"
+          && archive?.source === "system",
+      ),
     );
 
-    await this.preMarketRepository.releaseRequestLock(requestId);
-    await this.preMarketRepository.updateById(requestId, {
-      visibility: "PRIVATE",
-      searchActivity: this.clearPendingSearchConfirmationState(
-        (latestRequest as any)?.searchActivity,
-      ),
-    } as Partial<IPreMarketRequest>);
-
-    if (archivedAgents === 0) {
+    if (!currentRequest || !isStillSystemArchived) {
       return false;
     }
 
     const renter = await this.renterRepository.findRenterWithReferrer(
-      latestRequest.renterId.toString(),
+      currentRequest.renterId.toString(),
     );
     if (renter?.email) {
       const [registeredAgent, matchedAgents] = await Promise.all([
@@ -3884,7 +3898,7 @@ export class PreMarketService {
       });
     }
 
-    return archivedAgents > 0;
+    return true;
   }
 
   private async sendUnarchiveNotification({

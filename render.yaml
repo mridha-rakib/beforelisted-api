@@ -5,3 +5,6 @@ services:
     buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /
+    envVars:
+      - key: ENABLE_SCHEDULED_JOBS
+        value: true

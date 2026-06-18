@@ -1,5 +1,6 @@
 // file: src/config/bootstrap.ts
 
+import { env } from "@/env";
 import { startPreMarketExpirationJob } from "@/jobs/pre-market-expiration.job";
 import { startPreMarketSearchConfirmationJob } from "@/jobs/pre-market-search-confirmation.job";
 import { logger } from "@/middlewares/pino-logger";
@@ -10,7 +11,7 @@ import { NoticeSeeder } from "@/seeders/notice.seeder";
 
 export async function bootstrapApplication(): Promise<void> {
   try {
-    logger.info("🚀 Bootstrapping application...");
+    logger.info("Bootstrapping application...");
     await AdminSeeder.run();
     await AgentSeeder.run();
     const migratedAgentEmailSubscriptionCount
@@ -22,13 +23,25 @@ export async function bootstrapApplication(): Promise<void> {
       );
     }
     await NoticeSeeder.run();
-    startPreMarketExpirationJob();
-    startPreMarketSearchConfirmationJob();
 
-    logger.info("✅ Application bootstrapped successfully");
+    const shouldStartScheduledJobs
+      = env.NODE_ENV === "production" || env.ENABLE_SCHEDULED_JOBS === true;
+
+    if (shouldStartScheduledJobs) {
+      startPreMarketExpirationJob();
+      startPreMarketSearchConfirmationJob();
+    }
+    else {
+      logger.warn(
+        { nodeEnv: env.NODE_ENV },
+        "Scheduled jobs disabled for this process",
+      );
+    }
+
+    logger.info("Application bootstrapped successfully");
   }
   catch (error) {
-    logger.error(error, "❌ Bootstrap failed");
+    logger.error(error, "Bootstrap failed");
     throw error;
   }
 }

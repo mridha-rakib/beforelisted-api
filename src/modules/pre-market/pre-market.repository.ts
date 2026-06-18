@@ -723,6 +723,65 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return modifiedCount;
   }
 
+  async archiveExpiredSearchConfirmation(
+    requestId: string,
+    pendingConfirmationToken: string,
+    now: Date,
+    records: Array<{
+      agentId: string;
+      archivedByAgentId: string;
+      reason: "search_inactive_automatic";
+      source: "system";
+      archivedAt: Date;
+    }>,
+  ): Promise<IPreMarketRequest | null> {
+    if (records.length === 0) {
+      return null;
+    }
+
+    return this.model
+      .findOneAndUpdate(
+        {
+          "_id": requestId,
+          "isDeleted": { $ne: true },
+          "isActive": true,
+          "status": { $ne: "deleted" },
+          "searchActivity.pendingConfirmationToken": pendingConfirmationToken,
+          "searchActivity.pendingConfirmationExpiresAt": { $lte: now },
+          "$or": [
+            { agentArchives: { $exists: false } },
+            { agentArchives: { $size: 0 } },
+          ],
+        },
+        {
+          $set: {
+            "visibility": "PRIVATE",
+            "searchActivity.pendingConfirmationToken": null,
+            "searchActivity.pendingConfirmationSentAt": null,
+            "searchActivity.pendingConfirmationExpiresAt": null,
+          },
+          $push: {
+            agentArchives: {
+              $each: records.map(record => ({
+                agentId: new Types.ObjectId(record.agentId),
+                archivedByAgentId: new Types.ObjectId(record.archivedByAgentId),
+                reason: record.reason,
+                source: record.source,
+                archivedAt: record.archivedAt,
+              })),
+            },
+          },
+          $unset: {
+            lockedByAgentId: "",
+            lockedAt: "",
+          },
+        },
+        { new: true },
+      )
+      .lean()
+      .exec() as Promise<IPreMarketRequest | null>;
+  }
+
   async removeAgentArchiveRecord(
     requestId: string,
     agentId: string,

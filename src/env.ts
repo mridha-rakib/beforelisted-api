@@ -120,6 +120,11 @@ const envSchema = z.object({
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .default("info"),
+  // Enables in-process scheduled jobs. Keep false in local development when using production services.
+  ENABLE_SCHEDULED_JOBS: z
+    .enum(["true", "false"])
+    .transform(value => value === "true")
+    .optional(),
 });
 
 const requiredJwtKeys = ["JWT_SECRET", "JWT_REFRESH_SECRET"] as const;
