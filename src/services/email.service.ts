@@ -1317,6 +1317,7 @@ export class EmailService {
         this.config.logoUrl,
         this.config.brandColor,
         payload.additionalOpportunity,
+        payload.matchSummary,
       );
 
       const emailOptions: IEmailOptions = {
@@ -1378,6 +1379,7 @@ export class EmailService {
         this.config.logoUrl,
         this.config.brandColor,
         payload.additionalOpportunity,
+        payload.matchSummary,
       );
       const subject
         = payload.additionalOpportunity
@@ -1536,6 +1538,7 @@ export class EmailService {
               payload.registeredAgentFullName,
               payload.renterFullName,
             ),
+        payload.matchSummary,
       );
 
       const emailOptions: IEmailOptions = {

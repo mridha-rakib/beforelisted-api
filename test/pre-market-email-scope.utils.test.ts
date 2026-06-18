@@ -6,6 +6,12 @@ import {
   renterOpportunityFoundRegisteredAgentTemplate,
 } from "../src/services/email-notification.templates";
 import { resolveRenterOpportunityEmailScope } from "../src/modules/pre-market/pre-market-email-scope.utils";
+import type { IMatchCompatibilitySummary } from "../src/services/email-notification.types";
+
+const matchSummary: IMatchCompatibilitySummary = {
+  compatibilityMisses: ["Rent over budget", "Dishwasher"],
+  preferenceMatches: ["Large Apartment", "Lots of Light"],
+};
 
 describe("resolveRenterOpportunityEmailScope", () => {
   it("uses Template 6B scope for the first match on an All Market request", () => {
@@ -108,6 +114,20 @@ describe("resolveRenterOpportunityEmailScope", () => {
     );
   });
 
+  it("renders matching-tool compatibility summary in renter-facing other-agent templates", () => {
+    const html = renderTemplate(
+      "Upcoming",
+      "123 W 85th St - Available Thursday at 3pm.",
+      true,
+      matchSummary,
+    );
+
+    expect(html).toContain("Compatibility Misses:");
+    expect(html).toContain("Rent over budget, Dishwasher");
+    expect(html).toContain("Preferences Matches:");
+    expect(html).toContain("Large Apartment, Lots of Light");
+  });
+
   it("omits Template 31B agent message when no message was submitted", () => {
     const html = renderTemplate("Upcoming", undefined, true);
 
@@ -182,6 +202,27 @@ describe("renterOpportunityFoundRegisteredAgentTemplate", () => {
     );
   });
 
+  it("renders matching-tool compatibility summary in registered-agent renter templates", () => {
+    const html = renterOpportunityFoundRegisteredAgentTemplate(
+      "Calyn MarkwickSmith",
+      "Registered Agent",
+      "Licensed Real Estate Agent",
+      "BeforeListed Brokerage",
+      "registered@example.com",
+      "555-0101",
+      "123 W 85th St - Available Thursday at 3pm.",
+      undefined,
+      "#1890FF",
+      true,
+      matchSummary,
+    );
+
+    expect(html).toContain("Compatibility Misses:");
+    expect(html).toContain("Rent over budget, Dishwasher");
+    expect(html).toContain("Preferences Matches:");
+    expect(html).toContain("Large Apartment, Lots of Light");
+  });
+
   it("omits Template 31A agent message when no message was submitted", () => {
     const html = renterOpportunityFoundRegisteredAgentTemplate(
       "Calyn MarkwickSmith",
@@ -228,12 +269,25 @@ describe("ownerRepresentationMatchReferralAcknowledgmentTemplate", () => {
     expect(html).not.toContain('class="agent-message-box"');
     expect(html).not.toContain("Opportunity Details");
   });
+
+  it("renders matching-tool compatibility summary in Template 29", () => {
+    const html = renderOwnerRepresentationTemplate(
+      "123 W 85th St - Available Thursday at 3pm.",
+      matchSummary,
+    );
+
+    expect(html).toContain("Compatibility Misses:");
+    expect(html).toContain("Rent over budget, Dishwasher");
+    expect(html).toContain("Preferences Matches:");
+    expect(html).toContain("Large Apartment, Lots of Light");
+  });
 });
 
 function renderTemplate(
   requestScope: "Upcoming" | "All Market",
   opportunityDetails?: string,
   additionalOpportunity?: boolean,
+  summary?: IMatchCompatibilitySummary,
 ) {
   return renterOpportunityFoundOtherAgentTemplate(
     "Calyn MarkwickSmith",
@@ -248,10 +302,14 @@ function renderTemplate(
     undefined,
     "#1890FF",
     additionalOpportunity,
+    summary,
   );
 }
 
-function renderOwnerRepresentationTemplate(opportunityDetails?: string) {
+function renderOwnerRepresentationTemplate(
+  opportunityDetails?: string,
+  summary?: IMatchCompatibilitySummary,
+) {
   return ownerRepresentationMatchReferralAcknowledgmentTemplate(
     "Regina",
     "Calyn MarkwickSmith",
@@ -269,5 +327,6 @@ function renderOwnerRepresentationTemplate(opportunityDetails?: string) {
     "#1890FF",
     false,
     "https://example.com/facilitator-referral",
+    summary,
   );
 }

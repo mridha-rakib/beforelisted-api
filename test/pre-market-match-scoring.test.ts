@@ -551,6 +551,7 @@ describe("PreMarketService bulk matching", () => {
       agentId: string;
       requestId: string;
       additionalOpportunity: boolean;
+      matchContext?: MatchApartmentInput;
     }> = [];
     const serviceAny = service as any;
 
@@ -560,8 +561,9 @@ describe("PreMarketService bulk matching", () => {
       _representationType: string,
       _opportunityDetails: string | undefined,
       additionalOpportunity: boolean,
+      matchContext?: MatchApartmentInput,
     ) => {
-      calls.push({ agentId, requestId, additionalOpportunity });
+      calls.push({ agentId, requestId, additionalOpportunity, matchContext });
       return { requestId };
     };
 
@@ -571,6 +573,7 @@ describe("PreMarketService bulk matching", () => {
       "renter_representation",
       "123 W 85th St - Available Thursday at 3pm.",
       true,
+      baseApartment,
     );
 
     expect(result.failed).toEqual([]);
@@ -580,11 +583,13 @@ describe("PreMarketService bulk matching", () => {
         agentId: "agent-1",
         requestId: "request-1",
         additionalOpportunity: true,
+        matchContext: baseApartment,
       },
       {
         agentId: "agent-1",
         requestId: "request-2",
         additionalOpportunity: true,
+        matchContext: baseApartment,
       },
     ]);
   });

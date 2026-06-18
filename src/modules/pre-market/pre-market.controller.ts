@@ -1194,6 +1194,7 @@ export class PreMarketController {
         validated.body.representation_type ?? "renter_representation",
         validated.body.opportunityDetails,
         validated.body.additionalOpportunity,
+        validated.body.matchContext,
       );
 
       return ApiResponse.success(

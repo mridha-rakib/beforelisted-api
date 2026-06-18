@@ -1,6 +1,7 @@
 // file: src/services/email-notification.templates.ts
 
 import { renderEmailLogo } from "./email-branding.js";
+import type { IMatchCompatibilitySummary } from "./email-notification.types";
 
 // ============================================
 // AGENT NOTIFICATION EMAIL TEMPLATE
@@ -18,6 +19,30 @@ function footerLinks(brandColor: string): string {
                 <a href="https://rental-pennymore-frontend.vercel.app/privacy-policy" style="color: ${brandColor}; text-decoration: none;">Privacy Policy</a> |
                 <a href="https://rental-pennymore-frontend.vercel.app/terms-conditions" style="color: ${brandColor}; text-decoration: none;">Terms and Conditions</a>
             </p>
+`;
+}
+
+function renderMatchCompatibilitySummary(
+  matchSummary?: IMatchCompatibilitySummary,
+): string {
+  if (!matchSummary) {
+    return "";
+  }
+
+  const compatibilityMisses = matchSummary.compatibilityMisses
+    .map(item => item.trim())
+    .filter(Boolean)
+    .map(escapeHtml);
+  const preferenceMatches = matchSummary.preferenceMatches
+    .map(item => item.trim())
+    .filter(Boolean)
+    .map(escapeHtml);
+
+  return `
+            <div class="match-summary">
+                <p><strong>Compatibility Misses:</strong> ${compatibilityMisses.length ? compatibilityMisses.join(", ") : "None"}</p>
+                <p><strong>Preferences Matches:</strong> ${preferenceMatches.length ? preferenceMatches.join(", ") : "None"}</p>
+            </div>
 `;
 }
 
@@ -1000,6 +1025,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
   logoUrl?: string,
   brandColor: string = "#1890FF",
   additionalOpportunity: boolean = false,
+  matchSummary?: IMatchCompatibilitySummary,
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = renterName?.trim().split(" ")[0] || renterName;
@@ -1028,6 +1054,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
             </div>
 `
     : "";
+  const matchSummaryMarkup = renderMatchCompatibilitySummary(matchSummary);
 
   return `
 <!DOCTYPE html>
@@ -1086,6 +1113,17 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
             margin: 8px 0;
             font-size: 14px;
         }
+        .match-summary {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 12px 15px;
+            margin: 20px 0;
+        }
+        .match-summary p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
         .footer {
             background-color: #f9f9f9;
             padding: 20px;
@@ -1118,6 +1156,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
             <p>This opportunity is based on the criteria you submitted and may not be publicly advertised.</p>
 
 ${opportunityDetailsMarkup}
+${matchSummaryMarkup}
 
             <p>Your agent may reach out separately with additional details and next steps. No action is required from you at this time unless requested by your agent.</p>
 
@@ -1162,6 +1201,7 @@ export function renterOpportunityFoundOtherAgentTemplate(
   logoUrl?: string,
   brandColor: string = "#1890FF",
   additionalOpportunity: boolean = false,
+  matchSummary?: IMatchCompatibilitySummary,
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = renterName?.trim().split(" ")[0] || renterName;
@@ -1209,10 +1249,12 @@ export function renterOpportunityFoundOtherAgentTemplate(
             </div>
 `
     : "";
+  const matchSummaryMarkup = renderMatchCompatibilitySummary(matchSummary);
   const introMarkup = additionalOpportunity
     ? `<p>Based on the preferences you selected when submitting your request on BeforeListed&trade;, the additional agent may be able to assist with your request for another rental opportunities that may not yet be publicly advertised.</p>
 
 ${additionalOpportunityDetailsMarkup}
+${matchSummaryMarkup}
 
             <p>For your reference, the additional agent&rsquo;s information is:</p>`
     : isAllMarket
@@ -1221,11 +1263,13 @@ ${additionalOpportunityDetailsMarkup}
             <p>This may include guidance throughout the search process, landlord and building screening, scheduling and coordinating tours, negotiations, and support through the rental process, subject to completion of required agency disclosures.</p>
 
 ${allMarketOpportunityDetailsMarkup}
+${matchSummaryMarkup}
 
             <p>For your reference, the agent&apos;s information is:</p>`
       : `<p>Based on the preferences you selected when submitting your request on BeforeListed&trade;, an additional agent has been identified who may be able to assist with your request for rental opportunities that may not yet be publicly advertised.</p>
 
 ${upcomingOpportunityDetailsMarkup}
+${matchSummaryMarkup}
 
             <p>For your reference, the additional agent&apos;s information is:</p>`;
   const disclosureMarkup = additionalOpportunity
@@ -1312,6 +1356,17 @@ ${upcomingOpportunityDetailsMarkup}
         .agent-message-box p {
             margin: 0;
             white-space: pre-line;
+        }
+        .match-summary {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 12px 15px;
+            margin: 20px 0;
+        }
+        .match-summary p {
+            margin: 8px 0;
+            font-size: 14px;
         }
         .footer {
             background-color: #f9f9f9;
@@ -1565,6 +1620,7 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
   brandColor: string = "#1890FF",
   requestRepresentedByTuvalMor: boolean = false,
   facilitatorReferralLink?: string,
+  matchSummary?: IMatchCompatibilitySummary,
 ): string {
   const currentYear = new Date().getFullYear();
   const safeRegisteredAgentFirstName = escapeHtml(
@@ -1598,6 +1654,7 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
             </div>
 `
     : "";
+  const matchSummaryMarkup = renderMatchCompatibilitySummary(matchSummary);
   const detailsMarkup = `
             <div class="details">
                 <p>Renter: ${safeRenterFullName}</p>
@@ -1697,6 +1754,17 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
             margin: 0;
             white-space: pre-line;
         }
+        .match-summary {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 12px 15px;
+            margin: 20px 0;
+        }
+        .match-summary p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
         .footer {
             background-color: #f9f9f9;
             padding: 20px;
@@ -1725,6 +1793,7 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
             <p>An agent has identified a potential apartment match for your renter and has indicated that they intend to represent the owner in this transaction.</p>
 
 ${opportunityDetailsMarkup}
+${matchSummaryMarkup}
 
             <p>This email confirms that a renter request you registered has been matched through the BeforeListed&trade; service.</p>
 

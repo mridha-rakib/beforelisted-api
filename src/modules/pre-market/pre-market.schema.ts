@@ -211,10 +211,7 @@ const matchSectionTogglesSchema = z
     priorityBonuses: true,
   });
 
-export const agentMatchSearchSchema = z.object({
-  body: z.object({
-    page: z.coerce.number().positive().default(1),
-    limit: z.coerce.number().positive().max(100).default(10),
+const matchApartmentInputSchema = z.object({
     borough: z.enum(["Manhattan", "Brooklyn"]),
     neighborhood: z.string().trim().min(1, "Neighborhood is required"),
     bedrooms: bedroomSchema,
@@ -265,6 +262,12 @@ export const agentMatchSearchSchema = z.object({
       .record(z.string(), z.boolean())
       .default({}),
     toggles: matchSectionTogglesSchema,
+});
+
+export const agentMatchSearchSchema = z.object({
+  body: matchApartmentInputSchema.extend({
+    page: z.coerce.number().positive().default(1),
+    limit: z.coerce.number().positive().max(100).default(10),
   }),
 });
 
@@ -278,6 +281,7 @@ export const agentBulkMatchRequestSchema = z.object({
       .optional(),
     opportunityDetails: opportunityDetailsSchema.optional(),
     additionalOpportunity: z.boolean().optional(),
+    matchContext: matchApartmentInputSchema.optional(),
   }),
 });
 

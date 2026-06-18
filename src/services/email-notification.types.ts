@@ -92,6 +92,11 @@ export type IAgentRequestConfirmationPayload = {
   cc?: string[];
 };
 
+export type IMatchCompatibilitySummary = {
+  compatibilityMisses: string[];
+  preferenceMatches: string[];
+};
+
 export type IRenterOpportunityFoundRegisteredAgentPayload = {
   to: string;
   renterName: string;
@@ -102,6 +107,7 @@ export type IRenterOpportunityFoundRegisteredAgentPayload = {
   registeredAgentPhone: string;
   opportunityDetails?: string;
   additionalOpportunity?: boolean;
+  matchSummary?: IMatchCompatibilitySummary;
 };
 
 export type IRenterOpportunityFoundOtherAgentPayload = {
@@ -118,6 +124,7 @@ export type IRenterOpportunityFoundOtherAgentPayload = {
   matchedAgentDisclosureLink?: string | null;
   opportunityDetails?: string;
   additionalOpportunity?: boolean;
+  matchSummary?: IMatchCompatibilitySummary;
 };
 
 export type IMatchReferralAcknowledgmentToMatchingAgentPayload = {
@@ -147,6 +154,7 @@ export type IOwnerRepresentationMatchReferralAcknowledgmentPayload = {
   matchedAgentPhoneNumber: string;
   opportunityDetails?: string;
   requestRepresentedByTuvalMor?: boolean;
+  matchSummary?: IMatchCompatibilitySummary;
   cc?: string[];
 };
 

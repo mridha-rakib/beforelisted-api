@@ -11,6 +11,7 @@ import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import { NotificationService } from "@/modules/notification/notification.service";
 import { emailService } from "@/services/email.service";
+import type { IMatchCompatibilitySummary } from "@/services/email-notification.types";
 import { ExcelService } from "@/services/excel.service";
 import {
   BadRequestException,
@@ -137,6 +138,33 @@ export class PreMarketService {
   private normalizeOpportunityDetails(value?: string | null): string | undefined {
     const normalized = value?.trim();
     return normalized ? normalized.slice(0, 300) : undefined;
+  }
+
+  private buildMatchCompatibilitySummary(
+    matchContext: MatchApartmentInput | undefined,
+    request: IPreMarketRequest,
+  ): IMatchCompatibilitySummary | undefined {
+    if (!matchContext) {
+      return undefined;
+    }
+
+    const scoreResult = scorePreMarketRequest(matchContext, request);
+    if (scoreResult.disqualified) {
+      return undefined;
+    }
+
+    const preferences = Array.isArray(request.preferences)
+      ? request.preferences.slice(0, 4)
+      : [];
+
+    return {
+      compatibilityMisses: scoreResult.missingFeatures.map(
+        feature => feature.label,
+      ),
+      preferenceMatches: preferences.filter(
+        (_preference, index) => scoreResult.preferenceMatches[index],
+      ),
+    };
   }
 
   private async getDefaultReferralAgent(): Promise<{
@@ -4712,6 +4740,7 @@ export class PreMarketService {
     representationType: MatchRepresentationType = "renter_representation",
     opportunityDetails?: string,
     additionalOpportunity: boolean = false,
+    matchContext?: MatchApartmentInput,
   ): Promise<any> {
     const normalizedOpportunityDetails
       = this.normalizeOpportunityDetails(opportunityDetails);
@@ -4732,6 +4761,10 @@ export class PreMarketService {
     if (!listingActivationCheck) {
       throw new NotFoundException("Pre-market request not found");
     }
+    const matchSummary = this.buildMatchCompatibilitySummary(
+      matchContext,
+      listingActivationCheck as IPreMarketRequest,
+    );
 
     const isRegisteredAgent = await this.isRegisteredAgentForRequest(
       agentId,
@@ -4796,6 +4829,7 @@ export class PreMarketService {
           agentId,
           currentRequest as any,
           normalizedOpportunityDetails,
+          matchSummary,
         ).catch((error) => {
           logger.error(
             { error, requestId, agentId },
@@ -4863,7 +4897,7 @@ export class PreMarketService {
               listingActivationCheck,
               existing._id,
               normalizedOpportunityDetails,
-              { additionalOpportunity: true },
+              { additionalOpportunity: true, matchSummary },
             ).catch((error) => {
               logger.error(
                 { error, requestId, agentId },
@@ -4915,6 +4949,7 @@ export class PreMarketService {
         listingActivationCheck,
         matchRecord._id,
         normalizedOpportunityDetails,
+        { matchSummary },
       ).catch((error) => {
         logger.error(
           { error, requestId, agentId },
@@ -4932,6 +4967,7 @@ export class PreMarketService {
     representationType: MatchRepresentationType = "renter_representation",
     opportunityDetails?: string,
     additionalOpportunity: boolean = false,
+    matchContext?: MatchApartmentInput,
   ): Promise<{
     matched: Array<{ requestId: string; result: any }>;
     failed: Array<{ requestId: string; message: string }>;
@@ -4948,6 +4984,7 @@ export class PreMarketService {
           representationType,
           opportunityDetails,
           additionalOpportunity,
+          matchContext,
         );
         matched.push({ requestId, result });
       }
@@ -5769,6 +5806,7 @@ export class PreMarketService {
     agentId: string,
     preMarketRequest: IPreMarketRequest,
     opportunityDetails?: string,
+    matchSummary?: IMatchCompatibilitySummary,
   ): Promise<void> {
     const renter = await this.renterRepository.findRenterWithReferrer(
       preMarketRequest.renterId.toString(),
@@ -5840,6 +5878,7 @@ export class PreMarketService {
       matchedAgentPhoneNumber: matchedAgent.phoneNumber || "N/A",
       opportunityDetails,
       requestRepresentedByTuvalMor,
+      matchSummary,
       cc,
     });
   }
@@ -5849,7 +5888,10 @@ export class PreMarketService {
     preMarketRequest: IPreMarketRequest,
     currentGrantAccessId?: string | Types.ObjectId,
     opportunityDetails?: string,
-    options: { additionalOpportunity?: boolean } = {},
+    options: {
+      additionalOpportunity?: boolean;
+      matchSummary?: IMatchCompatibilitySummary;
+    } = {},
   ): Promise<void> {
     const renter = await this.renterRepository.findRenterWithReferrer(
       preMarketRequest.renterId.toString(),
@@ -5988,6 +6030,7 @@ export class PreMarketService {
         registeredAgentPhone,
         opportunityDetails,
         additionalOpportunity: options.additionalOpportunity,
+        matchSummary: options.matchSummary,
       });
     }
     else {
@@ -6019,11 +6062,8 @@ export class PreMarketService {
         matchedAgentDisclosureLink: matchedAgentProfile?.disclosureLink || null,
         opportunityDetails,
         additionalOpportunity: options.additionalOpportunity,
+        matchSummary: options.matchSummary,
       });
-
-      if (options.additionalOpportunity) {
-        return;
-      }
 
       const agentAckCcEmails = buildCcList(
         [registeredAgentEmail, env.ADMIN_EMAIL],
@@ -6040,6 +6080,10 @@ export class PreMarketService {
         matchedAgentIsTuvalMor,
         cc: agentAckCcEmails,
       });
+
+      if (options.additionalOpportunity) {
+        return;
+      }
     }
 
     const renterUserId

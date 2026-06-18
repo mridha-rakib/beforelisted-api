@@ -360,7 +360,7 @@ const buildPreferenceSources = (
     { label: "Large Apartment", present: Boolean(available.largeApartment) },
     { label: "Lots of Light", present: Boolean(available.lotsOfLight) },
     { label: "New Renovation", present: Boolean(available.newRenovation) },
-    { label: "New Ranovation", present: Boolean(available.newRenovation) },
+    { label: "New Renovation", present: Boolean(available.newRenovation) },
     { label: "High Ceilings", present: Boolean(available.highCeilings) },
     { label: "Not Ground Floor", present: Boolean(available.notGroundFloor) },
     { label: "Avoid Ground Floor", present: Boolean(available.notGroundFloor) },
