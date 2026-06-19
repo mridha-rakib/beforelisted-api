@@ -593,4 +593,42 @@ describe("PreMarketService bulk matching", () => {
       },
     ]);
   });
+
+  it("preserves the exact failure reason when another request in the batch succeeds", async () => {
+    const service = new PreMarketService();
+    const serviceAny = service as any;
+
+    serviceAny.matchRequestForAgent = async (
+      _agentId: string,
+      requestId: string,
+    ) => {
+      if (requestId === "request-without-confirmation") {
+        throw new Error(
+          "Registration / Disclosure confirmation is required before matching this request",
+        );
+      }
+
+      return { requestId };
+    };
+
+    const result = await service.matchRequestsForAgent(
+      "agent-1",
+      ["request-without-confirmation", "request-ready"],
+      "renter_representation",
+      undefined,
+      true,
+      baseApartment,
+    );
+
+    expect(result.matched).toEqual([
+      { requestId: "request-ready", result: { requestId: "request-ready" } },
+    ]);
+    expect(result.failed).toEqual([
+      {
+        requestId: "request-without-confirmation",
+        message:
+          "Registration / Disclosure confirmation is required before matching this request",
+      },
+    ]);
+  });
 });
