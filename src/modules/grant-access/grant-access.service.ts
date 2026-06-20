@@ -138,7 +138,7 @@ export class GrantAccessService {
     opportunityDetails?: string,
   ): Promise<IGrantAccessRequest> {
     const normalizedOpportunityDetails = opportunityDetails?.trim()
-      ? opportunityDetails.trim().slice(0, 300)
+      ? opportunityDetails.trim().slice(0, 350)
       : undefined;
     if (hasRiskyOpportunityDetailsWording(normalizedOpportunityDetails)) {
       throw new BadRequestException(OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE);

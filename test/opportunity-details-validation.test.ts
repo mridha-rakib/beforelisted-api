@@ -14,6 +14,7 @@ const validObjectId = "507f1f77bcf86cd799439011";
 describe("opportunity details risky wording validation", () => {
   it.each([
     "I have a listing",
+    "I have",
     "exclusive",
     "my owner",
     "my landlord",
@@ -33,6 +34,19 @@ describe("opportunity details risky wording validation", () => {
         "123 W 85th St - Available Thursday at 3pm.",
       ),
     ).toBe(false);
+  });
+
+  it("accepts 350 characters and rejects 351 characters", () => {
+    const request = (opportunityDetails: string) => ({
+      params: { requestId: validObjectId },
+      body: {
+        representation_type: "renter_representation" as const,
+        opportunityDetails,
+      },
+    });
+
+    expect(agentMatchRequestSchema.safeParse(request("a".repeat(350))).success).toBe(true);
+    expect(agentMatchRequestSchema.safeParse(request("a".repeat(351))).success).toBe(false);
   });
 
   it("rejects risky wording on match requests", () => {

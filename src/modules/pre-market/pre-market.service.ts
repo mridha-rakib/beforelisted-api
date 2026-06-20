@@ -137,7 +137,7 @@ export class PreMarketService {
 
   private normalizeOpportunityDetails(value?: string | null): string | undefined {
     const normalized = value?.trim();
-    return normalized ? normalized.slice(0, 300) : undefined;
+    return normalized ? normalized.slice(0, 350) : undefined;
   }
 
   private buildMatchCompatibilitySummary(

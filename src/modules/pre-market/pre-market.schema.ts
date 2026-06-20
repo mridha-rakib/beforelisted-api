@@ -17,7 +17,7 @@ import {
 const opportunityDetailsSchema = z
   .string()
   .trim()
-  .max(300)
+  .max(350)
   .refine(
     value => !hasRiskyOpportunityDetailsWording(value),
     OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE,

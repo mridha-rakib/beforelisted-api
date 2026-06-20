@@ -1,5 +1,6 @@
 export const RISKY_OPPORTUNITY_DETAIL_PHRASES = [
   "I have a listing",
+  "I have",
   "exclusive",
   "my owner",
   "my landlord",

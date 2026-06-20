@@ -135,6 +135,32 @@ describe("scorePreMarketRequest", () => {
     }
   });
 
+  it("deducts 30 points when apartment rent is below the request minimum", () => {
+    const request = {
+      ...baseRequest,
+      priceRange: {
+        min: 5500,
+        max: 6000,
+      },
+      preferences: [],
+    };
+
+    const result = scorePreMarketRequest(baseApartment, request);
+
+    expect(result.disqualified).toBe(false);
+    if (!result.disqualified) {
+      expect(result.score).toBe(70);
+      expect(result.primaryDeduction).toBe(-30);
+      expect(result.missingFeatures).toEqual([
+        expect.objectContaining({
+          code: "rentBelowMin",
+          label: "Rent below min price range",
+          deduction: -30,
+        }),
+      ]);
+    }
+  });
+
   it("ignores unit feature misses when the unit feature toggle is off", () => {
     const apartment: MatchApartmentInput = {
       ...baseApartment,

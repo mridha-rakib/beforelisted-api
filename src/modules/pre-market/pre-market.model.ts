@@ -375,7 +375,7 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
       opportunityDetails: {
         type: String,
         trim: true,
-        maxlength: 300,
+        maxlength: 350,
       },
       _id: false,
     },

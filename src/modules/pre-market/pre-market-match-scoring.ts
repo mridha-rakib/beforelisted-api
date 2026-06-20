@@ -49,6 +49,7 @@ export type MissingFeatureCode =
   | "bedrooms"
   | "bathrooms"
   | "rent"
+  | "rentBelowMin"
   | "location"
   | "moveDateTotalMiss"
   | "moveDateNearMiss"
@@ -147,6 +148,11 @@ const MISSING_FEATURE_META: Record<MissingFeatureCode, Omit<MatchMissingFeature,
   rent: {
     label: "Rent over budget",
     description: "Apartment rent is 1-10% above renter budget",
+    deduction: -30,
+  },
+  rentBelowMin: {
+    label: "Rent below min price range",
+    description: "Rent below min price range",
     deduction: -30,
   },
   location: {
@@ -470,6 +476,7 @@ export const scorePreMarketRequest = (
   const apartmentBathrooms = BATHROOM_VALUES[apartment.bathrooms];
   const requestBedrooms = smallestRequestedValue(request.bedrooms, BEDROOM_VALUES);
   const requestBathrooms = smallestRequestedValue(request.bathrooms, BATHROOM_VALUES);
+  const minRent = toNumber(request.priceRange?.min);
   const maxRent = toNumber(request.priceRange?.max);
   const locationMatch = resolveLocationMatch(apartment, request);
 
@@ -541,6 +548,14 @@ export const scorePreMarketRequest = (
     && apartmentBathrooms != null
     && requestBathrooms - apartmentBathrooms === 1
     && !addSoftMiss("bathrooms")
+  ) {
+    return { disqualified: true, reason: "tooManySoftMisses", missingFeatures };
+  }
+
+  if (
+    minRent != null
+    && apartment.rent < minRent
+    && !addSoftMiss("rentBelowMin")
   ) {
     return { disqualified: true, reason: "tooManySoftMisses", missingFeatures };
   }
