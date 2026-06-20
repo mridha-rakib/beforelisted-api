@@ -4881,18 +4881,6 @@ export class PreMarketService {
         && representationType === "renter_representation"
         && Boolean(existing && (existing.status === "free" || existing.status === "paid"));
 
-    if (shouldSendAdditionalOpportunity) {
-      const registrationStatus = this.getRegistrationDisclosureStatus(
-        listingActivationCheck as any,
-        agentId,
-      );
-      if (!registrationStatus.registrationDisclosureConfirmed) {
-        throw new ForbiddenException(
-          "Registration / Disclosure confirmation is required before matching this request",
-        );
-      }
-    }
-
     let matchRecord: IGrantAccessRequest;
     const representationPayload = {
       representation_type: representationType,

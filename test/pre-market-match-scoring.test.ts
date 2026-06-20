@@ -570,6 +570,76 @@ describe("PreMarketService registered-agent matching", () => {
   });
 });
 
+describe("PreMarketService additional opportunities", () => {
+  it("allows an already-matched shared agent to add an opportunity without disclosure confirmation", async () => {
+    const agentId = "matching-agent";
+    const requestId = "507f1f77bcf86cd799439012";
+    const request = {
+      _id: requestId,
+      renterId: "renter-1",
+      requestName: "R-SHARED",
+      visibility: "SHARED",
+      shareConsent: true,
+      status: "Available",
+      isActive: true,
+      registrationDisclosureConfirmations: [],
+    };
+    const existingMatch = {
+      _id: "grant-1",
+      agentId,
+      preMarketRequestId: requestId,
+      representation_type: "renter_representation",
+      status: "free",
+    };
+    const notifications: Array<Record<string, unknown>> = [];
+    const service = new PreMarketService();
+    const serviceAny = service as any;
+
+    serviceAny.agentRepository = {
+      findByUserId: async () => ({
+        _id: "agent-profile-1",
+        userId: agentId,
+        hasGrantAccess: true,
+      }),
+    };
+    serviceAny.preMarketRepository = {
+      findByIdWithActivationStatus: async () => request,
+    };
+    serviceAny.grantAccessRepository = {
+      findByAgentAndRequest: async () => existingMatch,
+    };
+    serviceAny.isRegisteredAgentForRequest = async () => false;
+    serviceAny.ensureAgentCanViewRequest = () => undefined;
+    serviceAny.ensureAgentCanViewRequestVisibility = async () => undefined;
+    serviceAny.ensureRegisteredAgentCanMatchRequest = async () => undefined;
+    serviceAny.notifyRenterAboutMatchedOpportunity = async (
+      _matchedAgentId: string,
+      _request: unknown,
+      _grantAccessId: string,
+      _details: string | undefined,
+      options: Record<string, unknown>,
+    ) => {
+      notifications.push(options);
+    };
+
+    const result = await service.matchRequestForAgent(
+      agentId,
+      requestId,
+      "renter_representation",
+      "Another suitable opportunity.",
+      true,
+    );
+
+    expect(result).toMatchObject({
+      _id: "grant-1",
+      additionalOpportunity: true,
+    });
+    expect(notifications).toEqual([
+      expect.objectContaining({ additionalOpportunity: true }),
+    ]);
+  });
+});
+
 describe("PreMarketService bulk matching", () => {
   it("passes the additional opportunity flag through each selected request", async () => {
     const service = new PreMarketService();
@@ -628,9 +698,9 @@ describe("PreMarketService bulk matching", () => {
       _agentId: string,
       requestId: string,
     ) => {
-      if (requestId === "request-without-confirmation") {
+      if (requestId === "inactive-request") {
         throw new Error(
-          "Registration / Disclosure confirmation is required before matching this request",
+          "This listing is no longer accepting requests",
         );
       }
 
@@ -639,7 +709,7 @@ describe("PreMarketService bulk matching", () => {
 
     const result = await service.matchRequestsForAgent(
       "agent-1",
-      ["request-without-confirmation", "request-ready"],
+      ["inactive-request", "request-ready"],
       "renter_representation",
       undefined,
       true,
@@ -651,9 +721,8 @@ describe("PreMarketService bulk matching", () => {
     ]);
     expect(result.failed).toEqual([
       {
-        requestId: "request-without-confirmation",
-        message:
-          "Registration / Disclosure confirmation is required before matching this request",
+        requestId: "inactive-request",
+        message: "This listing is no longer accepting requests",
       },
     ]);
   });
