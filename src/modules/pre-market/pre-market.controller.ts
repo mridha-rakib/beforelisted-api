@@ -363,6 +363,13 @@ export class PreMarketController {
       : null;
     const shouldDisplayMatchedScope
       = await this.preMarketService.shouldDisplayMatchedScopeForRequest(requestId);
+    const matchedByAgent
+      = shouldDisplayMatchedScope
+        ? await this.preMarketService.resolveMatchedAgentForView(
+          userId,
+          requestId,
+        )
+        : null;
     const archiveStatus = this.preMarketService.getAgentArchiveStatusForRequest(
       request as any,
       userId,
@@ -409,6 +416,7 @@ export class PreMarketController {
         return withOwnerRepresentationDetails({
           ...enriched,
           scope: visibleScope,
+          matchedByAgent,
           status: grantAccessStatus,
           listingStatus,
           grantAccessStatus,
@@ -425,6 +433,7 @@ export class PreMarketController {
       return withOwnerRepresentationDetails({
         ...request,
         scope: visibleScope,
+        matchedByAgent,
         renterInfo: includeCreatorRenterInfo
           ? enrichedCreatorRequest?.renterInfo ?? null
           : null,
@@ -473,6 +482,7 @@ export class PreMarketController {
     let response: any = {
       ...request,
       scope: visibleScope,
+      matchedByAgent,
       status: accessSummary.grantAccessStatus,
       listingStatus,
       grantAccessStatus: accessSummary.grantAccessStatus,
@@ -1016,6 +1026,13 @@ export class PreMarketController {
         = await this.preMarketService.shouldDisplayMatchedScopeForRequest(
           requestId,
         );
+      const matchedByAgent
+        = shouldDisplayMatchedScope
+          ? await this.preMarketService.resolveMatchedAgentForView(
+            agentId,
+            requestId,
+          )
+          : null;
 
       if (agent.hasGrantAccess === true) {
         const matchRecord = await this.preMarketService.getMatchedAccessRecord(
@@ -1050,6 +1067,7 @@ export class PreMarketController {
             {
               ...enriched,
               scope: visibleScope,
+              matchedByAgent,
               accessType: "admin-granted",
               status: "matched",
               listingStatus: "matched",
@@ -1148,6 +1166,7 @@ export class PreMarketController {
           {
             ...enriched,
             scope: visibleScope,
+            matchedByAgent,
             accessType: paidAccess.status,
             status: "matched",
             listingStatus: "matched",
