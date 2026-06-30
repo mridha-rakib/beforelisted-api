@@ -487,6 +487,34 @@ export class PreMarketService {
     return matchedAgentByRequestId;
   }
 
+  public async resolveRegisteredAgentForView(
+    viewerAgentId: string | undefined,
+    requestId: string,
+  ): Promise<{ agentId: string; fullName: string } | null> {
+    if (!viewerAgentId) return null;
+
+    // Only return the registered agent's name if the viewer is the matched
+    // agent on this request. Anyone else (including the registered agent
+    // themselves, or unrelated agents) should not see this name.
+    const matchedRecord = await this.getMatchedAccessRecord(
+      viewerAgentId,
+      requestId,
+    );
+    if (!matchedRecord) return null;
+
+    const request = await this.getRequestById(requestId);
+    if (!request) return null;
+    const registeredAgentId
+      = await this.resolveRegisteredAgentIdForRequest(request as IPreMarketRequest);
+    if (!registeredAgentId) return null;
+    const user = await this.userRepository.findById(registeredAgentId);
+    if (!user) return null;
+    return {
+      agentId: registeredAgentId,
+      fullName: user.fullName || user.email || "",
+    };
+  }
+
   private async buildRequestRenterContext(
     requests: Array<IPreMarketRequest | Record<string, any>>,
   ): Promise<RequestRenterContext> {
