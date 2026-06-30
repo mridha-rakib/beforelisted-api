@@ -3811,6 +3811,263 @@ export class PreMarketService {
   }
 
   /**
+   * Sends a "Request Update" email (Template #33) from the registered agent to the matched agent.
+   * Authorization: only the registered agent for the request can call this.
+   * The request must currently be in a matched state (Upcoming (M) scope with a matched agent record).
+   */
+  async sendRequestUpdateToMatchedAgent(
+    agentId: string,
+    requestId: string,
+    personalMessage?: string,
+  ): Promise<{
+    requestId: string;
+    matchedAgentId: string;
+    matchedAgentEmail: string;
+    sentAt: string;
+  }> {
+    const request = await this.getRequestById(requestId);
+    if (!request) {
+      throw new NotFoundException("Request not found");
+    }
+
+    const registeredAgentId
+      = await this.resolveRegisteredAgentIdForRequest(
+        request as IPreMarketRequest,
+      );
+    if (registeredAgentId !== agentId) {
+      throw new ForbiddenException(
+        "Only the registered agent for this request can request an update.",
+      );
+    }
+
+    const matchedAccess = await this.getMatchedAccessRecord(agentId, requestId);
+    if (!matchedAccess) {
+      throw new ForbiddenException(
+        "Only the matched agent can be the recipient of an update request.",
+      );
+    }
+
+    const grantRecords
+      = await this.grantAccessRepository.findByPreMarketRequestId(requestId);
+    const matchedRecord = grantRecords.find(
+      record =>
+        record.representation_type !== "owner_representation"
+        && (record.status === "free"
+          || record.status === "paid"
+          || record.status === "approved"),
+    );
+
+    if (!matchedRecord) {
+      throw new BadRequestException(
+        "This request does not currently have a matched agent.",
+      );
+    }
+
+    const matchedAgentId = matchedRecord.agentId.toString();
+    const matchedAgent = await this.userRepository.findById(matchedAgentId);
+    if (!matchedAgent?.email) {
+      throw new BadRequestException(
+        "Matched agent record is missing contact information.",
+      );
+    }
+
+    const registeredAgent = await this.userRepository.findById(agentId);
+    const renter = await this.renterRepository.findRenterWithReferrer(
+      request.renterId.toString(),
+    );
+
+    const matchedAgentFullName
+      = matchedAgent.fullName?.trim() || matchedAgent.email;
+    const matchedAgentFirstName
+      = matchedAgentFullName.split(/\s+/)[0] || matchedAgentFullName;
+    const registeredAgentFullName
+      = registeredAgent?.fullName?.trim() || registeredAgent?.email || "Agent";
+    const renterFullName
+      = renter?.fullName?.trim() || renter?.email || "the renter";
+    const renterFirstName = renterFullName.split(/\s+/)[0] || renterFullName;
+    const renterLastInitial
+      = (() => {
+          const parts = renterFullName.split(/\s+/).filter(Boolean);
+          const last = parts[parts.length - 1] || "";
+          return last.charAt(0).toUpperCase() || "";
+        })();
+
+    const trimmedMessage
+      = typeof personalMessage === "string" && personalMessage.trim().length > 0
+        ? personalMessage.trim()
+        : undefined;
+
+    const sendResult = await emailService.sendRequestUpdateToMatchedAgent({
+      to: matchedAgent.email,
+      matchedAgentFirstName,
+      matchedAgentFullName,
+      registeredAgentFullName,
+      registeredAgentEmail: registeredAgent?.email || "support@beforelisted.com",
+      renterFullName,
+      renterFirstName,
+      renterLastInitial,
+      personalMessage: trimmedMessage,
+    });
+
+    if (!sendResult.success) {
+      logger.error(
+        {
+          requestId,
+          matchedAgentId,
+          error: sendResult.error,
+        },
+        "Failed to send request update email (Email #33)",
+      );
+      throw new BadRequestException(
+        (typeof sendResult.error === "string"
+          ? sendResult.error
+          : sendResult.error?.message) || "Failed to send update email",
+      );
+    }
+
+    return {
+      requestId,
+      matchedAgentId,
+      matchedAgentEmail: matchedAgent.email,
+      sentAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Unmatches the matched agent from a request, returning the request scope to "All Market"
+   * and revoking the matched agent's visibility. Optionally sends Email Template #32.
+   * Authorization: only the registered agent for the request can call this.
+   */
+  async unmatchRequestForRegisteredAgent(
+    agentId: string,
+    requestId: string,
+    options: {
+      sendEmailNotice: boolean;
+      personalMessage?: string;
+    },
+  ): Promise<{
+    requestId: string;
+    unmatchedAgentId: string | null;
+    unmatchedAgentEmail: string | null;
+    scope: "All Market";
+    emailSent: boolean;
+    completedAt: string;
+  }> {
+    const request = await this.getRequestById(requestId);
+    if (!request) {
+      throw new NotFoundException("Request not found");
+    }
+
+    const registeredAgentId
+      = await this.resolveRegisteredAgentIdForRequest(
+        request as IPreMarketRequest,
+      );
+    if (registeredAgentId !== agentId) {
+      throw new ForbiddenException(
+        "Only the registered agent for this request can unmatch it.",
+      );
+    }
+
+    const grantRecords
+      = await this.grantAccessRepository.findByPreMarketRequestId(requestId);
+    const matchedRecord = grantRecords.find(
+      record =>
+        record.representation_type !== "owner_representation"
+        && (record.status === "free"
+          || record.status === "paid"
+          || record.status === "approved"),
+    );
+
+    let unmatchedAgentId: string | null = null;
+    let unmatchedAgent: Awaited<ReturnType<UserRepository["findById"]>> = null;
+    if (matchedRecord) {
+      unmatchedAgentId = matchedRecord.agentId.toString();
+      unmatchedAgent = await this.userRepository.findById(unmatchedAgentId);
+    }
+
+    if (matchedRecord) {
+      await this.grantAccessRepository.updateById(
+        matchedRecord._id.toString(),
+        { status: "rejected" },
+      );
+    }
+
+    await this.preMarketRepository.updateById(requestId, {
+      scope: "All Market",
+    });
+
+    let emailSent = false;
+    if (
+      options.sendEmailNotice
+      && unmatchedAgent
+      && unmatchedAgent.email
+    ) {
+      const registeredAgent = await this.userRepository.findById(agentId);
+      const renter = await this.renterRepository.findRenterWithReferrer(
+        request.renterId.toString(),
+      );
+
+      const unmatchedAgentFullName
+        = unmatchedAgent.fullName?.trim() || unmatchedAgent.email;
+      const unmatchedAgentFirstName
+        = unmatchedAgentFullName.split(/\s+/)[0] || unmatchedAgentFullName;
+      const registeredAgentFullName
+        = registeredAgent?.fullName?.trim()
+          || registeredAgent?.email
+          || "Agent";
+      const renterFullName
+        = renter?.fullName?.trim() || renter?.email || "the renter";
+      const renterFirstName
+        = renterFullName.split(/\s+/)[0] || renterFullName;
+      const renterLastInitial
+        = (() => {
+            const parts = renterFullName.split(/\s+/).filter(Boolean);
+            const last = parts[parts.length - 1] || "";
+            return last.charAt(0).toUpperCase() || "";
+          })();
+
+      const trimmedMessage
+        = typeof options.personalMessage === "string"
+        && options.personalMessage.trim().length > 0
+          ? options.personalMessage.trim()
+          : undefined;
+
+      const sendResult = await emailService.sendAgentUnmatchedNotification({
+        to: unmatchedAgent.email,
+        unmatchedAgentFirstName,
+        unmatchedAgentFullName,
+        registeredAgentFullName,
+        registeredAgentEmail: registeredAgent?.email || "support@beforelisted.com",
+        renterFullName,
+        renterFirstName,
+        renterLastInitial,
+        personalMessage: trimmedMessage,
+      });
+
+      emailSent = Boolean(sendResult.success);
+      if (!sendResult.success) {
+        logger.error(
+          {
+            requestId,
+            unmatchedAgentId,
+            error: sendResult.error,
+          },
+          "Failed to send agent unmatched notification (Email #32)",
+        );
+      }
+    }
+
+    return {
+      requestId,
+      unmatchedAgentId,
+      unmatchedAgentEmail: unmatchedAgent?.email || null,
+      scope: "All Market",
+      emailSent,
+      completedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
    * Lets a renter reactivate a search after search-inactive archival.
    * Expects the renter user ID and their request ID.
    * Can fail when the request belongs to another renter, there are no inactive archives to restore, or notifications fail non-blockingly.

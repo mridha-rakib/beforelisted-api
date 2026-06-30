@@ -318,3 +318,35 @@ export type INotificationEmailResult = {
   attempt: number;
   maxAttempts: number;
 };
+
+// ============================================
+// EMAIL TEMPLATE #32 — Agent Unmatched from Renter Request
+// ============================================
+
+export type IAgentUnmatchedFromRenterRequestPayload = {
+  to: string;
+  unmatchedAgentFirstName: string;
+  unmatchedAgentFullName: string;
+  registeredAgentFullName: string;
+  registeredAgentEmail: string;
+  renterFullName: string;
+  renterFirstName: string;
+  renterLastInitial: string;
+  personalMessage?: string;
+};
+
+// ============================================
+// EMAIL TEMPLATE #33 — Request Update (Sent to matched agent)
+// ============================================
+
+export type IRequestUpdateToMatchedAgentPayload = {
+  to: string;
+  matchedAgentFirstName: string;
+  matchedAgentFullName: string;
+  registeredAgentFullName: string;
+  registeredAgentEmail: string;
+  renterFullName: string;
+  renterFirstName: string;
+  renterLastInitial: string;
+  personalMessage?: string;
+};

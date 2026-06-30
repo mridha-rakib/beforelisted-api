@@ -29,6 +29,7 @@ import type {
   IAdminContactRequestPayload,
   IAgentRegistrationVerifiedAdminPayload,
   IAgentRequestConfirmationPayload,
+  IAgentUnmatchedFromRenterRequestPayload,
   IMatchReferralAcknowledgmentToMatchingAgentPayload,
   INonRegisteredAgentRequestSubmissionNotificationPayload,
   INonRegisteredAgentSharedRequestNotificationPayload,
@@ -36,6 +37,7 @@ import type {
   IPreMarketAdminNotificationPayload,
   IPreMarketAgentNotificationPayload,
   IRenterArchiveNotificationPayload,
+  IRequestUpdateToMatchedAgentPayload,
   IRenterOpportunityFoundOtherAgentPayload,
   IRenterOpportunityFoundRegisteredAgentPayload,
   IRenterRegisteredAgentInactivePayload,
@@ -2642,6 +2644,161 @@ export class EmailService {
         },
         "Failed to send payment link email",
       );
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * EMAIL TEMPLATE #32 — Agent Unmatched from Renter Request
+   * Sent to the unmatched agent when the registered agent confirms unmatch.
+   */
+  async sendAgentUnmatchedNotification(
+    payload: IAgentUnmatchedFromRenterRequestPayload,
+  ): Promise<IEmailResult> {
+    try {
+      const subject
+        = `Update on Your BeforeListed Match — ${payload.renterFirstName} ${payload.renterLastInitial}.`;
+
+      const personalMessageBlock = payload.personalMessage
+        && payload.personalMessage.trim().length > 0
+        ? `
+          <p style="margin: 24px 0 16px 0; padding: 16px 20px; background-color: #f5f9ff; border-left: 3px solid #1890FF; color: #222222; font-size: 15px; line-height: 1.6;">
+            <strong style="color: #1890FF;">${payload.registeredAgentFullName}:</strong><br />
+            ${payload.personalMessage.trim().replace(/\n/g, "<br />")}
+          </p>
+        `
+        : "";
+
+      const bodyHtml = `
+        <p>Hi ${payload.unmatchedAgentFirstName},</p>
+        <p>We wanted to let you know that <strong>${payload.registeredAgentFullName}</strong> has ended your match on the rental request for <strong>${payload.renterFullName}</strong>.</p>
+        <p>Going forward, you will no longer have visibility into this request, and any related alerts or messages associated with it will stop.</p>
+        ${personalMessageBlock}
+        <p>If you have any questions, feel free to reach out to <a href="mailto:${payload.registeredAgentEmail}">${payload.registeredAgentEmail}</a> directly.</p>
+        <p>Thanks for being part of the BeforeListed community.</p>
+        <p>— The BeforeListed Team</p>
+      `;
+
+      logger.debug(
+        { email: payload.to, matchedAgentName: payload.unmatchedAgentFullName },
+        "Sending agent unmatched notification (Email #32)",
+      );
+
+      const html = this.buildSimpleBeforeListedEmail(bodyHtml);
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.unmatchedAgentFullName },
+        replyTo: payload.registeredAgentEmail || "support@beforelisted.com",
+        subject,
+        html,
+        headers: {
+          "X-BeforeListed-Template": "AGENT_UNMATCHED_FROM_RENTER_REQUEST",
+        },
+        metadata: {
+          templateType: "AGENT_UNMATCHED_FROM_RENTER_REQUEST",
+          matchedAgentName: payload.unmatchedAgentFullName,
+          registeredAgentName: payload.registeredAgentFullName,
+          renterName: payload.renterFullName,
+        },
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "AGENT_UNMATCHED_FROM_RENTER_REQUEST",
+        payload.to,
+      );
+    }
+    catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send agent unmatched notification (Email #32)",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * EMAIL TEMPLATE #33 — Request Update
+   * Sent to the matched agent when the registered agent requests an update.
+   */
+  async sendRequestUpdateToMatchedAgent(
+    payload: IRequestUpdateToMatchedAgentPayload,
+  ): Promise<IEmailResult> {
+    try {
+      const subject
+        = `Update Requested by ${payload.registeredAgentFullName} on ${payload.renterFirstName} ${payload.renterLastInitial}. | BeforeListed\u2122`;
+
+      const personalMessageBlock = payload.personalMessage
+        && payload.personalMessage.trim().length > 0
+        ? `
+          <p style="margin: 24px 0 16px 0; padding: 16px 20px; background-color: #f5f9ff; border-left: 3px solid #1890FF; color: #222222; font-size: 15px; line-height: 1.6;">
+            <strong style="color: #1890FF;">${payload.registeredAgentFullName}:</strong><br />
+            ${payload.personalMessage.trim().replace(/\n/g, "<br />")}
+          </p>
+        `
+        : "";
+
+      const bodyHtml = `
+        <p>Hi ${payload.matchedAgentFirstName},</p>
+        <p><strong>${payload.registeredAgentFullName}</strong> is requesting an update on your progress with <strong>${payload.renterFullName}</strong>'s rental search.</p>
+        <p>Please reply directly to <a href="mailto:${payload.registeredAgentEmail}">${payload.registeredAgentEmail}</a> with a quick status update at your earliest convenience.</p>
+        ${personalMessageBlock}
+        <p>Thank you for keeping things moving for the renter.</p>
+        <p>— The BeforeListed Team</p>
+      `;
+
+      logger.debug(
+        { email: payload.to, matchedAgentName: payload.matchedAgentFullName },
+        "Sending request update to matched agent (Email #33)",
+      );
+
+      const html = this.buildSimpleBeforeListedEmail(bodyHtml);
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.matchedAgentFullName },
+        replyTo: payload.registeredAgentEmail || "support@beforelisted.com",
+        subject,
+        html,
+        headers: {
+          "X-BeforeListed-Template": "REQUEST_UPDATE_TO_MATCHED_AGENT",
+        },
+        metadata: {
+          templateType: "REQUEST_UPDATE_TO_MATCHED_AGENT",
+          matchedAgentName: payload.matchedAgentFullName,
+          registeredAgentName: payload.registeredAgentFullName,
+          renterName: payload.renterFullName,
+        },
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "REQUEST_UPDATE_TO_MATCHED_AGENT",
+        payload.to,
+      );
+    }
+    catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send request update to matched agent (Email #33)",
+      );
+
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),

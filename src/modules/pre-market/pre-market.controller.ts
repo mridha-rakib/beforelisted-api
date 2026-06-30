@@ -36,9 +36,11 @@ import {
   preMarketListSchema,
   reactivateSearchSchema,
   requestAccessSchema,
+  requestUpdateToMatchedAgentSchema,
   toggleListingActivationSchema,
   toggleShareVisibilitySchema,
   unarchiveRequestSchema,
+  unmatchRequestSchema,
   updatePreMarketRequestSchema,
   updateRequestVisibilitySchema,
 } from "./pre-market.schema";
@@ -858,6 +860,37 @@ export class PreMarketController {
     );
 
     ApiResponse.success(res, result, "Request unarchived");
+  });
+
+  requestUpdateToMatchedAgent = asyncHandler(
+    async (req: Request, res: Response) => {
+      const validated = await zParse(requestUpdateToMatchedAgentSchema, req);
+      const agentId = req.user!.userId;
+
+      const result = await this.preMarketService.sendRequestUpdateToMatchedAgent(
+        agentId,
+        validated.params.requestId,
+        validated.body?.personalMessage,
+      );
+
+      ApiResponse.success(res, result, "Update request sent");
+    },
+  );
+
+  unmatchRequest = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(unmatchRequestSchema, req);
+    const agentId = req.user!.userId;
+
+    const result = await this.preMarketService.unmatchRequestForRegisteredAgent(
+      agentId,
+      validated.params.requestId,
+      {
+        sendEmailNotice: validated.body.sendEmailNotice,
+        personalMessage: validated.body.personalMessage,
+      },
+    );
+
+    ApiResponse.success(res, result, "Request unmatched");
   });
 
   confirmRegistrationDisclosure = asyncHandler(

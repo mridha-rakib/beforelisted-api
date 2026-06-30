@@ -396,6 +396,35 @@ export const reactivateSearchSchema = z.object({
   }),
 });
 
+export const requestUpdateToMatchedAgentSchema = z.object({
+  params: z.object({
+    requestId: z.string().min(24, "Invalid request ID"),
+  }),
+  body: z
+    .object({
+      personalMessage: z
+        .string()
+        .trim()
+        .max(350, "Personal message cannot exceed 350 characters")
+        .optional(),
+    })
+    .optional(),
+});
+
+export const unmatchRequestSchema = z.object({
+  params: z.object({
+    requestId: z.string().min(24, "Invalid request ID"),
+  }),
+  body: z.object({
+    sendEmailNotice: z.boolean().default(false),
+    personalMessage: z
+      .string()
+      .trim()
+      .max(350, "Personal message cannot exceed 350 characters")
+      .optional(),
+  }),
+});
+
 export const confirmActiveSearchSchema = z.object({
   query: z.object({
     token: z.string().min(16, "Invalid confirmation token"),

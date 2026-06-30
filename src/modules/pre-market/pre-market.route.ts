@@ -125,6 +125,20 @@ router.patch(
   controller.unarchiveRequest.bind(controller),
 );
 
+router.post(
+  "/:requestId/request-update",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.requestUpdateToMatchedAgent.bind(controller),
+);
+
+router.post(
+  "/:requestId/unmatch",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.unmatchRequest.bind(controller),
+);
+
 router.patch(
   "/:requestId/registration-disclosure/confirm",
   authMiddleware.verifyToken,
