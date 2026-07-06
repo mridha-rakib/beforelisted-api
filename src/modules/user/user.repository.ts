@@ -23,6 +23,40 @@ export class UserRepository extends BaseRepository<IUser> {
       .exec();
   }
 
+  async findByIds(
+    userIds: Array<string | ObjectId>,
+    select?: string,
+  ): Promise<any[]> {
+    if (!userIds || userIds.length === 0) {
+      return [];
+    }
+
+    let query = this.model.find({ _id: { $in: userIds }, isDeleted: false });
+
+    if (select) {
+      query = query.select(select);
+    }
+
+    return query.lean().exec();
+  }
+
+  async findByIdsIncludingDeleted(
+    userIds: Array<string | ObjectId>,
+    select?: string,
+  ): Promise<any[]> {
+    if (!userIds || userIds.length === 0) {
+      return [];
+    }
+
+    let query = this.model.find({ _id: { $in: userIds } });
+
+    if (select) {
+      query = query.select(select);
+    }
+
+    return query.lean().exec();
+  }
+
   async findByEmailWithPassword(email: string): Promise<IUser | null> {
     return this.model
       .findOne({ email: email.toLowerCase(), isDeleted: false })

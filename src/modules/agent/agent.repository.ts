@@ -33,6 +33,19 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
       .exec();
   }
 
+  async findByUserIds(
+    userIds: Array<string | Types.ObjectId>,
+  ): Promise<any[]> {
+    if (!userIds || userIds.length === 0) {
+      return [];
+    }
+
+    return this.model
+      .find({ userId: { $in: userIds } })
+      .lean()
+      .exec();
+  }
+
   /**
    * Find agent by license number
    */

@@ -419,6 +419,8 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
 
 preMarketSchema.index({ renterId: 1, status: 1 });
 preMarketSchema.index({ renterId: 1, isActive: 1 });
+preMarketSchema.index({ renterId: 1, isDeleted: 1, createdAt: -1 });
+preMarketSchema.index({ isDeleted: 1, createdAt: -1 });
 preMarketSchema.index({ status: 1, createdAt: -1 });
 preMarketSchema.index({ locations: 1 });
 preMarketSchema.index({ "priceRange.min": 1, "priceRange.max": 1 });

@@ -13,6 +13,10 @@ import {
   ForbiddenException,
   UnauthorizedException,
 } from "@/utils/app-error.utils";
+import {
+  addPerformanceTiming,
+  nowMs,
+} from "@/utils/performance-observer.utils";
 
 declare global {
   namespace Express {
@@ -37,6 +41,8 @@ export class AuthMiddleware {
     res: Response,
     next: NextFunction,
   ) => {
+    const authStartedAt = nowMs();
+
     try {
       const authHeader = req.get("Authorization") || req.get("authorization");
       const requestId = req.id || req.headers["x-request-id"];
@@ -104,6 +110,9 @@ export class AuthMiddleware {
         "Token verification failed",
       );
       next(error);
+    }
+    finally {
+      addPerformanceTiming("authMiddlewareTimeMs", nowMs() - authStartedAt);
     }
   };
 

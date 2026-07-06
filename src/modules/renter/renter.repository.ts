@@ -634,6 +634,33 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
       .exec();
   }
 
+  async findRentersWithReferrersByUserIds(
+    userIds: Array<string | ObjectId | Types.ObjectId>,
+  ): Promise<any[]> {
+    if (!userIds || userIds.length === 0) {
+      return [];
+    }
+
+    return this.model
+      .find({ userId: { $in: userIds } })
+      .populate({
+        path: "userId",
+        select: "profileImageUrl fullName email phoneNumber",
+      })
+      .populate({
+        path: "referredByAgentId",
+        select: "fullName email phoneNumber referralCode _id",
+        options: { lean: true },
+      })
+      .populate({
+        path: "referredByAdminId",
+        select: "fullName email phoneNumber referralCode _id",
+        options: { lean: true },
+      })
+      .lean()
+      .exec();
+  }
+
   async findAllWithListingCount(
     query: PaginationQuery,
     accountStatus?: string,

@@ -13,6 +13,7 @@ import {
   NotFoundException,
 } from "@/utils/app-error.utils";
 import { buildExcelDownloadResponse } from "@/utils/excel-response.utils";
+import { observePerformanceAsync } from "@/utils/performance-observer.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 
@@ -60,6 +61,12 @@ export class PreMarketController {
     this.preMarketRepository = new PreMarketRepository();
     this.grantAccessRepository = new GrantAccessRepository();
     this.excelService = new ExcelService();
+  }
+
+  private async observeControllerExecution<T>(
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    return observePerformanceAsync("controllerExecutionTimeMs", fn);
   }
 
   /**
@@ -269,20 +276,29 @@ export class PreMarketController {
    * Protected: Agents only
    */
   getAllRequests = asyncHandler(async (req: Request, res: Response) => {
-    const validated = await zParse(preMarketListSchema, req);
-    const agentId = req.user!.userId;
+    return this.observeControllerExecution(async () => {
+      const validated = await observePerformanceAsync(
+        "controllerValidationTimeMs",
+        () => zParse(preMarketListSchema, req),
+      );
+      const agentId = req.user!.userId;
 
-    const requests = await this.preMarketService.getAllRequests(
-      validated.query,
-      agentId,
-    );
+      const requests = await observePerformanceAsync(
+        "serviceExecutionTimeMs",
+        () =>
+          this.preMarketService.getAllRequests(
+            validated.query,
+            agentId,
+          ),
+      );
 
-    ApiResponse.paginated(
-      res,
-      requests.data,
-      requests.pagination,
-      "All pre-market requests retrieved",
-    );
+      ApiResponse.paginated(
+        res,
+        requests.data,
+        requests.pagination,
+        "All pre-market requests retrieved",
+      );
+    });
   });
 
   /**
@@ -724,25 +740,34 @@ export class PreMarketController {
   });
 
   getAllRequestsForAgent = asyncHandler(async (req: Request, res: Response) => {
-    const validated = await zParse(preMarketListSchema, req);
-    const agentId = req.user!.userId;
+    return this.observeControllerExecution(async () => {
+      const validated = await observePerformanceAsync(
+        "controllerValidationTimeMs",
+        () => zParse(preMarketListSchema, req),
+      );
+      const agentId = req.user!.userId;
 
-    const requests = await this.preMarketService.getAllRequestsForAgent(
-      agentId,
-      validated.query,
-    );
+      const requests = await observePerformanceAsync(
+        "serviceExecutionTimeMs",
+        () =>
+          this.preMarketService.getAllRequestsForAgent(
+            agentId,
+            validated.query,
+          ),
+      );
 
-    logger.info(
-      { agentId, requestCount: requests.data.length },
-      "Agent retrieved all pre-market requests",
-    );
+      logger.info(
+        { agentId, requestCount: requests.data.length },
+        "Agent retrieved all pre-market requests",
+      );
 
-    ApiResponse.paginated(
-      res,
-      requests.data,
-      requests.pagination,
-      "Pre-market requests retrieved with visibility control",
-    );
+      ApiResponse.paginated(
+        res,
+        requests.data,
+        requests.pagination,
+        "Pre-market requests retrieved with visibility control",
+      );
+    });
   });
 
   getArchivedRequestsForAgent = asyncHandler(
@@ -864,23 +889,32 @@ export class PreMarketController {
    * Protected: Admin only
    */
   getAllRequestsForAdmin = asyncHandler(async (req: Request, res: Response) => {
-    const validated = await zParse(preMarketListSchema, req);
+    return this.observeControllerExecution(async () => {
+      const validated = await observePerformanceAsync(
+        "controllerValidationTimeMs",
+        () => zParse(preMarketListSchema, req),
+      );
 
-    const result = await this.preMarketService.getAllRequestsForAdmin(
-      validated.query,
-    );
+      const result = await observePerformanceAsync(
+        "serviceExecutionTimeMs",
+        () =>
+          this.preMarketService.getAllRequestsForAdmin(
+            validated.query,
+          ),
+      );
 
-    logger.debug(
-      { adminId: req.user?.userId, itemCount: result.data.length },
-      "Admin retrieved all pre-market requests",
-    );
+      logger.debug(
+        { adminId: req.user?.userId, itemCount: result.data.length },
+        "Admin retrieved all pre-market requests",
+      );
 
-    ApiResponse.paginated(
-      res,
-      result.data,
-      result.pagination,
-      "Admin pre-market requests retrieved successfully",
-    );
+      ApiResponse.paginated(
+        res,
+        result.data,
+        result.pagination,
+        "Admin pre-market requests retrieved successfully",
+      );
+    });
   });
 
   // ============================================
@@ -1183,22 +1217,31 @@ export class PreMarketController {
 
   searchApartmentMatchesForAgent = asyncHandler(
     async (req: Request, res: Response) => {
-      const validated = await zParse(agentMatchSearchSchema, req);
-      const agentId = req.user!.userId;
+      return this.observeControllerExecution(async () => {
+        const validated = await observePerformanceAsync(
+          "controllerValidationTimeMs",
+          () => zParse(agentMatchSearchSchema, req),
+        );
+        const agentId = req.user!.userId;
 
-      const { page, limit, ...apartment } = validated.body;
-      const results = await this.preMarketService.searchApartmentMatchesForAgent(
-        agentId,
-        apartment,
-        { page, limit },
-      );
+        const { page, limit, ...apartment } = validated.body;
+        const results = await observePerformanceAsync(
+          "serviceExecutionTimeMs",
+          () =>
+            this.preMarketService.searchApartmentMatchesForAgent(
+              agentId,
+              apartment,
+              { page, limit },
+            ),
+        );
 
-      return ApiResponse.paginated(
-        res,
-        results.data,
-        results.pagination,
-        "Apartment match results retrieved",
-      );
+        return ApiResponse.paginated(
+          res,
+          results.data,
+          results.pagination,
+          "Apartment match results retrieved",
+        );
+      });
     },
   );
 
@@ -1484,40 +1527,49 @@ export class PreMarketController {
 
   getRenterRequestsWithAgents = asyncHandler(
     async (req: Request, res: Response) => {
-      const validated = await zParse(preMarketListSchema, req);
-      const renterId = req.user!.userId;
+      return this.observeControllerExecution(async () => {
+        const validated = await observePerformanceAsync(
+          "controllerValidationTimeMs",
+          () => zParse(preMarketListSchema, req),
+        );
+        const renterId = req.user!.userId;
 
-      logger.debug(
-        { renterId },
-        "Renter retrieving all requests with agent matches",
-      );
+        logger.debug(
+          { renterId },
+          "Renter retrieving all requests with agent matches",
+        );
 
-      // Get all requests with their agents
-      const result = await this.preMarketService.getRenterRequestsWithAgents(
-        renterId,
-        validated.query,
-      );
+        // Get all requests with their agents
+        const result = await observePerformanceAsync(
+          "serviceExecutionTimeMs",
+          () =>
+            this.preMarketService.getRenterRequestsWithAgents(
+              renterId,
+              validated.query,
+            ),
+        );
 
-      const totalAgents = result.data.reduce(
-        (sum: number, r: any) => sum + (r.agentMatches?.totalCount || 0),
-        0,
-      );
+        const totalAgents = result.data.reduce(
+          (sum: number, r: any) => sum + (r.agentMatches?.totalCount || 0),
+          0,
+        );
 
-      logger.info(
-        {
-          renterId,
-          requestCount: result.data.length,
-          totalAgents,
-        },
-        "Renter retrieved all requests with agents",
-      );
+        logger.info(
+          {
+            renterId,
+            requestCount: result.data.length,
+            totalAgents,
+          },
+          "Renter retrieved all requests with agents",
+        );
 
-      ApiResponse.paginated(
-        res,
-        result.data,
-        result.pagination,
-        "All pre-market requests with matched agents retrieved successfully",
-      );
+        ApiResponse.paginated(
+          res,
+          result.data,
+          result.pagination,
+          "All pre-market requests with matched agents retrieved successfully",
+        );
+      });
     },
   );
 

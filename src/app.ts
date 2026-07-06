@@ -19,9 +19,15 @@ import rootRouter from "@/routes/index.route.js";
 import { env } from "./env.js";
 import { pinoLogger } from "./middlewares/pino-logger.js";
 import { PreMarketController } from "./modules/pre-market/pre-market.controller.js";
+import {
+  installMongooseQueryObserver,
+  performanceObserverMiddleware,
+} from "./utils/performance-observer.utils.js";
 
 const app: Application = express();
 const controller = new PreMarketController();
+
+installMongooseQueryObserver();
 
 const configuredOrigins = [
   env.CLIENT_URL,
@@ -141,6 +147,7 @@ app.post(
 );
 
 app.use(cookieParser());
+app.use(performanceObserverMiddleware);
 app.use(express.json());
 app.use(pinoLogger());
 app.use(express.urlencoded({ extended: true }));

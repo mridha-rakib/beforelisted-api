@@ -146,6 +146,8 @@ grantAccessSchema.index(
   },
   { unique: true },
 );
+grantAccessSchema.index({ agentId: 1, status: 1, createdAt: -1 });
+grantAccessSchema.index({ preMarketRequestId: 1, status: 1, createdAt: -1 });
 
 export const GrantAccessRequestModel = model<IGrantAccessRequest>(
   "GrantAccessRequest",

@@ -24,6 +24,12 @@ import {
   OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE,
 } from "@/utils/opportunity-details.utils";
 import { PaginationHelper } from "@/utils/pagination-helper";
+import {
+  addPerformanceTiming,
+  incrementPerformanceMetric,
+  nowMs,
+  setPerformanceMetric,
+} from "@/utils/performance-observer.utils";
 
 import type { IAgentProfile } from "../agent/agent.interface";
 import type { IGrantAccessRequest } from "../grant-access/grant-access.model";
@@ -56,6 +62,34 @@ type NormalAgentListingResponse = Record<string, any> & {
   accessType: string;
   canRequestAccess: boolean;
   requestAccessMessage?: string;
+};
+
+type RequestRenterContext = {
+  registeredAgentIdByRequestId: Map<string, string | null>;
+  referralInfoByRenterId: Map<string, any>;
+};
+
+type RegisteredAgentContext = {
+  registeredAgentIdByRequestId: Map<string, string | null>;
+  renterByUserId: Map<string, any>;
+};
+
+type DefaultReferralAgentInfo = {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string | null;
+  activationLink: string | null;
+  disclosureLink: string | null;
+  referralCode: string | null;
+};
+
+type AdminListEnrichmentContext = {
+  renterByUserId: Map<string, any>;
+  grantAccessByRequestId: Map<string, IGrantAccessRequest[]>;
+  agentUserById: Map<string, any>;
+  agentProfileByUserId: Map<string, any>;
+  referrerAgentProfileByUserId: Map<string, any>;
 };
 
 type AgentGrantAccessStatus
@@ -167,15 +201,7 @@ export class PreMarketService {
     };
   }
 
-  private async getDefaultReferralAgent(): Promise<{
-    id: string;
-    fullName: string;
-    email: string;
-    phoneNumber: string | null;
-    activationLink: string | null;
-    disclosureLink: string | null;
-    referralCode: string | null;
-  }> {
+  private async getDefaultReferralAgent(): Promise<DefaultReferralAgentInfo> {
     if (this.defaultReferralAgentCache) {
       return this.defaultReferralAgentCache;
     }
@@ -381,15 +407,441 @@ export class PreMarketService {
           || record.status === "paid"
           || record.status === "approved"),
     );
-    if (!matchedRecord) return null;
+    if (!matchedRecord)
+      return null;
     const user = await this.userRepository.findById(
       matchedRecord.agentId.toString(),
     );
-    if (!user) return null;
+    if (!user)
+      return null;
     return {
       agentId: matchedRecord.agentId.toString(),
       fullName: user.fullName || user.email || "",
     };
+  }
+
+  private async buildMatchedAgentByRequestId(
+    requestIds: string[],
+  ): Promise<Map<string, { agentId: string; fullName: string } | null>> {
+    const matchedAgentByRequestId = new Map<
+      string,
+      { agentId: string; fullName: string } | null
+    >();
+    const normalizedRequestIds = Array.from(
+      new Set(requestIds.filter(Boolean)),
+    );
+
+    if (normalizedRequestIds.length === 0) {
+      return matchedAgentByRequestId;
+    }
+
+    const records = await this.grantAccessRepository.findByPreMarketRequestIds(
+      normalizedRequestIds,
+    );
+    const matchedRecordByRequestId = new Map<string, IGrantAccessRequest>();
+
+    for (const record of records) {
+      const requestId = record.preMarketRequestId?.toString();
+      if (
+        !requestId
+        || matchedRecordByRequestId.has(requestId)
+        || record.representation_type === "owner_representation"
+        || !["free", "paid", "approved"].includes(String(record.status))
+      ) {
+        continue;
+      }
+
+      matchedRecordByRequestId.set(requestId, record);
+    }
+
+    const matchedAgentIds = Array.from(
+      new Set(
+        Array.from(matchedRecordByRequestId.values())
+          .map(record => record.agentId?.toString())
+          .filter((agentId): agentId is string => Boolean(agentId)),
+      ),
+    );
+    const matchedAgentUsers = await this.userRepository.findByIds(
+      matchedAgentIds,
+      "fullName email",
+    );
+    const userById = new Map(
+      matchedAgentUsers.map((user: any) => [user._id?.toString(), user]),
+    );
+
+    for (const [requestId, record] of matchedRecordByRequestId.entries()) {
+      const agentId = record.agentId?.toString();
+      const user = agentId ? userById.get(agentId) : null;
+
+      matchedAgentByRequestId.set(
+        requestId,
+        user
+          ? {
+              agentId,
+              fullName: user.fullName || user.email || "",
+            }
+          : null,
+      );
+    }
+
+    return matchedAgentByRequestId;
+  }
+
+  private async buildRequestRenterContext(
+    requests: Array<IPreMarketRequest | Record<string, any>>,
+  ): Promise<RequestRenterContext> {
+    const registeredAgentIdByRequestId = new Map<string, string | null>();
+    const referralInfoByRenterId = new Map<string, any>();
+    const renterIds = Array.from(
+      new Set(
+        requests
+          .map(request => this.normalizeUserId((request as any).renterId))
+          .filter((renterId): renterId is string => Boolean(renterId)),
+      ),
+    );
+
+    if (renterIds.length === 0) {
+      return {
+        registeredAgentIdByRequestId,
+        referralInfoByRenterId,
+      };
+    }
+
+    const batchableRenterIds = renterIds.filter(renterId =>
+      Types.ObjectId.isValid(renterId),
+    );
+    const renters = batchableRenterIds.length > 0
+      ? await this.renterRepository.findRentersWithReferrersByUserIds(
+          batchableRenterIds,
+        )
+      : [];
+    const renterByUserId = new Map(
+      renters
+        .map((renter: any) => [this.normalizeUserId(renter.userId), renter])
+        .filter(([userId]) => Boolean(userId)) as Array<[string, any]>,
+    );
+    const agentReferrerIds = Array.from(
+      new Set(
+        renters
+          .filter((renter: any) => renter.registrationType === "agent_referral")
+          .map((renter: any) => this.normalizeUserId(renter.referredByAgentId))
+          .filter((agentId): agentId is string => Boolean(agentId)),
+      ),
+    );
+    const agentProfiles = agentReferrerIds.length > 0
+      ? await this.agentRepository.findByUserIds(agentReferrerIds)
+      : [];
+    const activationLinkByAgentUserId = new Map(
+      agentProfiles.map((profile: any) => [
+        this.normalizeUserId(profile.userId),
+        profile.activationLink || null,
+      ]),
+    );
+    let defaultAgentPromise: ReturnType<
+      PreMarketService["getDefaultReferralAgent"]
+    > | null = null;
+    const getDefaultAgent = () => {
+      defaultAgentPromise ??= this.getDefaultReferralAgent();
+      return defaultAgentPromise;
+    };
+
+    for (const request of requests) {
+      const requestId = this.normalizeUserId((request as any)._id);
+      const renterId = this.normalizeUserId((request as any).renterId);
+      if (!requestId) {
+        continue;
+      }
+
+      const renter = renterId ? renterByUserId.get(renterId) : null;
+      const referredAgentId = renter
+        ? this.normalizeUserId(renter.referredByAgentId)
+        : null;
+
+      if (referredAgentId) {
+        registeredAgentIdByRequestId.set(requestId, referredAgentId);
+      }
+      else if (renter) {
+        const defaultAgent = await getDefaultAgent();
+        registeredAgentIdByRequestId.set(requestId, defaultAgent.id || null);
+      }
+      else {
+        registeredAgentIdByRequestId.set(
+          requestId,
+          this.normalizeUserId((request as any).referralAgentId),
+        );
+      }
+    }
+
+    for (const renterId of renterIds) {
+      const renter = renterByUserId.get(renterId);
+      if (!renter) {
+        continue;
+      }
+
+      const registrationType = renter.registrationType || "normal";
+      const referrer
+        = registrationType === "agent_referral"
+          ? renter.referredByAgentId
+          : registrationType === "admin_referral"
+            ? renter.referredByAdminId
+            : null;
+
+      if (!referrer) {
+        const defaultAgent = await getDefaultAgent();
+        referralInfoByRenterId.set(renterId, {
+          registrationType,
+          renterName: renter.fullName || renter.email || "Renter",
+          referrer: {
+            referrerId: defaultAgent.id,
+            referrerName: defaultAgent.fullName,
+            referrerEmail: defaultAgent.email,
+            referrerPhoneNumber: defaultAgent.phoneNumber,
+            referralCode: defaultAgent.referralCode,
+            activationLink: defaultAgent.activationLink,
+            referrerType: "Agent",
+          },
+        });
+        continue;
+      }
+
+      const referrerId
+        = typeof referrer === "object" && (referrer as any)?._id
+          ? (referrer as any)._id.toString()
+          : typeof referrer === "string"
+            ? referrer
+            : "";
+      const referrerName
+        = typeof referrer === "object"
+          ? (referrer as any).fullName || (referrer as any).name || "Unknown"
+          : "Unknown";
+      const referrerEmail
+        = typeof referrer === "object" ? (referrer as any).email || null : null;
+      const referrerPhoneNumber
+        = typeof referrer === "object"
+          ? (referrer as any).phoneNumber || null
+          : null;
+      const referrerCode
+        = typeof referrer === "object"
+          ? (referrer as any).referralCode || null
+          : null;
+      const referrerType
+        = registrationType === "agent_referral" ? "Agent" : "Admin";
+      const referrerActivationLink
+        = referrerType === "Agent" && referrerId
+          ? activationLinkByAgentUserId.get(referrerId) || null
+          : null;
+
+      referralInfoByRenterId.set(renterId, {
+        registrationType,
+        renterName: renter.fullName || renter.email || "Renter",
+        referrer: {
+          referrerId,
+          referrerName,
+          referrerEmail,
+          referrerPhoneNumber,
+          referralCode: referrerCode,
+          activationLink:
+            referrerType === "Agent" ? referrerActivationLink : null,
+          referrerType,
+        },
+      });
+    }
+
+    return {
+      registeredAgentIdByRequestId,
+      referralInfoByRenterId,
+    };
+  }
+
+  private async buildRegisteredAgentContext(
+    requests: Array<IPreMarketRequest | Record<string, any>>,
+  ): Promise<RegisteredAgentContext> {
+    const registeredAgentIdByRequestId = new Map<string, string | null>();
+    const renterIds = Array.from(
+      new Set(
+        requests
+          .map(request => this.normalizeUserId((request as any).renterId))
+          .filter((renterId): renterId is string => Boolean(renterId)),
+      ),
+    );
+
+    if (renterIds.length === 0) {
+      return {
+        registeredAgentIdByRequestId,
+        renterByUserId: new Map<string, any>(),
+      };
+    }
+
+    const batchableRenterIds = renterIds.filter(renterId =>
+      Types.ObjectId.isValid(renterId),
+    );
+    const renters = batchableRenterIds.length > 0
+      ? await this.renterRepository.findRentersWithReferrersByUserIds(
+          batchableRenterIds,
+        )
+      : [];
+    const renterByUserId = new Map(
+      renters
+        .map((renter: any) => [this.normalizeUserId(renter.userId), renter])
+        .filter(([userId]) => Boolean(userId)) as Array<[string, any]>,
+    );
+    let defaultAgentPromise: ReturnType<
+      PreMarketService["getDefaultReferralAgent"]
+    > | null = null;
+    const getDefaultAgent = () => {
+      defaultAgentPromise ??= this.getDefaultReferralAgent();
+      return defaultAgentPromise;
+    };
+
+    for (const request of requests) {
+      const requestId = this.normalizeUserId((request as any)._id);
+      const renterId = this.normalizeUserId((request as any).renterId);
+      if (!requestId) {
+        continue;
+      }
+
+      const renter = renterId ? renterByUserId.get(renterId) : null;
+      const referredAgentId = renter
+        ? this.normalizeUserId(renter.referredByAgentId)
+        : null;
+
+      if (referredAgentId) {
+        registeredAgentIdByRequestId.set(requestId, referredAgentId);
+      }
+      else if (renter) {
+        const defaultAgent = await getDefaultAgent();
+        registeredAgentIdByRequestId.set(requestId, defaultAgent.id || null);
+      }
+      else {
+        registeredAgentIdByRequestId.set(
+          requestId,
+          this.normalizeUserId((request as any).referralAgentId),
+        );
+      }
+    }
+
+    return {
+      registeredAgentIdByRequestId,
+      renterByUserId,
+    };
+  }
+
+  private async buildReferralInfoByRenterIdFromContext(
+    requests: Array<IPreMarketRequest | Record<string, any>>,
+    renterByUserId: Map<string, any>,
+  ): Promise<Map<string, any>> {
+    const referralInfoByRenterId = new Map<string, any>();
+    const renterIds = Array.from(
+      new Set(
+        requests
+          .map(request => this.normalizeUserId((request as any).renterId))
+          .filter((renterId): renterId is string => Boolean(renterId)),
+      ),
+    );
+    const selectedRenters = renterIds
+      .map(renterId => renterByUserId.get(renterId))
+      .filter(Boolean);
+    const agentReferrerIds = Array.from(
+      new Set(
+        selectedRenters
+          .filter((renter: any) => renter.registrationType === "agent_referral")
+          .map((renter: any) => this.normalizeUserId(renter.referredByAgentId))
+          .filter((agentId): agentId is string => Boolean(agentId)),
+      ),
+    );
+    const agentProfiles = agentReferrerIds.length > 0
+      ? await this.agentRepository.findByUserIds(agentReferrerIds)
+      : [];
+    const activationLinkByAgentUserId = new Map(
+      agentProfiles.map((profile: any) => [
+        this.normalizeUserId(profile.userId),
+        profile.activationLink || null,
+      ]),
+    );
+    let defaultAgentPromise: ReturnType<
+      PreMarketService["getDefaultReferralAgent"]
+    > | null = null;
+    const getDefaultAgent = () => {
+      defaultAgentPromise ??= this.getDefaultReferralAgent();
+      return defaultAgentPromise;
+    };
+
+    for (const renterId of renterIds) {
+      const renter = renterByUserId.get(renterId);
+      if (!renter) {
+        continue;
+      }
+
+      const registrationType = renter.registrationType || "normal";
+      const referrer
+        = registrationType === "agent_referral"
+          ? renter.referredByAgentId
+          : registrationType === "admin_referral"
+            ? renter.referredByAdminId
+            : null;
+
+      if (!referrer) {
+        const defaultAgent = await getDefaultAgent();
+        referralInfoByRenterId.set(renterId, {
+          registrationType,
+          renterName: renter.fullName || renter.email || "Renter",
+          referrer: {
+            referrerId: defaultAgent.id,
+            referrerName: defaultAgent.fullName,
+            referrerEmail: defaultAgent.email,
+            referrerPhoneNumber: defaultAgent.phoneNumber,
+            referralCode: defaultAgent.referralCode,
+            activationLink: defaultAgent.activationLink,
+            referrerType: "Agent",
+          },
+        });
+        continue;
+      }
+
+      const referrerId
+        = typeof referrer === "object" && (referrer as any)?._id
+          ? (referrer as any)._id.toString()
+          : typeof referrer === "string"
+            ? referrer
+            : "";
+      const referrerName
+        = typeof referrer === "object"
+          ? (referrer as any).fullName || (referrer as any).name || "Unknown"
+          : "Unknown";
+      const referrerEmail
+        = typeof referrer === "object" ? (referrer as any).email || null : null;
+      const referrerPhoneNumber
+        = typeof referrer === "object"
+          ? (referrer as any).phoneNumber || null
+          : null;
+      const referrerCode
+        = typeof referrer === "object"
+          ? (referrer as any).referralCode || null
+          : null;
+      const referrerType
+        = registrationType === "agent_referral" ? "Agent" : "Admin";
+      const referrerActivationLink
+        = referrerType === "Agent" && referrerId
+          ? activationLinkByAgentUserId.get(referrerId) || null
+          : null;
+
+      referralInfoByRenterId.set(renterId, {
+        registrationType,
+        renterName: renter.fullName || renter.email || "Renter",
+        referrer: {
+          referrerId,
+          referrerName,
+          referrerEmail,
+          referrerPhoneNumber,
+          referralCode: referrerCode,
+          activationLink:
+            referrerType === "Agent" ? referrerActivationLink : null,
+          referrerType,
+        },
+      });
+    }
+
+    return referralInfoByRenterId;
   }
 
   private async getGlobalMatchedScopeRequestIdSet(
@@ -780,106 +1232,110 @@ export class PreMarketService {
         record,
       ]),
     );
+    const matchedScopeRequestIds = requestIds.filter(requestId =>
+      globalMatchedScopeRequestIds.has(requestId as string),
+    ) as string[];
+    const [renterContext, matchedAgentByRequestId] = await Promise.all([
+      this.buildRequestRenterContext(paginated.data),
+      this.buildMatchedAgentByRequestId(matchedScopeRequestIds),
+    ]);
 
-    const enrichedData = await Promise.all(
-      paginated.data.map(async (request) => {
-        const grantAccess = request._id
-          ? grantAccessByRequestId.get(request._id.toString()) || null
+    const enrichedData = paginated.data.map((request) => {
+      const grantAccess = request._id
+        ? grantAccessByRequestId.get(request._id.toString()) || null
+        : null;
+      const requestId = request._id?.toString() || "";
+      const renterId = this.normalizeUserId(request.renterId);
+      const accessSummary = this.buildAgentAccessSummary(
+        grantAccess,
+        hasGrantAccess,
+      );
+      const isOwnerRepresentationAccess
+        = grantAccess?.representation_type === "owner_representation";
+      const isMatched
+        = !isOwnerRepresentationAccess
+          && grantAccess
+          && (grantAccess.status === "free" || grantAccess.status === "paid");
+      const isRejected
+        = !hasGrantAccess
+          && !isOwnerRepresentationAccess
+          && grantAccess?.status === "rejected";
+      const hasRequestedAccess
+        = !hasGrantAccess
+          && !isOwnerRepresentationAccess
+          && grantAccess
+          && grantAccess.status !== "free"
+          && grantAccess.status !== "paid"
+          && grantAccess.status !== "rejected";
+      const listingStatus = isMatched
+        ? "matched"
+        : isRejected
+          ? "rejected"
+          : hasRequestedAccess
+            ? "requested"
+            : request.status;
+      const displayStatus = grantAccess && !isOwnerRepresentationAccess
+        ? accessSummary.grantAccessStatus
+        : request.status;
+      const visibleScope = this.resolveAgentVisibleScope(
+        request.scope,
+        globalMatchedScopeRequestIds.has(requestId),
+      );
+      const currentRegisteredAgentId
+        = renterContext.registeredAgentIdByRequestId.get(requestId) ?? null;
+      const isCurrentRegisteredAgent = currentRegisteredAgentId === agentId;
+      const matchedByAgent
+        = globalMatchedScopeRequestIds.has(requestId)
+          ? matchedAgentByRequestId.get(requestId) ?? null
           : null;
-        const accessSummary = this.buildAgentAccessSummary(
-          grantAccess,
-          hasGrantAccess,
+      const referralInfo = renterId
+        ? renterContext.referralInfoByRenterId.get(renterId) ?? null
+        : null;
+      const renterName = referralInfo?.renterName ?? null;
+      const registrationDisclosureStatus
+        = this.getRegistrationDisclosureStatus(request, agentId);
+      const ownerRepresentationStatus = isCurrentRegisteredAgent
+        ? this.getOwnerRepresentationStatus(request)
+        : {
+            ownerRepresentationMatchCount: 0,
+            hasOwnerRepresentationMatches: false,
+            hasNewOwnerRepresentationMatches: false,
+          };
+      const visibleRequest
+        = this.stripOwnerRepresentationMatchesForNonRegisteredAgent(
+          request,
+          isCurrentRegisteredAgent,
         );
-        const isOwnerRepresentationAccess
-          = grantAccess?.representation_type === "owner_representation";
-        const isMatched
-          = !isOwnerRepresentationAccess
-            && grantAccess
-            && (grantAccess.status === "free" || grantAccess.status === "paid");
-        const isRejected
-          = !hasGrantAccess
-            && !isOwnerRepresentationAccess
-            && grantAccess?.status === "rejected";
-        const hasRequestedAccess
-          = !hasGrantAccess
-            && !isOwnerRepresentationAccess
-            && grantAccess
-            && grantAccess.status !== "free"
-            && grantAccess.status !== "paid"
-            && grantAccess.status !== "rejected";
-        const listingStatus = isMatched
-          ? "matched"
-          : isRejected
-            ? "rejected"
-            : hasRequestedAccess
-              ? "requested"
-              : request.status;
-        const displayStatus = grantAccess && !isOwnerRepresentationAccess
-          ? accessSummary.grantAccessStatus
-          : request.status;
-        const visibleScope = this.resolveAgentVisibleScope(
-          request.scope,
-          globalMatchedScopeRequestIds.has(request._id?.toString() || ""),
-        );
-        const currentRegisteredAgentId
-          = await this.resolveRegisteredAgentIdForRequest(request);
-        const isCurrentRegisteredAgent = currentRegisteredAgentId === agentId;
-        const matchedByAgent
-          = globalMatchedScopeRequestIds.has(request._id?.toString() || "")
-            ? await this.resolveMatchedAgentForView(
-              agentId,
-              request._id?.toString() || "",
-            )
-            : null;
-        const referralInfo = request.renterId
-          ? await this.getReferralInfoForRenter(request.renterId.toString())
-          : null;
-        const renterName = referralInfo?.renterName ?? null;
-        const registrationDisclosureStatus
-          = this.getRegistrationDisclosureStatus(request, agentId);
-        const ownerRepresentationStatus = isCurrentRegisteredAgent
-          ? this.getOwnerRepresentationStatus(request)
-          : {
-              ownerRepresentationMatchCount: 0,
-              hasOwnerRepresentationMatches: false,
-              hasNewOwnerRepresentationMatches: false,
-            };
-        const visibleRequest
-          = this.stripOwnerRepresentationMatchesForNonRegisteredAgent(
-            request,
-            isCurrentRegisteredAgent,
-          );
 
-        return {
-          ...visibleRequest,
-          scope: visibleScope,
-          matchedByAgent,
-          referralAgentId:
+      return {
+        ...visibleRequest,
+        scope: visibleScope,
+        matchedByAgent,
+        referralAgentId:
             currentRegisteredAgentId
             ?? this.normalizeUserId(
               (request as unknown as {
                 referralAgentId?: string | Types.ObjectId;
               }).referralAgentId,
             ),
-          referralInfo,
-          renterName,
-          status: displayStatus,
-          listingStatus,
-          grantAccessStatus: accessSummary.grantAccessStatus,
-          grantAccessId: accessSummary.grantAccessId,
-          representation_type: accessSummary.representation_type,
-          representationSelectedAt: accessSummary.representationSelectedAt,
-          accessType: accessSummary.accessType,
-          canRequestAccess: accessSummary.canRequestAccess,
-          ownerRepresentationSelected: this.hasOwnerRepresentationMatchForAgent(
-            request,
-            agentId,
-          ),
-          ...ownerRepresentationStatus,
-          ...registrationDisclosureStatus,
-        };
-      }),
-    );
+        referralInfo,
+        renterName,
+        status: displayStatus,
+        listingStatus,
+        grantAccessStatus: accessSummary.grantAccessStatus,
+        grantAccessId: accessSummary.grantAccessId,
+        representation_type: accessSummary.representation_type,
+        representationSelectedAt: accessSummary.representationSelectedAt,
+        accessType: accessSummary.accessType,
+        canRequestAccess: accessSummary.canRequestAccess,
+        ownerRepresentationSelected: this.hasOwnerRepresentationMatchForAgent(
+          request,
+          agentId,
+        ),
+        ...ownerRepresentationStatus,
+        ...registrationDisclosureStatus,
+      };
+    });
 
     return {
       ...paginated,
@@ -922,6 +1378,7 @@ export class PreMarketService {
     ]);
     const requests
       = await this.preMarketRepository.findAllForMatchSearch(combinedFilters);
+    setPerformanceMetric("matchSearch.totalCandidatesLoaded", requests.length);
     const requestIds = requests
       .map(request => request._id?.toString())
       .filter((requestId): requestId is string => Boolean(requestId));
@@ -930,13 +1387,22 @@ export class PreMarketService {
       this.grantAccessRepository.findByAgentIdAndRequestIds(agentId, requestIds),
       this.getGlobalMatchedScopeRequestIdSet(requestIds),
     ]);
-    const matchVisibleRequests = requests.filter((request) => {
+    const matchVisibleRequests: IPreMarketRequest[] = [];
+    for (const request of requests) {
       const requestId = request._id?.toString() || "";
-      return (
-        request.scope !== "All Market"
-        || globalMatchedScopeRequestIds.has(requestId)
-      );
-    });
+      const isMatchVisible
+        = request.scope !== "All Market"
+          || globalMatchedScopeRequestIds.has(requestId);
+
+      if (!isMatchVisible) {
+        continue;
+      }
+
+      matchVisibleRequests.push(request);
+    }
+    const registeredAgentContext = await this.buildRegisteredAgentContext(
+      matchVisibleRequests,
+    );
     const grantAccessByRequestId = new Map(
       grantAccessRecords.map(record => [
         record.preMarketRequestId.toString(),
@@ -944,122 +1410,89 @@ export class PreMarketService {
       ]),
     );
 
-    const scoredResults = await Promise.all(
-      matchVisibleRequests.map(async (request) => {
-        const requestId = request._id?.toString() || "";
-        const grantAccess = grantAccessByRequestId.get(requestId) || null;
-        const isOwnerRepresentationAccess
-          = grantAccess?.representation_type === "owner_representation";
-        const isAlreadyMatchedByAgent = Boolean(
-          grantAccess
-          && !isOwnerRepresentationAccess
-          && ["pending", "approved", "free", "paid"].includes(
-            String(grantAccess.status),
-          ),
-        );
-        const currentRegisteredAgentId
-          = await this.resolveRegisteredAgentIdForRequest(request);
-        const isCurrentRegisteredAgent = currentRegisteredAgentId === agentId;
-        const registrationDisclosureStatus
-          = this.getRegistrationDisclosureStatus(request, agentId);
-        const scoreResult = scorePreMarketRequest(apartment, {
-          ...request,
-          registrationDisclosureConfirmed: isCurrentRegisteredAgent
-            ? registrationDisclosureStatus.registrationDisclosureConfirmed
-            : undefined,
-        });
+    let scoringExecutionTimeMs = 0;
+    let disqualifiedCount = 0;
+    setPerformanceMetric("matchSearch.candidatesScored", matchVisibleRequests.length);
 
-        if (scoreResult.disqualified) {
-          return null;
-        }
+    const ranked: Array<{
+      request: IPreMarketRequest;
+      requestId: string;
+      renterId: string | null;
+      grantAccess: IGrantAccessRequest | null;
+      isAlreadyMatchedByAgent: boolean;
+      currentRegisteredAgentId: string | null;
+      isCurrentRegisteredAgent: boolean;
+      registrationDisclosureStatus: Record<string, any>;
+      scoreResult: any;
+    }> = [];
 
-        const accessSummary = this.buildAgentAccessSummary(
-          grantAccess,
-          hasGrantAccess,
-        );
-        const listingStatus = isAlreadyMatchedByAgent
-          ? "matched"
-          : request.status;
-        const displayStatus = isAlreadyMatchedByAgent
-          ? accessSummary.grantAccessStatus
-          : request.status;
-        const visibleScope = this.resolveAgentVisibleScope(
-          request.scope,
-          globalMatchedScopeRequestIds.has(requestId),
-        );
-        const matchedByAgent
-          = globalMatchedScopeRequestIds.has(requestId)
-            ? await this.resolveMatchedAgentForView(agentId, requestId)
-            : null;
-        const referralInfo = request.renterId
-          ? await this.getReferralInfoForRenter(request.renterId.toString())
-          : null;
-        const ownerRepresentationStatus = isCurrentRegisteredAgent
-          ? this.getOwnerRepresentationStatus(request)
-          : {
-              ownerRepresentationMatchCount: 0,
-              hasOwnerRepresentationMatches: false,
-              hasNewOwnerRepresentationMatches: false,
-            };
-        const visibleRequest
-          = this.stripOwnerRepresentationMatchesForNonRegisteredAgent(
-            request,
-            isCurrentRegisteredAgent,
-          );
-
-        return {
-          ...visibleRequest,
-          scope: visibleScope,
-          matchedByAgent,
-          referralAgentId:
-            currentRegisteredAgentId
-            ?? this.normalizeUserId(
-              (request as unknown as {
-                referralAgentId?: string | Types.ObjectId;
-              }).referralAgentId,
-            ),
-          referralInfo,
-          renterName: referralInfo?.renterName ?? null,
-          status: displayStatus,
-          listingStatus,
-          grantAccessStatus: accessSummary.grantAccessStatus,
-          grantAccessId: accessSummary.grantAccessId,
-          representation_type: accessSummary.representation_type,
-          representationSelectedAt: accessSummary.representationSelectedAt,
-          accessType: accessSummary.accessType,
-          canRequestAccess: accessSummary.canRequestAccess,
-          ownerRepresentationSelected: this.hasOwnerRepresentationMatchForAgent(
-            request,
-            agentId,
-          ),
-          alreadyMatchedByAgent: isAlreadyMatchedByAgent,
-          matchScore: scoreResult.score,
-          matchStarRating: scoreResult.starRating,
-          matchMissingFeatures: scoreResult.missingFeatures,
-          matchPreferenceMatches: apartment.toggles.priorityBonuses
-            ? scoreResult.preferenceMatches
-            : null,
-          matchPriorityBonus: scoreResult.priorityBonus,
-          matchPrimaryDeduction: scoreResult.primaryDeduction,
-          matchSecondaryDeduction: scoreResult.secondaryDeduction,
-          ...ownerRepresentationStatus,
-          ...registrationDisclosureStatus,
-        };
-      }),
-    );
-
-    const ranked = scoredResults
-      .filter((item): item is any => Boolean(item))
-      .sort((a, b) => {
-        if (b.matchScore !== a.matchScore) {
-          return b.matchScore - a.matchScore;
-        }
-
-        return (
-          new Date(b.createdAt ?? 0).getTime()
-            - new Date(a.createdAt ?? 0).getTime()
-        );
+    for (const request of matchVisibleRequests) {
+      const requestId = request._id?.toString() || "";
+      const renterId = this.normalizeUserId(request.renterId);
+      const grantAccess = grantAccessByRequestId.get(requestId) || null;
+      const isOwnerRepresentationAccess
+        = grantAccess?.representation_type === "owner_representation";
+      const isAlreadyMatchedByAgent = Boolean(
+        grantAccess
+        && !isOwnerRepresentationAccess
+        && ["pending", "approved", "free", "paid"].includes(
+          String(grantAccess.status),
+        ),
+      );
+      const currentRegisteredAgentId
+        = registeredAgentContext.registeredAgentIdByRequestId.get(requestId)
+          ?? null;
+      const isCurrentRegisteredAgent = currentRegisteredAgentId === agentId;
+      const registrationDisclosureStatus
+        = this.getRegistrationDisclosureStatus(request, agentId);
+      const scoringStartedAt = nowMs();
+      const scoreResult = scorePreMarketRequest(apartment, {
+        bedrooms: request.bedrooms,
+        bathrooms: request.bathrooms,
+        priceRange: request.priceRange,
+        locations: request.locations,
+        movingDateRange: request.movingDateRange,
+        unitFeatures: request.unitFeatures,
+        buildingFeatures: request.buildingFeatures,
+        petPolicy: request.petPolicy,
+        guarantorRequired: request.guarantorRequired,
+        preferences: request.preferences,
+        registrationDisclosureConfirmed: isCurrentRegisteredAgent
+          ? registrationDisclosureStatus.registrationDisclosureConfirmed
+          : undefined,
       });
+      scoringExecutionTimeMs += nowMs() - scoringStartedAt;
+
+      if (scoreResult.disqualified) {
+        disqualifiedCount += 1;
+        continue;
+      }
+
+      ranked.push({
+        request,
+        requestId,
+        renterId,
+        grantAccess,
+        isAlreadyMatchedByAgent,
+        currentRegisteredAgentId,
+        isCurrentRegisteredAgent,
+        registrationDisclosureStatus,
+        scoreResult,
+      });
+    }
+    addPerformanceTiming("scoringExecutionTimeMs", scoringExecutionTimeMs);
+    setPerformanceMetric("matchSearch.disqualified", disqualifiedCount);
+
+    ranked.sort((a, b) => {
+      if (b.scoreResult.score !== a.scoreResult.score) {
+        return b.scoreResult.score - a.scoreResult.score;
+      }
+
+      return (
+        new Date(b.request.createdAt ?? 0).getTime()
+          - new Date(a.request.createdAt ?? 0).getTime()
+      );
+    });
     const limit = Math.max(1, Math.min(100, Number(query.limit) || 10));
     const totalItems = ranked.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / limit));
@@ -1068,7 +1501,107 @@ export class PreMarketService {
       totalPages,
     );
     const start = (currentPage - 1) * limit;
-    const data = ranked.slice(start, start + limit);
+    const pagedCandidates = ranked.slice(start, start + limit);
+    const pagedRequests = pagedCandidates.map(candidate => candidate.request);
+    setPerformanceMetric("matchSearch.returnedAfterPagination", pagedCandidates.length);
+
+    const enrichmentStartedAt = nowMs();
+    const pagedMatchedVisibleRequestIds = pagedCandidates
+      .map(candidate => candidate.requestId)
+      .filter(requestId => globalMatchedScopeRequestIds.has(requestId));
+    const [referralInfoByRenterId, matchedAgentByRequestId] = await Promise.all([
+      this.buildReferralInfoByRenterIdFromContext(
+        pagedRequests,
+        registeredAgentContext.renterByUserId,
+      ),
+      this.buildMatchedAgentByRequestId(pagedMatchedVisibleRequestIds),
+    ]);
+    const data = pagedCandidates.map((candidate) => {
+      const {
+        request,
+        requestId,
+        renterId,
+        grantAccess,
+        isAlreadyMatchedByAgent,
+        currentRegisteredAgentId,
+        isCurrentRegisteredAgent,
+        registrationDisclosureStatus,
+        scoreResult,
+      } = candidate;
+      const accessSummary = this.buildAgentAccessSummary(
+        grantAccess,
+        hasGrantAccess,
+      );
+      const listingStatus = isAlreadyMatchedByAgent
+        ? "matched"
+        : request.status;
+      const displayStatus = isAlreadyMatchedByAgent
+        ? accessSummary.grantAccessStatus
+        : request.status;
+      const visibleScope = this.resolveAgentVisibleScope(
+        request.scope,
+        globalMatchedScopeRequestIds.has(requestId),
+      );
+      const matchedByAgent
+        = globalMatchedScopeRequestIds.has(requestId)
+          ? matchedAgentByRequestId.get(requestId) ?? null
+          : null;
+      const referralInfo = renterId
+        ? referralInfoByRenterId.get(renterId) ?? null
+        : null;
+      const ownerRepresentationStatus = isCurrentRegisteredAgent
+        ? this.getOwnerRepresentationStatus(request)
+        : {
+            ownerRepresentationMatchCount: 0,
+            hasOwnerRepresentationMatches: false,
+            hasNewOwnerRepresentationMatches: false,
+          };
+      const visibleRequest
+        = this.stripOwnerRepresentationMatchesForNonRegisteredAgent(
+          request,
+          isCurrentRegisteredAgent,
+        );
+
+      return {
+        ...visibleRequest,
+        scope: visibleScope,
+        matchedByAgent,
+        referralAgentId:
+            currentRegisteredAgentId
+            ?? this.normalizeUserId(
+              (request as unknown as {
+                referralAgentId?: string | Types.ObjectId;
+              }).referralAgentId,
+            ),
+        referralInfo,
+        renterName: referralInfo?.renterName ?? null,
+        status: displayStatus,
+        listingStatus,
+        grantAccessStatus: accessSummary.grantAccessStatus,
+        grantAccessId: accessSummary.grantAccessId,
+        representation_type: accessSummary.representation_type,
+        representationSelectedAt: accessSummary.representationSelectedAt,
+        accessType: accessSummary.accessType,
+        canRequestAccess: accessSummary.canRequestAccess,
+        ownerRepresentationSelected: this.hasOwnerRepresentationMatchForAgent(
+          request,
+          agentId,
+        ),
+        alreadyMatchedByAgent: isAlreadyMatchedByAgent,
+        matchScore: scoreResult.score,
+        matchStarRating: scoreResult.starRating,
+        matchMissingFeatures: scoreResult.missingFeatures,
+        matchPreferenceMatches: apartment.toggles.priorityBonuses
+          ? scoreResult.preferenceMatches
+          : null,
+        matchPriorityBonus: scoreResult.priorityBonus,
+        matchPrimaryDeduction: scoreResult.primaryDeduction,
+        matchSecondaryDeduction: scoreResult.secondaryDeduction,
+        ...ownerRepresentationStatus,
+        ...registrationDisclosureStatus,
+      };
+    });
+    addPerformanceTiming("enrichmentExecutionTimeMs", nowMs() - enrichmentStartedAt);
 
     return {
       data,
@@ -5166,15 +5699,157 @@ export class PreMarketService {
     query: PaginationQuery,
   ): Promise<AdminPreMarketPaginatedResponse> {
     const paginated = await this.preMarketRepository.findAllForAdmin(query);
+    setPerformanceMetric("admin.requestsOnPage", paginated.data.length);
 
-    const enrichedData = await Promise.all(
-      paginated.data.map(request => this.enrichRequestForAdmin(request)),
+    const enrichmentStartedAt = nowMs();
+    const enrichmentContext = await this.buildAdminListEnrichmentContext(
+      paginated.data,
     );
+    const enrichedData = await Promise.all(
+      paginated.data.map(request =>
+        this.enrichRequestForAdminFromContext(request, enrichmentContext),
+      ),
+    );
+    addPerformanceTiming("enrichmentExecutionTimeMs", nowMs() - enrichmentStartedAt);
 
     return {
       ...paginated,
       data: enrichedData,
     };
+  }
+
+  private async buildAdminListEnrichmentContext(
+    requests: IPreMarketRequest[],
+  ): Promise<AdminListEnrichmentContext> {
+    const requestIds = requests
+      .map(request => request._id?.toString())
+      .filter((requestId): requestId is string => Boolean(requestId));
+    const renterUserIds = Array.from(
+      new Set(
+        requests
+          .map(request => this.normalizeUserId(request.renterId))
+          .filter((renterId): renterId is string => Boolean(renterId)),
+      ),
+    );
+
+    incrementPerformanceMetric(
+      "admin.renterReferrerLookups",
+      renterUserIds.length > 0 ? 1 : 0,
+    );
+    incrementPerformanceMetric(
+      "admin.grantAccessLookups",
+      requestIds.length > 0 ? 1 : 0,
+    );
+
+    const [renters, grantAccessRecords] = await Promise.all([
+      this.renterRepository.findRentersWithReferrersByUserIds(renterUserIds),
+      this.grantAccessRepository.findByPreMarketRequestIds(requestIds),
+    ]);
+    const renterByUserId = new Map(
+      renters
+        .map((renter: any) => [this.normalizeUserId(renter.userId), renter])
+        .filter(([userId]) => Boolean(userId)) as Array<[string, any]>,
+    );
+    const grantAccessByRequestId = new Map<string, IGrantAccessRequest[]>();
+
+    for (const record of grantAccessRecords) {
+      const requestId = record.preMarketRequestId?.toString();
+      if (!requestId) {
+        continue;
+      }
+
+      const recordsForRequest = grantAccessByRequestId.get(requestId) || [];
+      recordsForRequest.push(record);
+      grantAccessByRequestId.set(requestId, recordsForRequest);
+    }
+
+    const agentUserIds = Array.from(
+      new Set(
+        grantAccessRecords
+          .map(record => record.agentId?.toString())
+          .filter((agentId): agentId is string => Boolean(agentId)),
+      ),
+    );
+    const referrerAgentUserIds = Array.from(
+      new Set(
+        renters
+          .filter((renter: any) => renter.registrationType === "agent_referral")
+          .map((renter: any) => this.normalizeUserId(renter.referredByAgentId))
+          .filter((agentId): agentId is string => Boolean(agentId)),
+      ),
+    );
+    const agentProfileUserIds = Array.from(
+      new Set([...agentUserIds, ...referrerAgentUserIds]),
+    );
+    incrementPerformanceMetric(
+      "admin.agentUserLookups",
+      agentUserIds.length > 0 ? 1 : 0,
+    );
+    incrementPerformanceMetric(
+      "admin.agentProfileLookups",
+      agentProfileUserIds.length > 0 ? 1 : 0,
+    );
+    setPerformanceMetric("admin.agentUserIdsLoaded", agentUserIds.length);
+    setPerformanceMetric(
+      "admin.agentProfileIdsLoaded",
+      agentProfileUserIds.length,
+    );
+    const [agentUsers, agentProfiles] = await Promise.all([
+      this.userRepository.findByIdsIncludingDeleted(
+        agentUserIds,
+        "fullName email phoneNumber role profileImageUrl",
+      ),
+      this.agentRepository.findByUserIds(agentProfileUserIds),
+    ]);
+    const agentUserById = new Map(
+      agentUsers.map((user: any) => [user._id?.toString(), user]),
+    );
+    const agentProfileByUserId = new Map(
+      agentProfiles
+        .map((profile: any) => [this.normalizeUserId(profile.userId), profile])
+        .filter(([userId]) => Boolean(userId)) as Array<[string, any]>,
+    );
+    const referrerAgentProfileByUserId = new Map(
+      referrerAgentUserIds
+        .map(agentId => [agentId, agentProfileByUserId.get(agentId)])
+        .filter(([, profile]) => Boolean(profile)) as Array<[string, any]>,
+    );
+
+    return {
+      renterByUserId,
+      grantAccessByRequestId,
+      agentUserById,
+      agentProfileByUserId,
+      referrerAgentProfileByUserId,
+    };
+  }
+
+  private async enrichRequestForAdminFromContext(
+    request: IPreMarketRequest,
+    context: AdminListEnrichmentContext,
+  ): Promise<AdminPreMarketRequestItem> {
+    const requestId = request._id!.toString();
+    const renterId = this.normalizeUserId(request.renterId);
+    const renter = renterId ? context.renterByUserId.get(renterId) : null;
+    const allRequests = context.grantAccessByRequestId.get(requestId) || [];
+    const renterInfo = await this.buildRenterInfoFromAdminContext(
+      renter,
+      context.referrerAgentProfileByUserId,
+    );
+    const agentRequestSummary
+      = this.buildAgentRequestSummaryFromRecords(allRequests);
+    const agentRequests = this.buildAgentRequestDetailsFromRecords(
+      allRequests,
+      context.agentUserById,
+      context.agentProfileByUserId,
+    );
+
+    return {
+      ...(request.toObject ? request.toObject() : request),
+      renterInfo,
+      agentRequestSummary,
+      agentRequests,
+    } as AdminPreMarketRequestItem;
   }
 
   async getRequestByIdForAdmin(
@@ -5193,6 +5868,7 @@ export class PreMarketService {
   private async enrichRequestForAdmin(
     request: IPreMarketRequest,
   ): Promise<AdminPreMarketRequestItem> {
+    incrementPerformanceMetric("admin.renterReferrerLookups", 1);
     const renter = await this.renterRepository.findRenterWithReferrer(
       request.renterId.toString(),
     );
@@ -5218,6 +5894,7 @@ export class PreMarketService {
   private async getAgentRequestSummary(
     preMarketRequestId: string | Types.ObjectId,
   ): Promise<AdminAgentRequestSummary> {
+    incrementPerformanceMetric("admin.grantAccessLookups", 1);
     const allRequests
       = await this.grantAccessRepository.findByPreMarketRequestId(
         preMarketRequestId,
@@ -5336,9 +6013,202 @@ export class PreMarketService {
     return renterInfo;
   }
 
+  private async buildRenterInfoFromAdminContext(
+    renter: any,
+    referrerAgentProfileByUserId: Map<string, any>,
+  ): Promise<AdminRenterInfo> {
+    if (!renter) {
+      return {
+        renterId: "",
+        fullName: "Unknown renter",
+        email: "",
+        registrationType: "normal",
+      };
+    }
+
+    const profileImageUrl
+      = typeof renter.userId === "object" && renter.userId
+        ? renter.userId.profileImageUrl || null
+        : null;
+
+    const renterInfo: AdminRenterInfo = {
+      renterId: renter._id?.toString() || renter.renterId?.toString() || "",
+      fullName: renter.fullName || "",
+      email: renter.email || "",
+      phoneNumber: renter.phoneNumber,
+      profileImageUrl,
+      registrationType: renter.registrationType || "normal",
+    };
+
+    if (
+      renter.registrationType === "agent_referral"
+      && renter.referredByAgentId
+    ) {
+      const referrer = renter.referredByAgentId;
+
+      if (referrer) {
+        const referrerId = this.normalizeUserId(referrer) || "";
+        const referrerAgentProfile = referrerId
+          ? referrerAgentProfileByUserId.get(referrerId) || null
+          : null;
+        renterInfo.referralInfo = {
+          referrerId,
+          referrerName: referrer.fullName || referrer.name || "Unknown",
+          activationLink: referrerAgentProfile?.activationLink || null,
+          referrerEmail: referrer.email || null,
+          referrerPhoneNumber: referrer.phoneNumber || null,
+          referralCode: referrer.referralCode || null,
+          referrerType: "AGENT",
+        };
+      }
+    }
+    else if (
+      renter.registrationType === "admin_referral"
+      && renter.referredByAdminId
+    ) {
+      const referrer = renter.referredByAdminId;
+
+      if (referrer) {
+        renterInfo.referralInfo = {
+          referrerId: this.normalizeUserId(referrer) || "",
+          referrerName: referrer.fullName || referrer.name || "Unknown",
+          referrerEmail: referrer.email || null,
+          referrerPhoneNumber: referrer.phoneNumber || null,
+          referralCode: referrer.referralCode || null,
+          referrerType: "ADMIN",
+        };
+      }
+    }
+
+    if (!renterInfo.referralInfo) {
+      const defaultAgent = await this.getDefaultReferralAgent();
+      renterInfo.referralInfo = {
+        referrerId: defaultAgent.id,
+        referrerName: defaultAgent.fullName,
+        activationLink: defaultAgent.activationLink,
+        referrerEmail: defaultAgent.email,
+        referrerPhoneNumber: defaultAgent.phoneNumber,
+        referralCode: defaultAgent.referralCode,
+        referrerType: "AGENT",
+      };
+    }
+
+    return renterInfo;
+  }
+
+  private buildAgentRequestSummaryFromRecords(
+    allRequests: IGrantAccessRequest[],
+  ): AdminAgentRequestSummary {
+    if (!allRequests || allRequests.length === 0) {
+      return { total: 0, approve: 0, pending: 0 };
+    }
+
+    let approve = 0;
+    let pending = 0;
+
+    for (const req of allRequests) {
+      if (req.status === "free" || req.status === "paid") {
+        approve += 1;
+      }
+      else if (req.status === "pending" || req.status === "approved") {
+        pending += 1;
+      }
+    }
+
+    return {
+      total: allRequests.length,
+      approve,
+      pending,
+    };
+  }
+
+  private buildAgentRequestDetailsFromRecords(
+    allRequests: IGrantAccessRequest[],
+    agentUserById: Map<string, any>,
+    agentProfileByUserId: Map<string, any>,
+  ): AgentRequestDetail[] {
+    if (!allRequests || allRequests.length === 0) {
+      return [];
+    }
+
+    return allRequests.map((req: any) => {
+      const agentUserId = req.agentId?.toString() || "";
+      const agent = agentUserId ? agentUserById.get(agentUserId) : null;
+      const agentProfile = agentUserId
+        ? agentProfileByUserId.get(agentUserId) || null
+        : null;
+      const agentInfo = agent
+        ? {
+            agentId: agent._id?.toString() || "",
+            fullName: agent.fullName || "",
+            email: agent.email || "",
+            phoneNumber: agent.phoneNumber || undefined,
+            role: (agent.role as string) || "Agent",
+            activationLink: agentProfile?.activationLink || null,
+            profileImageUrl: (agent.profileImageUrl || undefined) as
+            | string
+            | undefined,
+          }
+        : {
+            agentId: agentUserId,
+            fullName: "Unknown Agent",
+            email: "",
+            phoneNumber: undefined,
+            role: "Agent",
+            activationLink: agentProfile?.activationLink || null,
+            profileImageUrl: undefined,
+          };
+      const baseStatus
+        = (req.status as
+        | "pending"
+        | "approved"
+        | "free"
+        | "rejected"
+        | "paid") || "pending";
+      const isChargePending
+        = baseStatus === "pending"
+          && req.adminDecision?.isFree === false
+          && (req.payment?.paymentStatus || (req.payment as any)?.status)
+          === "pending";
+      const isChargeApplied
+        = baseStatus === "pending"
+          && req.adminDecision?.isFree === false
+          && (req.payment?.amount > 0 || (req.payment as any)?.status)
+          === "pending";
+      const normalizedStatus
+        = baseStatus === "approved" ? "approved" : baseStatus;
+      const displayStatus
+        = isChargePending && isChargeApplied ? "approved" : normalizedStatus;
+      const paymentInfo
+        = baseStatus === "free"
+          ? {
+              amount: req.payment?.amount || 0,
+              currency: req.payment?.currency || "USD",
+              status: "free",
+            }
+          : req.payment
+            ? {
+                amount: req.payment.amount || 0,
+                currency: req.payment.currency || "USD",
+                status: req.payment.paymentStatus || "pending",
+              }
+            : undefined;
+
+      return {
+        _id: req._id?.toString() || "",
+        agentId: req.agentId?.toString() || "",
+        agent: agentInfo,
+        status: displayStatus,
+        requestedAt: req.createdAt || new Date(),
+        payment: paymentInfo,
+      };
+    });
+  }
+
   private async getAgentRequestDetails(
     preMarketRequestId: string,
   ): Promise<AgentRequestDetail[]> {
+    incrementPerformanceMetric("admin.grantAccessLookups", 1);
     const allRequests
       = await this.grantAccessRepository.findByPreMarketRequestId(
         preMarketRequestId,
@@ -6494,114 +7364,154 @@ export class PreMarketService {
       };
     }
 
-    const requestsWithAgents = await Promise.all(
-      requests.data.map(async (request) => {
-        try {
-          const requestId = request._id!.toString();
-          const grantAccessRecords
-            = await this.grantAccessRepository.findByPreMarketRequestId(
-              requestId,
-            );
+    const requestIds = requests.data
+      .map(request => request._id?.toString())
+      .filter((requestId): requestId is string => Boolean(requestId));
+    const grantAccessRecords
+      = await this.grantAccessRepository.findByPreMarketRequestIds(requestIds);
+    const grantAccessRecordsByRequestId = new Map<string, IGrantAccessRequest[]>();
+    const matchedAgentIds = new Set<string>();
 
-          const agentMap = new Map<string, { status: string; record: any }>();
+    for (const record of grantAccessRecords) {
+      const requestId = record.preMarketRequestId?.toString();
+      if (!requestId) {
+        continue;
+      }
 
-          for (const record of grantAccessRecords || []) {
-            if (record.status !== "free" && record.status !== "paid") {
-              continue;
-            }
+      const recordsForRequest = grantAccessRecordsByRequestId.get(requestId) || [];
+      recordsForRequest.push(record);
+      grantAccessRecordsByRequestId.set(requestId, recordsForRequest);
 
-            const agentId = record.agentId.toString();
-            if (!agentMap.has(agentId)) {
-              agentMap.set(agentId, {
-                status: record.status,
-                record,
-              });
-            }
+      if (record.status === "free" || record.status === "paid") {
+        const agentId = record.agentId?.toString();
+        if (agentId) {
+          matchedAgentIds.add(agentId);
+        }
+      }
+    }
+
+    const agentIds = Array.from(matchedAgentIds);
+    const [agentProfiles, agentUsers] = await Promise.all([
+      this.agentRepository.findByUserIds(agentIds),
+      this.userRepository.findByIds(
+        agentIds,
+        "fullName email phoneNumber profileImageUrl",
+      ),
+    ]);
+    const agentProfileByUserId = new Map(
+      agentProfiles.map((profile: any) => [
+        this.normalizeUserId(profile.userId),
+        profile,
+      ]),
+    );
+    const agentUserById = new Map(
+      agentUsers.map((user: any) => [user._id?.toString(), user]),
+    );
+
+    const requestsWithAgents = requests.data.map((request) => {
+      try {
+        const requestId = request._id!.toString();
+        const grantAccessRecords
+          = grantAccessRecordsByRequestId.get(requestId) || [];
+
+        const agentMap = new Map<string, { status: string; record: any }>();
+
+        for (const record of grantAccessRecords || []) {
+          if (record.status !== "free" && record.status !== "paid") {
+            continue;
           }
 
-          const agentIds = Array.from(agentMap.keys());
+          const agentId = record.agentId.toString();
+          if (!agentMap.has(agentId)) {
+            agentMap.set(agentId, {
+              status: record.status,
+              record,
+            });
+          }
+        }
 
-          const agents = [];
+        const agentIds = Array.from(agentMap.keys());
 
-          for (const agentId of agentIds) {
-            try {
-              // Get agent profile (company, license)
-              const agentProfile
-                = await this.agentRepository.findByUserId(agentId);
+        const agents = [];
 
-              // Get agent user (name, email, phone, image)
-              const agentUser = await this.userRepository.findById(agentId);
+        for (const agentId of agentIds) {
+          try {
+            // Get agent profile (company, license)
+            const agentProfile
+              = agentProfileByUserId.get(agentId);
 
-              if (agentProfile && agentUser) {
-                const accessInfo = agentMap.get(agentId);
-                const accessStatus = accessInfo?.status as
-                  | "pending"
-                  | "free"
-                  | "rejected"
-                  | "paid"
-                  | undefined;
-                const hasRequestAccess
-                  = accessStatus === "paid" || accessStatus === "free";
-                const hasGrantAccess = agentProfile.hasGrantAccess === true;
+            // Get agent user (name, email, phone, image)
+            const agentUser = agentUserById.get(agentId);
 
-                if (hasRequestAccess) {
-                  agents.push({
-                    _id: agentProfile._id?.toString(),
-                    userId: agentUser._id?.toString(),
-                    fullName: agentUser.fullName,
-                    email: agentUser.email,
-                    phoneNumber: agentUser.phoneNumber || null,
-                    licenseNumber: agentProfile.licenseNumber,
-                    title: agentProfile.title || null,
-                    activationLink: agentProfile.activationLink || null,
-                    profileImageUrl: agentUser.profileImageUrl || null,
-                    accessStatus,
-                    ...(hasGrantAccess && { hasGrantAccess }),
-                  });
-                }
+            if (agentProfile && agentUser) {
+              const accessInfo = agentMap.get(agentId);
+              const accessStatus = accessInfo?.status as
+                | "pending"
+                | "free"
+                | "rejected"
+                | "paid"
+                | undefined;
+              const hasRequestAccess
+                = accessStatus === "paid" || accessStatus === "free";
+              const hasGrantAccess = agentProfile.hasGrantAccess === true;
+
+              if (hasRequestAccess) {
+                agents.push({
+                  _id: agentProfile._id?.toString(),
+                  userId: agentUser._id?.toString(),
+                  fullName: agentUser.fullName,
+                  email: agentUser.email,
+                  phoneNumber: agentUser.phoneNumber || null,
+                  licenseNumber: agentProfile.licenseNumber,
+                  title: agentProfile.title || null,
+                  activationLink: agentProfile.activationLink || null,
+                  profileImageUrl: agentUser.profileImageUrl || null,
+                  accessStatus,
+                  ...(hasGrantAccess && { hasGrantAccess }),
+                });
               }
             }
-            catch {
-              logger.warn(
-                { agentId, requestId },
-                "Failed to fetch agent details, skipping",
-              );
-              continue;
-            }
           }
-
-          // Sort agents by name for consistent ordering
-          agents.sort((a, b) => a.fullName.localeCompare(b.fullName));
-
-          // Return request with agent matches
-          const requestObject = request.toObject ? request.toObject() : request;
-
-          return {
-            ...requestObject,
-            agentMatches: {
-              totalCount: agents.length,
-              agents,
-            },
-          };
+          catch {
+            logger.warn(
+              { agentId, requestId },
+              "Failed to fetch agent details, skipping",
+            );
+            continue;
+          }
         }
-        catch (error) {
-          logger.warn(
-            { requestId: request._id, error },
-            "Failed to fetch agents for request, returning without agents",
-          );
 
-          // Return request without agents if fetch fails
-          const requestObject = request.toObject ? request.toObject() : request;
-          return {
-            ...requestObject,
-            agentMatches: {
-              totalCount: 0,
-              agents: [],
-            },
-          };
-        }
-      }),
-    );
+        // Sort agents by name for consistent ordering
+        agents.sort((a, b) => a.fullName.localeCompare(b.fullName));
+
+        // Return request with agent matches
+        const requestObject = request.toObject ? request.toObject() : request;
+
+        return {
+          ...requestObject,
+          agentMatches: {
+            totalCount: agents.length,
+            agents,
+          },
+        };
+      }
+      catch (error) {
+        logger.warn(
+          { requestId: request._id, error },
+          "Failed to fetch agents for request, returning without agents",
+        );
+
+        // Return request without agents if fetch fails
+        const requestObject = request.toObject ? request.toObject() : request;
+        return {
+          ...requestObject,
+          agentMatches: {
+            totalCount: 0,
+            agents: [],
+          },
+        };
+      }
+    });
 
     return {
       data: requestsWithAgents,

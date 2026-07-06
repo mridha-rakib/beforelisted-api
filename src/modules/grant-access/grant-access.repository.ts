@@ -129,6 +129,20 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       .exec() as unknown as Promise<IGrantAccessRequest[]>;
   }
 
+  async findByPreMarketRequestIds(
+    preMarketRequestIds: Array<string | Types.ObjectId>,
+  ): Promise<IGrantAccessRequest[]> {
+    if (!preMarketRequestIds || preMarketRequestIds.length === 0) {
+      return [];
+    }
+
+    return this.model
+      .find({ preMarketRequestId: { $in: preMarketRequestIds } })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec() as unknown as Promise<IGrantAccessRequest[]>;
+  }
+
   async findByPreMarketRequestIdsAndStatuses(
     preMarketRequestIds: Array<string | Types.ObjectId>,
     statuses: GrantAccessStatus[],

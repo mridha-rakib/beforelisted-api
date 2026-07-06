@@ -3,6 +3,7 @@
 import { Router } from "express";
 
 import { authMiddleware } from "@/middlewares/auth.middleware";
+import { authLimiter } from "@/middlewares/rate-limit.middleware";
 
 import passwordResetRoutes from "../password/password.route";
 import { AuthController } from "./auth.controller";
@@ -10,14 +11,18 @@ import { AuthController } from "./auth.controller";
 const router = Router();
 const authController = new AuthController();
 
-router.post("/admin/login", authController.login);
-router.post("/login", authController.login);
+router.post("/admin/login", authLimiter, authController.login);
+router.post("/login", authLimiter, authController.login);
 
-router.post("/verify-email", authController.verifyEmail);
+router.post("/verify-email", authLimiter, authController.verifyEmail);
 
-router.post("/resend-verification", authController.resendVerificationCode);
+router.post(
+  "/resend-verification",
+  authLimiter,
+  authController.resendVerificationCode,
+);
 
-router.post("/verify-otp", authController.verifyOTP);
+router.post("/verify-otp", authLimiter, authController.verifyOTP);
 
 router.post("/refresh-token", authController.refreshToken);
 
