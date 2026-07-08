@@ -3986,6 +3986,7 @@ export class PreMarketService {
 
     await this.preMarketRepository.updateById(requestId, {
       scope: "All Market",
+      visibility: "PRIVATE",
     });
 
     let emailSent = false;
