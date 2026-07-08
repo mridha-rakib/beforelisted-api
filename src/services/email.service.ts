@@ -2741,7 +2741,7 @@ export class EmailService {
   ): Promise<IEmailResult> {
     try {
       const subject
-        = `Update Requested by ${payload.registeredAgentFullName} on ${payload.renterFirstName} ${payload.renterLastInitial}. | BeforeListed\u2122`;
+        = `Quick update on your rental search from ${payload.registeredAgentFullName} | BeforeListed\u2122`;
 
       const personalMessageBlock = payload.personalMessage
         && payload.personalMessage.trim().length > 0
@@ -2754,22 +2754,22 @@ export class EmailService {
         : "";
 
       const bodyHtml = `
-        <p>Hi ${payload.matchedAgentFirstName},</p>
-        <p><strong>${payload.registeredAgentFullName}</strong> is requesting an update on your progress with <strong>${payload.renterFullName}</strong>'s rental search.</p>
-        <p>Please reply directly to <a href="mailto:${payload.registeredAgentEmail}">${payload.registeredAgentEmail}</a> with a quick status update at your earliest convenience.</p>
+        <p>Hi ${payload.renterFirstName},</p>
+        <p>Your agent <strong>${payload.registeredAgentFullName}</strong> is checking in on your rental search. They are working with <strong>${payload.matchedAgentFirstName}</strong> on your behalf and want to make sure things are moving forward.</p>
+        <p>If you have any updates, questions, or changes to your search, simply reply directly to <a href="mailto:${payload.registeredAgentEmail}">${payload.registeredAgentEmail}</a> and ${payload.registeredAgentFullName} will follow up with you.</p>
         ${personalMessageBlock}
-        <p>Thank you for keeping things moving for the renter.</p>
+        <p>Thanks for using BeforeListed.</p>
         <p>— The BeforeListed Team</p>
       `;
 
       logger.debug(
-        { email: payload.to, matchedAgentName: payload.matchedAgentFullName },
-        "Sending request update to matched agent (Email #33)",
+        { email: payload.to, renterName: payload.renterFullName },
+        "Sending request update to renter (Email #33)",
       );
 
       const html = this.buildSimpleBeforeListedEmail(bodyHtml);
       const emailOptions: IEmailOptions = {
-        to: { email: payload.to, name: payload.matchedAgentFullName },
+        to: { email: payload.to, name: payload.renterFullName },
         replyTo: payload.registeredAgentEmail || "support@beforelisted.com",
         subject,
         html,
@@ -2778,9 +2778,9 @@ export class EmailService {
         },
         metadata: {
           templateType: "REQUEST_UPDATE_TO_MATCHED_AGENT",
-          matchedAgentName: payload.matchedAgentFullName,
-          registeredAgentName: payload.registeredAgentFullName,
           renterName: payload.renterFullName,
+          registeredAgentName: payload.registeredAgentFullName,
+          matchedAgentName: payload.matchedAgentFullName,
         },
       };
 
@@ -2796,7 +2796,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send request update to matched agent (Email #33)",
+        "Failed to send request update to renter (Email #33)",
       );
 
       return {

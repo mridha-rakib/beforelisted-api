@@ -3821,8 +3821,8 @@ export class PreMarketService {
     personalMessage?: string,
   ): Promise<{
     requestId: string;
-    matchedAgentId: string;
-    matchedAgentEmail: string;
+    renterId: string;
+    renterEmail: string;
     sentAt: string;
   }> {
     const request = await this.getRequestById(requestId);
@@ -3837,13 +3837,6 @@ export class PreMarketService {
     if (registeredAgentId !== agentId) {
       throw new ForbiddenException(
         "Only the registered agent for this request can request an update.",
-      );
-    }
-
-    const matchedAccess = await this.getMatchedAccessRecord(agentId, requestId);
-    if (!matchedAccess) {
-      throw new ForbiddenException(
-        "Only the matched agent can be the recipient of an update request.",
       );
     }
 
@@ -3865,32 +3858,32 @@ export class PreMarketService {
 
     const matchedAgentId = matchedRecord.agentId.toString();
     const matchedAgent = await this.userRepository.findById(matchedAgentId);
-    if (!matchedAgent?.email) {
+    if (!matchedAgent) {
       throw new BadRequestException(
         "Matched agent record is missing contact information.",
       );
     }
 
-    const registeredAgent = await this.userRepository.findById(agentId);
     const renter = await this.renterRepository.findRenterWithReferrer(
       request.renterId.toString(),
     );
+    if (!renter?.email) {
+      throw new BadRequestException(
+        "Renter record is missing contact information.",
+      );
+    }
+
+    const registeredAgent = await this.userRepository.findById(agentId);
 
     const matchedAgentFullName
-      = matchedAgent.fullName?.trim() || matchedAgent.email;
+      = matchedAgent.fullName?.trim() || matchedAgent.email || "the agent";
     const matchedAgentFirstName
       = matchedAgentFullName.split(/\s+/)[0] || matchedAgentFullName;
     const registeredAgentFullName
-      = registeredAgent?.fullName?.trim() || registeredAgent?.email || "Agent";
+      = registeredAgent?.fullName?.trim() || registeredAgent?.email || "your agent";
     const renterFullName
-      = renter?.fullName?.trim() || renter?.email || "the renter";
+      = renter.fullName?.trim() || renter.email || "there";
     const renterFirstName = renterFullName.split(/\s+/)[0] || renterFullName;
-    const renterLastInitial
-      = (() => {
-          const parts = renterFullName.split(/\s+/).filter(Boolean);
-          const last = parts[parts.length - 1] || "";
-          return last.charAt(0).toUpperCase() || "";
-        })();
 
     const trimmedMessage
       = typeof personalMessage === "string" && personalMessage.trim().length > 0
@@ -3898,14 +3891,13 @@ export class PreMarketService {
         : undefined;
 
     const sendResult = await emailService.sendRequestUpdateToMatchedAgent({
-      to: matchedAgent.email,
-      matchedAgentFirstName,
-      matchedAgentFullName,
+      to: renter.email,
+      renterFirstName,
+      renterFullName,
       registeredAgentFullName,
       registeredAgentEmail: registeredAgent?.email || "support@beforelisted.com",
-      renterFullName,
-      renterFirstName,
-      renterLastInitial,
+      matchedAgentFullName,
+      matchedAgentFirstName,
       personalMessage: trimmedMessage,
     });
 
@@ -3913,7 +3905,7 @@ export class PreMarketService {
       logger.error(
         {
           requestId,
-          matchedAgentId,
+          renterId: renter._id?.toString(),
           error: sendResult.error,
         },
         "Failed to send request update email (Email #33)",
@@ -3927,8 +3919,8 @@ export class PreMarketService {
 
     return {
       requestId,
-      matchedAgentId,
-      matchedAgentEmail: matchedAgent.email,
+      renterId: renter._id?.toString() || "",
+      renterEmail: renter.email,
       sentAt: new Date().toISOString(),
     };
   }
@@ -5000,6 +4992,7 @@ export class PreMarketService {
     const recipients
       = await this.getNonRegisteredAgentRecipientsForSharedRequestNotification(
         registeredAgentId,
+        request._id?.toString() || "",
       );
 
     if (recipients.length === 0) {
@@ -5110,10 +5103,23 @@ export class PreMarketService {
 
   private async getNonRegisteredAgentRecipientsForSharedRequestNotification(
     registeredAgentId: string,
+    requestId: string,
   ): Promise<Array<{ userId: string; name: string; email: string }>> {
     const profiles = await this.agentRepository.find({
       isActive: true,
     } as any);
+
+    // Build a set of agent IDs that have been previously unmatched (rejected)
+    // from this request. Those agents must never receive any future email
+    // related to this request, including the initial share-email blast.
+    const grantRecords
+      = await this.grantAccessRepository.findByPreMarketRequestId(requestId);
+    const suppressedAgentIds = new Set<string>(
+      grantRecords
+        .filter(record => record.status === "rejected")
+        .map(record => this.normalizeUserId(record.agentId))
+        .filter((agentId): agentId is string => Boolean(agentId)),
+    );
 
     const candidateAgentIds = Array.from(
       new Set(
@@ -5121,8 +5127,12 @@ export class PreMarketService {
           .filter(profile => profile.emailSubscriptionEnabled !== false)
           .map(profile => this.normalizeUserId(profile.userId))
           .filter(
-            (agentId): agentId is string =>
-              Boolean(agentId) && agentId !== registeredAgentId,
+            (agentId): agentId is string => {
+              if (!agentId) return false;
+              if (agentId === registeredAgentId) return false;
+              if (suppressedAgentIds.has(agentId)) return false;
+              return true;
+            },
           ),
       ),
     );
