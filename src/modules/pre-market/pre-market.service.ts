@@ -1268,7 +1268,7 @@ export class PreMarketService {
       this.buildMatchedAgentByRequestId(matchedScopeRequestIds),
     ]);
 
-    const enrichedData = paginated.data.map((request) => {
+    const enrichedData = await Promise.all(paginated.data.map(async (request) => {
       const grantAccess = request._id
         ? grantAccessByRequestId.get(request._id.toString()) || null
         : null;
@@ -1314,7 +1314,12 @@ export class PreMarketService {
       const isCurrentRegisteredAgent = currentRegisteredAgentId === agentId;
       const matchedByAgent
         = globalMatchedScopeRequestIds.has(requestId)
+          && isCurrentRegisteredAgent
           ? matchedAgentByRequestId.get(requestId) ?? null
+          : null;
+      const registeredAgentForView
+        = globalMatchedScopeRequestIds.has(requestId)
+          ? await this.resolveRegisteredAgentForView(agentId, requestId)
           : null;
       const referralInfo = renterId
         ? renterContext.referralInfoByRenterId.get(renterId) ?? null
@@ -1339,6 +1344,7 @@ export class PreMarketService {
         ...visibleRequest,
         scope: visibleScope,
         matchedByAgent,
+        registeredAgentForView,
         referralAgentId:
             currentRegisteredAgentId
             ?? this.normalizeUserId(
@@ -1363,7 +1369,7 @@ export class PreMarketService {
         ...ownerRepresentationStatus,
         ...registrationDisclosureStatus,
       };
-    });
+    }));
 
     return {
       ...paginated,
@@ -1544,7 +1550,7 @@ export class PreMarketService {
       ),
       this.buildMatchedAgentByRequestId(pagedMatchedVisibleRequestIds),
     ]);
-    const data = pagedCandidates.map((candidate) => {
+    const data = await Promise.all(pagedCandidates.map(async (candidate) => {
       const {
         request,
         requestId,
@@ -1572,7 +1578,12 @@ export class PreMarketService {
       );
       const matchedByAgent
         = globalMatchedScopeRequestIds.has(requestId)
+          && isCurrentRegisteredAgent
           ? matchedAgentByRequestId.get(requestId) ?? null
+          : null;
+      const registeredAgentForView
+        = globalMatchedScopeRequestIds.has(requestId)
+          ? await this.resolveRegisteredAgentForView(agentId, requestId)
           : null;
       const referralInfo = renterId
         ? referralInfoByRenterId.get(renterId) ?? null
@@ -1594,6 +1605,7 @@ export class PreMarketService {
         ...visibleRequest,
         scope: visibleScope,
         matchedByAgent,
+        registeredAgentForView,
         referralAgentId:
             currentRegisteredAgentId
             ?? this.normalizeUserId(
@@ -1628,7 +1640,7 @@ export class PreMarketService {
         ...ownerRepresentationStatus,
         ...registrationDisclosureStatus,
       };
-    });
+    }));
     addPerformanceTiming("enrichmentExecutionTimeMs", nowMs() - enrichmentStartedAt);
 
     return {
@@ -4433,7 +4445,12 @@ export class PreMarketService {
           ),
           matchedByAgent:
             globalMatchedScopeRequestIds.has(requestIdValue)
+              && isRegisteredAgent
               ? await this.resolveMatchedAgentForView(agentId, requestIdValue)
+              : null,
+          registeredAgentForView:
+            globalMatchedScopeRequestIds.has(requestIdValue)
+              ? await this.resolveRegisteredAgentForView(agentId, requestIdValue)
               : null,
           visibility: isRegisteredAgent ? "PRIVATE" : request.visibility,
           referralAgentId:
@@ -5477,7 +5494,11 @@ export class PreMarketService {
           = await this.resolveRegisteredAgentIdForRequest(request);
         const isRegisteredAgent = registeredAgentId === agentId;
         const matchedByAgent = shouldDisplayMatchedScope
+          && isRegisteredAgent
           ? await this.resolveMatchedAgentForView(agentId, requestId)
+          : null;
+        const registeredAgentForView = shouldDisplayMatchedScope
+          ? await this.resolveRegisteredAgentForView(agentId, requestId)
           : null;
         const visibleRequest
           = this.stripOwnerRepresentationMatchesForNonRegisteredAgent(
@@ -5492,6 +5513,7 @@ export class PreMarketService {
           ...visibleRequest,
           scope: responseScope,
           matchedByAgent,
+          registeredAgentForView,
           renterInfo,
           status: accessSummary.grantAccessStatus,
           listingStatus,

@@ -381,9 +381,22 @@ export class PreMarketController {
       : null;
     const shouldDisplayMatchedScope
       = await this.preMarketService.shouldDisplayMatchedScopeForRequest(requestId);
+    const isCurrentRegisteredAgent
+      = await this.preMarketService.isRegisteredAgentForRequest(
+        userId,
+        request as any,
+      );
     const matchedByAgent
       = shouldDisplayMatchedScope
+        && isCurrentRegisteredAgent
         ? await this.preMarketService.resolveMatchedAgentForView(
+          userId,
+          requestId,
+        )
+        : null;
+    const registeredAgentForView
+      = shouldDisplayMatchedScope
+        ? await this.preMarketService.resolveRegisteredAgentForView(
           userId,
           requestId,
         )
@@ -435,6 +448,7 @@ export class PreMarketController {
           ...enriched,
           scope: visibleScope,
           matchedByAgent,
+          registeredAgentForView,
           status: grantAccessStatus,
           listingStatus,
           grantAccessStatus,
@@ -452,6 +466,7 @@ export class PreMarketController {
         ...request,
         scope: visibleScope,
         matchedByAgent,
+        registeredAgentForView,
         renterInfo: includeCreatorRenterInfo
           ? enrichedCreatorRequest?.renterInfo ?? null
           : null,
@@ -501,6 +516,7 @@ export class PreMarketController {
       ...request,
       scope: visibleScope,
       matchedByAgent,
+      registeredAgentForView,
       status: accessSummary.grantAccessStatus,
       listingStatus,
       grantAccessStatus: accessSummary.grantAccessStatus,
@@ -1093,9 +1109,22 @@ export class PreMarketController {
         = await this.preMarketService.shouldDisplayMatchedScopeForRequest(
           requestId,
         );
+      const isCurrentRegisteredAgent
+        = await this.preMarketService.isRegisteredAgentForRequest(
+          agentId,
+          request as any,
+        );
       const matchedByAgent
         = shouldDisplayMatchedScope
+          && isCurrentRegisteredAgent
           ? await this.preMarketService.resolveMatchedAgentForView(
+            agentId,
+            requestId,
+          )
+          : null;
+      const registeredAgentForView
+        = shouldDisplayMatchedScope
+          ? await this.preMarketService.resolveRegisteredAgentForView(
             agentId,
             requestId,
           )
@@ -1135,6 +1164,7 @@ export class PreMarketController {
               ...enriched,
               scope: visibleScope,
               matchedByAgent,
+              registeredAgentForView,
               accessType: "admin-granted",
               status: "matched",
               listingStatus: "matched",
@@ -1234,6 +1264,7 @@ export class PreMarketController {
             ...enriched,
             scope: visibleScope,
             matchedByAgent,
+            registeredAgentForView,
             accessType: paidAccess.status,
             status: "matched",
             listingStatus: "matched",
