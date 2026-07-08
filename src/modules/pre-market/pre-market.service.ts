@@ -507,6 +507,10 @@ export class PreMarketService {
     const registeredAgentId
       = await this.resolveRegisteredAgentIdForRequest(request as IPreMarketRequest);
     if (!registeredAgentId) return null;
+    // Don't show the registered agent their own name on the pill — that
+    // happens when the same agent is both the registered agent for the
+    // renter AND has matched the request.
+    if (registeredAgentId === viewerAgentId) return null;
     const user = await this.userRepository.findById(registeredAgentId);
     if (!user) return null;
     return {
