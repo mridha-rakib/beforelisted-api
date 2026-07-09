@@ -394,7 +394,7 @@ export class PreMarketService {
   }
 
   public async resolveMatchedAgentForView(
-    _viewerAgentId: string | undefined,
+    viewerAgentId: string | undefined,
     requestId: string,
   ): Promise<{ agentId: string; fullName: string } | null> {
     const records = await this.grantAccessRepository.findByPreMarketRequestId(
@@ -409,6 +409,12 @@ export class PreMarketService {
     );
     if (!matchedRecord)
       return null;
+    // Don't surface the viewer's own match on a request they're the matched
+    // agent on — that line is reserved for the registered-agent viewer to see
+    // *who* matched the request.
+    if (viewerAgentId && matchedRecord.agentId.toString() === viewerAgentId) {
+      return null;
+    }
     const user = await this.userRepository.findById(
       matchedRecord.agentId.toString(),
     );
