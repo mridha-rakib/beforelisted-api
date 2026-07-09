@@ -1224,32 +1224,10 @@ export class PreMarketService {
       archiveFilter,
       requestFilter,
     ]);
-    const agentOwnedAccessRecords
-      = await this.grantAccessRepository.findByAgentIdAndStatuses(agentId, [
-        "free",
-        "paid",
-      ]);
-    const excludedRequestIds = Array.from(
-      new Set(
-        agentOwnedAccessRecords
-          .filter(
-            record => record.representation_type !== "owner_representation",
-          )
-          .map(record => record.preMarketRequestId?.toString())
-          .filter((id): id is string => Boolean(id)),
-      ),
+    const paginated = await this.preMarketRepository.findAllWithPagination(
+      query,
+      combinedFilters,
     );
-    const paginated
-      = excludedRequestIds.length > 0
-        ? await this.preMarketRepository.findAllWithPaginationExcludingIds(
-            query,
-            excludedRequestIds,
-            combinedFilters,
-          )
-        : await this.preMarketRepository.findAllWithPagination(
-            query,
-            combinedFilters,
-          );
 
     const requestIds = paginated.data
       .map(request => request._id?.toString())
