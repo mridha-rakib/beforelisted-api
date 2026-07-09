@@ -3843,8 +3843,8 @@ export class PreMarketService {
     personalMessage?: string,
   ): Promise<{
     requestId: string;
-    renterId: string;
-    renterEmail: string;
+    matchedAgentId: string;
+    matchedAgentEmail: string;
     sentAt: string;
   }> {
     const request = await this.getRequestById(requestId);
@@ -3889,13 +3889,13 @@ export class PreMarketService {
     const renter = await this.renterRepository.findRenterWithReferrer(
       request.renterId.toString(),
     );
-    if (!renter?.email) {
-      throw new BadRequestException(
-        "Renter record is missing contact information.",
-      );
-    }
 
     const registeredAgent = await this.userRepository.findById(agentId);
+    if (!matchedAgent.email) {
+      throw new BadRequestException(
+        "Matched agent record is missing contact information.",
+      );
+    }
 
     const matchedAgentFullName
       = matchedAgent.fullName?.trim() || matchedAgent.email || "the agent";
@@ -3906,6 +3906,12 @@ export class PreMarketService {
     const renterFullName
       = renter.fullName?.trim() || renter.email || "there";
     const renterFirstName = renterFullName.split(/\s+/)[0] || renterFullName;
+    const renterLastInitial
+      = (() => {
+          const parts = renterFullName.split(/\s+/).filter(Boolean);
+          const last = parts[parts.length - 1] || "";
+          return last.charAt(0).toUpperCase() || "";
+        })();
 
     const trimmedMessage
       = typeof personalMessage === "string" && personalMessage.trim().length > 0
@@ -3913,9 +3919,10 @@ export class PreMarketService {
         : undefined;
 
     const sendResult = await emailService.sendRequestUpdateToMatchedAgent({
-      to: renter.email,
+      to: matchedAgent.email,
       renterFirstName,
       renterFullName,
+      renterLastInitial,
       registeredAgentFullName,
       registeredAgentEmail: registeredAgent?.email || "support@beforelisted.com",
       matchedAgentFullName,
@@ -3927,7 +3934,7 @@ export class PreMarketService {
       logger.error(
         {
           requestId,
-          renterId: renter._id?.toString(),
+          matchedAgentId,
           error: sendResult.error,
         },
         "Failed to send request update email (Email #33)",
@@ -3941,8 +3948,8 @@ export class PreMarketService {
 
     return {
       requestId,
-      renterId: renter._id?.toString() || "",
-      renterEmail: renter.email,
+      matchedAgentId,
+      matchedAgentEmail: matchedAgent.email,
       sentAt: new Date().toISOString(),
     };
   }

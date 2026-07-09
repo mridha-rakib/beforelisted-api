@@ -336,13 +336,14 @@ export type IAgentUnmatchedFromRenterRequestPayload = {
 };
 
 // ============================================
-// EMAIL TEMPLATE #33 — Request Update (Sent to the renter)
+// EMAIL TEMPLATE #33 — Request Update (Sent to the matched agent)
 // ============================================
 
 export type IRequestUpdateToMatchedAgentPayload = {
   to: string;
   renterFirstName: string;
   renterFullName: string;
+  renterLastInitial: string;
   registeredAgentFullName: string;
   registeredAgentEmail: string;
   matchedAgentFullName: string;

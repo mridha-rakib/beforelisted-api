@@ -2668,8 +2668,8 @@ export class EmailService {
       const personalMessageBlock = payload.personalMessage
         && payload.personalMessage.trim().length > 0
         ? `
-          <p style="margin: 24px 0 16px 0; padding: 16px 20px; background-color: #f5f9ff; border-left: 3px solid #1890FF; color: #222222; font-size: 15px; line-height: 1.6;">
-            <strong style="color: #1890FF;">${payload.registeredAgentFullName}:</strong><br />
+          <p style="margin: 24px 0 8px 0;"><strong>Message from ${payload.registeredAgentFullName}:</strong></p>
+          <p style="margin: 0 0 24px 0; padding: 16px 20px; background-color: #f5f9ff; border-left: 3px solid #1890FF; color: #222222; font-size: 15px; line-height: 1.6;">
             ${payload.personalMessage.trim().replace(/\n/g, "<br />")}
           </p>
         `
@@ -2677,12 +2677,11 @@ export class EmailService {
 
       const bodyHtml = `
         <p>Hi ${payload.unmatchedAgentFirstName},</p>
-        <p>We wanted to let you know that <strong>${payload.registeredAgentFullName}</strong> has ended your match on the rental request for <strong>${payload.renterFullName}</strong>.</p>
-        <p>Going forward, you will no longer have visibility into this request, and any related alerts or messages associated with it will stop.</p>
+        <p>This is an automated notice from BeforeListed.</p>
+        <p>You have been unmatched from <strong>${payload.renterFullName}</strong>'s rental request by the client's registered agent that initially shared it with you. As a result, this request is no longer visible to you in the platform.</p>
         ${personalMessageBlock}
-        <p>If you have any questions, feel free to reach out to <a href="mailto:${payload.registeredAgentEmail}">${payload.registeredAgentEmail}</a> directly.</p>
-        <p>Thanks for being part of the BeforeListed community.</p>
-        <p>— The BeforeListed Team</p>
+        <p>If you have any questions, please reach out to the registered agent directly.</p>
+        <p>Thank you,<br />BeforeListed&trade; Support</p>
       `;
 
       logger.debug(
@@ -2741,35 +2740,34 @@ export class EmailService {
   ): Promise<IEmailResult> {
     try {
       const subject
-        = `Quick update on your rental search from ${payload.registeredAgentFullName} | BeforeListed\u2122`;
+        = `Update Requested by ${payload.registeredAgentFullName} on ${payload.renterFirstName} ${payload.renterLastInitial}. | BeforeListed\u2122`;
 
       const personalMessageBlock = payload.personalMessage
         && payload.personalMessage.trim().length > 0
         ? `
-          <p style="margin: 24px 0 16px 0; padding: 16px 20px; background-color: #f5f9ff; border-left: 3px solid #1890FF; color: #222222; font-size: 15px; line-height: 1.6;">
-            <strong style="color: #1890FF;">${payload.registeredAgentFullName}:</strong><br />
+          <p style="margin: 24px 0 8px 0;"><strong>Message from ${payload.registeredAgentFullName}:</strong></p>
+          <p style="margin: 0 0 24px 0; padding: 16px 20px; background-color: #f5f9ff; border-left: 3px solid #1890FF; color: #222222; font-size: 15px; line-height: 1.6;">
             ${payload.personalMessage.trim().replace(/\n/g, "<br />")}
           </p>
         `
         : "";
 
       const bodyHtml = `
-        <p>Hi ${payload.renterFirstName},</p>
-        <p>Your agent <strong>${payload.registeredAgentFullName}</strong> is checking in on your rental search. They are working with <strong>${payload.matchedAgentFirstName}</strong> on your behalf and want to make sure things are moving forward.</p>
-        <p>If you have any updates, questions, or changes to your search, simply reply directly to <a href="mailto:${payload.registeredAgentEmail}">${payload.registeredAgentEmail}</a> and ${payload.registeredAgentFullName} will follow up with you.</p>
+        <p>Hi ${payload.matchedAgentFirstName},</p>
+        <p><strong>${payload.registeredAgentFullName}</strong>, the registered agent for <strong>${payload.renterFullName}</strong>, is requesting an update on the status of this renter's search.</p>
         ${personalMessageBlock}
-        <p>Thanks for using BeforeListed.</p>
-        <p>— The BeforeListed Team</p>
+        <p>Please reply directly to this email to provide your update.</p>
+        <p>Thank you,<br />BeforeListed&trade; Support</p>
       `;
 
       logger.debug(
-        { email: payload.to, renterName: payload.renterFullName },
-        "Sending request update to renter (Email #33)",
+        { email: payload.to, matchedAgentName: payload.matchedAgentFullName },
+        "Sending request update to matched agent (Email #33)",
       );
 
       const html = this.buildSimpleBeforeListedEmail(bodyHtml);
       const emailOptions: IEmailOptions = {
-        to: { email: payload.to, name: payload.renterFullName },
+        to: { email: payload.to, name: payload.matchedAgentFullName },
         replyTo: payload.registeredAgentEmail || "support@beforelisted.com",
         subject,
         html,
@@ -2796,7 +2794,7 @@ export class EmailService {
           error: error instanceof Error ? error.message : String(error),
           email: payload.to,
         },
-        "Failed to send request update to renter (Email #33)",
+        "Failed to send request update to matched agent (Email #33)",
       );
 
       return {
