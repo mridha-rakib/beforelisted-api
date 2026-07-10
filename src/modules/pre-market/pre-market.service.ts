@@ -428,6 +428,7 @@ export class PreMarketService {
 
   private async buildMatchedAgentByRequestId(
     requestIds: string[],
+    excludedAgentId?: string,
   ): Promise<Map<string, { agentId: string; fullName: string } | null>> {
     const matchedAgentByRequestId = new Map<
       string,
@@ -451,6 +452,8 @@ export class PreMarketService {
       if (
         !requestId
         || matchedRecordByRequestId.has(requestId)
+        || (excludedAgentId
+          && record.agentId?.toString() === excludedAgentId)
         || record.representation_type === "owner_representation"
         || !["free", "paid", "approved"].includes(String(record.status))
       ) {
@@ -1235,7 +1238,7 @@ export class PreMarketService {
 
     const [grantAccessRecords, globalMatchedScopeRequestIds]
       = await Promise.all([
-        this.grantAccessRepository.findByAgentIdAndRequestIds(
+      this.grantAccessRepository.findByAgentIdAndRequestIds(
           agentId,
           requestIds as string[],
         ),
@@ -1253,7 +1256,7 @@ export class PreMarketService {
     ) as string[];
     const [renterContext, matchedAgentByRequestId] = await Promise.all([
       this.buildRequestRenterContext(paginated.data),
-      this.buildMatchedAgentByRequestId(matchedScopeRequestIds),
+      this.buildMatchedAgentByRequestId(matchedScopeRequestIds, agentId),
     ]);
 
     const enrichedData = await Promise.all(paginated.data.map(async (request) => {
@@ -1536,7 +1539,10 @@ export class PreMarketService {
         pagedRequests,
         registeredAgentContext.renterByUserId,
       ),
-      this.buildMatchedAgentByRequestId(pagedMatchedVisibleRequestIds),
+      this.buildMatchedAgentByRequestId(
+        pagedMatchedVisibleRequestIds,
+        agentId,
+      ),
     ]);
     const data = await Promise.all(pagedCandidates.map(async (candidate) => {
       const {
