@@ -5503,9 +5503,16 @@ export class PreMarketService {
     );
 
     const sortedListings = activeListings.sort((a: any, b: any) => {
-      const timeA = matchTimeByRequestId.get(a._id?.toString()) ?? -1;
-      const timeB = matchTimeByRequestId.get(b._id?.toString()) ?? -1;
-      return timeB - timeA;
+      const requestTimeA = new Date(a.createdAt || 0).getTime();
+      const requestTimeB = new Date(b.createdAt || 0).getTime();
+
+      if (requestTimeA !== requestTimeB) {
+        return requestTimeB - requestTimeA;
+      }
+
+      const matchTimeA = matchTimeByRequestId.get(a._id?.toString()) ?? -1;
+      const matchTimeB = matchTimeByRequestId.get(b._id?.toString()) ?? -1;
+      return matchTimeB - matchTimeA;
     });
 
     // Manual pagination - counts ONLY your filtered results
