@@ -403,18 +403,13 @@ export class PreMarketService {
     const matchedRecord = records.find(
       record =>
         record.representation_type !== "owner_representation"
+        && (!viewerAgentId || record.agentId.toString() !== viewerAgentId)
         && (record.status === "free"
           || record.status === "paid"
           || record.status === "approved"),
     );
     if (!matchedRecord)
       return null;
-    // Don't surface the viewer's own match on a request they're the matched
-    // agent on — that line is reserved for the registered-agent viewer to see
-    // *who* matched the request.
-    if (viewerAgentId && matchedRecord.agentId.toString() === viewerAgentId) {
-      return null;
-    }
     const user = await this.userRepository.findById(
       matchedRecord.agentId.toString(),
     );
@@ -1275,6 +1270,10 @@ export class PreMarketService {
         = !isOwnerRepresentationAccess
           && grantAccess
           && (grantAccess.status === "free" || grantAccess.status === "paid");
+      const hasCurrentAgentMatchedAccess
+        = !isOwnerRepresentationAccess
+          && grantAccess
+          && ["free", "paid", "approved"].includes(String(grantAccess.status));
       const isRejected
         = !hasGrantAccess
           && !isOwnerRepresentationAccess
@@ -1286,16 +1285,6 @@ export class PreMarketService {
           && grantAccess.status !== "free"
           && grantAccess.status !== "paid"
           && grantAccess.status !== "rejected";
-      const listingStatus = isMatched
-        ? "matched"
-        : isRejected
-          ? "rejected"
-          : hasRequestedAccess
-            ? "requested"
-            : request.status;
-      const displayStatus = grantAccess && !isOwnerRepresentationAccess
-        ? accessSummary.grantAccessStatus
-        : request.status;
       const visibleScope = this.resolveAgentVisibleScope(
         request.scope,
         globalMatchedScopeRequestIds.has(requestId),
@@ -1308,6 +1297,26 @@ export class PreMarketService {
           && isCurrentRegisteredAgent
           ? matchedAgentByRequestId.get(requestId) ?? null
           : null;
+      const isRegisteredMatchedOut = isCurrentRegisteredAgent
+        && Boolean(matchedByAgent)
+        && !hasCurrentAgentMatchedAccess;
+      const listingStatus = isRegisteredMatchedOut
+        ? request.status
+        : isMatched
+          ? "matched"
+          : isRejected
+            ? "rejected"
+            : hasRequestedAccess
+              ? "requested"
+              : request.status;
+      const displayStatus = isRegisteredMatchedOut
+        ? request.status
+        : grantAccess && !isOwnerRepresentationAccess
+          ? accessSummary.grantAccessStatus
+          : request.status;
+      const responseGrantAccessStatus = isRegisteredMatchedOut
+        ? request.status
+        : accessSummary.grantAccessStatus;
       const registeredAgentForView
         = globalMatchedScopeRequestIds.has(requestId)
           ? await this.resolveRegisteredAgentForView(agentId, requestId)
@@ -1347,7 +1356,7 @@ export class PreMarketService {
         renterName,
         status: displayStatus,
         listingStatus,
-        grantAccessStatus: accessSummary.grantAccessStatus,
+        grantAccessStatus: responseGrantAccessStatus,
         grantAccessId: accessSummary.grantAccessId,
         representation_type: accessSummary.representation_type,
         representationSelectedAt: accessSummary.representationSelectedAt,
@@ -5387,6 +5396,9 @@ export class PreMarketService {
       "Agent fetching approved and matched pre-market listings",
     );
 
+    const requestFilter = this.buildAgentRequestFilter(query);
+    const archiveFilter = this.buildAgentArchiveExclusionFilter(agentId);
+
     // Step 1: Get agent-specific records that should live outside /pre-market/all
     const accessRecords
       = await this.grantAccessRepository.findByAgentIdAndStatuses(agentId, [
@@ -5398,9 +5410,46 @@ export class PreMarketService {
       record => record.representation_type !== "owner_representation",
     );
 
+    const currentAgentReferralRenterIds
+      = await this.getCurrentAgentReferralRenterUserIds(agentId);
+    const registeredAgentRequestClauses: Record<string, any>[] = [
+      { referralAgentId: agentId },
+    ];
+
+    if (currentAgentReferralRenterIds.length > 0) {
+      registeredAgentRequestClauses.push({
+        renterId: { $in: currentAgentReferralRenterIds },
+      });
+    }
+
+    const registeredAgentCandidateListings
+      = await this.preMarketRepository.findAllForMatchSearch(
+        this.mergeFilters([
+          { $or: registeredAgentRequestClauses },
+          archiveFilter,
+          requestFilter,
+        ]),
+      );
+    const registeredAgentCandidateRequestIds = registeredAgentCandidateListings
+      .map((request: any) => request._id?.toString())
+      .filter((id: string | undefined): id is string => Boolean(id));
+    const registeredMatchedAgentByRequestId
+      = await this.buildMatchedAgentByRequestId(
+        registeredAgentCandidateRequestIds,
+        agentId,
+      );
+    const registeredMatchedOutListings
+      = registeredAgentCandidateListings.filter((request: any) => {
+        const requestId = request._id?.toString();
+        return requestId
+          ? Boolean(registeredMatchedAgentByRequestId.get(requestId))
+          : false;
+      });
+
     if (
-      !Array.isArray(renterRepresentationAccessRecords)
-      || renterRepresentationAccessRecords.length === 0
+      (!Array.isArray(renterRepresentationAccessRecords)
+        || renterRepresentationAccessRecords.length === 0)
+      && registeredMatchedOutListings.length === 0
     ) {
       logger.info({ agentId }, "Normal agent has no access yet");
       return PaginationHelper.buildResponse(
@@ -5411,22 +5460,31 @@ export class PreMarketService {
       ) as any;
     }
 
-    const matchTimes = renterRepresentationAccessRecords
-      .map((access) => {
-        const timestamp = new Date(
-          access.updatedAt || access.createdAt || 0,
-        ).getTime();
-        return {
-          requestId: access.preMarketRequestId.toString(),
-          timestamp,
-        };
-      })
-      .sort((a, b) => b.timestamp - a.timestamp);
+    const matchTimeByRequestId = new Map<string, number>();
+    renterRepresentationAccessRecords.forEach((access) => {
+      const requestId = access.preMarketRequestId.toString();
+      const timestamp = new Date(
+        access.updatedAt || access.createdAt || 0,
+      ).getTime();
+      matchTimeByRequestId.set(
+        requestId,
+        Math.max(matchTimeByRequestId.get(requestId) ?? -1, timestamp),
+      );
+    });
+    registeredMatchedOutListings.forEach((request: any) => {
+      const requestId = request._id?.toString();
+      if (!requestId) return;
 
-    const preMarketRequestIds = matchTimes.map(access => access.requestId);
-    const matchTimeByRequestId = new Map(
-      matchTimes.map(access => [access.requestId, access.timestamp]),
-    );
+      const timestamp = new Date(
+        request.updatedAt || request.createdAt || 0,
+      ).getTime();
+      matchTimeByRequestId.set(
+        requestId,
+        Math.max(matchTimeByRequestId.get(requestId) ?? -1, timestamp),
+      );
+    });
+
+    const preMarketRequestIds = Array.from(matchTimeByRequestId.keys());
 
     const listings
       = await this.preMarketRepository.findByIds(preMarketRequestIds);
@@ -5477,13 +5535,6 @@ export class PreMarketService {
           accessRecord || null,
           agent.hasGrantAccess === true,
         );
-        const renterInfo = accessSummary.canSeeRenterInfo
-          ? await this.getRenterInfoForRequest(request.renterId?.toString())
-          : null;
-        const listingStatus
-          = accessSummary.grantAccessStatus === "approved"
-            ? "approved"
-            : "matched";
         const shouldDisplayMatchedScope = globalMatchedScopeRequestIds.has(
           requestId,
         );
@@ -5498,6 +5549,29 @@ export class PreMarketService {
           && isRegisteredAgent
           ? await this.resolveMatchedAgentForView(agentId, requestId)
           : null;
+        const hasCurrentAgentMatchedAccess
+          = accessRecord?.representation_type !== "owner_representation"
+            && ["free", "paid", "approved"].includes(
+              String(accessRecord?.status),
+            );
+        const isRegisteredMatchedOut = isRegisteredAgent
+          && Boolean(matchedByAgent)
+          && !hasCurrentAgentMatchedAccess;
+        const renterInfo
+          = accessSummary.canSeeRenterInfo || isRegisteredAgent
+            ? await this.getRenterInfoForRequest(request.renterId?.toString())
+            : null;
+        const listingStatus = isRegisteredMatchedOut
+          ? request.status
+          : accessSummary.grantAccessStatus === "approved"
+            ? "approved"
+            : "matched";
+        const responseGrantAccessStatus = isRegisteredMatchedOut
+          ? request.status
+          : accessSummary.grantAccessStatus;
+        const responseAccessType = isRegisteredMatchedOut
+          ? "admin-granted"
+          : accessSummary.accessType;
         const registeredAgentForView = shouldDisplayMatchedScope
           ? await this.resolveRegisteredAgentForView(agentId, requestId)
           : null;
@@ -5516,15 +5590,22 @@ export class PreMarketService {
           matchedByAgent,
           registeredAgentForView,
           renterInfo,
-          status: accessSummary.grantAccessStatus,
+          status: responseGrantAccessStatus,
           listingStatus,
-          grantAccessStatus: accessSummary.grantAccessStatus,
+          grantAccessStatus: responseGrantAccessStatus,
           grantAccessId: accessSummary.grantAccessId,
           representation_type: accessSummary.representation_type,
           representationSelectedAt: accessSummary.representationSelectedAt,
-          accessType: accessSummary.accessType,
+          accessType: responseAccessType,
           canRequestAccess: false,
           chargeAmount: accessSummary.chargeAmount ?? null,
+          referralAgentId:
+            registeredAgentId
+            ?? this.normalizeUserId(
+              (request as unknown as {
+                referralAgentId?: string | Types.ObjectId;
+              }).referralAgentId,
+            ),
           ...registrationDisclosureStatus,
           ...archiveStatus,
           ...(accessSummary.showPayment && accessSummary.payment
