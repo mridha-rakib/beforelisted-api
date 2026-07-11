@@ -1222,10 +1222,22 @@ export class PreMarketService {
       archiveFilter,
       requestFilter,
     ]);
-    const paginated = await this.preMarketRepository.findAllWithPagination(
-      query,
-      combinedFilters,
-    );
+    // Exclude any request this agent was previously unmatched from — once
+    // an agent is unmatched they never see that request again, even if it
+    // later becomes Upcoming (M) for a different matched agent.
+    const unmatchedRequestIds
+      = await this.getUnmatchedRequestIdsForAgent(agentId);
+    const paginated
+      = unmatchedRequestIds.length > 0
+        ? await this.preMarketRepository.findAllWithPaginationExcludingIds(
+            query,
+            unmatchedRequestIds,
+            combinedFilters,
+          )
+        : await this.preMarketRepository.findAllWithPagination(
+            query,
+            combinedFilters,
+          );
 
     const requestIds = paginated.data
       .map(request => request._id?.toString())
@@ -2830,6 +2842,26 @@ export class PreMarketService {
     };
   }
 
+  /**
+   * Resolves the list of request IDs that have been explicitly unmatched
+   * (rejected) for this agent. Once an agent is unmatched from a request,
+   * they must never see it again — even if the request later becomes
+   * Upcoming (M) for a different matched agent. The list is consumed by
+   * the listing endpoints via `_id: { $nin: rejectedRequestIds }`.
+   */
+  private async getUnmatchedRequestIdsForAgent(
+    agentId: string,
+  ): Promise<string[]> {
+    const rejectedRecords
+      = await this.grantAccessRepository.findByAgentIdAndStatuses(agentId, [
+        "rejected",
+      ]);
+    const ids = rejectedRecords
+      .map(record => record.preMarketRequestId?.toString())
+      .filter((id): id is string => Boolean(id));
+    return Array.from(new Set(ids));
+  }
+
   private async buildRequestVisibilityFilterForAgent(
     agentId: string,
   ): Promise<Record<string, any>> {
@@ -4009,7 +4041,13 @@ export class PreMarketService {
     await this.preMarketRepository.updateById(requestId, {
       scope: "All Market",
       visibility: "PRIVATE",
-    });
+      // Reset the "shared blast already sent" flag so the next PRIVATE→SHARED
+      // transition after this unmatch behaves like a fresh first share and
+      // fires the share-notification email blast again (to all eligible agents
+      // except opted-out and the just-unmatched one). The service-side gate
+      // treats any falsy value (null/undefined) as "blast not yet sent".
+      sharedVisibilityNotificationSentAt: null,
+    } as any);
 
     let emailSent = false;
     if (
@@ -6734,9 +6772,18 @@ export class PreMarketService {
       agentId,
     );
     const cutoffFilter = this.buildAgentVisibilityFilter(agent);
+    // Exclude any request this admin-granted agent was previously unmatched
+    // from — once an agent is unmatched they never see that request again.
+    const unmatchedRequestIds
+      = await this.getUnmatchedRequestIdsForAgent(agentId);
+    const unmatchedFilter
+      = unmatchedRequestIds.length > 0
+        ? { _id: { $nin: unmatchedRequestIds } }
+        : {};
     const combinedFilters = this.mergeFilters([
       visibilityFilter,
       cutoffFilter,
+      unmatchedFilter,
     ]);
     const paginated = await this.preMarketRepository.findForGrantAccessAgents(
       agentId,
@@ -6910,9 +6957,18 @@ export class PreMarketService {
       agentId,
     );
     const cutoffFilter = this.buildAgentVisibilityFilter(agent);
+    // Exclude any request this normal agent was previously unmatched from —
+    // once an agent is unmatched they never see that request again.
+    const unmatchedRequestIds
+      = await this.getUnmatchedRequestIdsForAgent(agentId);
+    const unmatchedFilter
+      = unmatchedRequestIds.length > 0
+        ? { _id: { $nin: unmatchedRequestIds } }
+        : {};
     const combinedFilters = this.mergeFilters([
       visibilityFilter,
       cutoffFilter,
+      unmatchedFilter,
     ]);
     const paginated
       = await this.preMarketRepository.findAvailableForNormalAgents(
