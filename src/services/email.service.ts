@@ -2216,10 +2216,9 @@ export class EmailService {
     const logoUrl = this.config.logoUrl;
     const usesDesignHeader = Boolean(options.headerTitle);
     const headerTitle = options.headerTitle || "BeforeListed";
-    const headerTitleBlock
-      = options.omitHeaderTitle
-        ? ""
-        : `<h1>${headerTitle}</h1>`;
+    const headerTitleBlock = options.omitHeaderTitle
+      ? ""
+      : `<h1>${headerTitle}</h1>`;
 
     return `
 <!DOCTYPE html>
@@ -2664,7 +2663,7 @@ export class EmailService {
       const bodyHtml = `
         <p>Hi ${payload.unmatchedAgentFirstName},</p>
         <p>This is an automated notice from BeforeListed.</p>
-        <p>You have been unmatched from <strong>${payload.renterFullName}</strong>'s rental request by the client's registered agent that initially shared it with you. As a result, this All Market request is no longer visible for you to match in the platform.</p>
+        <p>You have been unmatched from <strong>${payload.renterFullName}</strong>'s rental request by the client's registered agent, who initially shared it with you. As a result, this All Market request is no longer available for you to match on the platform.</p>
         ${personalMessageBlock}
         <p>If you have any questions, please reach out to the registered agent directly.</p>
         <p>Thank you,<br />BeforeListed&trade; Support</p>

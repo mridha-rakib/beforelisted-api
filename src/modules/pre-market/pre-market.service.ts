@@ -3894,7 +3894,11 @@ export class PreMarketService {
         record.representation_type !== "owner_representation"
         && (record.status === "free"
           || record.status === "paid"
-          || record.status === "approved"),
+          || record.status === "approved")
+        // The Request Update email must only be sent to a matched agent who
+        // is NOT the registered agent themselves — i.e. a separate party who
+        // took on the renter. The registered agent doesn't need a self-check-in.
+        && record.agentId.toString() !== registeredAgentId,
     );
 
     if (!matchedRecord) {
