@@ -1313,20 +1313,101 @@ export class PreMarketController {
     async (req: Request, res: Response) => {
       const validated = await zParse(agentBulkMatchRequestSchema, req);
       const agentId = req.user!.userId;
+      const representationType
+        = validated.body.representation_type ?? "renter_representation";
+      const opportunityDetails = validated.body.opportunityDetails;
+      const additionalOpportunity = validated.body.additionalOpportunity;
+      const matchContext = validated.body.matchContext;
 
-      const result = await this.preMarketService.matchRequestsForAgent(
-        agentId,
-        validated.body.requestIds,
-        validated.body.representation_type ?? "renter_representation",
-        validated.body.opportunityDetails,
-        validated.body.additionalOpportunity,
-        validated.body.matchContext,
+      const agent = await this.agentRepository.findByUserId(agentId);
+      if (!agent) {
+        throw new ForbiddenException("Agent profile not found");
+      }
+
+      // GRANT-ACCESS AGENTS: auto-match (retain exception)
+      if (agent.hasGrantAccess) {
+        const result = await this.preMarketService.matchRequestsForAgent(
+          agentId,
+          validated.body.requestIds,
+          representationType,
+          opportunityDetails,
+          additionalOpportunity,
+          matchContext,
+        );
+        return ApiResponse.success(
+          res,
+          result,
+          "Selected requests matched",
+        );
+      }
+
+      // ALL OTHER AGENTS (registered referral, normal, owner-representation):
+      // create a pending grant-access record per request and wait for admin approval.
+      const requestIds = Array.from(
+        new Set((validated.body.requestIds || []).filter(Boolean)),
+      );
+      const matched: Array<{ requestId: string; result: any }> = [];
+      const failed: Array<{ requestId: string; message: string }> = [];
+
+      for (const requestId of requestIds) {
+        try {
+          const request = await this.preMarketService.getRequestById(requestId);
+          if (!request) {
+            failed.push({
+              requestId,
+              message: "Pre-market request not found",
+            });
+            continue;
+          }
+
+          const isRegisteredAgent
+            = await this.preMarketService.isRegisteredAgentForRequest(
+              agentId,
+              request as any,
+            );
+
+          this.preMarketService.ensureAgentCanViewRequest(agent, request as any);
+          await this.preMarketService.ensureAgentCanViewRequestVisibility(
+            agentId,
+            request as any,
+          );
+
+          if (isRegisteredAgent) {
+            await this.preMarketService.ensureRegisteredAgentCanMatchRequest(
+              agentId,
+              request as any,
+            );
+          }
+
+          const pendingAccess = await this.grantAccessService.requestAccess(
+            agentId,
+            requestId,
+            representationType,
+            opportunityDetails,
+          );
+
+          matched.push({ requestId, result: pendingAccess });
+        }
+        catch (error) {
+          failed.push({
+            requestId,
+            message:
+              error instanceof Error
+                ? error.message
+                : "Unable to match this request",
+          });
+        }
+      }
+
+      logger.info(
+        { agentId, requestCount: requestIds.length, matchedCount: matched.length },
+        "Bulk match request submitted; awaiting admin approval",
       );
 
       return ApiResponse.success(
         res,
-        result,
-        "Selected requests matched",
+        { matched, failed },
+        "Match requests pending admin approval",
       );
     },
   );
@@ -1343,72 +1424,74 @@ export class PreMarketController {
       throw new ForbiddenException("Agent profile not found");
     }
 
-    if (!agent.hasGrantAccess && representationType !== "owner_representation") {
-      const request = await this.preMarketService.getRequestById(requestId);
-      if (!request) {
-        throw new NotFoundException("Pre-market request not found");
-      }
+    // GRANT-ACCESS AGENTS: auto-match (retain exception)
+    if (agent.hasGrantAccess) {
+      const matchRecord = await this.preMarketService.matchRequestForAgent(
+        agentId,
+        requestId,
+        representationType,
+        validated.body.opportunityDetails,
+        validated.body.additionalOpportunity,
+      );
 
-      const isRegisteredAgent
-        = await this.preMarketService.isRegisteredAgentForRequest(
-          agentId,
-          request as any,
-        );
+      logger.info(
+        { agentId, requestId },
+        "Grant-access agent matched pre-market request",
+      );
 
-      if (!isRegisteredAgent) {
-        this.preMarketService.ensureAgentCanViewRequest(agent, request as any);
-        await this.preMarketService.ensureAgentCanViewRequestVisibility(
-          agentId,
-          request as any,
-        );
-        await this.preMarketService.ensureRegisteredAgentCanMatchRequest(
-          agentId,
-          request as any,
-        );
+      return ApiResponse.success(
+        res,
+        matchRecord,
+        representationType === "owner_representation"
+          ? "Owner representation selection saved"
+          : validated.body.additionalOpportunity
+            ? "Additional opportunity sent"
+            : "Request was moved to the Renter Matches section",
+      );
+    }
 
-        const pendingAccess = await this.grantAccessService.requestAccess(
-          agentId,
-          requestId,
-          representationType,
-          validated.body.opportunityDetails,
-        );
+    // ALL OTHER AGENTS (registered referral, normal, owner-representation):
+    // create a pending grant-access record and wait for admin approval.
+    const request = await this.preMarketService.getRequestById(requestId);
+    if (!request) {
+      throw new NotFoundException("Pre-market request not found");
+    }
 
-        logger.info(
-          { agentId, requestId, grantAccessId: pendingAccess._id },
-          "Agent without grant access attempted match; request sent for admin approval",
-        );
+    const isRegisteredAgent
+      = await this.preMarketService.isRegisteredAgentForRequest(
+        agentId,
+        request as any,
+      );
 
-        return ApiResponse.success(
-          res,
-          pendingAccess,
-          "Match request pending admin approval",
-        );
-      }
+    this.preMarketService.ensureAgentCanViewRequest(agent, request as any);
+    await this.preMarketService.ensureAgentCanViewRequestVisibility(
+      agentId,
+      request as any,
+    );
 
+    if (isRegisteredAgent) {
       await this.preMarketService.ensureRegisteredAgentCanMatchRequest(
         agentId,
         request as any,
       );
     }
 
-    const matchRecord = await this.preMarketService.matchRequestForAgent(
+    const pendingAccess = await this.grantAccessService.requestAccess(
       agentId,
       requestId,
       representationType,
       validated.body.opportunityDetails,
-      validated.body.additionalOpportunity,
     );
 
-    logger.info({ agentId, requestId }, "Agent matched pre-market request");
+    logger.info(
+      { agentId, requestId, grantAccessId: pendingAccess._id },
+      "Match request created; awaiting admin approval",
+    );
 
-    ApiResponse.success(
+    return ApiResponse.success(
       res,
-      matchRecord,
-      representationType === "owner_representation"
-        ? "Owner representation selection saved"
-        : validated.body.additionalOpportunity
-          ? "Additional opportunity sent"
-          : "Request was moved to the Renter Matches section",
+      pendingAccess,
+      "Match request pending admin approval",
     );
   });
 

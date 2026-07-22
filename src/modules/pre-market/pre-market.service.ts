@@ -5841,62 +5841,9 @@ export class PreMarketService {
     }
 
     if (representationType === "owner_representation") {
-      const alreadySelected = this.hasOwnerRepresentationMatchForAgent(
-        listingActivationCheck as any,
-        agentId,
+      throw new ForbiddenException(
+        "Owner-representation requests require admin approval. Use the request access flow.",
       );
-      const agentSnapshot
-        = await this.resolveOwnerRepresentationAgentDetails(agentId);
-      const updatedRequest = alreadySelected
-        ? null
-        : await this.preMarketRepository.addOwnerRepresentationMatch(
-            requestId,
-            agentId,
-            agentSnapshot,
-            normalizedOpportunityDetails,
-          );
-      const currentRequest = updatedRequest || listingActivationCheck;
-      const registeredAgentId
-        = await this.resolveRegisteredAgentIdForRequest(currentRequest as any);
-      const registeredAgent = await this.getArchiveAgentInfo(registeredAgentId);
-      const ownerMatches = Array.isArray(
-        (currentRequest as any)?.ownerRepresentationMatches,
-      )
-        ? (currentRequest as any).ownerRepresentationMatches
-        : [];
-      const selectedMatch = ownerMatches.find((match: any) => {
-        return this.normalizeUserId(match?.agentId) === agentId;
-      });
-
-      if (!alreadySelected && updatedRequest) {
-        this.notifyRegisteredAgentAboutOwnerRepresentationMatch(
-          agentId,
-          currentRequest as any,
-          normalizedOpportunityDetails,
-          matchSummary,
-        ).catch((error) => {
-          logger.error(
-            { error, requestId, agentId },
-            "Failed to send owner representation match acknowledgment (non-blocking)",
-          );
-        });
-      }
-
-      return {
-        requestId,
-        matchedAgentId: agentId,
-        representation_type: "owner_representation",
-        representationSelectedAt: selectedMatch?.selectedAt ?? new Date(),
-        ownerRepresentationSelected: true,
-        registeredAgentInfo: {
-          id: registeredAgent.id,
-          fullName: registeredAgent.fullName,
-          title: registeredAgent.title,
-          brokerage: registeredAgent.brokerage,
-          email: registeredAgent.email,
-          phoneNumber: registeredAgent.phoneNumber,
-        },
-      };
     }
 
     const existing = await this.grantAccessRepository.findByAgentAndRequest(
