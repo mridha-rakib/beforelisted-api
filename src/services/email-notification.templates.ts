@@ -2373,7 +2373,7 @@ export function nonRegisteredAgentRequestSubmissionNotificationTemplate(
   const safeLocation = escapeHtml(location || "N/A");
   const safeFeatures = escapeHtml(features || "Not specified");
   const safePreferencesByOrder = escapeHtml(
-    preferencesByOrder || "Not specified",
+    limitPreferencesByOrder(preferencesByOrder),
   );
   const safeSubmittedAt = escapeHtml(submittedAt || "N/A");
 
