@@ -386,6 +386,28 @@ export class PreMarketService {
     return isMatched ? "Matched" : "Open";
   }
 
+  private hasAgentMatchedAccess(
+    grantAccess: IGrantAccessRequest | null | undefined,
+  ): boolean {
+    return Boolean(
+      grantAccess
+      && grantAccess.representation_type !== "owner_representation"
+      && ["approved", "free", "paid"].includes(String(grantAccess.status)),
+    );
+  }
+
+  private hasAgentMatchedStatus(
+    grantAccess: IGrantAccessRequest | null | undefined,
+  ): boolean {
+    return Boolean(
+      grantAccess
+      && grantAccess.representation_type !== "owner_representation"
+      && ["pending", "approved", "free", "paid"].includes(
+        String(grantAccess.status),
+      ),
+    );
+  }
+
   public resolveAgentVisibleScope(
     scope: string | undefined,
     shouldDisplayMatchedScope: boolean,
@@ -1287,9 +1309,9 @@ export class PreMarketService {
           && grantAccess
           && (grantAccess.status === "free" || grantAccess.status === "paid");
       const hasCurrentAgentMatchedAccess
-        = !isOwnerRepresentationAccess
-          && grantAccess
-          && ["free", "paid", "approved"].includes(String(grantAccess.status));
+        = this.hasAgentMatchedAccess(grantAccess);
+      const isAlreadyMatchedByAgent
+        = this.hasAgentMatchedStatus(grantAccess);
       const isRejected
         = !hasGrantAccess
           && !isOwnerRepresentationAccess
@@ -1326,7 +1348,7 @@ export class PreMarketService {
               ? "requested"
               : request.status;
       const displayStatus = this.resolveAgentResponseStatus(
-        hasCurrentAgentMatchedAccess,
+        isAlreadyMatchedByAgent,
       );
       const responseGrantAccessStatus = isRegisteredMatchedOut
         ? request.status
@@ -1369,6 +1391,7 @@ export class PreMarketService {
         referralInfo,
         renterName,
         status: displayStatus,
+        alreadyMatchedByAgent: isAlreadyMatchedByAgent,
         listingStatus,
         grantAccessStatus: responseGrantAccessStatus,
         grantAccessId: accessSummary.grantAccessId,
@@ -5605,10 +5628,9 @@ export class PreMarketService {
           ? await this.resolveMatchedAgentForView(agentId, requestId)
           : null;
         const hasCurrentAgentMatchedAccess
-          = accessRecord?.representation_type !== "owner_representation"
-            && ["free", "paid", "approved"].includes(
-              String(accessRecord?.status),
-            );
+          = this.hasAgentMatchedAccess(accessRecord);
+        const isAlreadyMatchedByAgent
+          = this.hasAgentMatchedStatus(accessRecord);
         const isRegisteredMatchedOut = isRegisteredAgent
           && Boolean(matchedByAgent)
           && !hasCurrentAgentMatchedAccess;
@@ -5621,6 +5643,9 @@ export class PreMarketService {
           : accessSummary.grantAccessStatus === "approved"
             ? "approved"
             : "matched";
+        const responseStatus = this.resolveAgentResponseStatus(
+          isAlreadyMatchedByAgent,
+        );
         const responseGrantAccessStatus = isRegisteredMatchedOut
           ? request.status
           : accessSummary.grantAccessStatus;
@@ -5645,7 +5670,8 @@ export class PreMarketService {
           matchedByAgent,
           registeredAgentForView,
           renterInfo,
-          status: responseGrantAccessStatus,
+          status: responseStatus,
+          alreadyMatchedByAgent: isAlreadyMatchedByAgent,
           listingStatus,
           grantAccessStatus: responseGrantAccessStatus,
           grantAccessId: accessSummary.grantAccessId,

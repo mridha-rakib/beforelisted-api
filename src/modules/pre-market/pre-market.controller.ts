@@ -330,14 +330,10 @@ export class PreMarketController {
         req.params.requestId,
         true,
       );
-      const normalizedResponse
-        = response?.status === "free"
-          ? { ...response, status: "Available" }
-          : response;
 
       ApiResponse.success(
         res,
-        normalizedResponse,
+        response,
         "Pre-market request details",
       );
     },
@@ -423,6 +419,14 @@ export class PreMarketController {
         userId,
         requestId,
       );
+      const isAlreadyMatchedByAgent = Boolean(
+        matchRecord
+        && matchRecord.representation_type !== "owner_representation"
+        && ["pending", "approved", "free", "paid"].includes(
+          String(matchRecord.status),
+        ),
+      );
+      const displayStatus = isAlreadyMatchedByAgent ? "Matched" : "Open";
       const listingStatus = matchRecord ? "matched" : request.status;
       const grantAccessStatus = "free";
       const visibleScope = this.preMarketService.resolveAgentVisibleScope(
@@ -449,7 +453,8 @@ export class PreMarketController {
           scope: visibleScope,
           matchedByAgent,
           registeredAgentForView,
-          status: grantAccessStatus,
+          status: displayStatus,
+          alreadyMatchedByAgent: isAlreadyMatchedByAgent,
           listingStatus,
           grantAccessStatus,
           grantAccessId: matchRecord._id?.toString(),
@@ -470,7 +475,8 @@ export class PreMarketController {
         renterInfo: includeCreatorRenterInfo
           ? enrichedCreatorRequest?.renterInfo ?? null
           : null,
-        status: grantAccessStatus,
+        status: displayStatus,
+        alreadyMatchedByAgent: isAlreadyMatchedByAgent,
         listingStatus,
         grantAccessStatus,
         accessType: "none",
@@ -487,6 +493,13 @@ export class PreMarketController {
       userId,
       requestId,
     );
+    const isAlreadyMatchedByAgent = Boolean(
+      accessSummary.representation_type !== "owner_representation"
+      && ["pending", "approved", "free", "paid"].includes(
+        String(accessSummary.grantAccessStatus),
+      ),
+    );
+    const displayStatus = isAlreadyMatchedByAgent ? "Matched" : "Open";
     const isRejected = accessSummary.grantAccessStatus === "rejected";
     const hasRequestedAccess
       = accessSummary.grantAccessStatus !== "Available"
@@ -517,7 +530,8 @@ export class PreMarketController {
       scope: visibleScope,
       matchedByAgent,
       registeredAgentForView,
-      status: accessSummary.grantAccessStatus,
+      status: displayStatus,
+      alreadyMatchedByAgent: isAlreadyMatchedByAgent,
       listingStatus,
       grantAccessStatus: accessSummary.grantAccessStatus,
       grantAccessId: accessSummary.grantAccessId,
