@@ -382,6 +382,10 @@ export class PreMarketService {
     };
   }
 
+  private resolveAgentResponseStatus(isMatched: boolean): "Open" | "Matched" {
+    return isMatched ? "Matched" : "Open";
+  }
+
   public resolveAgentVisibleScope(
     scope: string | undefined,
     shouldDisplayMatchedScope: boolean,
@@ -1321,11 +1325,9 @@ export class PreMarketService {
             : hasRequestedAccess
               ? "requested"
               : request.status;
-      const displayStatus = isRegisteredMatchedOut
-        ? request.status
-        : grantAccess && !isOwnerRepresentationAccess
-          ? accessSummary.grantAccessStatus
-          : request.status;
+      const displayStatus = this.resolveAgentResponseStatus(
+        hasCurrentAgentMatchedAccess,
+      );
       const responseGrantAccessStatus = isRegisteredMatchedOut
         ? request.status
         : accessSummary.grantAccessStatus;
@@ -1584,9 +1586,9 @@ export class PreMarketService {
       const listingStatus = isAlreadyMatchedByAgent
         ? "matched"
         : request.status;
-      const displayStatus = isAlreadyMatchedByAgent
-        ? accessSummary.grantAccessStatus
-        : request.status;
+      const displayStatus = this.resolveAgentResponseStatus(
+        isAlreadyMatchedByAgent,
+      );
       const visibleScope = this.resolveAgentVisibleScope(
         request.scope,
         globalMatchedScopeRequestIds.has(requestId),
@@ -4513,7 +4515,11 @@ export class PreMarketService {
               }).referralAgentId,
             ),
           referralInfo,
-          status: accessSummary.grantAccessStatus || request.status,
+          status: this.resolveAgentResponseStatus(
+            ["approved", "free", "paid"].includes(
+              accessSummary.grantAccessStatus,
+            ),
+          ),
           listingStatus: grantAccess ? "matched" : request.status,
           grantAccessStatus: accessSummary.grantAccessStatus,
           grantAccessId: accessSummary.grantAccessId,
