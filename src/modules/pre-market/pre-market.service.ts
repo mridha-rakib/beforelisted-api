@@ -5643,9 +5643,7 @@ export class PreMarketService {
           : accessSummary.grantAccessStatus === "approved"
             ? "approved"
             : "matched";
-        const responseStatus = this.resolveAgentResponseStatus(
-          isAlreadyMatchedByAgent,
-        );
+        const responseStatus = "Matched";
         const responseGrantAccessStatus = isRegisteredMatchedOut
           ? request.status
           : accessSummary.grantAccessStatus;
