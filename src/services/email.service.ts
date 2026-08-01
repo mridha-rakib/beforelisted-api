@@ -1114,6 +1114,17 @@ export class EmailService {
         payload.updatedFields,
         payload.updatedFieldValues,
         payload.updatedAt,
+        payload.marketScope,
+        payload.minPrice,
+        payload.maxPrice,
+        payload.earliestDate,
+        payload.latestDate,
+        payload.bedrooms,
+        payload.bathrooms,
+        payload.location,
+        payload.features,
+        payload.preferencesByOrder,
+        payload.submittedAt,
         this.config.logoUrl,
         this.config.brandColor,
       );
@@ -1122,7 +1133,7 @@ export class EmailService {
         to: { email: payload.to, name: payload.agentName },
         cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
         replyTo: "support@beforelisted.com",
-        subject: "Renter request updated | BeforeListed\u2122",
+        subject: "Request details updated | BeforeListed\u2122",
         html,
       };
 

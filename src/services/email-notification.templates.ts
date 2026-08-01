@@ -2154,9 +2154,20 @@ export function renterRequestUpdatedNotificationTemplate(
   agentName: string,
   requestId: string,
   renterName: string,
-  updatedFields: string[],
-  updatedFieldValues: string[],
+  _updatedFields: string[],
+  _updatedFieldValues: string[],
   updatedAt: string,
+  marketScope: string,
+  minPrice: string,
+  maxPrice: string,
+  earliestDate: string,
+  latestDate: string,
+  bedrooms: string,
+  bathrooms: string,
+  location: string,
+  features: string,
+  preferencesByOrder: string,
+  submittedAt: string,
   logoUrl?: string,
   brandColor: string = "#1890FF",
 ): string {
@@ -2165,14 +2176,19 @@ export function renterRequestUpdatedNotificationTemplate(
   const safeFirstName = escapeHtml(firstName);
   const safeRequestId = escapeHtml(requestId || "N/A");
   const safeRenterName = escapeHtml(renterName || "N/A");
-  const safeFields = updatedFields.map(field => escapeHtml(field));
-  const safeFieldValues = updatedFieldValues.map(value => escapeHtml(value));
-  const safeChangedFieldsSummary
-    = safeFields.length > 0 ? safeFields.join(", ") : "Not specified";
-  const safeChangedFieldsNewValues
-    = safeFieldValues.length > 0 ? safeFieldValues.join(", ") : "Not specified";
-  const safeUpdatedFieldsSummary
-    = `${safeChangedFieldsSummary} - ${safeChangedFieldsNewValues}`;
+  const safeMarketScope = escapeHtml(marketScope || "N/A");
+  const safeMinPrice = escapeHtml(minPrice || "N/A");
+  const safeMaxPrice = escapeHtml(maxPrice || "N/A");
+  const safeEarliestDate = escapeHtml(earliestDate || "N/A");
+  const safeLatestDate = escapeHtml(latestDate || "N/A");
+  const safeBedrooms = escapeHtml(bedrooms || "N/A");
+  const safeBathrooms = escapeHtml(bathrooms || "N/A");
+  const safeLocation = escapeHtml(location || "N/A");
+  const safeFeatures = escapeHtml(features || "Not specified");
+  const safePreferencesByOrder = escapeHtml(
+    limitPreferencesByOrder(preferencesByOrder),
+  );
+  const safeSubmittedAt = escapeHtml(submittedAt || "N/A");
   const safeUpdatedAt = escapeHtml(updatedAt || "N/A");
 
   return `
@@ -2181,7 +2197,7 @@ export function renterRequestUpdatedNotificationTemplate(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Renter request updated | BeforeListed&trade;</title>
+    <title>Request details updated | BeforeListed&trade;</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -2234,8 +2250,6 @@ export function renterRequestUpdatedNotificationTemplate(
         }
         .details strong {
             color: ${brandColor};
-            display: inline-block;
-            min-width: 120px;
         }
         .footer {
             background-color: #f9f9f9;
@@ -2254,7 +2268,7 @@ export function renterRequestUpdatedNotificationTemplate(
     <div class="container">
         <div class="header">
             ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
-            <h1>Renter request updated</h1>
+            <h1>Request details updated</h1>
         </div>
 
         <div class="content">
@@ -2262,25 +2276,21 @@ export function renterRequestUpdatedNotificationTemplate(
                 Hi ${safeFirstName},
             </div>
 
-            <p>A renter request associated with you has been updated.</p>
+            <p>A renter request associated with you has been updated. The current request details are below.</p>
 
             <div class="details">
-                <p>
-                    <strong>Request ID:</strong>
-                    ${safeRequestId}
-                </p>
-                <p>
-                    <strong>Renter name:</strong>
-                    ${safeRenterName}
-                </p>
-                <p>
-                    <strong>Updated fields:</strong>
-                    ${safeUpdatedFieldsSummary}
-                </p>
-                <p>
-                    <strong>Updated on:</strong>
-                    ${safeUpdatedAt}
-                </p>
+                <p><strong>${safeRenterName} Request details:</strong></p>
+                <p><strong>Request ID:</strong><br>${safeRequestId}</p>
+                <p><strong>Market Scope:</strong><br>${safeMarketScope}</p>
+                <p><strong>Budget:</strong><br>${safeMinPrice} - ${safeMaxPrice}</p>
+                <p><strong>Move Date:</strong><br>${safeEarliestDate} - ${safeLatestDate}</p>
+                <p><strong>Bedrooms:</strong><br>${safeBedrooms}</p>
+                <p><strong>Bathrooms:</strong><br>${safeBathrooms}</p>
+                <p><strong>Location:</strong><br>${safeLocation}</p>
+                <p><strong>Features:</strong><br>${safeFeatures}</p>
+                <p><strong>Preferences By Order:</strong><br>${safePreferencesByOrder}</p>
+                <p><strong>Submitted:</strong><br>${safeSubmittedAt}</p>
+                <p><strong>Updated on:</strong><br>${safeUpdatedAt}</p>
             </div>
 
             <p>Please review the updated request details in the Agent Dashboard before continuing outreach.</p>

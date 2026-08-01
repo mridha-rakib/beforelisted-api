@@ -47,6 +47,17 @@ export type IRenterRequestUpdatedNotificationPayload = {
   updatedFields: string[];
   updatedFieldValues: string[];
   updatedAt: string;
+  marketScope: string;
+  minPrice: string;
+  maxPrice: string;
+  earliestDate: string;
+  latestDate: string;
+  bedrooms: string;
+  bathrooms: string;
+  location: string;
+  features: string;
+  preferencesByOrder: string;
+  submittedAt: string;
   cc?: string[];
 };
 

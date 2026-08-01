@@ -144,6 +144,7 @@ export const updatePreMarketRequestSchema = z.object({
           thirdPartyGuarantor: z.boolean().optional(),
         })
         .optional(),
+      preferences: z.array(z.string().trim()).optional(),
     })
     .refine(
       (data) => {
