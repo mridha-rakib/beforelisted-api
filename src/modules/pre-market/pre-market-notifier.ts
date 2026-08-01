@@ -278,33 +278,16 @@ export class PreMarketNotifier {
       const formattedUpdatedAt = this.formatEasternTime(updatedAt);
       const requestId
         = preMarketRequest.requestId || preMarketRequest._id?.toString() || "";
-      const normalizedFields
-        = changedFields.length > 0 ? changedFields : ["Request details updated"];
-      const normalizedFieldValues
-        = changedFieldNewValues.length > 0
-          ? changedFieldNewValues
-          : ["Not specified"];
-      const minPrice = this.formatCurrency(preMarketRequest.priceRange?.min);
-      const maxPrice = this.formatCurrency(preMarketRequest.priceRange?.max);
-      const earliestDate = this.formatDate(
-        preMarketRequest.movingDateRange?.earliest,
-      );
-      const latestDate = this.formatDate(
-        preMarketRequest.movingDateRange?.latest,
-      );
-      const bedrooms = this.formatList(preMarketRequest.bedrooms, "Any");
-      const bathrooms = this.formatList(preMarketRequest.bathrooms, "Any");
-      const location = this.formatLocationWithNeighborhoods(
-        preMarketRequest.locations,
-      );
-      const features = this.formatRequestFeatures(preMarketRequest);
-      const preferencesByOrder = this.formatList(
-        preMarketRequest.preferences,
-        "Not specified",
-      );
-      const submittedAt = this.formatEasternTime(
-        new Date(preMarketRequest.createdAt ?? Date.now()),
-      );
+      if (changedFields.length === 0 || changedFieldNewValues.length === 0) {
+        logger.info(
+          { requestId },
+          "Skipping request update notification because no updated fields were detected",
+        );
+        return;
+      }
+
+      const normalizedFields = changedFields;
+      const normalizedFieldValues = changedFieldNewValues;
 
       for (const recipient of recipients) {
         const emailResult
@@ -316,17 +299,6 @@ export class PreMarketNotifier {
             updatedFields: normalizedFields,
             updatedFieldValues: normalizedFieldValues,
             updatedAt: formattedUpdatedAt,
-            marketScope: preMarketRequest.scope || "Upcoming",
-            minPrice,
-            maxPrice,
-            earliestDate,
-            latestDate,
-            bedrooms,
-            bathrooms,
-            location,
-            features,
-            preferencesByOrder,
-            submittedAt,
           });
 
         if (emailResult.success) {

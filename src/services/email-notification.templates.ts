@@ -2154,20 +2154,9 @@ export function renterRequestUpdatedNotificationTemplate(
   agentName: string,
   requestId: string,
   renterName: string,
-  _updatedFields: string[],
-  _updatedFieldValues: string[],
+  updatedFields: string[],
+  updatedFieldValues: string[],
   updatedAt: string,
-  marketScope: string,
-  minPrice: string,
-  maxPrice: string,
-  earliestDate: string,
-  latestDate: string,
-  bedrooms: string,
-  bathrooms: string,
-  location: string,
-  features: string,
-  preferencesByOrder: string,
-  submittedAt: string,
   logoUrl?: string,
   brandColor: string = "#1890FF",
 ): string {
@@ -2176,19 +2165,16 @@ export function renterRequestUpdatedNotificationTemplate(
   const safeFirstName = escapeHtml(firstName);
   const safeRequestId = escapeHtml(requestId || "N/A");
   const safeRenterName = escapeHtml(renterName || "N/A");
-  const safeMarketScope = escapeHtml(marketScope || "N/A");
-  const safeMinPrice = escapeHtml(minPrice || "N/A");
-  const safeMaxPrice = escapeHtml(maxPrice || "N/A");
-  const safeEarliestDate = escapeHtml(earliestDate || "N/A");
-  const safeLatestDate = escapeHtml(latestDate || "N/A");
-  const safeBedrooms = escapeHtml(bedrooms || "N/A");
-  const safeBathrooms = escapeHtml(bathrooms || "N/A");
-  const safeLocation = escapeHtml(location || "N/A");
-  const safeFeatures = escapeHtml(features || "Not specified");
-  const safePreferencesByOrder = escapeHtml(
-    limitPreferencesByOrder(preferencesByOrder),
+  const safeUpdatedFields = updatedFields.map(field => escapeHtml(field));
+  const safeUpdatedFieldValues = updatedFieldValues.map(value =>
+    escapeHtml(value && value !== "Not specified" ? value : "None"),
   );
-  const safeSubmittedAt = escapeHtml(submittedAt || "N/A");
+  const updatedFieldsHtml = safeUpdatedFields
+    .map((field, index) => {
+      const value = safeUpdatedFieldValues[index] || "Updated";
+      return `<p><strong>Updated ${field}:</strong><br>${value}</p>`;
+    })
+    .join("");
   const safeUpdatedAt = escapeHtml(updatedAt || "N/A");
 
   return `
@@ -2276,20 +2262,12 @@ export function renterRequestUpdatedNotificationTemplate(
                 Hi ${safeFirstName},
             </div>
 
-            <p>A renter request associated with you has been updated. The current request details are below.</p>
+            <p>A renter request associated with you has been updated.</p>
 
             <div class="details">
-                <p><strong>${safeRenterName} Request details:</strong></p>
                 <p><strong>Request ID:</strong><br>${safeRequestId}</p>
-                <p><strong>Market Scope:</strong><br>${safeMarketScope}</p>
-                <p><strong>Budget:</strong><br>${safeMinPrice} - ${safeMaxPrice}</p>
-                <p><strong>Move Date:</strong><br>${safeEarliestDate} - ${safeLatestDate}</p>
-                <p><strong>Bedrooms:</strong><br>${safeBedrooms}</p>
-                <p><strong>Bathrooms:</strong><br>${safeBathrooms}</p>
-                <p><strong>Location:</strong><br>${safeLocation}</p>
-                <p><strong>Features:</strong><br>${safeFeatures}</p>
-                <p><strong>Preferences By Order:</strong><br>${safePreferencesByOrder}</p>
-                <p><strong>Submitted:</strong><br>${safeSubmittedAt}</p>
+                <p><strong>Renter name:</strong><br>${safeRenterName}</p>
+                ${updatedFieldsHtml}
                 <p><strong>Updated on:</strong><br>${safeUpdatedAt}</p>
             </div>
 

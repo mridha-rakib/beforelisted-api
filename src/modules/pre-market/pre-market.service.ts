@@ -3068,16 +3068,16 @@ export class PreMarketService {
     payload: Record<string, unknown>,
   ): { summary: string[]; newValues: string[] } {
     const fieldLabels: Record<string, string> = {
-      movingDateRange: "Move date range",
-      priceRange: "Price range",
-      locations: "Locations",
+      movingDateRange: "Move Date",
+      priceRange: "Budget",
+      locations: "Location",
       bedrooms: "Bedrooms",
       bathrooms: "Bathrooms",
       unitFeatures: "Unit features",
       buildingFeatures: "Building features",
       petPolicy: "Pet policy",
       guarantorRequired: "Guarantor requirement",
-      preferences: "Preferences",
+      preferences: "Preferences By Order",
       description: "Description",
     };
 
@@ -3095,8 +3095,8 @@ export class PreMarketService {
 
     if (summary.length === 0) {
       return {
-        summary: ["Request details updated"],
-        newValues: ["Not specified"],
+        summary: [],
+        newValues: [],
       };
     }
 
@@ -3150,6 +3150,10 @@ export class PreMarketService {
       return formattedLocations.length > 0
         ? formattedLocations.join("; ")
         : "Not specified";
+    }
+
+    if (key === "preferences" && Array.isArray(value)) {
+      return this.formatSimpleValue(value.slice(0, 4));
     }
 
     return this.formatSimpleValue(value);
