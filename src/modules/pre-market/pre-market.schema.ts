@@ -338,6 +338,10 @@ export const preMarketListSchema = z.object({
     petPolicy: z.string().optional(),
     guarantorRequired: z.string().optional(),
     availableFeatures: z.string().optional(),
+    allMarketReferrals: z
+      .enum(["true", "false"])
+      .optional()
+      .transform(value => value === "true"),
   }),
 });
 

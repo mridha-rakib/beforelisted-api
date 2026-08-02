@@ -1248,13 +1248,39 @@ export class PreMarketService {
       archiveFilter,
       requestFilter,
     ]);
+    const filterAllMarketReferrals
+      = this.shouldFilterAllMarketReferrals(query);
     // Exclude any request this agent was previously unmatched from — once
     // an agent is unmatched they never see that request again, even if it
     // later becomes Upcoming (M) for a different matched agent.
     const unmatchedRequestIds
       = await this.getUnmatchedRequestIdsForAgent(agentId);
-    const paginated
-      = unmatchedRequestIds.length > 0
+    const paginated = filterAllMarketReferrals
+      ? await (async () => {
+          const allCandidates
+            = await this.preMarketRepository.findAllForMatchSearch(
+              this.mergeFilters([
+                combinedFilters,
+                unmatchedRequestIds.length > 0
+                  ? { _id: { $nin: unmatchedRequestIds } }
+                  : {},
+              ]),
+            );
+          const filteredCandidates = await this.filterAllMarketReferralRequests(
+            allCandidates,
+          );
+          const page = Number(query.page) || 1;
+          const limit = Number(query.limit) || 10;
+          const startIndex = (page - 1) * limit;
+
+          return PaginationHelper.buildResponse(
+            filteredCandidates.slice(startIndex, startIndex + limit),
+            filteredCandidates.length,
+            page,
+            limit,
+          );
+        })()
+      : unmatchedRequestIds.length > 0
         ? await this.preMarketRepository.findAllWithPaginationExcludingIds(
             query,
             unmatchedRequestIds,
@@ -2846,6 +2872,40 @@ export class PreMarketService {
     });
 
     return this.mergeFilters(filters);
+  }
+
+  private shouldFilterAllMarketReferrals(query: PaginationQuery): boolean {
+    return (
+      query.allMarketReferrals === true
+      || query.allMarketReferrals === "true"
+    );
+  }
+
+  private async filterAllMarketReferralRequests<T extends IPreMarketRequest>(
+    requests: T[],
+  ): Promise<T[]> {
+    if (!requests.length) {
+      return [];
+    }
+
+    const requestIds = requests
+      .map(request => request._id?.toString())
+      .filter((requestId): requestId is string => Boolean(requestId));
+
+    if (!requestIds.length) {
+      return [];
+    }
+
+    const matchedScopeRequestIds
+      = await this.getGlobalMatchedScopeRequestIdSet(requestIds);
+
+    return requests.filter((request) => {
+      const requestId = request._id?.toString() || "";
+      return (
+        request.scope === "All Market"
+        && matchedScopeRequestIds.has(requestId)
+      );
+    });
   }
 
   private mergeFilters(filters: Array<Record<string, any>>): Record<string, any> {
@@ -5471,6 +5531,10 @@ export class PreMarketService {
       "Agent fetching approved and matched pre-market listings",
     );
 
+    if (this.shouldFilterAllMarketReferrals(query)) {
+      return this.getAllRequests(query, agentId) as any;
+    }
+
     const requestFilter = this.buildAgentRequestFilter(query);
     const archiveFilter = this.buildAgentArchiveExclusionFilter(agentId);
 
@@ -5485,46 +5549,9 @@ export class PreMarketService {
       record => record.representation_type !== "owner_representation",
     );
 
-    const currentAgentReferralRenterIds
-      = await this.getCurrentAgentReferralRenterUserIds(agentId);
-    const registeredAgentRequestClauses: Record<string, any>[] = [
-      { referralAgentId: agentId },
-    ];
-
-    if (currentAgentReferralRenterIds.length > 0) {
-      registeredAgentRequestClauses.push({
-        renterId: { $in: currentAgentReferralRenterIds },
-      });
-    }
-
-    const registeredAgentCandidateListings
-      = await this.preMarketRepository.findAllForMatchSearch(
-        this.mergeFilters([
-          { $or: registeredAgentRequestClauses },
-          archiveFilter,
-          requestFilter,
-        ]),
-      );
-    const registeredAgentCandidateRequestIds = registeredAgentCandidateListings
-      .map((request: any) => request._id?.toString())
-      .filter((id: string | undefined): id is string => Boolean(id));
-    const registeredMatchedAgentByRequestId
-      = await this.buildMatchedAgentByRequestId(
-        registeredAgentCandidateRequestIds,
-        agentId,
-      );
-    const registeredMatchedOutListings
-      = registeredAgentCandidateListings.filter((request: any) => {
-        const requestId = request._id?.toString();
-        return requestId
-          ? Boolean(registeredMatchedAgentByRequestId.get(requestId))
-          : false;
-      });
-
     if (
-      (!Array.isArray(renterRepresentationAccessRecords)
-        || renterRepresentationAccessRecords.length === 0)
-      && registeredMatchedOutListings.length === 0
+      !Array.isArray(renterRepresentationAccessRecords)
+      || renterRepresentationAccessRecords.length === 0
     ) {
       logger.info({ agentId }, "Normal agent has no access yet");
       return PaginationHelper.buildResponse(
@@ -5546,23 +5573,17 @@ export class PreMarketService {
         Math.max(matchTimeByRequestId.get(requestId) ?? -1, timestamp),
       );
     });
-    registeredMatchedOutListings.forEach((request: any) => {
-      const requestId = request._id?.toString();
-      if (!requestId) return;
-
-      const timestamp = new Date(
-        request.updatedAt || request.createdAt || 0,
-      ).getTime();
-      matchTimeByRequestId.set(
-        requestId,
-        Math.max(matchTimeByRequestId.get(requestId) ?? -1, timestamp),
-      );
-    });
 
     const preMarketRequestIds = Array.from(matchTimeByRequestId.keys());
 
     const listings
-      = await this.preMarketRepository.findByIds(preMarketRequestIds);
+      = await this.preMarketRepository.findAllForMatchSearch(
+        this.mergeFilters([
+          { _id: { $in: preMarketRequestIds } },
+          archiveFilter,
+          requestFilter,
+        ]),
+      );
 
     if (!listings || listings.length === 0) {
       return PaginationHelper.buildResponse(
@@ -5589,13 +5610,16 @@ export class PreMarketService {
       const matchTimeB = matchTimeByRequestId.get(b._id?.toString()) ?? -1;
       return matchTimeB - matchTimeA;
     });
+    const visibleListings = this.shouldFilterAllMarketReferrals(query)
+      ? await this.filterAllMarketReferralRequests(sortedListings)
+      : sortedListings;
 
     // Manual pagination - counts ONLY your filtered results
     const page = (query.page as number) || 1;
     const limit = (query.limit as number) || 10;
-    const total = sortedListings.length;
+    const total = visibleListings.length;
     const startIndex = (page - 1) * limit;
-    const paginatedData = sortedListings.slice(startIndex, startIndex + limit);
+    const paginatedData = visibleListings.slice(startIndex, startIndex + limit);
     const paginatedRequestIds = paginatedData
       .map((request: any) => request._id?.toString())
       .filter((id: string | undefined): id is string => Boolean(id));
@@ -5647,7 +5671,9 @@ export class PreMarketService {
           : accessSummary.grantAccessStatus === "approved"
             ? "approved"
             : "matched";
-        const responseStatus = "Matched";
+        const responseStatus = this.resolveAgentResponseStatus(
+          isAlreadyMatchedByAgent,
+        );
         const responseGrantAccessStatus = isRegisteredMatchedOut
           ? request.status
           : accessSummary.grantAccessStatus;
