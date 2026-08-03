@@ -7,6 +7,7 @@ import faqRouter from "@/modules/faq/faq.route";
 import fileRouter from "@/modules/file/file.route";
 import grantAccessRouter from "@/modules/grant-access/grant-access.route";
 import monthlyReportRouter from "@/modules/monthly-report/monthly-report.route";
+import movingDiscountsRouter from "@/modules/moving-discounts/moving-discounts.route";
 import noticeRouter from "@/modules/notice/notice.route";
 import notificationRouter from "@/modules/notification/notification.route";
 import preMarketRouter from "@/modules/pre-market/pre-market.route";
@@ -68,6 +69,10 @@ const moduleRoutes = [
   {
     path: "/blocked-emails",
     route: blockedEmailRouter,
+  },
+  {
+    path: "/moving-discounts",
+    route: movingDiscountsRouter,
   },
 ];
 

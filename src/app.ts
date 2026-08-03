@@ -43,16 +43,13 @@ function normalizeOrigin(origin: string) {
   try {
     const url = new URL(origin.trim());
     return `${url.protocol}//${url.host}`;
-  }
-  catch {
+  } catch {
     return origin.trim().replace(/\/$/, "");
   }
 }
 
 const allowedOrigins = new Set(
-  configuredOrigins
-    .map(normalizeOrigin)
-    .filter(Boolean),
+  configuredOrigins.map(normalizeOrigin).filter(Boolean),
 );
 
 const allowedVercelOriginPatterns = [
@@ -86,7 +83,7 @@ function isAllowedOrigin(origin: string) {
 
   return (
     allowedOrigins.has(normalizedOrigin) ||
-    allowedVercelOriginPatterns.some(pattern =>
+    allowedVercelOriginPatterns.some((pattern) =>
       pattern.test(normalizedOrigin),
     ) ||
     allowedDevOriginPatterns.some((pattern) => pattern.test(normalizedOrigin))
