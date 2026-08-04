@@ -39,7 +39,7 @@ export class MovingDiscountController {
 
   getAllCategoriesForAdmin = asyncHandler(async (_req: Request, res: Response) => {
     const categories = await this.service.getAllCategoriesForAdmin();
-    ApiResponse.success(res, categories, "All categories retrieved");
+    ApiResponse.success(res, { categories }, "All categories retrieved");
   });
 
   createCategory = asyncHandler(async (req: Request, res: Response) => {
@@ -95,11 +95,11 @@ export class MovingDiscountController {
       const items = await this.service.getItemsByCategoryForAdmin(
         String(req.params.id),
       );
-      ApiResponse.success(res, items, "Items retrieved");
+      ApiResponse.success(res, { items }, "Items retrieved");
       return;
     }
     const items = await this.service.getItemsByCategoryForAdmin(categoryId);
-    ApiResponse.success(res, items, "Items retrieved");
+    ApiResponse.success(res, { items }, "Items retrieved");
   });
 
   getItemsInCategory = asyncHandler(async (req: Request, res: Response) => {
@@ -109,7 +109,7 @@ export class MovingDiscountController {
       return;
     }
     const items = await this.service.getItemsByCategoryForAdmin(categoryId);
-    ApiResponse.success(res, items, "Items retrieved");
+    ApiResponse.success(res, { items }, "Items retrieved");
   });
 
   createItem = asyncHandler(async (req: Request, res: Response) => {
