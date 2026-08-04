@@ -10,6 +10,7 @@ import {
   createCategorySchema,
   createItemSchema,
   idParamSchema,
+  paginationSchema,
   reorderCategoriesSchema,
   reorderItemsSchema,
   updateCategorySchema,
@@ -31,6 +32,23 @@ export class MovingDiscountController {
   getPublicDiscounts = asyncHandler(async (_req: Request, res: Response) => {
     const result = await this.service.getPublicDiscounts();
     ApiResponse.success(res, result, "Moving discounts retrieved");
+  });
+
+  getPublicItemsPaginated = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(paginationSchema, req);
+    const result = await this.service.getPublicItemsPaginated(validated.query);
+    ApiResponse.success(res, result, "Items retrieved");
+  });
+
+  getPublicCategories = asyncHandler(async (_req: Request, res: Response) => {
+    const categories = await this.service.getAllCategoriesForAdmin();
+    // Filter to active only for public consumption
+    const activeOnly = categories.filter((c: any) => c.isActive !== false);
+    ApiResponse.success(
+      res,
+      { categories: activeOnly },
+      "Categories retrieved",
+    );
   });
 
   // ============================================
@@ -90,26 +108,25 @@ export class MovingDiscountController {
   // ============================================
 
   getItemsByCategoryForAdmin = asyncHandler(async (req: Request, res: Response) => {
-    const categoryId = String(req.query.categoryId ?? "");
-    if (!/^[0-9a-fA-F]{24}$/.test(categoryId)) {
-      const items = await this.service.getItemsByCategoryForAdmin(
-        String(req.params.id),
-      );
-      ApiResponse.success(res, { items }, "Items retrieved");
-      return;
-    }
-    const items = await this.service.getItemsByCategoryForAdmin(categoryId);
-    ApiResponse.success(res, { items }, "Items retrieved");
+    const validated = await zParse(paginationSchema, req);
+    const categoryId =
+      validated.query.categoryId ?? String(req.params.id ?? "");
+    const result = await this.service.getAdminItemsPaginated({
+      page: validated.query.page,
+      pageSize: validated.query.pageSize,
+      categoryId,
+    });
+    ApiResponse.success(res, result, "Items retrieved");
   });
 
   getItemsInCategory = asyncHandler(async (req: Request, res: Response) => {
-    const categoryId = String(req.query.categoryId ?? "");
-    if (!/^[0-9a-fA-F]{24}$/.test(categoryId)) {
+    const validated = await zParse(paginationSchema, req);
+    if (!validated.query.categoryId) {
       res.status(400).json({ message: "categoryId query param is required" });
       return;
     }
-    const items = await this.service.getItemsByCategoryForAdmin(categoryId);
-    ApiResponse.success(res, { items }, "Items retrieved");
+    const result = await this.service.getAdminItemsPaginated(validated.query);
+    ApiResponse.success(res, result, "Items retrieved");
   });
 
   createItem = asyncHandler(async (req: Request, res: Response) => {

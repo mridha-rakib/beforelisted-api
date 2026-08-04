@@ -15,6 +15,7 @@ import type {
   UpdateCategoryPayload,
   UpdateItemPayload,
 } from "./moving-discounts.types";
+import type { PaginationParams } from "./moving-discounts.schema";
 import type {
   IMovingDiscountCategory,
   IMovingDiscountItem,
@@ -60,6 +61,70 @@ export class MovingDiscountService {
     }));
 
     return { categories: categoriesWithItems };
+  }
+
+  async getPublicItemsPaginated(
+    params: PaginationParams,
+  ): Promise<{
+    items: IMovingDiscountItem[];
+    pagination: { page: number; pageSize: number; total: number; totalPages: number };
+    category?: IMovingDiscountCategory | null;
+  }> {
+    let category: IMovingDiscountCategory | null = null;
+    if (params.categoryId) {
+      category = await this.categoryRepo.getCategoryById(params.categoryId);
+      if (!category || !category.isActive) {
+        throw new NotFoundException("Category not found");
+      }
+    }
+
+    const result = await this.itemRepo.getItemsByCategoryPaginated(
+      params.categoryId,
+      params.page,
+      params.pageSize,
+      true,
+    );
+
+    return {
+      items: result.items,
+      pagination: {
+        page: result.page,
+        pageSize: result.pageSize,
+        total: result.total,
+        totalPages: result.totalPages,
+      },
+      category,
+    };
+  }
+
+  async getAdminItemsPaginated(
+    params: PaginationParams,
+  ): Promise<{
+    items: IMovingDiscountItem[];
+    pagination: { page: number; pageSize: number; total: number; totalPages: number };
+  }> {
+    if (params.categoryId) {
+      const category = await this.categoryRepo.getCategoryById(params.categoryId);
+      if (!category) {
+        throw new NotFoundException("Category not found");
+      }
+    }
+
+    const result = await this.itemRepo.getItemsByCategoryPaginated(
+      params.categoryId,
+      params.page,
+      params.pageSize,
+    );
+
+    return {
+      items: result.items,
+      pagination: {
+        page: result.page,
+        pageSize: result.pageSize,
+        total: result.total,
+        totalPages: result.totalPages,
+      },
+    };
   }
 
   // ============================================

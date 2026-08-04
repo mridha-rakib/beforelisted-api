@@ -92,6 +92,41 @@ export class MovingDiscountItemRepository extends BaseRepository<IMovingDiscount
       .sort({ order: 1, createdAt: -1 });
   }
 
+  async getItemsByCategoryPaginated(
+    categoryId: string | undefined,
+    page: number,
+    pageSize: number,
+    isActive?: boolean,
+  ): Promise<{
+    items: IMovingDiscountItem[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  }> {
+    const filter: any = {};
+    if (categoryId) filter.categoryId = categoryId;
+    if (isActive !== undefined) filter.isActive = isActive;
+
+    const skip = (page - 1) * pageSize;
+    const [items, total] = await Promise.all([
+      this.model
+        .find(filter)
+        .sort({ order: 1, createdAt: -1 })
+        .skip(skip)
+        .limit(pageSize),
+      this.model.countDocuments(filter),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
+  }
+
   async getItemById(id: string): Promise<IMovingDiscountItem | null> {
     return this.model.findById(id);
   }

@@ -15,9 +15,21 @@ const controller = new MovingDiscountController();
 
 /**
  * GET /moving-discounts
- * Get all active categories with their active items.
+ * Get all active categories with their active items (no pagination).
  */
 router.get("/", controller.getPublicDiscounts.bind(controller));
+
+/**
+ * GET /moving-discounts/categories
+ * Public list of active categories only.
+ */
+router.get("/categories", controller.getPublicCategories.bind(controller));
+
+/**
+ * GET /moving-discounts/items?categoryId=&page=&pageSize=
+ * Public paginated items, optionally filtered by category.
+ */
+router.get("/items", controller.getPublicItemsPaginated.bind(controller));
 
 // ============================================
 // ADMIN — CATEGORIES
