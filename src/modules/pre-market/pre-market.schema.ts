@@ -145,6 +145,9 @@ export const updatePreMarketRequestSchema = z.object({
         })
         .optional(),
       preferences: z.array(z.string().trim()).optional(),
+      shareConsent: z.boolean().optional(),
+      scope: z.enum(["Upcoming", "All Market"]).optional(),
+      visibility: z.enum(["PRIVATE", "SHARED"]).optional(),
     })
     .refine(
       (data) => {

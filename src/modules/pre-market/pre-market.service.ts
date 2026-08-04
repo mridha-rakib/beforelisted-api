@@ -3139,6 +3139,9 @@ export class PreMarketService {
       guarantorRequired: "Guarantor requirement",
       preferences: "Preferences By Order",
       description: "Description",
+      shareConsent: "Share Your Search",
+      scope: "Market Scope",
+      visibility: "Visibility",
     };
 
     const summary: string[] = [];
@@ -3166,6 +3169,32 @@ export class PreMarketService {
   private formatChangedFieldValue(key: string, value: unknown): string {
     if (value === null || value === undefined) {
       return "Not specified";
+    }
+
+    if (key === "shareConsent") {
+      return value === true
+        ? "Yes — consent given to share with other NY real estate agents"
+        : "No";
+    }
+
+    if (key === "scope") {
+      if (value === "All Market") {
+        return "All Market — full publicly advertised rentals + BeforeListed";
+      }
+      if (value === "Upcoming") {
+        return "BeforeListed only — upcoming rentals not publicly advertised";
+      }
+      return this.formatSimpleValue(value);
+    }
+
+    if (key === "visibility") {
+      if (value === "SHARED") {
+        return "Shared with other agents";
+      }
+      if (value === "PRIVATE") {
+        return "Private";
+      }
+      return this.formatSimpleValue(value);
     }
 
     if (key === "priceRange" && this.isRecord(value)) {
