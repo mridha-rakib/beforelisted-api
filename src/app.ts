@@ -76,6 +76,8 @@ const allowedDevOriginPatterns =
   "http://localhost:3002",
   "http://127.0.0.1:6060",
   "https://evict-spender-unaware.ngrok-free.dev",
+  "https://rental-pennymore-dashboard.vercel.app",
+  "https://rental-pennymore-frontend.vercel.app",
 ].forEach((origin) => allowedOrigins.add(origin));
 
 function isAllowedOrigin(origin: string) {
@@ -118,6 +120,36 @@ app.use(
     optionsSuccessStatus: 204,
   }),
 );
+
+// Safety net: ensure every response (including ones produced by the global
+// error handler) carries the CORS headers the browser needs. Without this,
+// a preflight that gets rejected by the `cors` package would fall through to
+// the error handler and end up in a 500 response with no CORS headers,
+// producing the "No 'Access-Control-Allow-Origin' header is present" error
+// in the browser console even though the underlying rejection is correct.
+app.use((req, res, next) => {
+  const requestOrigin = req.header("Origin");
+  if (requestOrigin && isAllowedOrigin(requestOrigin)) {
+    res.setHeader("Access-Control-Allow-Origin", requestOrigin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type,Authorization,X-Requested-With,Accept,Origin,ngrok-skip-browser-warning",
+    );
+  }
+
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
+
+  next();
+});
 
 function captureRawBody(
   req: any,
