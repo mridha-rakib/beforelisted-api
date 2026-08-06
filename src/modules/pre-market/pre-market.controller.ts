@@ -72,6 +72,29 @@ export class PreMarketController {
   }
 
   /**
+   * Express types `req.params[name]` as `string | string[]` because URL
+   * query strings can repeat keys. Route params are always single-valued
+   * in this app, so this helper coerces the value to a plain `string` and
+   * throws a 400 if the value is missing or an array.
+   */
+  private singleParam(
+    value: string | string[] | undefined,
+    name: string,
+  ): string {
+    if (value === undefined || value === null || value === "") {
+      throw new BadRequestException(`Missing required parameter: ${name}`);
+    }
+    if (Array.isArray(value)) {
+      const first = value[0];
+      if (first === undefined || first === "") {
+        throw new BadRequestException(`Missing required parameter: ${name}`);
+      }
+      return first;
+    }
+    return value;
+  }
+
+  /**
    * Create pre-market request
    * POST /pre-market/create
    * Protected: Renters only
@@ -229,7 +252,7 @@ export class PreMarketController {
   updateRequest = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(updatePreMarketRequestSchema, req);
     const userId = req.user!.userId;
-    const { requestId } = req.params;
+    const requestId = this.singleParam(req.params.requestId, "requestId");
 
     const request = await this.preMarketService.updateRequest(
       userId,
@@ -248,7 +271,7 @@ export class PreMarketController {
    */
   deleteRequest = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.userId;
-    const { requestId } = req.params;
+    const requestId = this.singleParam(req.params.requestId, "requestId");
 
     await this.preMarketService.deleteRequest(userId, requestId);
 
@@ -258,7 +281,7 @@ export class PreMarketController {
 
   getRenterRequestById = asyncHandler(async (req: Request, res: Response) => {
     const renterId = req.user!.userId;
-    const { requestId } = req.params;
+    const requestId = this.singleParam(req.params.requestId, "requestId");
 
     const request = await this.preMarketService.getRenterRequestById(
       renterId,
@@ -311,7 +334,7 @@ export class PreMarketController {
   getRequestDetails = asyncHandler(async (req: Request, res: Response) => {
     const response = await this.buildAgentRequestDetailsResponse(
       req.user!.userId,
-      req.params.requestId,
+      this.singleParam(req.params.requestId, "requestId"),
       false,
     );
 
@@ -327,7 +350,7 @@ export class PreMarketController {
     async (req: Request, res: Response) => {
       const response = await this.buildAgentRequestDetailsResponse(
         req.user!.userId,
-        req.params.requestId,
+        this.singleParam(req.params.requestId, "requestId"),
         true,
       );
 
@@ -638,7 +661,10 @@ export class PreMarketController {
    */
   createPaymentIntent = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.userId;
-    const { grantAccessId } = req.body;
+    const grantAccessId = this.singleParam(
+      req.body?.grantAccessId as string | string[] | undefined,
+      "grantAccessId",
+    );
 
     const paymentIntent
       = await this.grantAccessService.createPaymentIntent(grantAccessId);
@@ -823,7 +849,7 @@ export class PreMarketController {
 
   getRequestForAgent = asyncHandler(async (req: Request, res: Response) => {
     const agentId = req.user!.userId;
-    const { requestId } = req.params;
+    const requestId = this.singleParam(req.params.requestId, "requestId");
 
     const request = await this.preMarketService.getRequestForAgent(
       agentId,
@@ -990,7 +1016,7 @@ export class PreMarketController {
    * Protected: Admin only
    */
   getRequestByIdForAdmin = asyncHandler(async (req: Request, res: Response) => {
-    const { requestId } = req.params;
+    const requestId = this.singleParam(req.params.requestId, "requestId");
 
     logger.debug(
       { adminId: req.user?.userId, requestId },
@@ -1099,7 +1125,7 @@ export class PreMarketController {
   getRequestDetailsForGrantAccessAgent = asyncHandler(
     async (req: Request, res: Response) => {
       const agentId = req.user!.userId;
-      const { requestId } = req.params;
+      const requestId = this.singleParam(req.params.requestId, "requestId");
 
       // Verify agent has grant access
       const agent = await this.agentRepository.findByUserId(agentId);
@@ -1512,7 +1538,7 @@ export class PreMarketController {
   getRequestDetailsForAgent = asyncHandler(
     async (req: Request, res: Response) => {
       const userId = req.user!.userId;
-      const { requestId } = req.params;
+      const requestId = this.singleParam(req.params.requestId, "requestId");
 
       // Get agent profile
       const agent = await this.agentRepository.findByUserId(userId);
@@ -1582,7 +1608,7 @@ export class PreMarketController {
 
   adminDeleteRequest = asyncHandler(async (req: Request, res: Response) => {
     const adminId = req.user!.userId;
-    const { requestId } = req.params;
+    const requestId = this.singleParam(req.params.requestId, "requestId");
 
     await this.preMarketService.adminDeleteRequest(requestId);
 
@@ -1625,7 +1651,8 @@ export class PreMarketController {
   adminToggleListingStatus = asyncHandler(
     async (req: Request, res: Response) => {
       const adminId = req.user!.userId;
-      const { renterId, listingId } = req.params;
+      const renterId = this.singleParam(req.params.renterId, "renterId");
+      const listingId = this.singleParam(req.params.listingId, "listingId");
 
       // Validate IDs format
       if (!listingId || listingId.length < 24) {
