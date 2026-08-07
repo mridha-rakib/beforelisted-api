@@ -640,6 +640,88 @@ describe("PreMarketService additional opportunities", () => {
   });
 });
 
+describe("PreMarketService owner-representation notifications", () => {
+  it("sends Template 29 acknowledgment to the registered agent path only", async () => {
+    const agentId = "matched-owner-agent";
+    const requestId = "507f1f77bcf86cd799439099";
+    const request = {
+      _id: requestId,
+      renterId: "renter-1",
+      requestName: "R-OWNER",
+      visibility: "SHARED",
+      shareConsent: true,
+      status: "Available",
+      isActive: true,
+      registrationDisclosureConfirmations: [],
+    };
+    const service = new PreMarketService();
+    const serviceAny = service as any;
+    const ownerAcknowledgments: Array<Record<string, unknown>> = [];
+    let renterNotificationCount = 0;
+
+    serviceAny.agentRepository = {
+      findByUserId: async () => ({
+        _id: "agent-profile-1",
+        userId: agentId,
+        hasGrantAccess: true,
+      }),
+    };
+    serviceAny.preMarketRepository = {
+      findByIdWithActivationStatus: async () => request,
+      setAllMarketRequestPrivateAfterMatch: async () => undefined,
+    };
+    serviceAny.grantAccessRepository = {
+      findByAgentAndRequest: async () => null,
+      create: async (payload: Record<string, unknown>) => ({
+        _id: "grant-owner-1",
+        ...payload,
+      }),
+    };
+    serviceAny.isRegisteredAgentForRequest = async () => false;
+    serviceAny.ensureAgentCanViewRequest = () => undefined;
+    serviceAny.ensureAgentCanViewRequestVisibility = async () => undefined;
+    serviceAny.ensureRegisteredAgentCanMatchRequest = async () => undefined;
+    serviceAny.notifyRegisteredAgentAboutOwnerRepresentationMatch = async (
+      matchedAgentId: string,
+      matchedRequest: unknown,
+      details: string | undefined,
+      summary: unknown,
+    ) => {
+      ownerAcknowledgments.push({
+        matchedAgentId,
+        matchedRequest,
+        details,
+        summary,
+      });
+    };
+    serviceAny.notifyRenterAboutMatchedOpportunity = async () => {
+      renterNotificationCount += 1;
+    };
+
+    const result = await service.matchRequestForAgent(
+      agentId,
+      requestId,
+      "owner_representation",
+      "Owner-side opportunity details.",
+    );
+
+    expect(result).toMatchObject({
+      _id: "grant-owner-1",
+      agentId,
+      preMarketRequestId: requestId,
+      representation_type: "owner_representation",
+      status: "free",
+    });
+    expect(ownerAcknowledgments).toEqual([
+      expect.objectContaining({
+        matchedAgentId: agentId,
+        details: "Owner-side opportunity details.",
+      }),
+    ]);
+    expect(renterNotificationCount).toBe(0);
+  });
+});
+
 describe("PreMarketService bulk matching", () => {
   it("passes the additional opportunity flag through each selected request", async () => {
     const service = new PreMarketService();

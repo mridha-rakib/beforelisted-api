@@ -6052,18 +6052,32 @@ export class PreMarketService {
     );
 
     if (shouldNotify) {
-      this.notifyRenterAboutMatchedOpportunity(
-        agentId,
-        listingActivationCheck,
-        matchRecord._id,
-        normalizedOpportunityDetails,
-        { matchSummary },
-      ).catch((error) => {
-        logger.error(
-          { error, requestId, agentId },
-          "Failed to send renter match notification (non-blocking)",
-        );
-      });
+      if (representationType === "owner_representation") {
+        this.notifyRegisteredAgentAboutOwnerRepresentationMatch(
+          agentId,
+          listingActivationCheck,
+          normalizedOpportunityDetails,
+          matchSummary,
+        ).catch((error) => {
+          logger.error(
+            { error, requestId, agentId },
+            "Failed to send owner representation match acknowledgment (non-blocking)",
+          );
+        });
+      } else {
+        this.notifyRenterAboutMatchedOpportunity(
+          agentId,
+          listingActivationCheck,
+          matchRecord._id,
+          normalizedOpportunityDetails,
+          { matchSummary },
+        ).catch((error) => {
+          logger.error(
+            { error, requestId, agentId },
+            "Failed to send renter match notification (non-blocking)",
+          );
+        });
+      }
     }
 
     return matchRecord;
