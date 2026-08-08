@@ -126,6 +126,8 @@ const ARCHIVE_REASON_LABELS: Record<AgentArchiveReason, string> = {
 const SEARCH_CONFIRMATION_INTERVAL_MS = 14 * 24 * 60 * 60 * 1000;
 const SEARCH_CONFIRMATION_EXPIRY_MS = 3 * 24 * 60 * 60 * 1000;
 const DEFAULT_PRODUCTION_API_ORIGIN = "https://api.beforelisted.com";
+const MARKET_SCOPE_SWITCH_LOCKED_MESSAGE =
+  "A rental specialist is already assigned. For any issues, contact support@beforelisted.com.";
 
 const DEFAULT_REGISTERED_AGENT_EMAIL = SYSTEM_DEFAULT_AGENT.email;
 const _DEFAULT_REGISTERED_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
@@ -907,6 +909,20 @@ export class PreMarketService {
     requestIds: string[],
   ): Promise<Set<string>> {
     return this.preMarketRepository.getMatchedScopeRequestIdSet(requestIds);
+  }
+
+  private async isMarketScopeSwitchLockedForRequest(
+    request: IPreMarketRequest,
+  ): Promise<boolean> {
+    if (request.scope !== "All Market" || !request._id) {
+      return false;
+    }
+
+    const records = await this.grantAccessRepository.findByPreMarketRequestId(
+      request._id.toString(),
+    );
+
+    return records.some((record) => this.hasAgentMatchedStatus(record));
   }
 
   public async shouldDisplayMatchedScopeForRequest(
@@ -1858,13 +1874,39 @@ export class PreMarketService {
       }
     }
 
+    const now = new Date();
+    const nextRequestPayload = {
+      ...(payload as Partial<IPreMarketRequest>),
+    };
+
+    if (
+      payload.scope === "Upcoming" &&
+      request.scope === "All Market" &&
+      payload.scope !== request.scope
+    ) {
+      const matchedScopeLocked =
+        await this.isMarketScopeSwitchLockedForRequest(request);
+      if (matchedScopeLocked) {
+        throw new BadRequestException(MARKET_SCOPE_SWITCH_LOCKED_MESSAGE);
+      }
+
+      nextRequestPayload.visibility = "PRIVATE";
+    }
+
+    if (
+      payload.scope === "All Market" &&
+      request.scope !== "All Market"
+    ) {
+      nextRequestPayload.visibility = "PRIVATE";
+    }
+
     const changedFieldDetails = this.buildChangedFieldsSummary(
       request,
-      payload,
+      nextRequestPayload,
     );
-    const now = new Date();
+
     const nextPayload = {
-      ...(payload as Partial<IPreMarketRequest>),
+      ...nextRequestPayload,
       searchActivity: this.resetSearchConfirmationActivity(
         (request as any)?.searchActivity,
         {
@@ -7689,7 +7731,10 @@ export class PreMarketService {
   async getRenterRequestById(
     renterId: string,
     requestId: string,
-  ): Promise<IPreMarketRequest> {
+  ): Promise<IPreMarketRequest & {
+    marketScopeSwitchLocked?: boolean;
+    marketScopeSwitchLockedReason?: string;
+  }> {
     const request = await this.preMarketRepository.findById(requestId);
 
     if (!request) {
@@ -7708,7 +7753,17 @@ export class PreMarketService {
       "Renter retrieved their request details",
     );
 
-    return request;
+    const requestObject = request.toObject ? request.toObject() : request;
+    const marketScopeSwitchLocked =
+      await this.isMarketScopeSwitchLockedForRequest(requestObject);
+
+    return {
+      ...requestObject,
+      marketScopeSwitchLocked,
+      ...(marketScopeSwitchLocked
+        ? { marketScopeSwitchLockedReason: MARKET_SCOPE_SWITCH_LOCKED_MESSAGE }
+        : {}),
+    };
   }
 
   // ============================================

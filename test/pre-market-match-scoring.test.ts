@@ -737,6 +737,112 @@ describe("PreMarketService owner-representation notifications", () => {
   });
 });
 
+describe("PreMarketService renter market-scope switching", () => {
+  const renterId = "renter-1";
+  const requestId = "507f1f77bcf86cd799439077";
+
+  function buildUpdateService(request: Record<string, unknown>) {
+    const service = new PreMarketService();
+    const serviceAny = service as any;
+    const updateById = vi.fn().mockImplementation(
+      async (_requestId: string, payload: Record<string, unknown>) => ({
+        ...request,
+        ...payload,
+      }),
+    );
+
+    serviceAny.preMarketRepository = {
+      findById: async () => request,
+      updateById,
+    };
+    serviceAny.grantAccessRepository = {
+      findByPreMarketRequestId: vi.fn().mockResolvedValue([]),
+    };
+    serviceAny.notifier = {
+      notifyAgentsAboutUpdatedRequest: vi.fn().mockResolvedValue(undefined),
+    };
+    serviceAny.scheduleConsolidatedExcelRefresh = () => undefined;
+
+    return { service, serviceAny, updateById };
+  }
+
+  it("blocks All Market to Upcoming when the request is already Upcoming (M)", async () => {
+    const request = {
+      _id: requestId,
+      renterId,
+      scope: "All Market",
+      visibility: "PRIVATE",
+      searchActivity: {},
+    };
+    const { service, serviceAny, updateById } = buildUpdateService(request);
+    serviceAny.grantAccessRepository.findByPreMarketRequestId
+      .mockResolvedValue([
+        {
+          status: "free",
+          representation_type: "renter_representation",
+        },
+      ]);
+
+    await expect(
+      service.updateRequest(renterId, requestId, {
+        scope: "Upcoming",
+        visibility: "PRIVATE",
+      }),
+    ).rejects.toThrow(
+      "A rental specialist is already assigned. For any issues, contact support@beforelisted.com.",
+    );
+    expect(updateById).not.toHaveBeenCalled();
+  });
+
+  it("allows unmatched All Market to switch to Upcoming and forces Private", async () => {
+    const request = {
+      _id: requestId,
+      renterId,
+      scope: "All Market",
+      visibility: "SHARED",
+      searchActivity: {},
+    };
+    const { service, updateById } = buildUpdateService(request);
+
+    await service.updateRequest(renterId, requestId, {
+      scope: "Upcoming",
+      visibility: "SHARED",
+    });
+
+    expect(updateById).toHaveBeenCalledWith(
+      requestId,
+      expect.objectContaining({
+        scope: "Upcoming",
+        visibility: "PRIVATE",
+      }),
+    );
+  });
+
+  it("switches Upcoming to All Market and forces Private", async () => {
+    const request = {
+      _id: requestId,
+      renterId,
+      scope: "Upcoming",
+      visibility: "SHARED",
+      searchActivity: {},
+    };
+    const { service, updateById } = buildUpdateService(request);
+
+    await service.updateRequest(renterId, requestId, {
+      scope: "All Market",
+      visibility: "SHARED",
+    });
+
+    expect(updateById).toHaveBeenCalledWith(
+      requestId,
+      expect.objectContaining({
+        scope: "All Market",
+        visibility: "PRIVATE",
+      }),
+    );
+  });
+});
+
 describe("PreMarketService bulk matching", () => {
   it("passes the additional opportunity flag through each selected request", async () => {
     const service = new PreMarketService();
