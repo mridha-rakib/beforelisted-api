@@ -63,6 +63,7 @@ export type IPreMarketRequest = {
   }>;
   searchActivity?: {
     lastRenterUpdatedAt?: Date | null;
+    lastMatchedAt?: Date | null;
     lastConfirmedAt?: Date | null;
     lastConfirmationEmailSentAt?: Date | null;
     pendingConfirmationToken?: string | null;
@@ -258,6 +259,11 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
   ],
   searchActivity: {
     lastRenterUpdatedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    lastMatchedAt: {
       type: Date,
       default: null,
       index: true,

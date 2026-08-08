@@ -1089,6 +1089,7 @@ export class PreMarketService {
       },
       searchActivity: {
         lastRenterUpdatedAt: new Date(),
+        lastMatchedAt: null,
         lastConfirmedAt: null,
         lastConfirmationEmailSentAt: null,
         pendingConfirmationToken: null,
@@ -2448,6 +2449,7 @@ export class PreMarketService {
 
   private getSearchActivity(request: IPreMarketRequest | Record<string, any>): {
     lastRenterUpdatedAt: Date | null;
+    lastMatchedAt: Date | null;
     lastConfirmedAt: Date | null;
     lastConfirmationEmailSentAt: Date | null;
     pendingConfirmationToken: string | null;
@@ -2460,6 +2462,7 @@ export class PreMarketService {
 
     return {
       lastRenterUpdatedAt: searchActivity.lastRenterUpdatedAt ?? null,
+      lastMatchedAt: searchActivity.lastMatchedAt ?? null,
       lastConfirmedAt: searchActivity.lastConfirmedAt ?? null,
       lastConfirmationEmailSentAt:
         searchActivity.lastConfirmationEmailSentAt ?? null,
@@ -2517,6 +2520,7 @@ export class PreMarketService {
       request.createdAt,
       latestMatchedAt ?? null,
       searchActivity.lastRenterUpdatedAt,
+      searchActivity.lastMatchedAt,
       searchActivity.lastConfirmedAt,
     ].filter((value): value is Date => Boolean(value));
 
@@ -2540,6 +2544,7 @@ export class PreMarketService {
     searchActivity: Record<string, any> | null | undefined,
     updates: Partial<{
       lastRenterUpdatedAt: Date;
+      lastMatchedAt: Date;
       lastConfirmedAt: Date;
       lastConfirmedToken: string;
       lastConfirmedTokenUsedAt: Date;
@@ -2549,6 +2554,23 @@ export class PreMarketService {
       ...this.clearPendingSearchConfirmationState(searchActivity),
       ...updates,
     };
+  }
+
+  private async markSearchMatchedActivity(
+    request: IPreMarketRequest | Record<string, any>,
+    matchedAt: Date,
+  ): Promise<void> {
+    const requestId = request._id?.toString();
+    if (!requestId) {
+      return;
+    }
+
+    await this.preMarketRepository.updateById(requestId, {
+      searchActivity: this.resetSearchConfirmationActivity(
+        (request as any)?.searchActivity,
+        { lastMatchedAt: matchedAt },
+      ),
+    } as Partial<IPreMarketRequest>);
   }
 
   getAgentArchiveStatusForRequest(
@@ -5989,9 +6011,10 @@ export class PreMarketService {
       );
 
     let matchRecord: IGrantAccessRequest;
+    const matchedAt = new Date();
     const representationPayload = {
       representation_type: representationType,
-      representationSelectedAt: new Date(),
+      representationSelectedAt: matchedAt,
       ...(normalizedOpportunityDetails
         ? { opportunityDetails: normalizedOpportunityDetails }
         : {}),
@@ -6001,6 +6024,11 @@ export class PreMarketService {
       if (existing) {
         if (existing.status === "free" || existing.status === "paid") {
           if (shouldSendAdditionalOpportunity) {
+            await this.markSearchMatchedActivity(
+              listingActivationCheck,
+              matchedAt,
+            );
+
             this.notifyRenterAboutMatchedOpportunity(
               agentId,
               listingActivationCheck,
@@ -6040,12 +6068,14 @@ export class PreMarketService {
           agentId,
           status: "free",
           ...representationPayload,
-          createdAt: new Date(),
+          createdAt: matchedAt,
         });
       }
     } catch (error) {
       throw error;
     }
+
+    await this.markSearchMatchedActivity(listingActivationCheck, matchedAt);
 
     await this.preMarketRepository.setAllMarketRequestPrivateAfterMatch(
       requestId,

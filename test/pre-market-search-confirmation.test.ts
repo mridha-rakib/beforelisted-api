@@ -5,6 +5,7 @@ import { emailService } from "../src/services/email.service";
 
 vi.mock("../src/services/email.service", () => ({
   emailService: {
+    sendActiveSearchConfirmationReminder: vi.fn().mockResolvedValue({ success: true }),
     sendRenterArchiveNotification: vi.fn().mockResolvedValue({ success: true }),
   },
 }));
@@ -28,6 +29,7 @@ function buildRequest(overrides: Record<string, any> = {}) {
     createdAt: new Date("2026-06-01T00:00:00.000Z"),
     searchActivity: {
       lastRenterUpdatedAt: new Date("2026-06-01T00:00:00.000Z"),
+      lastMatchedAt: null,
       lastConfirmedAt: null,
       lastConfirmationEmailSentAt: new Date("2026-06-15T21:00:00.000Z"),
       pendingConfirmationToken: "expired-token",
@@ -106,6 +108,34 @@ describe("PreMarketService automatic search confirmation sweep", () => {
       failedCount: 0,
     });
     expect(service.preMarketRepository.archiveExpiredSearchConfirmation).not.toHaveBeenCalled();
+    expect(emailService.sendRenterArchiveNotification).not.toHaveBeenCalled();
+  });
+
+  it("does not send Template 26 before 14 days after the latest match activity", async () => {
+    const service = buildService();
+    const recentlyMatchedRequest = buildRequest({
+      searchActivity: {
+        lastRenterUpdatedAt: new Date("2026-06-01T00:00:00.000Z"),
+        lastMatchedAt: new Date("2026-06-10T21:00:00.000Z"),
+        lastConfirmedAt: null,
+        lastConfirmationEmailSentAt: null,
+        pendingConfirmationToken: null,
+        pendingConfirmationSentAt: null,
+        pendingConfirmationExpiresAt: null,
+      },
+    });
+
+    service.preMarketRepository.findActiveRequestsForSearchConfirmationSweep
+      .mockResolvedValue([recentlyMatchedRequest]);
+
+    const result = await service.processAutomaticSearchConfirmationSweep();
+
+    expect(result).toEqual({
+      remindersSent: 0,
+      archivedRequests: 0,
+      failedCount: 0,
+    });
+    expect(emailService.sendActiveSearchConfirmationReminder).not.toHaveBeenCalled();
     expect(emailService.sendRenterArchiveNotification).not.toHaveBeenCalled();
   });
 

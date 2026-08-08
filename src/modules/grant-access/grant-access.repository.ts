@@ -170,6 +170,14 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
     if (!preMarketRequestIds || preMarketRequestIds.length === 0) {
       return new Map();
     }
+    const requestObjectIds = preMarketRequestIds
+      .map((id) => id.toString())
+      .filter((id) => Types.ObjectId.isValid(id))
+      .map((id) => new Types.ObjectId(id));
+
+    if (requestObjectIds.length === 0) {
+      return new Map();
+    }
 
     const results = await this.model.aggregate<{
       _id: Types.ObjectId;
@@ -177,7 +185,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
     }>([
       {
         $match: {
-          preMarketRequestId: { $in: preMarketRequestIds },
+          preMarketRequestId: { $in: requestObjectIds },
           status: { $in: ["approved", "free", "paid"] },
           representation_type: { $ne: "owner_representation" },
         },

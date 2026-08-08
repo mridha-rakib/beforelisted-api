@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   type MatchApartmentInput,
@@ -515,6 +515,7 @@ describe("PreMarketService registered-agent matching", () => {
     };
     serviceAny.preMarketRepository = {
       findByIdWithActivationStatus: async () => request,
+      updateById: async () => request,
       setAllMarketRequestPrivateAfterMatch: async () => undefined,
     };
     serviceAny.grantAccessRepository = {
@@ -594,6 +595,7 @@ describe("PreMarketService additional opportunities", () => {
     const notifications: Array<Record<string, unknown>> = [];
     const service = new PreMarketService();
     const serviceAny = service as any;
+    const updateById = vi.fn().mockResolvedValue(request);
 
     serviceAny.agentRepository = {
       findByUserId: async () => ({
@@ -604,6 +606,7 @@ describe("PreMarketService additional opportunities", () => {
     };
     serviceAny.preMarketRepository = {
       findByIdWithActivationStatus: async () => request,
+      updateById,
     };
     serviceAny.grantAccessRepository = {
       findByAgentAndRequest: async () => existingMatch,
@@ -637,6 +640,17 @@ describe("PreMarketService additional opportunities", () => {
     expect(notifications).toEqual([
       expect.objectContaining({ additionalOpportunity: true }),
     ]);
+    expect(updateById).toHaveBeenCalledWith(
+      requestId,
+      expect.objectContaining({
+        searchActivity: expect.objectContaining({
+          lastMatchedAt: expect.any(Date),
+          pendingConfirmationToken: null,
+          pendingConfirmationSentAt: null,
+          pendingConfirmationExpiresAt: null,
+        }),
+      }),
+    );
   });
 });
 
@@ -668,6 +682,7 @@ describe("PreMarketService owner-representation notifications", () => {
     };
     serviceAny.preMarketRepository = {
       findByIdWithActivationStatus: async () => request,
+      updateById: async () => request,
       setAllMarketRequestPrivateAfterMatch: async () => undefined,
     };
     serviceAny.grantAccessRepository = {
