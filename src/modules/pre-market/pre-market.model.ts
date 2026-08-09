@@ -66,6 +66,8 @@ export type IPreMarketRequest = {
     lastMatchedAt?: Date | null;
     lastConfirmedAt?: Date | null;
     lastConfirmationEmailSentAt?: Date | null;
+    upcomingScopeSelectedAt?: Date | null;
+    upcomingSearchExpansionReminderSentAt?: Date | null;
     pendingConfirmationToken?: string | null;
     pendingConfirmationSentAt?: Date | null;
     pendingConfirmationExpiresAt?: Date | null;
@@ -274,6 +276,16 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
       index: true,
     },
     lastConfirmationEmailSentAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    upcomingScopeSelectedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    upcomingSearchExpansionReminderSentAt: {
       type: Date,
       default: null,
       index: true,

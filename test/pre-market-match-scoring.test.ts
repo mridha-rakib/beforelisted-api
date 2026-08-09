@@ -814,6 +814,10 @@ describe("PreMarketService renter market-scope switching", () => {
       expect.objectContaining({
         scope: "Upcoming",
         visibility: "PRIVATE",
+        searchActivity: expect.objectContaining({
+          upcomingScopeSelectedAt: expect.any(Date),
+          upcomingSearchExpansionReminderSentAt: null,
+        }),
       }),
     );
   });
@@ -838,6 +842,10 @@ describe("PreMarketService renter market-scope switching", () => {
       expect.objectContaining({
         scope: "All Market",
         visibility: "PRIVATE",
+        searchActivity: expect.objectContaining({
+          upcomingScopeSelectedAt: null,
+          upcomingSearchExpansionReminderSentAt: null,
+        }),
       }),
     );
   });

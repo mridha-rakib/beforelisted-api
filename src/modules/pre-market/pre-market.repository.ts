@@ -848,6 +848,56 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       .exec();
   }
 
+  async findActiveUpcomingRequestsForSearchExpansionReminderSweep(): Promise<
+    IPreMarketRequest[]
+  > {
+    return this.model
+      .find({
+        "isDeleted": false,
+        "isActive": true,
+        "status": { $ne: "deleted" },
+        "scope": "Upcoming",
+        "searchActivity.upcomingScopeSelectedAt": { $ne: null },
+        "searchActivity.upcomingSearchExpansionReminderSentAt": null,
+        "$or": [
+          { agentArchives: { $exists: false } },
+          { agentArchives: { $size: 0 } },
+        ],
+      })
+      .lean<IPreMarketRequest[]>()
+      .exec();
+  }
+
+  async markUpcomingSearchExpansionReminderSent(
+    requestId: string,
+    now: Date,
+  ): Promise<IPreMarketRequest | null> {
+    return this.model
+      .findOneAndUpdate(
+        {
+          "_id": requestId,
+          "isDeleted": false,
+          "isActive": true,
+          "status": { $ne: "deleted" },
+          "scope": "Upcoming",
+          "searchActivity.upcomingScopeSelectedAt": { $ne: null },
+          "searchActivity.upcomingSearchExpansionReminderSentAt": null,
+          "$or": [
+            { agentArchives: { $exists: false } },
+            { agentArchives: { $size: 0 } },
+          ],
+        },
+        {
+          $set: {
+            "searchActivity.upcomingSearchExpansionReminderSentAt": now,
+          },
+        },
+        { new: true },
+      )
+      .lean()
+      .exec() as Promise<IPreMarketRequest | null>;
+  }
+
   async findByPendingSearchConfirmationToken(
     token: string,
   ): Promise<IPreMarketRequest | null> {

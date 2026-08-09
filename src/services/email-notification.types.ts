@@ -219,6 +219,16 @@ export type IActiveSearchConfirmationReminderPayload = {
   templateType: string;
 };
 
+export type IUpcomingRequestSearchExpansionReminderPayload = {
+  to: string;
+  renterName: string;
+  subject: string;
+  headerTitle?: string;
+  bodyHtml: string;
+  replyTo?: string;
+  templateType: string;
+};
+
 export type ISystemArchivedSearchInactiveAgentNotificationPayload = {
   to: string;
   agentName: string;

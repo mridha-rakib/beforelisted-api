@@ -3,6 +3,7 @@
 import { env } from "@/env";
 import { startPreMarketExpirationJob } from "@/jobs/pre-market-expiration.job";
 import { startPreMarketSearchConfirmationJob } from "@/jobs/pre-market-search-confirmation.job";
+import { startPreMarketUpcomingSearchExpansionReminderJob } from "@/jobs/pre-market-upcoming-search-expansion-reminder.job";
 import { logger } from "@/middlewares/pino-logger";
 import { AgentProfileRepository } from "@/modules/agent/agent.repository";
 import { AdminSeeder } from "@/seeders/admin.seeder";
@@ -30,6 +31,7 @@ export async function bootstrapApplication(): Promise<void> {
     if (shouldStartScheduledJobs) {
       startPreMarketExpirationJob();
       startPreMarketSearchConfirmationJob();
+      startPreMarketUpcomingSearchExpansionReminderJob();
     }
     else {
       logger.warn(

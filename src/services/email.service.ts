@@ -50,6 +50,7 @@ import type {
   IRenterSearchReactivatedAgentNotificationPayload,
   IRenterUnarchiveNotificationPayload,
   ISystemArchivedSearchInactiveAgentNotificationPayload,
+  IUpcomingRequestSearchExpansionReminderPayload,
 } from "./email-notification.types";
 
 import {
@@ -1767,6 +1768,49 @@ export class EmailService {
           email: payload.to,
         },
         "Failed to send active search confirmation reminder",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  async sendUpcomingRequestSearchExpansionReminder(
+    payload: IUpcomingRequestSearchExpansionReminderPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, templateType: payload.templateType },
+        "Sending upcoming request search expansion reminder",
+      );
+
+      const html = this.buildSimpleBeforeListedEmail(payload.bodyHtml, {
+        headerTitle: payload.headerTitle,
+      });
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.renterName },
+        replyTo: payload.replyTo || "support@beforelisted.com",
+        subject: payload.subject,
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        payload.templateType,
+        payload.to,
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send upcoming request search expansion reminder",
       );
 
       return {

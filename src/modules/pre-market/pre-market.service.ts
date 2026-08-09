@@ -125,6 +125,8 @@ const ARCHIVE_REASON_LABELS: Record<AgentArchiveReason, string> = {
 
 const SEARCH_CONFIRMATION_INTERVAL_MS = 14 * 24 * 60 * 60 * 1000;
 const SEARCH_CONFIRMATION_EXPIRY_MS = 3 * 24 * 60 * 60 * 1000;
+const UPCOMING_SEARCH_EXPANSION_REMINDER_DELAY_MS =
+  10 * 24 * 60 * 60 * 1000;
 const DEFAULT_PRODUCTION_API_ORIGIN = "https://api.beforelisted.com";
 const MARKET_SCOPE_SWITCH_LOCKED_MESSAGE =
   "A rental specialist is already assigned. For any issues, contact support@beforelisted.com.";
@@ -1068,6 +1070,7 @@ export class PreMarketService {
     const requestName = requestId;
     const shareConsent = payload.shareConsent === true;
     const scope = payload.scope ?? "Upcoming";
+    const now = new Date();
     const referralAgentId =
       await this.resolveRegisteredAgentIdFromRenter(renter);
     if (renter.registrationType === "agent_referral" && !referralAgentId) {
@@ -1104,10 +1107,12 @@ export class PreMarketService {
         normalAgents: [],
       },
       searchActivity: {
-        lastRenterUpdatedAt: new Date(),
+        lastRenterUpdatedAt: now,
         lastMatchedAt: null,
         lastConfirmedAt: null,
         lastConfirmationEmailSentAt: null,
+        upcomingScopeSelectedAt: scope === "Upcoming" ? now : null,
+        upcomingSearchExpansionReminderSentAt: null,
         pendingConfirmationToken: null,
         pendingConfirmationSentAt: null,
         pendingConfirmationExpiresAt: null,
@@ -1911,6 +1916,18 @@ export class PreMarketService {
         (request as any)?.searchActivity,
         {
           lastRenterUpdatedAt: now,
+          ...(payload.scope === "Upcoming" && request.scope !== "Upcoming"
+            ? {
+                upcomingScopeSelectedAt: now,
+                upcomingSearchExpansionReminderSentAt: null,
+              }
+            : {}),
+          ...(payload.scope === "All Market" && request.scope !== "All Market"
+            ? {
+                upcomingScopeSelectedAt: null,
+                upcomingSearchExpansionReminderSentAt: null,
+              }
+            : {}),
         },
       ),
     };
@@ -2494,6 +2511,8 @@ export class PreMarketService {
     lastMatchedAt: Date | null;
     lastConfirmedAt: Date | null;
     lastConfirmationEmailSentAt: Date | null;
+    upcomingScopeSelectedAt: Date | null;
+    upcomingSearchExpansionReminderSentAt: Date | null;
     pendingConfirmationToken: string | null;
     pendingConfirmationSentAt: Date | null;
     pendingConfirmationExpiresAt: Date | null;
@@ -2508,6 +2527,9 @@ export class PreMarketService {
       lastConfirmedAt: searchActivity.lastConfirmedAt ?? null,
       lastConfirmationEmailSentAt:
         searchActivity.lastConfirmationEmailSentAt ?? null,
+      upcomingScopeSelectedAt: searchActivity.upcomingScopeSelectedAt ?? null,
+      upcomingSearchExpansionReminderSentAt:
+        searchActivity.upcomingSearchExpansionReminderSentAt ?? null,
       pendingConfirmationToken: searchActivity.pendingConfirmationToken ?? null,
       pendingConfirmationSentAt:
         searchActivity.pendingConfirmationSentAt ?? null,
@@ -2523,6 +2545,14 @@ export class PreMarketService {
     return `${baseUrl}/pre-market/confirm-active-search?token=${encodeURIComponent(
       token,
     )}`;
+  }
+
+  private buildRenterEditRequestLink(requestId: string): string {
+    const baseUrl = (env.CLIENT_URL || "https://beforelisted.com").replace(
+      /\/+$/,
+      "",
+    );
+    return `${baseUrl}/renter/saved-requests/${requestId}`;
   }
 
   private getPublicApiBaseUrl(): string {
@@ -2590,6 +2620,8 @@ export class PreMarketService {
       lastConfirmedAt: Date;
       lastConfirmedToken: string;
       lastConfirmedTokenUsedAt: Date;
+      upcomingScopeSelectedAt: Date | null;
+      upcomingSearchExpansionReminderSentAt: Date | null;
     }> = {},
   ) {
     return {
@@ -4657,6 +4689,82 @@ export class PreMarketService {
     };
   }
 
+  /**
+   * Runs the scheduled sweep for Upcoming-only requests that should receive
+   * the 10-day search expansion reminder.
+   */
+  async processUpcomingSearchExpansionReminderSweep(): Promise<{
+    remindersSent: number;
+    skippedCount: number;
+    failedCount: number;
+  }> {
+    const now = new Date();
+    const requests =
+      await this.preMarketRepository.findActiveUpcomingRequestsForSearchExpansionReminderSweep();
+
+    let remindersSent = 0;
+    let skippedCount = 0;
+    let failedCount = 0;
+
+    for (const request of requests) {
+      try {
+        if (
+          request.isDeleted ||
+          request.status === "deleted" ||
+          request.isActive === false ||
+          request.scope !== "Upcoming"
+        ) {
+          skippedCount += 1;
+          continue;
+        }
+
+        if (
+          Array.isArray((request as any)?.agentArchives) &&
+          (request as any).agentArchives.length > 0
+        ) {
+          skippedCount += 1;
+          continue;
+        }
+
+        const searchActivity = this.getSearchActivity(request);
+        if (
+          !searchActivity.upcomingScopeSelectedAt ||
+          searchActivity.upcomingSearchExpansionReminderSentAt
+        ) {
+          skippedCount += 1;
+          continue;
+        }
+
+        if (
+          searchActivity.upcomingScopeSelectedAt.getTime() +
+            UPCOMING_SEARCH_EXPANSION_REMINDER_DELAY_MS >
+          now.getTime()
+        ) {
+          skippedCount += 1;
+          continue;
+        }
+
+        const reminderSent =
+          await this.sendUpcomingSearchExpansionReminder(request, now);
+        if (reminderSent) {
+          remindersSent += 1;
+        }
+      } catch (error) {
+        failedCount += 1;
+        logger.error(
+          { error, requestId: request._id?.toString() },
+          "Failed to process upcoming search expansion reminder sweep item",
+        );
+      }
+    }
+
+    return {
+      remindersSent,
+      skippedCount,
+      failedCount,
+    };
+  }
+
   async getArchivedRequestsForAgent(
     agentId: string,
     query: PaginationQuery,
@@ -4928,6 +5036,88 @@ export class PreMarketService {
         pendingConfirmationExpiresAt: expiresAt,
       },
     } as Partial<IPreMarketRequest>);
+
+    return true;
+  }
+
+  private async sendUpcomingSearchExpansionReminder(
+    request: IPreMarketRequest,
+    now: Date,
+  ): Promise<boolean> {
+    const requestId = request._id?.toString();
+    if (!requestId) {
+      return false;
+    }
+
+    const renter = await this.renterRepository.findRenterWithReferrer(
+      request.renterId.toString(),
+    );
+    if (!renter?.email) {
+      logger.warn(
+        { requestId },
+        "Skipping upcoming search expansion reminder because renter email is missing",
+      );
+      return false;
+    }
+
+    const registeredAgentId =
+      await this.resolveRegisteredAgentIdForRequest(request);
+    const registeredAgent = await this.getArchiveAgentInfo(registeredAgentId);
+    const firstName =
+      renter.fullName?.trim().split(/\s+/)[0] || renter.fullName || "there";
+    const editRequestLink = this.buildRenterEditRequestLink(requestId);
+    const bodyHtml = `
+      <p>Hi ${this.escapeEmailHtml(firstName)},</p>
+      <p>Finding the right upcoming rental can sometimes take time because we not only need to locate an apartment before it is publicly advertised, but it also needs to match your specific request.</p>
+      <p>If you want to increase your chances of securing an apartment, you can switch your request to Rentals Publicly Advertised + BeforeListed.</p>
+      <p>With this option, we&rsquo;ll continue looking for upcoming opportunities for you while a rental specialist is also assigned to help you secure publicly advertised rentals.</p>
+      <p>Their broker fee is only due when an apartment is secured, and you pay it only once, whether it&rsquo;s an upcoming opportunity or a publicly advertised listing. The fee is typically one month&rsquo;s rent and will be confirmed by the specialist when they contact you.</p>
+      <p>Your rental specialist can help you:</p>
+      <ul>
+        <li>Check multiple rental databases daily so you don&rsquo;t miss new opportunities.</li>
+        <li>Guide you, create and coordinate apartment tours.</li>
+        <li>Review your documents so your application is presented as strongly as possible.</li>
+        <li>Contact agents and owners before showings to confirm listings are legitimate and still available.</li>
+        <li>Filter out poor-quality or unsuitable listings.</li>
+        <li>Take apartment videos for you when needed.</li>
+        <li>Guide you throughout your rental search.</li>
+        <li>Help protect your interests through the lease-signing process.</li>
+        <li>Provide available information about known issues with specific buildings or owners.</li>
+      </ul>
+      <p>If you are considering working with a rental specialist, simply update your request to Rentals Publicly Advertised + BeforeListed, and a specialist who fits your search will contact you.</p>
+      <p><a href="${this.escapeEmailHtml(editRequestLink)}"><strong style="color: #000000;">Edit My Request</strong></a></p>
+      <p>To continue searching only for upcoming opportunities, no action is needed. We&rsquo;ll continue working on your current request.</p>
+      <p>Thank you,<br>BeforeListed&trade; Support</p>`;
+
+    const claimedRequest =
+      await this.preMarketRepository.markUpcomingSearchExpansionReminderSent(
+        requestId,
+        now,
+      );
+    if (!claimedRequest) {
+      return false;
+    }
+
+    const result =
+      await emailService.sendUpcomingRequestSearchExpansionReminder({
+        to: renter.email,
+        renterName: renter.fullName,
+        subject:
+          "Trouble Securing an Apartment? Increase Your Chances with a Rental Specialist \u2013 BeforeListed\u2122",
+        headerTitle:
+          "Increase Your Chances with a Rental Specialist",
+        bodyHtml,
+        replyTo: registeredAgent.email || "support@beforelisted.com",
+        templateType: "UPCOMING_REQUEST_SEARCH_EXPANSION_REMINDER",
+      });
+
+    if (!result.success) {
+      throw new Error(
+        typeof result.error === "string"
+          ? result.error
+          : "Failed to send upcoming search expansion reminder",
+      );
+    }
 
     return true;
   }
