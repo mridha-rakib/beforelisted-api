@@ -260,6 +260,13 @@ router.delete(
 );
 
 router.put(
+  "/admin/requests/:requestId/scope",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Admin"),
+  controller.adminUpdateScope.bind(controller),
+);
+
+router.put(
   "/admin/renters/:renterId/listings/:listingId/toggle-status",
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),

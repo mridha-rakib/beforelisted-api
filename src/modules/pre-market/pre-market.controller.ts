@@ -26,6 +26,7 @@ import {
   adminApproveSchema,
   adminChargeSchema,
   adminRejectSchema,
+  adminUpdateScopeSchema,
   agentBulkMatchRequestSchema,
   agentMatchRequestSchema,
   agentMatchSearchSchema,
@@ -1617,6 +1618,23 @@ export class PreMarketController {
     ApiResponse.success(res, {
       message: "Pre-market request deleted successfully",
     });
+  });
+
+  /**
+   * PUT /pre-market/admin/requests/:requestId/scope
+   * Admin updates the scope ("Upcoming" / "All Market") of any pre-market request.
+   */
+  adminUpdateScope = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(adminUpdateScopeSchema, req);
+    const adminId = req.user!.userId;
+
+    const updated = await this.preMarketService.adminUpdateScope(
+      validated.params.requestId,
+      validated.body.scope,
+      adminId,
+    );
+
+    ApiResponse.success(res, updated, `Scope updated to ${validated.body.scope}`);
   });
 
   /**

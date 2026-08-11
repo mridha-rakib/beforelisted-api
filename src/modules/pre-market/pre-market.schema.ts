@@ -446,3 +446,12 @@ export const adminToggleListingStatusSchema = z.object({
   }),
   body: z.object({}),
 });
+
+export const adminUpdateScopeSchema = z.object({
+  params: z.object({
+    requestId: z.string().min(24, "Invalid request ID"),
+  }),
+  body: z.object({
+    scope: z.enum<["Upcoming", "All Market"]>(["Upcoming", "All Market"]),
+  }),
+});
