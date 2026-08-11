@@ -583,6 +583,7 @@ describe("PreMarketService additional opportunities", () => {
       shareConsent: true,
       status: "Available",
       isActive: true,
+      scope: "Upcoming",
       registrationDisclosureConfirmations: [],
     };
     const existingMatch = {

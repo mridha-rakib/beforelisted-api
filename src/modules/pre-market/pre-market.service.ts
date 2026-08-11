@@ -130,6 +130,8 @@ const UPCOMING_SEARCH_EXPANSION_REMINDER_DELAY_MS =
 const DEFAULT_PRODUCTION_API_ORIGIN = "https://api.beforelisted.com";
 const MARKET_SCOPE_SWITCH_LOCKED_MESSAGE =
   "A rental specialist is already assigned. For any issues, contact support@beforelisted.com.";
+const ADDITIONAL_OPPORTUNITY_SCOPE_GATE_MESSAGE =
+  "Additional opportunity matching is only available for Upcoming / Upcoming (M) requests.";
 
 const DEFAULT_REGISTERED_AGENT_EMAIL = SYSTEM_DEFAULT_AGENT.email;
 const _DEFAULT_REGISTERED_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
@@ -6232,6 +6234,18 @@ export class PreMarketService {
       agentId,
       requestId,
     );
+
+    // Additional opportunity matching is only meaningful for Upcoming /
+    // Upcoming (M) requests — the same agent may know of multiple owners /
+    // upcoming opportunities that could help the request. For All Market
+    // requests, one match per agent is the rule, so reject early.
+    const isUpcomingRequest
+      = (listingActivationCheck as IPreMarketRequest)?.scope === "Upcoming";
+    if (additionalOpportunity && !isUpcomingRequest) {
+      throw new BadRequestException(
+        ADDITIONAL_OPPORTUNITY_SCOPE_GATE_MESSAGE,
+      );
+    }
 
     const shouldNotify =
       !existing || (existing.status !== "free" && existing.status !== "paid");
