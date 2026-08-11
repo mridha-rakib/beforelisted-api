@@ -7993,9 +7993,10 @@ export class PreMarketService {
 
   /**
    * Admin updates the scope ("Upcoming" / "All Market") of any pre-market request.
-   * Mirrors the renter-side lock (All Market → Upcoming is blocked when an agent is already
-   * matched) and the PRIVATE-visibility-on-scope-flip behavior so admin edits cannot bypass
-   * rules the renter path enforces.
+   * Unlike the renter-side `updateRequest`, admins are NOT subject to the
+   * "A rental specialist is already assigned" lock — admins must always be
+   * able to move a request back to Upcoming. Visibility is reset to PRIVATE
+   * on every flip, mirroring the renter-side rule.
    */
   async adminUpdateScope(
     requestId: string,
@@ -8006,13 +8007,6 @@ export class PreMarketService {
 
     if (request.scope === scope) {
       return request;
-    }
-
-    if (scope === "Upcoming" && request.scope === "All Market") {
-      const locked = await this.isMarketScopeSwitchLockedForRequest(request);
-      if (locked) {
-        throw new BadRequestException(MARKET_SCOPE_SWITCH_LOCKED_MESSAGE);
-      }
     }
 
     const updated = await this.preMarketRepository.updateById(requestId, {
