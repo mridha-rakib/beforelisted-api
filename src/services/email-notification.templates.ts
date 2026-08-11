@@ -1621,6 +1621,7 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
   requestRepresentedByTuvalMor: boolean = false,
   facilitatorReferralLink?: string,
   matchSummary?: IMatchCompatibilitySummary,
+  additionalOpportunity: boolean = false,
 ): string {
   const currentYear = new Date().getFullYear();
   const safeRegisteredAgentFirstName = escapeHtml(
@@ -1782,7 +1783,7 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
     <div class="container">
         <div class="header">
             ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
-            <h1>Match Referral Acknowledgment</h1>
+            <h1>${additionalOpportunity ? "Additional Owner Opportunity Found" : "Match Referral Acknowledgment"}</h1>
         </div>
 
         <div class="content">
@@ -1790,7 +1791,9 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
                 Hi ${safeRegisteredAgentFirstName},
             </div>
 
-            <p>An agent has identified a potential apartment match for your renter and has indicated that they intend to represent the owner in this transaction.</p>
+            <p>${additionalOpportunity
+              ? `An agent who has already been matched to your renter's request has identified an additional apartment opportunity and has indicated that they intend to represent the owner in this transaction.`
+              : `An agent has identified a potential apartment match for your renter and has indicated that they intend to represent the owner in this transaction.`}</p>
 
 ${opportunityDetailsMarkup}
 ${matchSummaryMarkup}

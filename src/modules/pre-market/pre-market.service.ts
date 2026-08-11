@@ -6251,7 +6251,6 @@ export class PreMarketService {
       !existing || (existing.status !== "free" && existing.status !== "paid");
     const shouldSendAdditionalOpportunity =
       additionalOpportunity &&
-      representationType === "renter_representation" &&
       Boolean(
         existing && (existing.status === "free" || existing.status === "paid"),
       );
@@ -6275,18 +6274,32 @@ export class PreMarketService {
               matchedAt,
             );
 
-            this.notifyRenterAboutMatchedOpportunity(
-              agentId,
-              listingActivationCheck,
-              existing._id,
-              normalizedOpportunityDetails,
-              { additionalOpportunity: true, matchSummary },
-            ).catch((error) => {
-              logger.error(
-                { error, requestId, agentId },
-                "Failed to send additional renter opportunity notification (non-blocking)",
-              );
-            });
+            if (representationType === "owner_representation") {
+              this.notifyRegisteredAgentAboutOwnerRepresentationMatch(
+                agentId,
+                listingActivationCheck,
+                normalizedOpportunityDetails,
+                { additionalOpportunity: true, matchSummary },
+              ).catch((error) => {
+                logger.error(
+                  { error, requestId, agentId },
+                  "Failed to send additional owner opportunity notification (non-blocking)",
+                );
+              });
+            } else if (representationType === "renter_representation") {
+              this.notifyRenterAboutMatchedOpportunity(
+                agentId,
+                listingActivationCheck,
+                existing._id,
+                normalizedOpportunityDetails,
+                { additionalOpportunity: true, matchSummary },
+              ).catch((error) => {
+                logger.error(
+                  { error, requestId, agentId },
+                  "Failed to send additional renter opportunity notification (non-blocking)",
+                );
+              });
+            }
 
             const existingObject =
               typeof (existing as any).toObject === "function"
@@ -6333,7 +6346,7 @@ export class PreMarketService {
           agentId,
           listingActivationCheck,
           normalizedOpportunityDetails,
-          matchSummary,
+          { matchSummary },
         ).catch((error) => {
           logger.error(
             { error, requestId, agentId },
@@ -7546,7 +7559,10 @@ export class PreMarketService {
     agentId: string,
     preMarketRequest: IPreMarketRequest,
     opportunityDetails?: string,
-    matchSummary?: IMatchCompatibilitySummary,
+    options: {
+      additionalOpportunity?: boolean;
+      matchSummary?: IMatchCompatibilitySummary;
+    } = {},
   ): Promise<void> {
     const renter = await this.renterRepository.findRenterWithReferrer(
       preMarketRequest.renterId.toString(),
@@ -7617,8 +7633,9 @@ export class PreMarketService {
       matchedAgentEmail: matchedAgent.email,
       matchedAgentPhoneNumber: matchedAgent.phoneNumber || "N/A",
       opportunityDetails,
+      additionalOpportunity: options.additionalOpportunity,
       requestRepresentedByTuvalMor,
-      matchSummary,
+      matchSummary: options.matchSummary,
       cc,
     });
   }

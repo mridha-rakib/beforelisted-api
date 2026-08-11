@@ -1516,6 +1516,7 @@ export class EmailService {
               payload.renterFullName,
             ),
         payload.matchSummary,
+        payload.additionalOpportunity,
       );
 
       const emailOptions: IEmailOptions = {
@@ -1525,8 +1526,9 @@ export class EmailService {
         },
         cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
         replyTo: "support@beforelisted.com",
-        subject:
-          "Owner Rep Selected on Your Renter - Review Now | BeforeListed\u2122",
+        subject: payload.additionalOpportunity
+          ? "An additional owner opportunity matching your renter's request \u2013 BeforeListed"
+          : "Owner Rep Selected on Your Renter - Review Now | BeforeListed\u2122",
         html,
       };
 

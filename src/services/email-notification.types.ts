@@ -153,6 +153,7 @@ export type IOwnerRepresentationMatchReferralAcknowledgmentPayload = {
   matchedAgentEmail: string;
   matchedAgentPhoneNumber: string;
   opportunityDetails?: string;
+  additionalOpportunity?: boolean;
   requestRepresentedByTuvalMor?: boolean;
   matchSummary?: IMatchCompatibilitySummary;
   cc?: string[];
