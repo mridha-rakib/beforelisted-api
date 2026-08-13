@@ -8009,6 +8009,14 @@ export class PreMarketService {
       return request;
     }
 
+    // Block Upcoming (M) → Upcoming: scope is currently "All Market" with a
+    // matched grant. Any other flip direction (Upcoming → All Market, or
+    // All Market with no matches → Upcoming) is allowed.
+    const isLocked = await this.isMarketScopeSwitchLockedForRequest(request);
+    if (isLocked && scope === "Upcoming") {
+      throw new BadRequestException(MARKET_SCOPE_SWITCH_LOCKED_MESSAGE);
+    }
+
     const updated = await this.preMarketRepository.updateById(requestId, {
       scope,
       visibility: "PRIVATE",
