@@ -1813,6 +1813,103 @@ export class PreMarketService {
     return count > 0;
   }
 
+  /**
+   * Toggles the "All Market Offer" gate for a single request.
+   *
+   * The gate controls whether the day-10 search-expansion reminder
+   * (Template #32) is allowed to fire. By default it is enabled for every
+   * Upcoming request. The registered agent for the renter can uncheck it
+   * from the agent dashboard "All Market Offer" column.
+   *
+   * State machine:
+   *   - Toggle to `enabled: false`:
+   *       * Flips the request scope to "All Market" (one-way trip).
+   *       * Sets `searchActivity.allMarketOfferEnabled` to `false`.
+   *       * Locks the checkbox grey/disabled for the rest of the
+   *         request's life.
+   *   - Toggle to `enabled: true`:
+   *       * Only allowed while the request is still Upcoming and active.
+   *       * Restores the gate; does NOT change scope.
+   *
+   * Authorization:
+   *   - Only the **registered agent** for the renter (the agent the renter
+   *     was referred by when they created the request, or the system
+   *     default agent when no referral is present) can call this.
+   *   - Other agents, the renter themselves, and admins cannot toggle the
+   *     gate. They will receive a 403 from the controller.
+   */
+  async toggleAllMarketOffer(
+    agentId: string,
+    requestId: string,
+    enabled: boolean,
+  ): Promise<IPreMarketRequest> {
+    const request = await this.preMarketRepository.findById(requestId);
+    if (!request || request.isDeleted) {
+      throw new NotFoundException("Pre-market request not found");
+    }
+
+    if (request.isActive === false) {
+      throw new BadRequestException(
+        "Cannot toggle the All Market Offer gate on a deactivated request.",
+      );
+    }
+
+    const isRegisteredAgent = await this.isRegisteredAgentForRequest(
+      agentId,
+      request,
+    );
+    if (!isRegisteredAgent) {
+      throw new ForbiddenException(
+        "Only the registered agent for this renter can toggle the All Market Offer gate.",
+      );
+    }
+
+    if (request.scope !== "Upcoming") {
+      throw new BadRequestException(
+        "The All Market Offer gate can only be toggled while the request is in the Upcoming scope.",
+      );
+    }
+
+    const now = new Date();
+
+    // Unchecking the box is the one-way trip: flip scope to All Market AND
+    // clear the gate so the day-10 sweep can never re-fire for this
+    // request via any code path.
+    if (enabled === false) {
+      const updated = await this.preMarketRepository.flipScopeToAllMarket(
+        requestId,
+        now,
+      );
+      if (!updated) {
+        throw new BadRequestException(
+          "The All Market Offer gate could not be unchecked — the request may have changed scope.",
+        );
+      }
+      logger.info(
+        { agentId, requestId },
+        "Registered agent disabled the All Market Offer gate and flipped the request to All Market scope.",
+      );
+      return updated;
+    }
+
+    // Re-checking is allowed but only meaningful if the field was somehow
+    // cleared before. The state-machine guard in the repository refuses the
+    // update when scope has already moved to All Market, so a request that
+    // has been flipped cannot be un-flipped.
+    const updated = await this.preMarketRepository.toggleAllMarketOffer(
+      requestId,
+      true,
+      agentId,
+      now,
+    );
+    if (!updated) {
+      throw new BadRequestException(
+        "The All Market Offer gate could not be updated — the request may no longer be eligible.",
+      );
+    }
+    return updated;
+  }
+
   async syncRequestOwnershipForRenter(renterId: string): Promise<void> {
     const renter = await this.renterRepository.findRenterWithReferrer(renterId);
     if (!renter) {
@@ -4747,6 +4844,17 @@ export class PreMarketService {
           !searchActivity.upcomingScopeSelectedAt ||
           searchActivity.upcomingSearchExpansionReminderSentAt
         ) {
+          skippedCount += 1;
+          continue;
+        }
+
+        // Defense-in-depth: the repository already filters on this, but if
+        // a request somehow ends up here with the gate disabled we must
+        // still respect the registered agent's opt-out. Older documents
+        // created before the field existed read with `undefined`, which
+        // passes the `!== false` check below so we keep sending reminders
+        // for them.
+        if (searchActivity.allMarketOfferEnabled === false) {
           skippedCount += 1;
           continue;
         }

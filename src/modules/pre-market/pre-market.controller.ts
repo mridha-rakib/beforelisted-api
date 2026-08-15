@@ -38,6 +38,7 @@ import {
   reactivateSearchSchema,
   requestAccessSchema,
   requestUpdateToMatchedAgentSchema,
+  toggleAllMarketOfferSchema,
   toggleListingActivationSchema,
   toggleShareVisibilitySchema,
   unarchiveRequestSchema,
@@ -164,6 +165,39 @@ export class PreMarketController {
       res,
       { hasActiveRequest },
       "Renter active-request flag retrieved",
+    );
+  });
+
+  /**
+   * Toggles the "All Market Offer" gate for a pre-market request.
+   *
+   * PATCH /pre-market/:requestId/all-market-offer
+   * Protected: Agents only.
+   *
+   * Body: `{ enabled: boolean }`
+   *
+   * Only the **registered agent** for the renter can call this. Toggling
+   * to `enabled: false` flips the request scope to "All Market" (one-way
+   * trip) and permanently suppresses the day-10 search-expansion reminder
+   * (Template #32) for this request. Toggling back to `enabled: true` is
+   * allowed only while the request is still in Upcoming scope.
+   */
+  toggleAllMarketOffer = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(toggleAllMarketOfferSchema, req);
+    const agentId = req.user!.userId;
+
+    const updated = await this.preMarketService.toggleAllMarketOffer(
+      agentId,
+      validated.params.requestId,
+      validated.body.enabled,
+    );
+
+    return ApiResponse.success(
+      res,
+      updated,
+      validated.body.enabled
+        ? "All Market Offer gate re-enabled."
+        : "All Market Offer gate disabled and request moved to All Market scope.",
     );
   });
 

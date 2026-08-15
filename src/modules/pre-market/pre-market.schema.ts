@@ -357,6 +357,29 @@ export const toggleListingActivationSchema = z.object({
   }),
 });
 
+/**
+ * Body / params validation for `PATCH /pre-market/:requestId/all-market-offer`.
+ *
+ * The `enabled` flag controls whether the day-10 search-expansion reminder
+ * (Template #32) should fire for the request. Only the **registered agent**
+ * for the renter can mutate it; that authorization happens in the
+ * controller and is not encoded here.
+ *
+ * `enabled: false` is a one-way state change — once flipped, the request
+ * can never return to Upcoming scope, and the field cannot be re-enabled.
+ * The API still accepts `enabled: true` so the dashboard can recover from
+ * optimistic UI mistakes; the controller rejects the request if the
+ * underlying request scope is no longer "Upcoming".
+ */
+export const toggleAllMarketOfferSchema = z.object({
+  params: z.object({
+    requestId: z.string().min(24, "Invalid request ID"),
+  }),
+  body: z.object({
+    enabled: z.boolean(),
+  }),
+});
+
 export const updateRequestVisibilitySchema = z.object({
   params: z.object({
     requestId: z.string().min(24, "Invalid request ID"),

@@ -116,6 +116,18 @@ router.put(
   controller.updateRequestVisibility.bind(controller),
 );
 
+/**
+ * PATCH /pre-market/:requestId/all-market-offer
+ * Registered agent: toggles the per-request gate that controls the day-10
+ * search-expansion reminder (Template #32).
+ */
+router.patch(
+  "/:requestId/all-market-offer",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Agent"),
+  controller.toggleAllMarketOffer.bind(controller),
+);
+
 router.patch(
   "/:requestId/toggle-share",
   authMiddleware.verifyToken,

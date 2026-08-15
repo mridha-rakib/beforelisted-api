@@ -859,6 +859,11 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
         "scope": "Upcoming",
         "searchActivity.upcomingScopeSelectedAt": { $ne: null },
         "searchActivity.upcomingSearchExpansionReminderSentAt": null,
+        // The "All Market Offer" gate is checked (default-on) unless the
+        // registered agent has explicitly opted the request out. Documents
+        // created before the field existed read with `undefined`, which
+        // matches `{ $ne: false }` so they continue to receive reminders.
+        "searchActivity.allMarketOfferEnabled": { $ne: false },
         "$or": [
           { agentArchives: { $exists: false } },
           { agentArchives: { $size: 0 } },
@@ -882,6 +887,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
           "scope": "Upcoming",
           "searchActivity.upcomingScopeSelectedAt": { $ne: null },
           "searchActivity.upcomingSearchExpansionReminderSentAt": null,
+          "searchActivity.allMarketOfferEnabled": { $ne: false },
           "$or": [
             { agentArchives: { $exists: false } },
             { agentArchives: { $size: 0 } },
@@ -890,6 +896,81 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
         {
           $set: {
             "searchActivity.upcomingSearchExpansionReminderSentAt": now,
+          },
+        },
+        { new: true },
+      )
+      .lean()
+      .exec() as Promise<IPreMarketRequest | null>;
+  }
+
+  /**
+   * Sets the "All Market Offer" gate (which controls the day-10 follow-up
+   * email) for a single request. Returns `null` when the request is not in a
+   * state where the toggle can be applied — i.e. when it is already at
+   * `All Market` scope (the toggle is a one-way trip) or when it is missing
+   * / soft-deleted.
+   *
+   * The caller (service) is responsible for the registered-agent
+   * authorization check; this method only enforces the state-machine guard
+   * atomically.
+   */
+  async toggleAllMarketOffer(
+    requestId: string,
+    enabled: boolean,
+    toggledByAgentId: string,
+    now: Date,
+  ): Promise<IPreMarketRequest | null> {
+    return this.model
+      .findOneAndUpdate(
+        {
+          _id: requestId,
+          isDeleted: false,
+          isActive: true,
+          status: { $ne: "deleted" },
+          scope: "Upcoming",
+        },
+        {
+          $set: {
+            "searchActivity.allMarketOfferEnabled": enabled,
+            "searchActivity.allMarketOfferToggledAt": now,
+            "searchActivity.allMarketOfferToggledByAgentId": toggledByAgentId,
+          },
+        },
+        { new: true },
+      )
+      .lean()
+      .exec() as Promise<IPreMarketRequest | null>;
+  }
+
+  /**
+   * Flips a single request's scope to `All Market` and clears the
+   * `allMarketOfferEnabled` gate as a defense-in-depth. Used after the
+   * registered agent unchecks the "All Market Offer" checkbox so the
+   * request becomes ineligible for the day-10 sweep in every code path
+   * (scope-based AND gate-based).
+   *
+   * The toggle is one-way: callers should ensure they only invoke this when
+   * scope is currently `Upcoming`.
+   */
+  async flipScopeToAllMarket(
+    requestId: string,
+    now: Date,
+  ): Promise<IPreMarketRequest | null> {
+    return this.model
+      .findOneAndUpdate(
+        {
+          _id: requestId,
+          isDeleted: false,
+          isActive: true,
+          status: { $ne: "deleted" },
+          scope: "Upcoming",
+        },
+        {
+          $set: {
+            scope: "All Market",
+            "searchActivity.allMarketOfferEnabled": false,
+            "searchActivity.allMarketOfferToggledAt": now,
           },
         },
         { new: true },

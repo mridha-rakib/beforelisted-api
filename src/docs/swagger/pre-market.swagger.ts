@@ -331,6 +331,45 @@ export const preMarketPaths = {
     },
   },
 
+  "/pre-market/{requestId}/all-market-offer": {
+    patch: {
+      tags: ["Pre-Market - Agent"],
+      summary:
+        "Toggle the All Market Offer gate for a request (registered agent only). Unchecking flips scope to All Market and locks the checkbox.",
+      operationId: "toggleAllMarketOffer",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "requestId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["enabled"],
+              properties: {
+                enabled: { type: "boolean" },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        200: { description: "Gate toggled successfully" },
+        400: { description: "Request is no longer eligible (scope moved off Upcoming)" },
+        401: { description: "Unauthorized" },
+        403: { description: "Only the registered agent can toggle this gate" },
+        404: { description: "Request not found" },
+      },
+    },
+  },
+
   "/pre-market/grant-access/request": {
     post: {
       tags: ["Pre-Market - Agent"],

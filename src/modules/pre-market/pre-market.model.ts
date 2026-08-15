@@ -68,6 +68,23 @@ export type IPreMarketRequest = {
     lastConfirmationEmailSentAt?: Date | null;
     upcomingScopeSelectedAt?: Date | null;
     upcomingSearchExpansionReminderSentAt?: Date | null;
+    /**
+     * Gates the day-10 follow-up email (Template #32) for the request.
+     *
+     * Defaults to `true` on every new request. The registered agent for the
+     * renter can uncheck it from the agent dashboard "All Market Offer"
+     * column, which:
+     *   - permanently opts the request out of the 10-day reminder sweep,
+     *   - flips the request scope to "All Market" (one-way trip),
+     *   - locks the checkbox grey/disabled for the rest of the request's life.
+     *
+     * When the scope leaves "Upcoming" via any other path (admin change, an
+     * agent match that flips the visible scope to "Upcoming (M)", etc.), the
+     * field is also flipped to `false` so the sweep never re-fires.
+     */
+    allMarketOfferEnabled?: boolean | null;
+    allMarketOfferToggledAt?: Date | null;
+    allMarketOfferToggledByAgentId?: Types.ObjectId | string | null;
     pendingConfirmationToken?: string | null;
     pendingConfirmationSentAt?: Date | null;
     pendingConfirmationExpiresAt?: Date | null;
@@ -287,6 +304,24 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
     },
     upcomingSearchExpansionReminderSentAt: {
       type: Date,
+      default: null,
+      index: true,
+    },
+    allMarketOfferEnabled: {
+      type: Boolean,
+      // Default `true` is applied at the document layer so older documents
+      // (created before this field existed) read as opted-in on first load.
+      default: true,
+      index: true,
+    },
+    allMarketOfferToggledAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    allMarketOfferToggledByAgentId: {
+      type: Types.ObjectId,
+      ref: "User",
       default: null,
       index: true,
     },
