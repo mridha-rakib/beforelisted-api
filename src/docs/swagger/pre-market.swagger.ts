@@ -37,6 +37,19 @@ export const preMarketPaths = {
     },
   },
 
+  "/pre-market/has-active-request": {
+    get: {
+      tags: ["Pre-Market - Renter"],
+      summary: "Check whether the renter has any currently active pre-market request",
+      operationId: "hasActivePreMarketRequest",
+      security: [{ bearerAuth: [] }],
+      responses: {
+        200: { description: "Flag retrieved successfully" },
+        401: { description: "Unauthorized" },
+      },
+    },
+  },
+
   "/pre-market/renter/requests/with-agents": {
     get: {
       tags: ["Pre-Market - Renter"],

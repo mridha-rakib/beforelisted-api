@@ -29,6 +29,18 @@ router.get(
   controller.getRenterRequests.bind(controller),
 );
 
+/**
+ * GET /pre-market/has-active-request
+ * Renters: lightweight boolean flag used by the sign-in / homepage redirect
+ * to send renters with an active request straight to their dashboard.
+ */
+router.get(
+  "/has-active-request",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize("Renter"),
+  controller.hasActiveRequest.bind(controller),
+);
+
 router.patch(
   "/:requestId/reactivate-search",
   authMiddleware.verifyToken,

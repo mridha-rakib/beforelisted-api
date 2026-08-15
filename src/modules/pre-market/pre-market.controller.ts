@@ -144,6 +144,29 @@ export class PreMarketController {
     );
   });
 
+  /**
+   * Lightweight boolean flag for the renter sign-in / homepage redirect.
+   *
+   * GET /pre-market/has-active-request
+   * Protected: Renters only
+   *
+   * Returns `{ hasActiveRequest: true }` when the renter has at least one
+   * pre-market request that is currently active (not soft-deleted, with
+   * `isActive: true`). Returns `{ hasActiveRequest: false }` otherwise.
+   */
+  hasActiveRequest = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId;
+
+    const hasActiveRequest =
+      await this.preMarketService.hasActiveRequestForRenter(userId);
+
+    return ApiResponse.success(
+      res,
+      { hasActiveRequest },
+      "Renter active-request flag retrieved",
+    );
+  });
+
   confirmActiveSearch = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(confirmActiveSearchSchema, req);
 
