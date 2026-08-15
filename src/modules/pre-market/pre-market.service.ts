@@ -8060,6 +8060,28 @@ export class PreMarketService {
       "Admin updated pre-market request scope",
     );
 
+    // Notify registered + matched agents (email #4B "Renter Updates
+    // Request"). Registered agent goes in `to`, matched agents go in `cc`,
+    // per template spec.
+    const changedFieldDetails = this.buildChangedFieldsSummary(request, {
+      scope,
+      visibility: "PRIVATE",
+    });
+    const updatedAt = updated.updatedAt ?? new Date();
+    this.notifier
+      .notifyAgentsAboutUpdatedRequest(
+        updated,
+        changedFieldDetails.summary,
+        changedFieldDetails.newValues,
+        updatedAt,
+      )
+      .catch((error) => {
+        logger.error(
+          { error, requestId: updated._id },
+          "Failed to send admin-scope update notifications (non-blocking)",
+        );
+      });
+
     return updated;
   }
 

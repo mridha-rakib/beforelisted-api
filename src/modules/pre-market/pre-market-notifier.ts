@@ -262,12 +262,16 @@ export class PreMarketNotifier {
     updatedAt: Date,
   ): Promise<void> {
     try {
-      const { recipients, renterName }
+      const { registeredAgent, matchedAgents, renterName }
         = await this.getRegisteredAndMatchedAgentsForRequestUpdate(
           preMarketRequest,
         );
 
-      if (recipients.length === 0) {
+      const allRecipients = [registeredAgent, ...matchedAgents].filter(
+        (recipient): recipient is { name: string; email: string } =>
+          Boolean(recipient?.email),
+      );
+      if (allRecipients.length === 0) {
         logger.info(
           { preMarketRequestId: preMarketRequest._id },
           "No registered or matched agents to notify about request update",
@@ -289,34 +293,50 @@ export class PreMarketNotifier {
       const normalizedFields = changedFields;
       const normalizedFieldValues = changedFieldNewValues;
 
-      for (const recipient of recipients) {
-        const emailResult
-          = await emailService.sendPreMarketRequestUpdatedNotificationToAgent({
-            to: recipient.email,
-            agentName: recipient.name,
-            requestId,
-            renterName,
-            updatedFields: normalizedFields,
-            updatedFieldValues: normalizedFieldValues,
-            updatedAt: formattedUpdatedAt,
-          });
+      // Email template spec: registered agent in `to`, matched agents in
+      // `cc`. If no registered agent exists, fall back to the first matched
+      // agent as the primary recipient.
+      const primaryRecipient = registeredAgent ?? matchedAgents[0];
+      if (!primaryRecipient) {
+        return;
+      }
 
-        if (emailResult.success) {
-          logger.debug(
-            { email: recipient.email, requestId },
-            "? Agent update notification sent",
-          );
-        }
-        else {
-          const errorMessage
-            = emailResult.error instanceof Error
-              ? emailResult.error.message
-              : String(emailResult.error);
-          logger.warn(
-            { email: recipient.email, error: errorMessage },
-            "? Agent update notification failed",
-          );
-        }
+      const primaryEmailKey = primaryRecipient.email.toLowerCase();
+      const ccEmails = matchedAgents
+        .filter(agent => agent.email.toLowerCase() !== primaryEmailKey)
+        .map(agent => agent.email);
+
+      const emailResult
+        = await emailService.sendPreMarketRequestUpdatedNotificationToAgent({
+          to: primaryRecipient.email,
+          agentName: primaryRecipient.name,
+          cc: ccEmails.length > 0 ? ccEmails : undefined,
+          requestId,
+          renterName,
+          updatedFields: normalizedFields,
+          updatedFieldValues: normalizedFieldValues,
+          updatedAt: formattedUpdatedAt,
+        });
+
+      if (emailResult.success) {
+        logger.debug(
+          {
+            email: primaryRecipient.email,
+            cc: ccEmails,
+            requestId,
+          },
+          "? Agent update notification sent (registered in To, matched in Cc)",
+        );
+      }
+      else {
+        const errorMessage
+          = emailResult.error instanceof Error
+            ? emailResult.error.message
+            : String(emailResult.error);
+        logger.warn(
+          { email: primaryRecipient.email, error: errorMessage },
+          "? Agent update notification failed",
+        );
       }
     }
     catch (error) {
@@ -634,8 +654,12 @@ export class PreMarketNotifier {
 
   private async getRegisteredAndMatchedAgentsForRequestUpdate(
     preMarketRequest: IPreMarketRequest,
-  ): Promise<{ recipients: Array<{ name: string; email: string }>; renterName: string }> {
-    const recipients = new Map<string, { name: string; email: string }>();
+  ): Promise<{
+    registeredAgent: { name: string; email: string } | null;
+    matchedAgents: Array<{ name: string; email: string }>;
+    renterName: string;
+  }> {
+    let registeredAgent: { name: string; email: string } | null = null;
     let renterName = "Renter";
 
     const renterUserId = preMarketRequest.renterId?.toString();
@@ -679,17 +703,17 @@ export class PreMarketNotifier {
 
         const email = registeredAgentEmail?.trim();
         if (email) {
-          recipients.set(email.toLowerCase(), {
+          registeredAgent = {
             name: registeredAgentName || email,
             email,
-          });
+          };
         }
       }
     }
 
     const preMarketRequestId = preMarketRequest._id?.toString();
     if (!preMarketRequestId) {
-      return { recipients: Array.from(recipients.values()), renterName };
+      return { registeredAgent, matchedAgents: [], renterName };
     }
 
     const matchedAccessRecords
@@ -711,6 +735,7 @@ export class PreMarketNotifier {
       matchedAgentIds.map(agentId => this.userRepository.findById(agentId)),
     );
 
+    const matchedAgents: Array<{ name: string; email: string }> = [];
     for (const agentUser of matchedAgentUsers) {
       if (!agentUser?.email) {
         continue;
@@ -721,16 +746,19 @@ export class PreMarketNotifier {
         continue;
       }
 
-      const key = email.toLowerCase();
-      if (!recipients.has(key)) {
-        recipients.set(key, {
-          name: agentUser.fullName || email,
-          email,
-        });
+      // Skip if the matched agent IS the registered agent — they shouldn't
+      // receive a CC of their own To-line email.
+      if (registeredAgent && email.toLowerCase() === registeredAgent.email.toLowerCase()) {
+        continue;
       }
+
+      matchedAgents.push({
+        name: agentUser.fullName || email,
+        email,
+      });
     }
 
-    return { recipients: Array.from(recipients.values()), renterName };
+    return { registeredAgent, matchedAgents, renterName };
   }
 
   private formatEasternTime(value: Date): string {
