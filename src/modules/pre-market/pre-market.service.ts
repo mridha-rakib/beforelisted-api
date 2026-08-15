@@ -6265,6 +6265,13 @@ export class PreMarketService {
         : {}),
     };
 
+    // Owner-representation matches do NOT create a grant-access record and do
+    // NOT flip the request to PRIVATE / Upcoming (M). They are recorded on the
+    // request as `ownerRepresentationMatches[]` and the registered agent (the
+    // renter's referring agent) is notified by email #29.
+    const isOwnerRepresentationMatch = representationType === "owner_representation"
+      && !existing;
+
     try {
       if (existing) {
         if (existing.status === "free" || existing.status === "paid") {
@@ -6321,6 +6328,10 @@ export class PreMarketService {
         );
 
         matchRecord = updated || existing;
+      } else if (isOwnerRepresentationMatch) {
+        // Skip grant-access record creation entirely. We'll record the match
+        // on the request itself and notify the registered agent instead.
+        matchRecord = undefined as unknown as IGrantAccessRequest;
       } else {
         matchRecord = await this.grantAccessRepository.create({
           preMarketRequestId: requestId,
@@ -6336,12 +6347,24 @@ export class PreMarketService {
 
     await this.markSearchMatchedActivity(listingActivationCheck, matchedAt);
 
-    await this.preMarketRepository.setAllMarketRequestPrivateAfterMatch(
-      requestId,
-    );
+    if (isOwnerRepresentationMatch) {
+      const matchedAgent = await this.userRepository.findById(agentId);
+      const matchedAgentProfile
+        = await this.agentRepository.findByUserId(agentId);
+      await this.preMarketRepository.addOwnerRepresentationMatch(
+        requestId,
+        agentId,
+        {
+          fullName: matchedAgent?.fullName,
+          title: matchedAgentProfile?.title,
+          brokerage: matchedAgentProfile?.brokerageName,
+          email: matchedAgent?.email,
+          phoneNumber: matchedAgent?.phoneNumber,
+        },
+        normalizedOpportunityDetails,
+      );
 
-    if (shouldNotify) {
-      if (representationType === "owner_representation") {
+      if (shouldNotify) {
         this.notifyRegisteredAgentAboutOwnerRepresentationMatch(
           agentId,
           listingActivationCheck,
@@ -6353,7 +6376,13 @@ export class PreMarketService {
             "Failed to send owner representation match acknowledgment (non-blocking)",
           );
         });
-      } else {
+      }
+    } else {
+      await this.preMarketRepository.setAllMarketRequestPrivateAfterMatch(
+        requestId,
+      );
+
+      if (shouldNotify) {
         this.notifyRenterAboutMatchedOpportunity(
           agentId,
           listingActivationCheck,
@@ -7555,7 +7584,7 @@ export class PreMarketService {
     return null;
   }
 
-  private async notifyRegisteredAgentAboutOwnerRepresentationMatch(
+  async notifyRegisteredAgentAboutOwnerRepresentationMatch(
     agentId: string,
     preMarketRequest: IPreMarketRequest,
     opportunityDetails?: string,

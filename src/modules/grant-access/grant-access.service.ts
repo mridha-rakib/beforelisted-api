@@ -13,6 +13,8 @@ import {
   OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE,
 } from "@/utils/opportunity-details.utils";
 
+import { Types } from "mongoose";
+
 import type { IPreMarketRequest } from "../pre-market/pre-market.model";
 import type { IGrantAccessRequest } from "./grant-access.model";
 
@@ -22,6 +24,7 @@ import { PaymentService } from "../payment/payment.service";
 import { resolveRenterOpportunityEmailScope } from "../pre-market/pre-market-email-scope.utils";
 import { PreMarketNotifier } from "../pre-market/pre-market-notifier.js";
 import { PreMarketRepository } from "../pre-market/pre-market.repository";
+import { PreMarketService } from "../pre-market/pre-market.service";
 import { RenterRepository } from "../renter/renter.repository";
 import { UserRepository } from "../user/user.repository";
 import { GrantAccessRepository } from "./grant-access.repository";
@@ -29,6 +32,7 @@ import { GrantAccessRepository } from "./grant-access.repository";
 export class GrantAccessService {
   private readonly grantAccessRepository: GrantAccessRepository;
   private readonly preMarketRepository: PreMarketRepository;
+  private readonly preMarketService: PreMarketService;
   private readonly paymentService: PaymentService;
   private readonly notifier: PreMarketNotifier;
   private readonly notificationService: NotificationService;
@@ -39,6 +43,7 @@ export class GrantAccessService {
   constructor() {
     this.grantAccessRepository = new GrantAccessRepository();
     this.preMarketRepository = new PreMarketRepository();
+    this.preMarketService = new PreMarketService();
     this.paymentService = new PaymentService();
     this.notifier = new PreMarketNotifier();
     this.notificationService = new NotificationService();
@@ -178,6 +183,57 @@ export class GrantAccessService {
       );
     }
 
+    // Owner-representation matches do NOT create a grant-access record and do
+    // NOT flip the request to PRIVATE / Upcoming (M). They are recorded on the
+    // request as `ownerRepresentationMatches[]` and the registered agent (the
+    // renter's referring agent) is notified by email #29. The match also does
+    // NOT require admin approval — owner-rep is a heads-up, not access.
+    if (representationType === "owner_representation") {
+      const matchedAgent = await this.userRepository.findById(agentId);
+      const matchedAgentProfile
+        = await this.agentRepository.findByUserId(agentId);
+
+      await this.preMarketRepository.addOwnerRepresentationMatch(
+        preMarketRequestId,
+        agentId,
+        {
+          fullName: matchedAgent?.fullName,
+          title: matchedAgentProfile?.title,
+          brokerage: matchedAgentProfile?.brokerageName,
+          email: matchedAgent?.email,
+          phoneNumber: matchedAgent?.phoneNumber,
+        },
+        normalizedOpportunityDetails,
+      );
+
+      await this.preMarketService.notifyRegisteredAgentAboutOwnerRepresentationMatch(
+        agentId,
+        listingActivationCheck,
+        normalizedOpportunityDetails,
+      ).catch((error) => {
+        logger.error(
+          { error, agentId, preMarketRequestId },
+          "Failed to send owner representation match acknowledgment (non-blocking)",
+        );
+      });
+
+      // Return a stub object that satisfies the API contract — non-admin
+      // approval isn't needed for owner-representation matches.
+      const stubCreatedAt = new Date();
+      return {
+        _id: new Types.ObjectId(),
+        preMarketRequestId,
+        agentId,
+        status: "approved",
+        representation_type: representationType,
+        representationSelectedAt: stubCreatedAt,
+        ...(normalizedOpportunityDetails
+          ? { opportunityDetails: normalizedOpportunityDetails }
+          : {}),
+        createdAt: stubCreatedAt,
+      } as unknown as IGrantAccessRequest;
+    }
+
     // Create grant access request
     let grantAccess: IGrantAccessRequest;
     try {
@@ -197,11 +253,14 @@ export class GrantAccessService {
       throw error;
     }
 
-    if (representationType !== "owner_representation") {
-      await this.preMarketRepository.setAllMarketRequestPrivateAfterMatch(
-        preMarketRequestId,
-      );
-    }
+    // Owner-representation matches are handled above (early return); here we
+    // know we have an `ownerRepresentationMatch`-renter match (or other)
+    // request. For renter-representation the All-Market request is flipped
+    // private so other agents no longer see it; for owner-representation the
+    // request stays public so other agents can still match.
+    await this.preMarketRepository.setAllMarketRequestPrivateAfterMatch(
+      preMarketRequestId,
+    );
 
     logger.info({ agentId }, `Grant access requested: ${preMarketRequestId}`);
 

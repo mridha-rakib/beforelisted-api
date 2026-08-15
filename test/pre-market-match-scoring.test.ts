@@ -656,7 +656,7 @@ describe("PreMarketService additional opportunities", () => {
 });
 
 describe("PreMarketService owner-representation notifications", () => {
-  it("sends Template 29 acknowledgment to the registered agent path only", async () => {
+  it("sends Template 29 acknowledgment without creating a grant-access record or flipping All Market to private", async () => {
     const agentId = "matched-owner-agent";
     const requestId = "507f1f77bcf86cd799439099";
     const request = {
@@ -667,12 +667,16 @@ describe("PreMarketService owner-representation notifications", () => {
       shareConsent: true,
       status: "Available",
       isActive: true,
+      scope: "All Market",
       registrationDisclosureConfirmations: [],
     };
     const service = new PreMarketService();
     const serviceAny = service as any;
     const ownerAcknowledgments: Array<Record<string, unknown>> = [];
     let renterNotificationCount = 0;
+    const ownerRepresentationMatches: Array<Record<string, unknown>> = [];
+    let setAllMarketPrivateCalled = 0;
+    let grantAccessCreated = 0;
 
     serviceAny.agentRepository = {
       findByUserId: async () => ({
@@ -684,19 +688,46 @@ describe("PreMarketService owner-representation notifications", () => {
     serviceAny.preMarketRepository = {
       findByIdWithActivationStatus: async () => request,
       updateById: async () => request,
-      setAllMarketRequestPrivateAfterMatch: async () => undefined,
+      setAllMarketRequestPrivateAfterMatch: async () => {
+        setAllMarketPrivateCalled += 1;
+        return request;
+      },
+      addOwnerRepresentationMatch: async (
+        _id: string,
+        agentIdArg: string,
+        snapshot: Record<string, unknown>,
+        details?: string,
+      ) => {
+        ownerRepresentationMatches.push({
+          agentId: agentIdArg,
+          snapshot,
+          opportunityDetails: details,
+        });
+        return request;
+      },
     };
     serviceAny.grantAccessRepository = {
       findByAgentAndRequest: async () => null,
-      create: async (payload: Record<string, unknown>) => ({
-        _id: "grant-owner-1",
-        ...payload,
+      create: async (payload: Record<string, unknown>) => {
+        grantAccessCreated += 1;
+        return {
+          _id: "grant-owner-1",
+          ...payload,
+        };
+      },
+    };
+    serviceAny.userRepository = {
+      findById: async () => ({
+        fullName: "Owner Agent",
+        email: "owner-agent@example.com",
+        phoneNumber: "+1-555-1234",
       }),
     };
     serviceAny.isRegisteredAgentForRequest = async () => false;
     serviceAny.ensureAgentCanViewRequest = () => undefined;
     serviceAny.ensureAgentCanViewRequestVisibility = async () => undefined;
     serviceAny.ensureRegisteredAgentCanMatchRequest = async () => undefined;
+    serviceAny.markSearchMatchedActivity = async () => undefined;
     serviceAny.notifyRegisteredAgentAboutOwnerRepresentationMatch = async (
       matchedAgentId: string,
       matchedRequest: unknown,
@@ -722,12 +753,12 @@ describe("PreMarketService owner-representation notifications", () => {
       "Owner-side opportunity details.",
     );
 
-    expect(result).toMatchObject({
-      _id: "grant-owner-1",
+    expect(grantAccessCreated).toBe(0);
+    expect(setAllMarketPrivateCalled).toBe(0);
+    expect(ownerRepresentationMatches).toHaveLength(1);
+    expect(ownerRepresentationMatches[0]).toMatchObject({
       agentId,
-      preMarketRequestId: requestId,
-      representation_type: "owner_representation",
-      status: "free",
+      opportunityDetails: "Owner-side opportunity details.",
     });
     expect(ownerAcknowledgments).toEqual([
       expect.objectContaining({

@@ -1480,9 +1480,26 @@ export class PreMarketController {
         "Grant-access agent matched pre-market request",
       );
 
+      // For owner-representation matches, return enriched data so the
+      // frontend can render the "Registered Agent" / "Matched Agents"
+      // sections immediately without a refetch.
+      let responseBody: any = matchRecord;
+      if (representationType === "owner_representation") {
+        const refreshed = await this.preMarketService.getRequestById(requestId);
+        if (refreshed) {
+          responseBody = await this.preMarketService
+            .enrichOwnerRepresentationDetailsForAgent(
+              agentId,
+              requestId,
+              refreshed,
+              { ...matchRecord },
+            );
+        }
+      }
+
       return ApiResponse.success(
         res,
-        matchRecord,
+        responseBody,
         representationType === "owner_representation"
           ? "Owner representation selection saved"
           : validated.body.additionalOpportunity
@@ -1529,10 +1546,29 @@ export class PreMarketController {
       "Match request created; awaiting admin approval",
     );
 
+    // For owner-representation matches, return enriched data so the
+    // frontend can render the "Registered Agent" / "Matched Agents"
+    // sections immediately without a refetch.
+    let responseBody: any = pendingAccess;
+    if (representationType === "owner_representation") {
+      const refreshed = await this.preMarketService.getRequestById(requestId);
+      if (refreshed) {
+        responseBody = await this.preMarketService
+          .enrichOwnerRepresentationDetailsForAgent(
+            agentId,
+            requestId,
+            refreshed,
+            { ...pendingAccess },
+          );
+      }
+    }
+
     return ApiResponse.success(
       res,
-      pendingAccess,
-      "Match request pending admin approval",
+      responseBody,
+      representationType === "owner_representation"
+        ? "Owner representation selection saved"
+        : "Match request pending admin approval",
     );
   });
 
