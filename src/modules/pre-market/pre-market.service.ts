@@ -2626,6 +2626,13 @@ export class PreMarketService {
     lastConfirmationEmailSentAt: Date | null;
     upcomingScopeSelectedAt: Date | null;
     upcomingSearchExpansionReminderSentAt: Date | null;
+    /**
+     * Gate for the day-10 follow-up email (Template #32). Default `true`
+     * (eligible) for documents that pre-date the field; explicitly
+     * `false` once the registered agent unchecks the "All Market Offer"
+     * column on the agent dashboard.
+     */
+    allMarketOfferEnabled: boolean;
     pendingConfirmationToken: string | null;
     pendingConfirmationSentAt: Date | null;
     pendingConfirmationExpiresAt: Date | null;
@@ -2643,6 +2650,9 @@ export class PreMarketService {
       upcomingScopeSelectedAt: searchActivity.upcomingScopeSelectedAt ?? null,
       upcomingSearchExpansionReminderSentAt:
         searchActivity.upcomingSearchExpansionReminderSentAt ?? null,
+      // Treat `undefined` as opted-in so older documents continue to
+      // receive reminders until the registered agent explicitly opts out.
+      allMarketOfferEnabled: searchActivity.allMarketOfferEnabled !== false,
       pendingConfirmationToken: searchActivity.pendingConfirmationToken ?? null,
       pendingConfirmationSentAt:
         searchActivity.pendingConfirmationSentAt ?? null,
