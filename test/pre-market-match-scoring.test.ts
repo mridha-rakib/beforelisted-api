@@ -963,7 +963,7 @@ describe("PreMarketService renter market-scope switching", () => {
         visibility: "PRIVATE",
       }),
     ).rejects.toThrow(
-      "A rental specialist is already assigned. For any issues, contact support@beforelisted.com.",
+      "A rental specialist is already assigned. To switch to upcoming only, you can notify your registered agent, delete the request and start again, or contact support@beforelisted.com.",
     );
     expect(updateById).not.toHaveBeenCalled();
   });

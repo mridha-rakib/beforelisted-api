@@ -129,7 +129,7 @@ const UPCOMING_SEARCH_EXPANSION_REMINDER_DELAY_MS =
   10 * 24 * 60 * 60 * 1000;
 const DEFAULT_PRODUCTION_API_ORIGIN = "https://api.beforelisted.com";
 const MARKET_SCOPE_SWITCH_LOCKED_MESSAGE =
-  "A rental specialist is already assigned. For any issues, contact support@beforelisted.com.";
+  "A rental specialist is already assigned. To switch to upcoming only, you can notify your registered agent, delete the request and start again, or contact support@beforelisted.com.";
 const ADDITIONAL_OPPORTUNITY_SCOPE_GATE_MESSAGE =
   "Additional opportunity matching is only available for Upcoming / Upcoming (M) requests.";
 
