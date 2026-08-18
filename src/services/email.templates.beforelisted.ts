@@ -73,6 +73,7 @@ export class EmailTemplates {
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: #f5f5f5;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -306,6 +307,7 @@ export class EmailTemplates {
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: #f5f5f5;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -476,6 +478,7 @@ export class EmailTemplates {
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: #f5f5f5;
+            font-size: 16px;
         }
         .container {
             max-width: 700px;
@@ -667,6 +670,7 @@ export class EmailTemplates {
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: #f5f5f5;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -901,6 +905,7 @@ export class EmailTemplates {
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: #f5f5f5;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -1041,6 +1046,7 @@ export class EmailTemplates {
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: #f5f5f5;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -1199,6 +1205,7 @@ export class EmailTemplates {
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: #f5f5f5;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -1620,6 +1627,7 @@ export class EmailTemplates {
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: #f5f5f5;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -1756,6 +1764,7 @@ export class EmailTemplates {
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: #f5f5f5;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -1922,6 +1931,7 @@ export class EmailTemplates {
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: #f5f5f5;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;

@@ -73,6 +73,7 @@ export function preMarketAgentNotificationTemplate(
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -262,6 +263,7 @@ export function preMarketAdminNotificationTemplate(
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 700px;
@@ -511,6 +513,7 @@ export function renterRequestConfirmationTemplate(
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -649,6 +652,7 @@ export function renterRequestExpiredTemplate(
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -797,6 +801,7 @@ export function agentRenterRequestConfirmationTemplate(
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -1071,6 +1076,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -1297,6 +1303,7 @@ ${matchSummaryMarkup}
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -1509,6 +1516,7 @@ export function matchReferralAcknowledgmentToMatchingAgentTemplate(
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -1698,6 +1706,7 @@ export function ownerRepresentationMatchReferralAcknowledgmentTemplate(
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -1879,6 +1888,7 @@ export function renterRequestClosedAgentAlertTemplate(
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -2040,6 +2050,7 @@ export function renterRequestClosedRenterNotificationTemplate(
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -2195,6 +2206,7 @@ export function renterRequestUpdatedNotificationTemplate(
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -2338,6 +2350,7 @@ export function renterRequestUpdatedByAdminTemplate(
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 600px;
@@ -2526,6 +2539,7 @@ export function nonRegisteredAgentRequestSubmissionNotificationTemplate(
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 640px;
@@ -2702,6 +2716,7 @@ export function agentRegistrationVerifiedAdminTemplate(
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 700px;
@@ -2890,6 +2905,7 @@ export function renterRegistrationVerifiedAdminTemplate(
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 700px;
@@ -3039,6 +3055,7 @@ export function adminContactRequestTemplate(
             background-color: #f5f5f5;
             margin: 0;
             padding: 0;
+            font-size: 16px;
         }
         .container {
             max-width: 700px;
