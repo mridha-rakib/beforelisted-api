@@ -8234,16 +8234,18 @@ export class PreMarketService {
       "Admin updated pre-market request scope",
     );
 
-    // Notify registered + matched agents (email #4B "Renter Updates
-    // Request"). Registered agent goes in `to`, matched agents go in `cc`,
-    // per template spec.
+    // Notify the renter (template #4B "Renter Updates Request"). The
+    // renter is the primary recipient because the renter did NOT make this
+    // change — the admin did. Registered agent + matched agents are on CC.
+    // This is intentionally different from the renter-side update path,
+    // which still notifies the agent as the primary recipient.
     const changedFieldDetails = this.buildChangedFieldsSummary(request, {
       scope,
       visibility: "PRIVATE",
     });
     const updatedAt = updated.updatedAt ?? new Date();
     this.notifier
-      .notifyAgentsAboutUpdatedRequest(
+      .notifyRenterAboutAdminScopeUpdate(
         updated,
         changedFieldDetails.summary,
         changedFieldDetails.newValues,

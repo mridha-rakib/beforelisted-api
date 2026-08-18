@@ -47,6 +47,7 @@ import type {
   IRenterRequestConfirmationPayload,
   IRenterRequestExpiredNotificationPayload,
   IRenterRequestUpdatedNotificationPayload,
+  IRenterRequestUpdatedByAdminNotificationPayload,
   IRenterSearchReactivatedAgentNotificationPayload,
   IRenterUnarchiveNotificationPayload,
   ISystemArchivedSearchInactiveAgentNotificationPayload,
@@ -71,6 +72,7 @@ import {
   renterRequestConfirmationTemplate,
   renterRequestExpiredTemplate,
   renterRequestUpdatedNotificationTemplate,
+  renterRequestUpdatedByAdminTemplate,
 } from "./email-notification.templates";
 import { EmailTemplateFactory } from "./email-templates/email-template.factory";
 import { EmailTemplates } from "./email.templates.beforelisted";
@@ -1139,6 +1141,65 @@ export class EmailService {
           email: payload.to,
         },
         "Failed to send pre-market request update notification to agent",
+      );
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+        attempt: 1,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+  }
+
+  /**
+   * Send email template #4B — Renter Updates Request (admin scope update).
+   * Primary recipient is the renter; registered agent and matched agents are
+   * on CC. Used when an admin updates a pre-market request's market scope.
+   */
+  async sendRenterRequestUpdatedByAdminNotification(
+    payload: IRenterRequestUpdatedByAdminNotificationPayload,
+  ): Promise<IEmailResult> {
+    try {
+      logger.debug(
+        { email: payload.to, requestId: payload.requestId },
+        "Sending admin-scope-update notification to renter (CC agents)",
+      );
+
+      const html = renterRequestUpdatedByAdminTemplate(
+        payload.renterFirstName,
+        payload.renterFullName,
+        payload.requestId,
+        payload.updatedFields,
+        payload.updatedFieldValues,
+        payload.updatedAt,
+        this.config.logoUrl,
+        this.config.brandColor,
+      );
+
+      const cc = payload.cc && payload.cc.length > 0 ? payload.cc : undefined;
+
+      const emailOptions: IEmailOptions = {
+        to: { email: payload.to, name: payload.renterFullName },
+        cc,
+        replyTo: "support@beforelisted.com",
+        subject: "Renter request updated | BeforeListed\u2122",
+        html,
+      };
+
+      return await this.sendEmail(
+        emailOptions,
+        "RENTER_REQUEST_UPDATED_BY_ADMIN",
+        payload.to,
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          email: payload.to,
+        },
+        "Failed to send admin-scope-update notification to renter",
       );
 
       return {

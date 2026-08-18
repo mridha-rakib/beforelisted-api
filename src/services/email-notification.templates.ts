@@ -2290,6 +2290,149 @@ export function renterRequestUpdatedNotificationTemplate(
 }
 
 /**
+ * Email template #4B — Renter Updates Request (admin scope update).
+ *
+ * Sent to the renter as the primary recipient with the registered agent
+ * and matched agents on CC. Used when an admin (not the renter) updates
+ * a pre-market request's market scope, so the renter is notified of the
+ * change.
+ */
+export function renterRequestUpdatedByAdminTemplate(
+  renterFirstName: string,
+  renterFullName: string,
+  requestId: string,
+  updatedFields: string[],
+  updatedFieldValues: string[],
+  updatedAt: string,
+  logoUrl?: string,
+  brandColor: string = "#1890FF",
+): string {
+  const currentYear = new Date().getFullYear();
+  const safeFirstName = escapeHtml(renterFirstName?.trim() || "there");
+  const safeRenterFullName = escapeHtml(renterFullName || "N/A");
+  const safeRequestId = escapeHtml(requestId || "N/A");
+  const safeUpdatedFields = updatedFields.map(field => escapeHtml(field));
+  const safeUpdatedFieldValues = updatedFieldValues.map(value =>
+    escapeHtml(value && value !== "Not specified" ? value : "None"),
+  );
+  const updatedFieldsHtml = safeUpdatedFields
+    .map((field, index) => {
+      const value = safeUpdatedFieldValues[index] || "Updated";
+      return `<p><strong>${field}:</strong><br>${value}</p>`;
+    })
+    .join("");
+  const safeUpdatedAt = escapeHtml(updatedAt || "N/A");
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Renter request updated | BeforeListed&trade;</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: ${brandColor};
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .greeting {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .details {
+            background-color: #fafafa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .details p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        .details strong {
+            color: ${brandColor};
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+        .footer a {
+            color: ${brandColor};
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
+            <h1>Renter request updated</h1>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                Hi ${safeFirstName},
+            </div>
+
+            <p>A renter request associated with you has been updated by BeforeListed Admin.</p>
+
+            <div class="details">
+                <p><strong>Request ID:</strong><br>${safeRequestId}</p>
+                <p><strong>Renter name:</strong><br>${safeRenterFullName}</p>
+                ${updatedFieldsHtml}
+                <p><strong>Updated on:</strong><br>${safeUpdatedAt}</p>
+            </div>
+
+            <p>You may review the updated request details at your renter dashboard.</p>
+
+            <p>Thank you,<br><strong>BeforeListed&trade; Support</strong></p>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0;">&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
+            ${footerLinks(brandColor)}
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
+/**
  * Email template for non-registered agents when a request is shared publicly
  */
 export function nonRegisteredAgentSharedRequestNotificationTemplate(

@@ -50,6 +50,21 @@ export type IRenterRequestUpdatedNotificationPayload = {
   cc?: string[];
 };
 
+/**
+ * Email template #4B payload — sent to the renter (to) with the registered
+ * agent and matched agents on CC when an admin updates a pre-market request.
+ */
+export type IRenterRequestUpdatedByAdminNotificationPayload = {
+  to: string;
+  renterFirstName: string;
+  renterFullName: string;
+  requestId: string;
+  updatedFields: string[];
+  updatedFieldValues: string[];
+  updatedAt: string;
+  cc?: string[];
+};
+
 export type INonRegisteredAgentSharedRequestNotificationPayload = {
   to: string;
   agentName: string;

@@ -350,6 +350,124 @@ export class PreMarketNotifier {
     }
   }
 
+  /**
+   * Email template #4B — Renter Updates Request (admin scope update).
+   *
+   * Sent when an admin (not the renter) updates a pre-market request's
+   * market scope. Recipient roles:
+   *   - `to`: the renter (primary)
+   *   - `cc`: registered agent + matched agents
+   *
+   * Looks up the renter email via the renter repository (which populates
+   * the userId for name/email) and reuses the existing helper that
+   * produces the registered + matched agent list for the same request.
+   * Skips silently if the renter has no email.
+   */
+  async notifyRenterAboutAdminScopeUpdate(
+    preMarketRequest: IPreMarketRequest,
+    changedFields: string[],
+    changedFieldNewValues: string[],
+    updatedAt: Date,
+  ): Promise<void> {
+    try {
+      const formattedUpdatedAt = this.formatEasternTime(updatedAt);
+      const requestId
+        = preMarketRequest.requestId || preMarketRequest._id?.toString() || "";
+
+      if (changedFields.length === 0 || changedFieldNewValues.length === 0) {
+        logger.info(
+          { requestId },
+          "Skipping admin-scope-update notification — no updated fields detected",
+        );
+        return;
+      }
+
+      const renterUserId = preMarketRequest.renterId?.toString();
+      if (!renterUserId) {
+        logger.warn(
+          { requestId },
+          "Cannot send admin-scope-update notification — request has no renterId",
+        );
+        return;
+      }
+
+      const renterProfile
+        = await this.renterRepository.findRenterWithReferrer(renterUserId);
+      const renterEmail = renterProfile?.email?.trim();
+      if (!renterEmail) {
+        logger.info(
+          { requestId, renterUserId },
+          "Skipping admin-scope-update notification — renter has no email",
+        );
+        return;
+      }
+
+      const renterFullName = renterProfile?.fullName || "Renter";
+      const renterFirstName = renterFullName.split(" ")[0] || renterFullName;
+
+      // Reuse the helper that already resolves registered + matched agents
+      // for the same request. We only need the agent list for CC.
+      const { registeredAgent, matchedAgents } =
+        await this.getRegisteredAndMatchedAgentsForRequestUpdate(
+          preMarketRequest,
+        );
+
+      const ccSet = new Set<string>();
+      if (registeredAgent?.email) {
+        ccSet.add(registeredAgent.email.toLowerCase());
+      }
+      for (const agent of matchedAgents) {
+        if (agent?.email) {
+          ccSet.add(agent.email.toLowerCase());
+        }
+      }
+
+      const ccEmails = Array.from(ccSet);
+
+      const emailResult
+        = await emailService.sendRenterRequestUpdatedByAdminNotification({
+          to: renterEmail,
+          renterFirstName,
+          renterFullName,
+          requestId,
+          updatedFields: changedFields,
+          updatedFieldValues: changedFieldNewValues,
+          updatedAt: formattedUpdatedAt,
+          cc: ccEmails.length > 0 ? ccEmails : undefined,
+        });
+
+      if (emailResult.success) {
+        logger.debug(
+          {
+            email: renterEmail,
+            cc: ccEmails,
+            requestId,
+          },
+          "? Admin-scope-update notification sent (renter in To, agents in Cc)",
+        );
+      }
+      else {
+        const errorMessage
+          = emailResult.error instanceof Error
+            ? emailResult.error.message
+            : String(emailResult.error);
+        logger.warn(
+          { email: renterEmail, error: errorMessage },
+          "? Admin-scope-update notification failed",
+        );
+      }
+    }
+    catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          preMarketRequestId: preMarketRequest._id,
+        },
+        "Failed to notify renter about admin scope update",
+      );
+    }
+  }
+
   private async notifyAdminAboutNewRequest(
     payload: IPreMarketNotificationPayload,
   ): Promise<{
