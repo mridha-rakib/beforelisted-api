@@ -929,6 +929,36 @@ export class PreMarketService {
     return records.some((record) => this.hasAgentMatchedStatus(record));
   }
 
+  /**
+   * Admin-side lock: a request is only locked from `All Market → Upcoming`
+   * when at least one currently-matched grant was created while the request
+   * was already at "All Market" (the genuine "Upcoming (M)" state). Records
+   * with `scopeAtMatch === null` are treated as "matched at Upcoming" for
+   * backward compatibility — they do NOT trigger the lock.
+   *
+   * Note: this is intentionally narrower than the renter-side
+   * `isMarketScopeSwitchLockedForRequest`, which fires on any matched grant
+   * at All Market regardless of when it was created. Admin flips preserve
+   * the request lifecycle as the user expects.
+   */
+  private async adminIsMarketScopeSwitchLockedForRequest(
+    request: IPreMarketRequest,
+  ): Promise<boolean> {
+    if (request.scope !== "All Market" || !request._id) {
+      return false;
+    }
+
+    const records = await this.grantAccessRepository.findByPreMarketRequestId(
+      request._id.toString(),
+    );
+
+    return records.some(
+      (record) =>
+        this.hasAgentMatchedStatus(record)
+        && record.scopeAtMatch === "All Market",
+    );
+  }
+
   public async shouldDisplayMatchedScopeForRequest(
     requestId: string | Types.ObjectId,
     options: { excludeGrantAccessId?: string | Types.ObjectId } = {},
@@ -6327,6 +6357,14 @@ export class PreMarketService {
     if (!listingActivationCheck) {
       throw new NotFoundException("Pre-market request not found");
     }
+    // Capture the request's current scope at the moment the match is created.
+    // Stored on the grant record so the admin scope-toggle lock can later
+    // distinguish "matched at All Market" (truly Upcoming (M) → locked) from
+    // "matched at Upcoming, then flipped to All Market" (allowed back).
+    const requestScopeAtMatch: "Upcoming" | "All Market"
+      = (listingActivationCheck as IPreMarketRequest)?.scope === "All Market"
+        ? "All Market"
+        : "Upcoming";
     const matchSummary = this.buildMatchCompatibilitySummary(
       matchContext,
       listingActivationCheck as IPreMarketRequest,
@@ -6392,6 +6430,7 @@ export class PreMarketService {
     const representationPayload = {
       representation_type: representationType,
       representationSelectedAt: matchedAt,
+      scopeAtMatch: requestScopeAtMatch,
       ...(normalizedOpportunityDetails
         ? { opportunityDetails: normalizedOpportunityDetails }
         : {}),
@@ -8170,10 +8209,13 @@ export class PreMarketService {
       return request;
     }
 
-    // Block Upcoming (M) → Upcoming: scope is currently "All Market" with a
-    // matched grant. Any other flip direction (Upcoming → All Market, or
-    // All Market with no matches → Upcoming) is allowed.
-    const isLocked = await this.isMarketScopeSwitchLockedForRequest(request);
+    // Block Upcoming (M) → Upcoming only when the request is genuinely in
+    // the Upcoming (M) state — i.e. scope is "All Market" AND at least one
+    // matched grant was created while the request was at "All Market". Any
+    // other flip direction (Upcoming → All Market, or All Market with no
+    // matches → Upcoming) is allowed. See adminIsMarketScopeSwitchLockedForRequest
+    // for the rule details.
+    const isLocked = await this.adminIsMarketScopeSwitchLockedForRequest(request);
     if (isLocked && scope === "Upcoming") {
       throw new BadRequestException(MARKET_SCOPE_SWITCH_LOCKED_MESSAGE);
     }

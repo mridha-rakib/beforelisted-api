@@ -15,6 +15,14 @@ export type IGrantAccessRequest = {
   representation_type?: "owner_representation" | "renter_representation";
   representationSelectedAt?: Date;
   opportunityDetails?: string;
+  /**
+   * The scope the request was at when this match was created. Used by the
+   * admin scope-toggle lock to decide whether a request is genuinely in the
+   * "Upcoming (M)" state — only grants matched while the request was at
+   * "All Market" count. Records predating this field default to null and
+   * are treated as "matched at Upcoming" for backward compatibility.
+   */
+  scopeAtMatch?: "Upcoming" | "All Market" | null;
 
   payment?: {
     amount: number;
@@ -80,6 +88,13 @@ const grantAccessSchema = BaseSchemaUtil.createSchema({
     type: String,
     trim: true,
     maxlength: 350,
+  },
+
+  scopeAtMatch: {
+    type: String,
+    enum: ["Upcoming", "All Market", null],
+    default: null,
+    index: true,
   },
 
   payment: {
