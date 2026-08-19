@@ -954,6 +954,7 @@ describe("PreMarketService renter market-scope switching", () => {
         {
           status: "free",
           representation_type: "renter_representation",
+          scopeAtMatch: "All Market",
         },
       ]);
 
@@ -967,6 +968,41 @@ describe("PreMarketService renter market-scope switching", () => {
     );
     expect(updateById).not.toHaveBeenCalled();
   });
+
+  it.each(["Upcoming", null])(
+    "allows All Market to Upcoming when the active match was created at %s",
+    async (scopeAtMatch) => {
+      const request = {
+        _id: requestId,
+        renterId,
+        scope: "All Market",
+        visibility: "SHARED",
+        searchActivity: {},
+      };
+      const { service, serviceAny, updateById } = buildUpdateService(request);
+      serviceAny.grantAccessRepository.findByPreMarketRequestId
+        .mockResolvedValue([
+          {
+            status: "free",
+            representation_type: "renter_representation",
+            scopeAtMatch,
+          },
+        ]);
+
+      await service.updateRequest(renterId, requestId, {
+        scope: "Upcoming",
+        visibility: "SHARED",
+      });
+
+      expect(updateById).toHaveBeenCalledWith(
+        requestId,
+        expect.objectContaining({
+          scope: "Upcoming",
+          visibility: "PRIVATE",
+        }),
+      );
+    },
+  );
 
   it("allows unmatched All Market to switch to Upcoming and forces Private", async () => {
     const request = {
@@ -1022,6 +1058,59 @@ describe("PreMarketService renter market-scope switching", () => {
         }),
       }),
     );
+  });
+
+  it("applies the Upcoming (M) lock to admin scope changes", async () => {
+    const request = {
+      _id: requestId,
+      renterId,
+      scope: "All Market",
+      visibility: "PRIVATE",
+    };
+    const { service, serviceAny, updateById } = buildUpdateService(request);
+    serviceAny.grantAccessRepository.findByPreMarketRequestId
+      .mockResolvedValue([
+        {
+          status: "paid",
+          representation_type: "renter_representation",
+          scopeAtMatch: "All Market",
+        },
+      ]);
+
+    await expect(
+      service.adminUpdateScope(requestId, "Upcoming", "admin-1"),
+    ).rejects.toThrow(
+      "A rental specialist is already assigned. To switch to upcoming only, you can notify your registered agent, delete the request and start again, or contact support@beforelisted.com.",
+    );
+    expect(updateById).not.toHaveBeenCalled();
+  });
+
+  it("allows an admin to restore Upcoming when the match predates All Market", async () => {
+    const request = {
+      _id: requestId,
+      renterId,
+      scope: "All Market",
+      visibility: "SHARED",
+    };
+    const { service, serviceAny, updateById } = buildUpdateService(request);
+    serviceAny.grantAccessRepository.findByPreMarketRequestId
+      .mockResolvedValue([
+        {
+          status: "free",
+          representation_type: "renter_representation",
+          scopeAtMatch: "Upcoming",
+        },
+      ]);
+    serviceAny.notifier.notifyRenterAboutAdminScopeUpdate = vi
+      .fn()
+      .mockResolvedValue(undefined);
+
+    await service.adminUpdateScope(requestId, "Upcoming", "admin-1");
+
+    expect(updateById).toHaveBeenCalledWith(requestId, {
+      scope: "Upcoming",
+      visibility: "PRIVATE",
+    });
   });
 });
 

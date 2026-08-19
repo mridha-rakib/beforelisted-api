@@ -116,6 +116,8 @@ export type AdminPreMarketRequestItem = IPreMarketRequest & {
   renterInfo: AdminPreMarketRenterInfo;
   agentRequestSummary: AdminAgentRequestSummary;
   agentRequests: AgentRequestDetail[];
+  marketScopeSwitchLocked: boolean;
+  marketScopeSwitchLockedReason?: string;
 };
 
 export type AdminPreMarketPaginatedResponse

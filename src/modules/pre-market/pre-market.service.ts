@@ -926,31 +926,23 @@ export class PreMarketService {
       request._id.toString(),
     );
 
-    return records.some((record) => this.hasAgentMatchedStatus(record));
+    return this.isMarketScopeSwitchLockedFromRecords(request, records);
   }
 
   /**
-   * Admin-side lock: a request is only locked from `All Market → Upcoming`
-   * when at least one currently-matched grant was created while the request
-   * was already at "All Market" (the genuine "Upcoming (M)" state). Records
-   * with `scopeAtMatch === null` are treated as "matched at Upcoming" for
-   * backward compatibility — they do NOT trigger the lock.
-   *
-   * Note: this is intentionally narrower than the renter-side
-   * `isMarketScopeSwitchLockedForRequest`, which fires on any matched grant
-   * at All Market regardless of when it was created. Admin flips preserve
-   * the request lifecycle as the user expects.
+   * A request is locked from `All Market -> Upcoming` only when an active
+   * renter-representation match was created while the request was already at
+   * All Market. That is the genuine `Upcoming (M)` state. Older grants with no
+   * `scopeAtMatch` are treated as matches created under Upcoming and do not
+   * lock the switch.
    */
-  private async adminIsMarketScopeSwitchLockedForRequest(
+  private isMarketScopeSwitchLockedFromRecords(
     request: IPreMarketRequest,
-  ): Promise<boolean> {
-    if (request.scope !== "All Market" || !request._id) {
+    records: IGrantAccessRequest[],
+  ): boolean {
+    if (request.scope !== "All Market") {
       return false;
     }
-
-    const records = await this.grantAccessRepository.findByPreMarketRequestId(
-      request._id.toString(),
-    );
 
     return records.some(
       (record) =>
@@ -6872,12 +6864,18 @@ export class PreMarketService {
       context.agentUserById,
       context.agentProfileByUserId,
     );
+    const marketScopeSwitchLocked =
+      this.isMarketScopeSwitchLockedFromRecords(request, allRequests);
 
     return {
       ...(request.toObject ? request.toObject() : request),
       renterInfo,
       agentRequestSummary,
       agentRequests,
+      marketScopeSwitchLocked,
+      ...(marketScopeSwitchLocked
+        ? { marketScopeSwitchLockedReason: MARKET_SCOPE_SWITCH_LOCKED_MESSAGE }
+        : {}),
     } as AdminPreMarketRequestItem;
   }
 
@@ -6911,12 +6909,18 @@ export class PreMarketService {
     const agentRequests = await this.getAgentRequestDetails(
       request._id!.toString(),
     );
+    const marketScopeSwitchLocked =
+      await this.isMarketScopeSwitchLockedForRequest(request);
 
     return {
       ...(request.toObject ? request.toObject() : request),
       renterInfo,
       agentRequestSummary,
       agentRequests,
+      marketScopeSwitchLocked,
+      ...(marketScopeSwitchLocked
+        ? { marketScopeSwitchLockedReason: MARKET_SCOPE_SWITCH_LOCKED_MESSAGE }
+        : {}),
     } as AdminPreMarketRequestItem;
   }
 
@@ -8193,10 +8197,8 @@ export class PreMarketService {
 
   /**
    * Admin updates the scope ("Upcoming" / "All Market") of any pre-market request.
-   * Unlike the renter-side `updateRequest`, admins are NOT subject to the
-   * "A rental specialist is already assigned" lock — admins must always be
-   * able to move a request back to Upcoming. Visibility is reset to PRIVATE
-   * on every flip, mirroring the renter-side rule.
+   * Both admins and renters are blocked only for a genuine Upcoming (M)
+   * request. Visibility is reset to PRIVATE on every successful flip.
    */
   async adminUpdateScope(
     requestId: string,
@@ -8209,13 +8211,12 @@ export class PreMarketService {
       return request;
     }
 
-    // Block Upcoming (M) → Upcoming only when the request is genuinely in
+    // Block Upcoming (M) -> Upcoming only when the request is genuinely in
     // the Upcoming (M) state — i.e. scope is "All Market" AND at least one
     // matched grant was created while the request was at "All Market". Any
     // other flip direction (Upcoming → All Market, or All Market with no
-    // matches → Upcoming) is allowed. See adminIsMarketScopeSwitchLockedForRequest
-    // for the rule details.
-    const isLocked = await this.adminIsMarketScopeSwitchLockedForRequest(request);
+    // matches → Upcoming) is allowed.
+    const isLocked = await this.isMarketScopeSwitchLockedForRequest(request);
     if (isLocked && scope === "Upcoming") {
       throw new BadRequestException(MARKET_SCOPE_SWITCH_LOCKED_MESSAGE);
     }
