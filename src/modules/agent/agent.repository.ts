@@ -5,7 +5,10 @@ import type { Types } from "mongoose";
 import { BaseRepository } from "@/modules/base/base.repository";
 import { NotFoundException } from "@/utils/app-error.utils";
 
-import type { IAgentProfile } from "./agent.interface";
+import type {
+  AgentRepresentationType,
+  IAgentProfile,
+} from "./agent.interface";
 
 import { AgentProfile } from "./agent.model";
 
@@ -130,6 +133,37 @@ export class AgentProfileRepository extends BaseRepository<IAgentProfile> {
         { new: true },
       )
       .exec();
+  }
+
+  async appendOpportunityMessage(
+    userId: string | Types.ObjectId,
+    representationType: AgentRepresentationType,
+    message: string,
+  ): Promise<IAgentProfile> {
+    const historyPath = representationType === "owner_representation"
+      ? "opportunityMessageHistory.ownerRepresentation"
+      : "opportunityMessageHistory.renterRepresentation";
+
+    const profile = await this.model
+      .findOneAndUpdate(
+        { userId },
+        {
+          $push: {
+            [historyPath]: {
+              $each: [message],
+              $slice: -10,
+            },
+          },
+        } as any,
+        { new: true },
+      )
+      .exec();
+
+    if (!profile) {
+      throw new NotFoundException("Agent profile not found");
+    }
+
+    return profile;
   }
 
   /**

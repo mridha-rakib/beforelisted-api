@@ -17,6 +17,9 @@ import { observePerformanceAsync } from "@/utils/performance-observer.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 
+import type { AgentRepresentationType } from "../agent/agent.interface";
+
+import { AgentOpportunityMessageHistoryService } from "../agent/agent-opportunity-message-history.service";
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
 import { GrantAccessService } from "../grant-access/grant-access.service";
@@ -53,6 +56,7 @@ export class PreMarketController {
   private readonly grantAccessService: GrantAccessService;
   private readonly paymentService: PaymentService;
   private readonly agentRepository: AgentProfileRepository;
+  private readonly opportunityMessageHistoryService: AgentOpportunityMessageHistoryService;
   private readonly preMarketRepository: PreMarketRepository;
   private readonly grantAccessRepository: GrantAccessRepository;
   private readonly excelService: ExcelService;
@@ -62,6 +66,8 @@ export class PreMarketController {
     this.grantAccessService = new GrantAccessService();
     this.paymentService = new PaymentService();
     this.agentRepository = new AgentProfileRepository();
+    this.opportunityMessageHistoryService
+      = new AgentOpportunityMessageHistoryService();
     this.preMarketRepository = new PreMarketRepository();
     this.grantAccessRepository = new GrantAccessRepository();
     this.excelService = new ExcelService();
@@ -94,6 +100,27 @@ export class PreMarketController {
       return first;
     }
     return value;
+  }
+
+  private async recordOpportunityMessage(
+    agentId: string,
+    representationType: AgentRepresentationType,
+    message?: string,
+  ): Promise<void> {
+    if (!message?.trim()) return;
+
+    try {
+      await this.opportunityMessageHistoryService.record(
+        agentId,
+        representationType,
+        message,
+      );
+    } catch (error) {
+      logger.error(
+        { error, agentId, representationType },
+        "Failed to save agent opportunity message history",
+      );
+    }
   }
 
   /**
@@ -697,6 +724,12 @@ export class PreMarketController {
     const grantAccess = await this.grantAccessService.requestAccess(
       userId,
       validated.body.preMarketRequestId,
+      validated.body.representation_type ?? "renter_representation",
+      validated.body.opportunityDetails,
+    );
+
+    await this.recordOpportunityMessage(
+      userId,
       validated.body.representation_type ?? "renter_representation",
       validated.body.opportunityDetails,
     );
@@ -1432,6 +1465,13 @@ export class PreMarketController {
           additionalOpportunity,
           matchContext,
         );
+        if (result.matched.length > 0) {
+          await this.recordOpportunityMessage(
+            agentId,
+            representationType,
+            opportunityDetails,
+          );
+        }
         return ApiResponse.success(
           res,
           result,
@@ -1502,6 +1542,14 @@ export class PreMarketController {
         "Bulk match request submitted; awaiting admin approval",
       );
 
+      if (matched.length > 0) {
+        await this.recordOpportunityMessage(
+          agentId,
+          representationType,
+          opportunityDetails,
+        );
+      }
+
       return ApiResponse.success(
         res,
         { matched, failed },
@@ -1530,6 +1578,12 @@ export class PreMarketController {
         representationType,
         validated.body.opportunityDetails,
         validated.body.additionalOpportunity,
+      );
+
+      await this.recordOpportunityMessage(
+        agentId,
+        representationType,
+        validated.body.opportunityDetails,
       );
 
       logger.info(
@@ -1594,6 +1648,12 @@ export class PreMarketController {
     const pendingAccess = await this.grantAccessService.requestAccess(
       agentId,
       requestId,
+      representationType,
+      validated.body.opportunityDetails,
+    );
+
+    await this.recordOpportunityMessage(
+      agentId,
       representationType,
       validated.body.opportunityDetails,
     );

@@ -116,6 +116,29 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
     type: Date,
   },
 
+  opportunityMessageHistory: {
+    ownerRepresentation: {
+      type: [
+        {
+          type: String,
+          trim: true,
+          maxlength: 350,
+        },
+      ],
+      default: [],
+    },
+    renterRepresentation: {
+      type: [
+        {
+          type: String,
+          trim: true,
+          maxlength: 350,
+        },
+      ],
+      default: [],
+    },
+  },
+
   hasGrantAccess: {
     type: Boolean,
     default: false,
