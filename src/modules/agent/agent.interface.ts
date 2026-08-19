@@ -18,6 +18,15 @@ export type IActivationRecord = {
   reason?: string;
 };
 
+export type AgentRepresentationType =
+  | "owner_representation"
+  | "renter_representation";
+
+export type OpportunityMessageHistory = {
+  ownerRepresentation: string[];
+  renterRepresentation: string[];
+};
+
 /**
  * Agent Profile Document Interface
  */
@@ -51,6 +60,7 @@ export type IAgentProfile = {
   emailSubscriptionEnabled: boolean;
   acceptingRequests: boolean;
   acceptingRequestsToggledAt?: Date;
+  opportunityMessageHistory: OpportunityMessageHistory;
   hasGrantAccess: boolean;
   accessToggleHistory: IAccessToggleRecord[];
   lastAccessToggleAt?: Date;

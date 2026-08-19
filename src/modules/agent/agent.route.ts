@@ -22,6 +22,15 @@ router.get(
   controller.getAgentProfile,
 );
 
+router.get(
+  "/opportunity-message-history",
+  authMiddleware.verifyToken,
+  authMiddleware.verifyEmailVerified,
+  agentActivationMiddleware.verify,
+  authMiddleware.authorize(ROLES.AGENT),
+  controller.getOpportunityMessageHistory,
+);
+
 /**
  * PUT /agent/profile
  * Update own agent profile, // authMiddleware.verifyEmailVerified,

@@ -23,15 +23,19 @@ import {
   getAgentProfileSchema,
   updateAgentProfileSchema,
 } from "./agent.schema";
+import { AgentOpportunityMessageHistoryService } from "./agent-opportunity-message-history.service";
 import { AgentService } from "./agent.service";
 
 export class AgentController {
   private service: AgentService;
   private userService: UserService;
+  private opportunityMessageHistoryService: AgentOpportunityMessageHistoryService;
 
   constructor() {
     this.service = new AgentService();
     this.userService = new UserService();
+    this.opportunityMessageHistoryService
+      = new AgentOpportunityMessageHistoryService();
   }
 
   createAgentProfile = asyncHandler(
@@ -55,6 +59,20 @@ export class AgentController {
 
     ApiResponse.success(res, result, "Agent profile retrieved successfully");
   });
+
+  getOpportunityMessageHistory = asyncHandler(
+    async (req: Request, res: Response) => {
+      const userId = req.user!.userId;
+      const result
+        = await this.opportunityMessageHistoryService.getForAgent(userId);
+
+      ApiResponse.success(
+        res,
+        result,
+        "Opportunity message history retrieved successfully",
+      );
+    },
+  );
 
   updateAgentProfile = asyncHandler(
     async (req: Request, res: Response, _next: NextFunction) => {
