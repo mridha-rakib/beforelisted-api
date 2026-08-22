@@ -1652,11 +1652,12 @@ export class EmailTemplates {
         .content {
             padding: 40px 30px;
         }
-        .content h2 {
+        .greeting {
             color: #333333;
-            font-size: 20px;
-            margin: 0 0 20px 0;
-            font-weight: 600;
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0 0 15px 0;
+            font-weight: 400;
         }
         .content p {
             color: #666666;
@@ -1712,7 +1713,7 @@ export class EmailTemplates {
 
         <!-- Content -->
         <div class="content">
-            <h2>Hi ${displayName},</h2>
+            <div class="greeting">Hi ${displayName},</div>
             <p>This email confirms that your BeforeListed&trade; account has been successfully deleted, as requested.</p>
 
             <div class="notice-box">
@@ -1789,11 +1790,12 @@ export class EmailTemplates {
         .content {
             padding: 40px 30px;
         }
-        .content h2 {
+        .greeting {
             color: #333333;
-            font-size: 20px;
-            margin: 0 0 20px 0;
-            font-weight: 600;
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0 0 15px 0;
+            font-weight: 400;
         }
         .content p {
             color: #666666;
@@ -1849,7 +1851,7 @@ export class EmailTemplates {
 
         <!-- Content -->
         <div class="content">
-            <h2>Hi ${displayName},</h2>
+            <div class="greeting">Hi ${displayName},</div>
             <p>This email confirms that your BeforeListed&trade; agent account has been successfully deleted.</p>
 
             <div class="notice-box">
@@ -1957,11 +1959,12 @@ export class EmailTemplates {
         .content {
             padding: 36px 30px;
         }
-        .content h2 {
+        .greeting {
             color: #333333;
-            font-size: 20px;
-            margin: 0 0 18px 0;
-            font-weight: 600;
+            font-size: 15px;
+            line-height: 1.7;
+            margin: 0 0 14px 0;
+            font-weight: 400;
         }
         .content p {
             color: #666666;
@@ -2038,7 +2041,7 @@ export class EmailTemplates {
         </div>
 
         <div class="content">
-            <h2>Hi ${displayName},</h2>
+            <div class="greeting">Hi ${displayName},</div>
             ${contentHtml}
         </div>
 
