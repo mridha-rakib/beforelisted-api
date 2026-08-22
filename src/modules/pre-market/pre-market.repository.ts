@@ -896,6 +896,11 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
         {
           $set: {
             "searchActivity.upcomingSearchExpansionReminderSentAt": now,
+            // Once the day-10 follow-up email has been sent, lock the
+            // toggle off so the agent cannot re-enable it and so the UI
+            // reflects that the reminder has been delivered.
+            "searchActivity.allMarketOfferEnabled": false,
+            "searchActivity.allMarketOfferToggledAt": now,
           },
         },
         { new: true },
