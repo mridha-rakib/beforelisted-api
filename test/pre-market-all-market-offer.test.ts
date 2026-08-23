@@ -1,7 +1,8 @@
 // @vitest-environment node
 // Verifies the "All Market Offer" toggle behavior:
 //   - the registered agent can uncheck the day-10-reminder gate
-//   - unchecking flips scope from Upcoming to All Market (one-way trip)
+//   - unchecking sends Template #32 (same path as the sweep) and locks
+//     the gate; it does NOT change the request's scope
 //   - non-registered agents are forbidden
 //   - the day-10 sweep respects the opt-out
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -65,7 +66,6 @@ function buildService(opts: { request?: any; registeredAgentId?: string | null }
     findById: vi.fn().mockResolvedValue(requestForFindById),
     findActiveUpcomingRequestsForSearchExpansionReminderSweep: vi.fn(),
     toggleAllMarketOffer: vi.fn(),
-    flipScopeToAllMarket: vi.fn(),
     markUpcomingSearchExpansionReminderSent: vi.fn(),
   };
   service.renterRepository = {
@@ -102,17 +102,31 @@ describe("PreMarketService.toggleAllMarketOffer", () => {
     vi.useRealTimers();
   });
 
-  it("lets the registered agent uncheck the box and flips scope to All Market", async () => {
+  it("lets the registered agent uncheck the box, sends Template #32, and locks the gate without changing scope", async () => {
     const service = buildService();
-    const flippedDoc = buildRequest({
-      scope: "All Market",
+    // sendUpcomingSearchExpansionReminder resolves the registered agent
+    // and reads its archive info to set the reply-to header. Stub both.
+    service.resolveRegisteredAgentIdForRequest = vi
+      .fn()
+      .mockResolvedValue(REGISTERED_AGENT_ID);
+    service.getArchiveAgentInfo = vi.fn().mockResolvedValue({
+      email: "agent@example.com",
+      fullName: "Test Agent",
+    });
+    // The sweep's atomic-claim helper should record the send time.
+    service.preMarketRepository.markUpcomingSearchExpansionReminderSent
+      = vi.fn().mockResolvedValue(buildRequest());
+    // The toggle helper should then disable the gate.
+    const lockedDoc = buildRequest({
+      scope: "Upcoming",
       searchActivity: {
         ...buildRequest().searchActivity,
         allMarketOfferEnabled: false,
         allMarketOfferToggledAt: NOW,
+        upcomingSearchExpansionReminderSentAt: NOW,
       },
     });
-    service.preMarketRepository.flipScopeToAllMarket.mockResolvedValue(flippedDoc);
+    service.preMarketRepository.toggleAllMarketOffer.mockResolvedValue(lockedDoc);
 
     const result = await service.toggleAllMarketOffer(
       REGISTERED_AGENT_ID,
@@ -120,14 +134,57 @@ describe("PreMarketService.toggleAllMarketOffer", () => {
       false,
     );
 
-    expect(service.preMarketRepository.flipScopeToAllMarket).toHaveBeenCalledWith(
+    expect(
+      emailService.sendUpcomingRequestSearchExpansionReminder,
+    ).toHaveBeenCalledTimes(1);
+    expect(service.preMarketRepository.toggleAllMarketOffer).toHaveBeenCalledWith(
       REQUEST_ID,
+      false,
+      REGISTERED_AGENT_ID,
       expect.any(Date),
     );
-    // Should NOT call the soft-toggle; unchecking is the one-way trip.
-    expect(service.preMarketRepository.toggleAllMarketOffer).not.toHaveBeenCalled();
-    expect(result.scope).toBe("All Market");
+    // Scope MUST remain Upcoming — unchecking the gate must not mutate it.
+    expect(result.scope).toBe("Upcoming");
     expect(result.searchActivity.allMarketOfferEnabled).toBe(false);
+  });
+
+  it("just locks the gate when the email has already been sent by the sweep", async () => {
+    const service = buildService({
+      request: buildRequest({
+        searchActivity: {
+          ...buildRequest().searchActivity,
+          upcomingSearchExpansionReminderSentAt: new Date(
+            "2026-08-12T00:00:00.000Z",
+          ),
+        },
+      }),
+    });
+    const lockedDoc = buildRequest({
+      searchActivity: {
+        ...buildRequest().searchActivity,
+        allMarketOfferEnabled: false,
+        upcomingSearchExpansionReminderSentAt: new Date(
+          "2026-08-12T00:00:00.000Z",
+        ),
+      },
+    });
+    service.preMarketRepository.toggleAllMarketOffer.mockResolvedValue(lockedDoc);
+
+    await service.toggleAllMarketOffer(
+      REGISTERED_AGENT_ID,
+      REQUEST_ID,
+      false,
+    );
+
+    expect(
+      emailService.sendUpcomingRequestSearchExpansionReminder,
+    ).not.toHaveBeenCalled();
+    expect(service.preMarketRepository.toggleAllMarketOffer).toHaveBeenCalledWith(
+      REQUEST_ID,
+      false,
+      REGISTERED_AGENT_ID,
+      expect.any(Date),
+    );
   });
 
   it("lets the registered agent re-enable the gate while still Upcoming", async () => {
@@ -154,8 +211,27 @@ describe("PreMarketService.toggleAllMarketOffer", () => {
       REGISTERED_AGENT_ID,
       expect.any(Date),
     );
-    expect(service.preMarketRepository.flipScopeToAllMarket).not.toHaveBeenCalled();
     expect(result.searchActivity.allMarketOfferEnabled).toBe(true);
+    expect(result.scope).toBe("Upcoming");
+  });
+
+  it("refuses to re-enable the gate once the email has already been sent", async () => {
+    const service = buildService({
+      request: buildRequest({
+        searchActivity: {
+          ...buildRequest().searchActivity,
+          upcomingSearchExpansionReminderSentAt: new Date(
+            "2026-08-12T00:00:00.000Z",
+          ),
+        },
+      }),
+    });
+
+    await expect(
+      service.toggleAllMarketOffer(REGISTERED_AGENT_ID, REQUEST_ID, true),
+    ).rejects.toThrow(/already been sent/i);
+
+    expect(service.preMarketRepository.toggleAllMarketOffer).not.toHaveBeenCalled();
   });
 
   it("forbids non-registered agents from toggling the gate", async () => {
@@ -165,11 +241,10 @@ describe("PreMarketService.toggleAllMarketOffer", () => {
       service.toggleAllMarketOffer(NON_REGISTERED_AGENT_ID, REQUEST_ID, false),
     ).rejects.toThrow(/Only the registered agent/i);
 
-    expect(service.preMarketRepository.flipScopeToAllMarket).not.toHaveBeenCalled();
     expect(service.preMarketRepository.toggleAllMarketOffer).not.toHaveBeenCalled();
   });
 
-  it("refuses to toggle when the request is already at All Market (one-way trip)", async () => {
+  it("refuses to toggle when the request is not in Upcoming scope", async () => {
     const service = buildService({
       request: buildRequest({ scope: "All Market" }),
     });
@@ -178,7 +253,6 @@ describe("PreMarketService.toggleAllMarketOffer", () => {
       service.toggleAllMarketOffer(REGISTERED_AGENT_ID, REQUEST_ID, false),
     ).rejects.toThrow(/only be toggled while the request is in the Upcoming scope/i);
 
-    expect(service.preMarketRepository.flipScopeToAllMarket).not.toHaveBeenCalled();
     expect(service.preMarketRepository.toggleAllMarketOffer).not.toHaveBeenCalled();
   });
 

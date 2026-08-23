@@ -365,11 +365,14 @@ export const toggleListingActivationSchema = z.object({
  * for the renter can mutate it; that authorization happens in the
  * controller and is not encoded here.
  *
- * `enabled: false` is a one-way state change — once flipped, the request
- * can never return to Upcoming scope, and the field cannot be re-enabled.
- * The API still accepts `enabled: true` so the dashboard can recover from
- * optimistic UI mistakes; the controller rejects the request if the
- * underlying request scope is no longer "Upcoming".
+ * `enabled: false` sends Template #32 to the renter immediately (same
+ * helper the sweep uses) and locks the gate. Once the email has been
+ * sent — whether manually via this endpoint or by the scheduled sweep —
+ * the field cannot be re-enabled. The API still accepts `enabled: true`
+ * so the dashboard can recover from optimistic UI mistakes; the service
+ * rejects the request if the email has already been sent.
+ *
+ * This endpoint has NO effect on the request's `scope`.
  */
 export const toggleAllMarketOfferSchema = z.object({
   params: z.object({

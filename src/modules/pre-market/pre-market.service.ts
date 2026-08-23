@@ -1838,19 +1838,25 @@ export class PreMarketService {
   /**
    * Toggles the "All Market Offer" gate for a single request.
    *
-   * The gate controls whether the day-10 search-expansion reminder
-   * (Template #32) is allowed to fire. By default it is enabled for every
-   * Upcoming request. The registered agent for the renter can uncheck it
-   * from the agent dashboard "All Market Offer" column.
+   * The gate is purely a tracking signal for the day-10 search-expansion
+   * reminder email (Template #32). It has NO relationship to the
+   * request's `scope` — scope is owned by the renter / admin and the
+   * agent never mutates it through this endpoint.
    *
    * State machine:
-   *   - Toggle to `enabled: false`:
-   *       * Flips the request scope to "All Market" (one-way trip).
-   *       * Sets `searchActivity.allMarketOfferEnabled` to `false`.
-   *       * Locks the checkbox grey/disabled for the rest of the
-   *         request's life.
+   *   - Toggle to `enabled: false` (agent manually fires the email):
+   *       * Sends Template #32 to the renter right now, via the same
+   *         helper used by the day-10 sweep.
+   *       * Records `searchActivity.upcomingSearchExpansionReminderSentAt`
+   *         atomically so the sweep cannot double-send.
+   *       * Sets `searchActivity.allMarketOfferEnabled = false` so the
+   *         sweep will not re-fire later.
+   *       * Locks the checkbox for the rest of the request's life.
    *   - Toggle to `enabled: true`:
-   *       * Only allowed while the request is still Upcoming and active.
+   *       * Allowed only while the request is still Upcoming and active
+   *         AND the email has NOT already been sent (either manually or
+   *         by the sweep). Once the email has gone out, the gate is
+   *         permanently disabled and cannot be re-enabled.
    *       * Restores the gate; does NOT change scope.
    *
    * Authorization:
@@ -1893,31 +1899,69 @@ export class PreMarketService {
     }
 
     const now = new Date();
+    const searchActivity = this.getSearchActivity(request);
 
-    // Unchecking the box is the one-way trip: flip scope to All Market AND
-    // clear the gate so the day-10 sweep can never re-fire for this
-    // request via any code path.
+    // Unchecking the box = "send the day-10 email right now". We reuse the
+    // sweep's send + atomic-claim helpers so behavior is identical to the
+    // scheduled job (same template, same idempotency guard).
     if (enabled === false) {
-      const updated = await this.preMarketRepository.flipScopeToAllMarket(
+      if (searchActivity.upcomingSearchExpansionReminderSentAt) {
+        // Email already went out (probably via the sweep). Just lock the
+        // gate so the UI reflects reality; no need to send again.
+        const locked = await this.preMarketRepository.toggleAllMarketOffer(
+          requestId,
+          false,
+          agentId,
+          now,
+        );
+        if (!locked) {
+          throw new BadRequestException(
+            "The All Market Offer gate could not be updated — the request may no longer be eligible.",
+          );
+        }
+        logger.info(
+          { agentId, requestId },
+          "Registered agent confirmed the All Market Offer gate is disabled (email already sent).",
+        );
+        return locked;
+      }
+
+      const sent = await this.sendUpcomingSearchExpansionReminder(
+        request,
+        now,
+      );
+      if (!sent) {
+        throw new BadRequestException(
+          "The day-10 follow-up email could not be sent. Please try again or check the renter's email address.",
+        );
+      }
+
+      const updated = await this.preMarketRepository.toggleAllMarketOffer(
         requestId,
+        false,
+        agentId,
         now,
       );
       if (!updated) {
         throw new BadRequestException(
-          "The All Market Offer gate could not be unchecked — the request may have changed scope.",
+          "The All Market Offer gate could not be disabled after sending the email.",
         );
       }
       logger.info(
         { agentId, requestId },
-        "Registered agent disabled the All Market Offer gate and flipped the request to All Market scope.",
+        "Registered agent manually sent the day-10 search expansion reminder.",
       );
       return updated;
     }
 
-    // Re-checking is allowed but only meaningful if the field was somehow
-    // cleared before. The state-machine guard in the repository refuses the
-    // update when scope has already moved to All Market, so a request that
-    // has been flipped cannot be un-flipped.
+    // Re-checking is only allowed before the email has been sent. After
+    // that the gate stays off permanently.
+    if (searchActivity.upcomingSearchExpansionReminderSentAt) {
+      throw new BadRequestException(
+        "The day-10 follow-up email has already been sent; the gate cannot be re-enabled.",
+      );
+    }
+
     const updated = await this.preMarketRepository.toggleAllMarketOffer(
       requestId,
       true,

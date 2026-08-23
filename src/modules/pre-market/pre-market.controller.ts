@@ -204,10 +204,13 @@ export class PreMarketController {
    * Body: `{ enabled: boolean }`
    *
    * Only the **registered agent** for the renter can call this. Toggling
-   * to `enabled: false` flips the request scope to "All Market" (one-way
-   * trip) and permanently suppresses the day-10 search-expansion reminder
-   * (Template #32) for this request. Toggling back to `enabled: true` is
-   * allowed only while the request is still in Upcoming scope.
+   * to `enabled: false` sends the day-10 search-expansion reminder
+   * (Template #32) to the renter immediately (via the same path the
+   * scheduled sweep uses) and locks the gate. Toggling back to
+   * `enabled: true` is allowed only while the email has not yet been
+   * sent and the request is still in Upcoming scope.
+   *
+   * This endpoint never mutates the request's `scope`.
    */
   toggleAllMarketOffer = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(toggleAllMarketOfferSchema, req);
@@ -224,7 +227,7 @@ export class PreMarketController {
       updated,
       validated.body.enabled
         ? "All Market Offer gate re-enabled."
-        : "All Market Offer gate disabled and request moved to All Market scope.",
+        : "Day-10 follow-up email sent and gate disabled.",
     );
   });
 

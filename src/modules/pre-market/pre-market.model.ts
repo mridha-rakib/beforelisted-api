@@ -74,9 +74,13 @@ export type IPreMarketRequest = {
      * Defaults to `true` on every new request. The registered agent for the
      * renter can uncheck it from the agent dashboard "All Market Offer"
      * column, which:
+     *   - sends Template #32 to the renter immediately (same path as the
+     *     sweep),
      *   - permanently opts the request out of the 10-day reminder sweep,
-     *   - flips the request scope to "All Market" (one-way trip),
      *   - locks the checkbox grey/disabled for the rest of the request's life.
+     *
+     * NOTE: this field is unrelated to the request's `scope`. Unchecking
+     * it MUST NOT change the scope.
      *
      * When the scope leaves "Upcoming" via any other path (admin change, an
      * agent match that flips the visible scope to "Upcoming (M)", etc.), the
