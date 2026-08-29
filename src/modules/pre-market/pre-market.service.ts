@@ -8074,14 +8074,7 @@ export class PreMarketService {
 
       const agentAckCcEmails = buildCcList(
         [registeredAgentEmail, env.ADMIN_EMAIL, SYSTEM_DEFAULT_AGENT.email],
-        [
-          agent.email,
-          registeredAgentEmail &&
-          registeredAgentEmail.toLowerCase() ===
-            SYSTEM_DEFAULT_AGENT.email.toLowerCase()
-            ? registeredAgentEmail
-            : undefined,
-        ],
+        [agent.email],
       );
       await emailService.sendMatchReferralAcknowledgmentToMatchingAgent({
         to: agent.email,
