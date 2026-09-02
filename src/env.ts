@@ -4,7 +4,7 @@ import { z } from "zod/v4";
 const envSchema = z.object({
   // Runtime mode for feature flags and safety checks; set by the hosting platform or local .env.
   NODE_ENV: z
-    .enum(["development", "production", "test"])
+    .enum(["development", "production", "test", "testing"])
     .default("development"),
   // Display name used in app metadata and logs; choose internally for the deployment.
   APP_NAME: z
@@ -173,10 +173,12 @@ try {
 }
 catch (error) {
   if (error instanceof z.ZodError) {
-    console.error(
-      "Missing environment variables:",
-      error.issues.flatMap(issue => issue.path),
-    );
+    const formatted = error.issues.map(issue => {
+      const path = issue.path.join(".") || "(root)";
+      return `${path}: ${issue.message}`;
+    });
+    console.error("Environment variable validation failed:");
+    for (const line of formatted) console.error(`  - ${line}`);
   }
   else {
     console.error(error);
