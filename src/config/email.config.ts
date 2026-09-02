@@ -27,7 +27,7 @@ const emailConfigSchema = z.object({
   EMAIL_MAX_RETRIES: z.coerce.number().int(),
   EMAIL_RETRY_DELAY_MS: z.coerce.number().int(),
   NODE_ENV: z
-    .enum(["development", "staging", "production"])
+    .enum(["development", "staging", "production", "test", "testing"])
     .default("development"),
 });
 
