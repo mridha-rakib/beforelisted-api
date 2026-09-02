@@ -486,6 +486,148 @@ describe("PreMarketService match search disclosure behavior", () => {
   });
 });
 
+describe("PreMarketService.getAllRequestsForAgent (Matches page)", () => {
+  it("surfaces requests the agent has just clicked 'Match Request' on (pending grants)", async () => {
+    const agentId = "agent-1";
+    const requestId = "507f1f77bcf86cd799439011";
+
+    const service = new PreMarketService() as any;
+    service.agentRepository = {
+      findByUserId: vi.fn().mockResolvedValue({
+        userId: agentId,
+        hasGrantAccess: false,
+      }),
+    };
+    service.shouldFilterAllMarketReferrals = () => false;
+    service.buildAgentRequestFilter = () => ({});
+    service.buildAgentArchiveExclusionFilter = () => ({});
+    service.mergeFilters = (filters: any[]) =>
+      filters.reduce((acc: any, f: any) => ({ ...acc, ...f }), {});
+
+    // Capture the statuses passed to the gateway grant query so we can
+    // assert that "pending" is included alongside the approved/free/paid
+    // set.
+    let capturedStatuses: string[] | null = null;
+    service.grantAccessRepository = {
+      findByAgentIdAndStatuses: vi.fn().mockImplementation(
+        (_id: string, statuses: string[]) => {
+          capturedStatuses = statuses;
+          return [
+            {
+              _id: "grant-1",
+              preMarketRequestId: requestId,
+              status: "pending",
+              representation_type: "renter_representation",
+              updatedAt: new Date("2026-08-01T00:00:00.000Z"),
+              createdAt: new Date("2026-08-01T00:00:00.000Z"),
+            },
+          ];
+        },
+      ),
+    };
+
+    const matchedRequest = {
+      _id: requestId,
+      scope: "Upcoming",
+      status: "Available",
+      isActive: true,
+      isDeleted: false,
+      referralAgentId: agentId,
+      renterId: "renter-1",
+      createdAt: new Date("2026-08-01T00:00:00.000Z"),
+    };
+    service.preMarketRepository = {
+      findAllForMatchSearch: vi.fn().mockResolvedValue([matchedRequest]),
+      addAgentToViewedBy: vi.fn().mockResolvedValue(undefined),
+    };
+    service.getGlobalMatchedScopeRequestIdSet = vi
+      .fn()
+      .mockResolvedValue(new Set<string>());
+    service.resolveRegisteredAgentIdForRequest = vi
+      .fn()
+      .mockResolvedValue(agentId);
+    service.resolveMatchedAgentForView = vi.fn().mockResolvedValue(null);
+    service.resolveRegisteredAgentForView = vi.fn().mockResolvedValue(null);
+    service.getRenterInfoForRequest = vi.fn().mockResolvedValue(null);
+    service.getAgentArchiveStatus = () => ({ isArchivedForAgent: false });
+    service.getRegistrationDisclosureStatus = () => ({});
+    service.stripOwnerRepresentationMatchesForNonRegisteredAgent = (
+      request: any,
+    ) => request;
+    service.buildAgentAccessSummary = (access: any) => ({
+      grantAccessStatus: "requested",
+      accessType: "none",
+      canRequestAccess: false,
+      canSeeRenterInfo: false,
+      grantAccessId: access?._id,
+      representation_type: access?.representation_type,
+      representationSelectedAt: null,
+      payment: null,
+      showPayment: false,
+      chargeAmount: null,
+    });
+
+    const result = await service.getAllRequestsForAgent(agentId, {
+      page: 1,
+      limit: 10,
+    });
+
+    // The gateway query must include pending so the row isn't silently
+    // dropped from the Matches page.
+    expect(capturedStatuses).toEqual([
+      "pending",
+      "approved",
+      "free",
+      "paid",
+    ]);
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]._id.toString()).toBe(requestId);
+    expect(result.data[0].alreadyMatchedByAgent).toBe(true);
+    expect(result.data[0].status).toBe("Matched");
+    expect(result.pagination.totalItems).toBe(1);
+  });
+
+  it("still excludes owner_representation grants", async () => {
+    const agentId = "agent-1";
+
+    const service = new PreMarketService() as any;
+    service.agentRepository = {
+      findByUserId: vi.fn().mockResolvedValue({
+        userId: agentId,
+        hasGrantAccess: false,
+      }),
+    };
+    service.shouldFilterAllMarketReferrals = () => false;
+    service.buildAgentRequestFilter = () => ({});
+    service.buildAgentArchiveExclusionFilter = () => ({});
+    service.grantAccessRepository = {
+      findByAgentIdAndStatuses: vi.fn().mockResolvedValue([
+        {
+          _id: "grant-1",
+          preMarketRequestId: "r1",
+          status: "approved",
+          representation_type: "owner_representation",
+        },
+      ]),
+    };
+    service.preMarketRepository = {
+      findAllForMatchSearch: vi.fn(),
+      addAgentToViewedBy: vi.fn(),
+    };
+
+    const result = await service.getAllRequestsForAgent(agentId, {
+      page: 1,
+      limit: 10,
+    });
+
+    expect(result.data).toHaveLength(0);
+    expect(result.pagination.totalItems).toBe(0);
+    expect(
+      service.preMarketRepository.findAllForMatchSearch,
+    ).not.toHaveBeenCalled();
+  });
+});
+
 describe("PreMarketService registered-agent matching", () => {
   const buildService = (registeredAgentId: string | null) => {
     const agentId = "agent-own-renter";
@@ -572,6 +714,70 @@ describe("PreMarketService registered-agent matching", () => {
 });
 
 describe("PreMarketService additional opportunities", () => {
+  it("re-sends the renter match notification when an agent matches an already-matched request", async () => {
+    const agentId = "matching-agent";
+    const requestId = "507f1f77bcf86cd799439011";
+    const request = {
+      _id: requestId,
+      renterId: "renter-1",
+      requestName: "R-REPEAT",
+      visibility: "SHARED",
+      shareConsent: true,
+      status: "Available",
+      isActive: true,
+      scope: "Upcoming",
+      registrationDisclosureConfirmations: [],
+    };
+    const existingMatch = {
+      _id: "grant-1",
+      agentId,
+      preMarketRequestId: requestId,
+      representation_type: "renter_representation",
+      status: "free",
+    };
+    const notifications: Array<Record<string, unknown>> = [];
+    const service = new PreMarketService();
+    const serviceAny = service as any;
+
+    serviceAny.agentRepository = {
+      findByUserId: async () => ({ hasGrantAccess: true }),
+    };
+    serviceAny.preMarketRepository = {
+      findByIdWithActivationStatus: async () => request,
+    };
+    serviceAny.grantAccessRepository = {
+      findByAgentAndRequest: async () => existingMatch,
+    };
+    serviceAny.isRegisteredAgentForRequest = async () => false;
+    serviceAny.ensureAgentCanViewRequest = () => undefined;
+    serviceAny.ensureAgentCanViewRequestVisibility = async () => undefined;
+    serviceAny.ensureRegisteredAgentCanMatchRequest = async () => undefined;
+    serviceAny.notifyRenterAboutMatchedOpportunity = async (
+      matchedAgentId: string,
+      _request: unknown,
+      grantAccessId: string,
+      details: string | undefined,
+    ) => {
+      notifications.push({ matchedAgentId, grantAccessId, details });
+    };
+
+    const result = await service.matchRequestForAgent(
+      agentId,
+      requestId,
+      "renter_representation",
+      "Still available.",
+    );
+
+    expect(result).toBe(existingMatch);
+    expect(notifications).toEqual([
+      {
+        matchedAgentId: agentId,
+        grantAccessId: "grant-1",
+        details: "Still available.",
+      },
+    ]);
+  });
+
   it("allows an already-matched shared agent to add an opportunity without disclosure confirmation", async () => {
     const agentId = "matching-agent";
     const requestId = "507f1f77bcf86cd799439012";

@@ -6048,11 +6048,11 @@ export class PreMarketService {
     }
 
     // ============================================
-    // AGENTS: See agent-specific approved/matched listings
+    // AGENTS: See agent-specific matched listings (incl. pending requests)
     // ============================================
     logger.info(
       { agentId, type: agent.hasGrantAccess ? "grant-access" : "normal" },
-      "Agent fetching approved and matched pre-market listings",
+      "Agent fetching matched pre-market listings",
     );
 
     if (this.shouldFilterAllMarketReferrals(query)) {
@@ -6062,9 +6062,14 @@ export class PreMarketService {
     const requestFilter = this.buildAgentRequestFilter(query);
     const archiveFilter = this.buildAgentArchiveExclusionFilter(agentId);
 
-    // Step 1: Get agent-specific records that should live outside /pre-market/all
+    // Step 1: Get agent-specific records that should live outside /pre-market/all.
+    // We include `pending` here (in addition to approved/free/paid) so that a
+    // request the agent has just clicked "Match Request" on surfaces on the
+    // Matches page immediately, matching what the Renter Requests dashboard
+    // already shows (which tags `pending` grants with the "Matched" pill).
     const accessRecords =
       await this.grantAccessRepository.findByAgentIdAndStatuses(agentId, [
+        "pending",
         "approved",
         "free",
         "paid",
@@ -6453,8 +6458,6 @@ export class PreMarketService {
       );
     }
 
-    const shouldNotify =
-      !existing || (existing.status !== "free" && existing.status !== "paid");
     const shouldSendAdditionalOpportunity =
       additionalOpportunity &&
       Boolean(
@@ -6526,6 +6529,36 @@ export class PreMarketService {
             };
           }
 
+          // A repeated match is still an explicit matching action. Re-send the
+          // appropriate match notification even though its grant-access record
+          // already exists, so the renter and involved agents are informed.
+          if (representationType === "owner_representation") {
+            this.notifyRegisteredAgentAboutOwnerRepresentationMatch(
+              agentId,
+              listingActivationCheck,
+              normalizedOpportunityDetails,
+              { matchSummary },
+            ).catch((error) => {
+              logger.error(
+                { error, requestId, agentId },
+                "Failed to send repeated owner representation match acknowledgment (non-blocking)",
+              );
+            });
+          } else if (representationType === "renter_representation") {
+            this.notifyRenterAboutMatchedOpportunity(
+              agentId,
+              listingActivationCheck,
+              existing._id,
+              normalizedOpportunityDetails,
+              { matchSummary },
+            ).catch((error) => {
+              logger.error(
+                { error, requestId, agentId },
+                "Failed to send repeated renter match notification (non-blocking)",
+              );
+            });
+          }
+
           return existing;
         }
 
@@ -6571,38 +6604,34 @@ export class PreMarketService {
         normalizedOpportunityDetails,
       );
 
-      if (shouldNotify) {
-        this.notifyRegisteredAgentAboutOwnerRepresentationMatch(
-          agentId,
-          listingActivationCheck,
-          normalizedOpportunityDetails,
-          { matchSummary },
-        ).catch((error) => {
-          logger.error(
-            { error, requestId, agentId },
-            "Failed to send owner representation match acknowledgment (non-blocking)",
-          );
-        });
-      }
+      this.notifyRegisteredAgentAboutOwnerRepresentationMatch(
+        agentId,
+        listingActivationCheck,
+        normalizedOpportunityDetails,
+        { matchSummary },
+      ).catch((error) => {
+        logger.error(
+          { error, requestId, agentId },
+          "Failed to send owner representation match acknowledgment (non-blocking)",
+        );
+      });
     } else {
       await this.preMarketRepository.setAllMarketRequestPrivateAfterMatch(
         requestId,
       );
 
-      if (shouldNotify) {
-        this.notifyRenterAboutMatchedOpportunity(
-          agentId,
-          listingActivationCheck,
-          matchRecord._id,
-          normalizedOpportunityDetails,
-          { matchSummary },
-        ).catch((error) => {
-          logger.error(
-            { error, requestId, agentId },
-            "Failed to send renter match notification (non-blocking)",
-          );
-        });
-      }
+      this.notifyRenterAboutMatchedOpportunity(
+        agentId,
+        listingActivationCheck,
+        matchRecord._id,
+        normalizedOpportunityDetails,
+        { matchSummary },
+      ).catch((error) => {
+        logger.error(
+          { error, requestId, agentId },
+          "Failed to send renter match notification (non-blocking)",
+        );
+      });
     }
 
     return matchRecord;
