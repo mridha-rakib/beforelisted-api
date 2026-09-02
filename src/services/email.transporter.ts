@@ -43,6 +43,8 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
         service: "Postmark",
         messageStream: this.postmarkConfig.messageStream,
         sandboxMode: this.postmarkConfig.sandboxMode,
+        rawSandboxEnv: process.env.POSTMARK_SANDBOX_MODE,
+        rawNodeEnv: process.env.NODE_ENV,
       },
       "📧 Postmark Email Transporter initialized",
     );

@@ -9,12 +9,30 @@ import { normalizeEmailLogoUrl } from "@/services/email-branding";
 
 // NODE_ENV is validated centrally by `src/env.ts`; reuse it here instead of
 // re-parsing `process.env` so the two schemas can't drift apart.
+//
+// POSTMARK_SANDBOX_MODE is parsed with explicit string handling rather than
+// `z.coerce.boolean()` because Zod coerces BOTH "true" and "false" to
+// `true` (any non-empty string is truthy). We need "false" to mean `false`.
 const emailConfigSchema = z.object({
   POSTMARK_API_TOKEN: z.string().min(1, "POSTMARK_API_TOKEN is required"),
   POSTMARK_MESSAGE_STREAM: z
     .enum(["outbound", "broadcast"])
     .default("outbound"),
-  POSTMARK_SANDBOX_MODE: z.coerce.boolean().default(false),
+  POSTMARK_SANDBOX_MODE: z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (value === undefined || value === "")
+        return false;
+      const normalized = value.trim().toLowerCase();
+      if (normalized === "true" || normalized === "1" || normalized === "yes")
+        return true;
+      if (normalized === "false" || normalized === "0" || normalized === "no")
+        return false;
+      // Unknown value — default to off so we don't accidentally suppress
+      // production emails.
+      return false;
+    }),
   EMAIL_FROM_NAME: z.string().default("BeforeListed"),
   EMAIL_FROM_ADDRESS: z.email("EMAIL_FROM_ADDRESS must be valid email"),
   EMAIL_REPLY_TO: z.email().optional(),
