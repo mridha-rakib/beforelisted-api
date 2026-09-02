@@ -91,6 +91,38 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
    * @returns Promise<IEmailResponse> - Send result
    */
   async send(options: IEmailOptions): Promise<IEmailResponse> {
+    // Hard-suppress when sandbox mode is on. Postmark's sandbox mode accepts
+    // the call but does not deliver; the user wants zero Postmark API
+    // traffic at all when this flag is set. Returning a synthetic success
+    // keeps all callers (50+ email methods) working without per-method
+    // short-circuits.
+    if (this.postmarkConfig.sandboxMode) {
+      const recipientEmails = this.getRecipientEmails(options.to);
+      const sandboxMessageId = `sandbox-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 10)}`;
+      logger.info(
+        {
+          sandboxMessageId,
+          to: recipientEmails,
+          cc: this.getRecipientEmails(options.cc),
+          bcc: this.getRecipientEmails(options.bcc),
+          subject: options.subject,
+          messageStream: this.postmarkConfig.messageStream,
+        },
+        "📧 Email suppressed (POSTMARK_SANDBOX_MODE=true); no Postmark API call made",
+      );
+
+      return {
+        messageId: sandboxMessageId,
+        response: "Email suppressed: POSTMARK_SANDBOX_MODE is enabled",
+        accepted: recipientEmails,
+        timestamp: new Date(),
+        retries: 0,
+        error: null,
+      };
+    }
+
     let lastError: Error | null = null;
     let attempt = 0;
 
@@ -238,6 +270,8 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
   }
 
   private getRecipientEmails(recipients: any): string[] {
+    if (!recipients)
+      return [];
     const recArray = Array.isArray(recipients) ? recipients : [recipients];
     return recArray.map(r => (typeof r === "string" ? r : r.email));
   }
