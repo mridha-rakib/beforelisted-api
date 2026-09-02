@@ -326,6 +326,7 @@ export class NotificationService {
     location: string;
     renterName?: string;
     grantAccessId: string;
+    isAdditionalOpportunity?: boolean;
   }): Promise<void> {
     try {
       const admins = await this.repository.getAllAdmins();
@@ -342,12 +343,20 @@ export class NotificationService {
         "Admins selected for grant access notification",
       );
 
+      const titlePrefix = data.isAdditionalOpportunity
+        ? "Additional Opportunity"
+        : "Grant Access Request";
+      const title = `${titlePrefix} from ${data.agentName}`;
+      const message = data.isAdditionalOpportunity
+        ? `Agent ${data.agentName} sent an additional opportunity update for "${data.propertyTitle}" at ${data.location}`
+        : `Agent ${data.agentName} requested access to view renter information for "${data.propertyTitle}" at ${data.location}`;
+
       const notificationPromises = admins.map(admin =>
         this.createNotification({
           recipientId: admin._id,
           recipientRole: "Admin",
-          title: `Grant Access Request from ${data.agentName}`,
-          message: `Agent ${data.agentName} requested access to view renter information for "${data.propertyTitle}" at ${data.location}`,
+          title,
+          message,
           type: "alert",
           notificationType: "grant_access_request",
           relatedEntityType: "Request",

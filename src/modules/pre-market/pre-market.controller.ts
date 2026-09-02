@@ -1661,9 +1661,19 @@ export class PreMarketController {
       validated.body.opportunityDetails,
     );
 
+    // Detect "additional opportunity" path: if the returned grant already has
+    // a populated opportunityDetailsHistory, this was a follow-up message on
+    // an existing pending grant (the create path initializes the array with
+    // exactly one entry; the additional-opportunity path appends a second).
+    const historyLength
+      = pendingAccess.opportunityDetailsHistory?.length ?? 0;
+    const isAdditionalOpportunity = historyLength >= 2;
+
     logger.info(
-      { agentId, requestId, grantAccessId: pendingAccess._id },
-      "Match request created; awaiting admin approval",
+      { agentId, requestId, grantAccessId: pendingAccess._id, isAdditionalOpportunity, historyLength },
+      isAdditionalOpportunity
+        ? "Additional opportunity message recorded on existing pending grant"
+        : "Match request created; awaiting admin approval",
     );
 
     // For owner-representation matches, return enriched data so the
@@ -1688,7 +1698,9 @@ export class PreMarketController {
       responseBody,
       representationType === "owner_representation"
         ? "Owner representation selection saved"
-        : "Match request pending admin approval",
+        : isAdditionalOpportunity
+          ? "Additional opportunity message sent to admin"
+          : "Match request pending admin approval",
     );
   });
 

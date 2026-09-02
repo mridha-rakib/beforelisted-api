@@ -2552,6 +2552,7 @@ export class EmailService {
     location: string;
     requestedAt: string;
     adminDashboardLink: string;
+    isAdditionalOpportunity?: boolean;
   }): Promise<IEmailResult> {
     try {
       const template = this.templateFactory.createGrantAccessRequest(
@@ -2566,18 +2567,31 @@ export class EmailService {
         payload.adminDashboardLink,
       );
 
+      const baseSubject = template.getSubject();
+      const subject = payload.isAdditionalOpportunity
+        ? `[Additional Opportunity] ${baseSubject}`
+        : baseSubject;
+
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: "Administrator" },
         cc: undefined,
         replyTo: "support@beforelisted.com",
-        subject: template.getSubject(),
+        subject,
         html: template.render(),
         priority: template.getEmailPriority(),
+        headers: payload.isAdditionalOpportunity
+          ? { "X-BeforeListed-Additional-Opportunity": "true" }
+          : undefined,
+        metadata: payload.isAdditionalOpportunity
+          ? { isAdditionalOpportunity: "true" }
+          : undefined,
       };
 
       return await this.sendEmail(
         emailOptions,
-        "GRANT_ACCESS_REQUEST_ADMIN",
+        payload.isAdditionalOpportunity
+          ? "GRANT_ACCESS_REQUEST_ADMIN_ADDITIONAL_OPPORTUNITY"
+          : "GRANT_ACCESS_REQUEST_ADMIN",
         payload.to,
       );
     } catch (error) {

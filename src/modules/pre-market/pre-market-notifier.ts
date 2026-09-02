@@ -1048,6 +1048,7 @@ export class PreMarketNotifier {
 
   async notifyAdminOfGrantAccessRequest(
     grantAccess: IGrantAccessRequest,
+    options?: { isAdditionalOpportunity?: boolean },
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const adminInfo = await this.getAdmin();
@@ -1060,6 +1061,8 @@ export class PreMarketNotifier {
       const agentProfile = await this.agentRepository.findByUserId(
         grantAccess.agentId.toString(),
       );
+      const isAdditionalOpportunity
+        = options?.isAdditionalOpportunity === true;
 
       if (!agentUser) {
         logger.warn(
@@ -1113,6 +1116,7 @@ export class PreMarketNotifier {
           new Date(grantAccess.createdAt || Date.now()),
         ),
         adminDashboardLink: `${env.CLIENT_URL}/admin/pre-market/${preMarketRequest._id}?grantAccessId=${grantAccess._id}`,
+        isAdditionalOpportunity,
       });
 
       if (emailResult.success) {

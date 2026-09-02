@@ -176,6 +176,21 @@ export class GrantAccessService {
         );
       }
 
+      if (existing.status === "pending") {
+        // Agent is sending an additional opportunity message on a pending
+        // grant. Don't create a duplicate pending record — instead, append
+        // the new message to history, refresh `opportunityDetails`, and
+        // re-notify the admin so they see the follow-up.
+        return await this.handleAdditionalOpportunityOnPendingGrant(
+          existing,
+          agentId,
+          preMarketRequestId,
+          normalizedOpportunityDetails,
+          listingActivationCheck,
+        );
+      }
+
+      // approved or rejected — re-applying requires admin to flip status
       throw new ConflictException(
         `You have already requested access to this property. `
         + `Current status: ${existing.status}. `
@@ -264,12 +279,129 @@ export class GrantAccessService {
 
     logger.info({ agentId }, `Grant access requested: ${preMarketRequestId}`);
 
+    // Seed opportunityDetailsHistory with the first message so future
+    // additional-opportunity calls can append to it.
+    if (normalizedOpportunityDetails) {
+      await this.grantAccessRepository.updateById(grantAccess._id.toString(), {
+        opportunityDetailsHistory: [
+          {
+            message: normalizedOpportunityDetails,
+            sentAt: new Date(),
+            isAdditionalOpportunity: false,
+          },
+        ],
+      });
+    }
+
+    await this.notifyAdminOfGrantRequest(
+      grantAccess,
+      agentId,
+      preMarketRequestId,
+      listingActivationCheck,
+      { isAdditionalOpportunity: false },
+    );
+
+    return grantAccess;
+  }
+
+  /**
+   * Handle an additional opportunity message sent by an agent who already has
+   * a `pending` grant for the same request. Appends the new message to
+   * `opportunityDetailsHistory`, refreshes `opportunityDetails`, and re-fires
+   * the admin notifications so they see the follow-up.
+   *
+   * Best-effort: notifications never throw.
+   */
+  private async handleAdditionalOpportunityOnPendingGrant(
+    existing: IGrantAccessRequest,
+    agentId: string,
+    preMarketRequestId: string,
+    normalizedOpportunityDetails: string | undefined,
+    listingActivationCheck: IPreMarketRequest,
+  ): Promise<IGrantAccessRequest> {
+    const now = new Date();
+
+    // If a new message is supplied, append to history and update top-level
+    // field. If no message is supplied, leave existing data untouched.
+    if (normalizedOpportunityDetails) {
+      const previousHistory = Array.isArray(existing.opportunityDetailsHistory)
+        ? existing.opportunityDetailsHistory
+        : [];
+      const updatedHistory = [
+        ...previousHistory,
+        {
+          message: normalizedOpportunityDetails,
+          sentAt: now,
+          isAdditionalOpportunity: true,
+        },
+      ];
+
+      const updatedGrant = await this.grantAccessRepository.updateById(
+        existing._id.toString(),
+        {
+          opportunityDetails: normalizedOpportunityDetails,
+          opportunityDetailsHistory: updatedHistory,
+        },
+      );
+
+      logger.info(
+        {
+          agentId,
+          preMarketRequestId,
+          grantAccessId: existing._id.toString(),
+          historyLength: updatedHistory.length,
+        },
+        "📝 Additional opportunity message recorded on pending grant",
+      );
+
+      const grantForNotifications = updatedGrant ?? existing;
+      await this.notifyAdminOfGrantRequest(
+        grantForNotifications,
+        agentId,
+        preMarketRequestId,
+        listingActivationCheck,
+        { isAdditionalOpportunity: true },
+      );
+
+      return grantForNotifications;
+    }
+
+    // No new message — still re-notify admin so they see the agent is
+    // actively following up (e.g. they pressed the match button twice).
+    await this.notifyAdminOfGrantRequest(
+      existing,
+      agentId,
+      preMarketRequestId,
+      listingActivationCheck,
+      { isAdditionalOpportunity: true },
+    );
+
+    return existing;
+  }
+
+  /**
+   * Fire both admin notifications for a grant request: in-app notification
+   * via NotificationService, then email via PreMarketNotifier. Best-effort;
+   * never throws.
+   */
+  private async notifyAdminOfGrantRequest(
+    grantAccess: IGrantAccessRequest,
+    agentId: string,
+    preMarketRequestId: string,
+    listingActivationCheck: IPreMarketRequest,
+    options?: { isAdditionalOpportunity?: boolean },
+  ): Promise<void> {
+    const isAdditionalOpportunity = options?.isAdditionalOpportunity === true;
+
     try {
       const agent = await this.userRepository.findById(agentId);
       const agentProfile = await this.agentRepository.findByUserId(agentId);
 
       if (agent && agentProfile && listingActivationCheck) {
-        logger.info("Preparing to notify admins about grant access request");
+        logger.info(
+          { isAdditionalOpportunity },
+          "Preparing to notify admins about grant access request",
+        );
         await this.notificationService.notifyAdminAboutGrantAccessRequest({
           agentId,
           agentName: agent.fullName,
@@ -286,6 +418,7 @@ export class GrantAccessService {
             ? `Renter ${listingActivationCheck.renterId}`
             : undefined,
           grantAccessId: grantAccess._id.toString(),
+          isAdditionalOpportunity,
         });
 
         logger.info(
@@ -293,8 +426,11 @@ export class GrantAccessService {
             agentId,
             preMarketRequestId,
             grantAccessId: grantAccess._id,
+            isAdditionalOpportunity,
           },
-          "✅ Admin notification created for grant access request",
+          isAdditionalOpportunity
+            ? "✅ Admin notification created for additional opportunity"
+            : "✅ Admin notification created for grant access request",
         );
       }
     }
@@ -304,15 +440,28 @@ export class GrantAccessService {
           error: notificationError,
           agentId,
           preMarketRequestId,
+          isAdditionalOpportunity,
         },
         "⚠️ Failed to create admin notification (non-blocking)",
       );
     }
 
-    // Notify admin
-    await this.notifier.notifyAdminOfGrantAccessRequest(grantAccess);
-
-    return grantAccess;
+    try {
+      await this.notifier.notifyAdminOfGrantAccessRequest(grantAccess, {
+        isAdditionalOpportunity,
+      });
+    }
+    catch (emailError) {
+      logger.error(
+        {
+          error: emailError,
+          agentId,
+          preMarketRequestId,
+          isAdditionalOpportunity,
+        },
+        "⚠️ Failed to send admin email for grant access request (non-blocking)",
+      );
+    }
   }
 
   /**

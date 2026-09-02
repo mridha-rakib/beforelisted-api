@@ -16,6 +16,18 @@ export type IGrantAccessRequest = {
   representationSelectedAt?: Date;
   opportunityDetails?: string;
   /**
+   * Chronological history of opportunityDetails messages the agent has sent
+   * for this grant, including the original. Most recent message is also
+   * reflected in the top-level `opportunityDetails` field for convenience.
+   * Used so admins can see all follow-up attempts (e.g. "I found another
+   * place for you") when reviewing a pending grant.
+   */
+  opportunityDetailsHistory?: Array<{
+    message: string;
+    sentAt: Date;
+    isAdditionalOpportunity?: boolean;
+  }>;
+  /**
    * The scope the request was at when this match was created. Used by the
    * admin scope-toggle lock to decide whether a request is genuinely in the
    * "Upcoming (M)" state — only grants matched while the request was at
@@ -88,6 +100,17 @@ const grantAccessSchema = BaseSchemaUtil.createSchema({
     type: String,
     trim: true,
     maxlength: 350,
+  },
+
+  opportunityDetailsHistory: {
+    type: [
+      {
+        message: { type: String, trim: true, maxlength: 350 },
+        sentAt: { type: Date, default: Date.now },
+        isAdditionalOpportunity: { type: Boolean, default: false },
+      },
+    ],
+    default: [],
   },
 
   scopeAtMatch: {
