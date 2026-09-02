@@ -7,6 +7,8 @@ import type { IEmailConfig, IPostmarkConfig } from "@/services/email.types";
 import { env } from "@/env";
 import { normalizeEmailLogoUrl } from "@/services/email-branding";
 
+// NODE_ENV is validated centrally by `src/env.ts`; reuse it here instead of
+// re-parsing `process.env` so the two schemas can't drift apart.
 const emailConfigSchema = z.object({
   POSTMARK_API_TOKEN: z.string().min(1, "POSTMARK_API_TOKEN is required"),
   POSTMARK_MESSAGE_STREAM: z
@@ -26,9 +28,6 @@ const emailConfigSchema = z.object({
     .optional(),
   EMAIL_MAX_RETRIES: z.coerce.number().int(),
   EMAIL_RETRY_DELAY_MS: z.coerce.number().int(),
-  NODE_ENV: z
-    .enum(["development", "staging", "production", "test", "testing"])
-    .default("development"),
 });
 
 type EmailConfigInput = z.infer<typeof emailConfigSchema>;
@@ -53,7 +52,7 @@ export function createEmailConfig(): IEmailConfig {
 }
 
 function createPostmarkConfig(envVars: EmailConfigInput): IPostmarkConfig {
-  const isProduction = envVars.NODE_ENV === "production";
+  const isProduction = env.NODE_ENV === "production";
 
   return {
     apiToken: envVars.POSTMARK_API_TOKEN,
