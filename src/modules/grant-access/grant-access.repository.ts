@@ -119,12 +119,21 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       .exec() as unknown as Promise<IGrantAccessRequest[]>;
   }
 
+  /**
+   * Returns grants for a single pre-market request ordered OLDEST first.
+   *
+   * The matched-agent picker (`resolveMatchedAgentForView`,
+   * `buildMatchedAgentByRequestId`) consumes the first qualifying record in
+   * iteration order. Sorting ascending means "oldest grant wins", which is
+   * the canonical definition of "current match" used by the rest of the
+   * flow (unmatch, check-in emails).
+   */
   async findByPreMarketRequestId(
     preMarketRequestId: string | Types.ObjectId,
   ): Promise<IGrantAccessRequest[]> {
     return this.model
       .find({ preMarketRequestId })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: 1 })
       .lean()
       .exec() as unknown as Promise<IGrantAccessRequest[]>;
   }
@@ -138,7 +147,7 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
 
     return this.model
       .find({ preMarketRequestId: { $in: preMarketRequestIds } })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: 1 })
       .lean()
       .exec() as unknown as Promise<IGrantAccessRequest[]>;
   }

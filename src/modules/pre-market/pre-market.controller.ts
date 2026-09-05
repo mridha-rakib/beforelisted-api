@@ -499,6 +499,7 @@ export class PreMarketController {
         ? await this.preMarketService.resolveMatchedAgentForView(
           userId,
           requestId,
+          request as any,
         )
         : null;
     const registeredAgentForView
@@ -1254,6 +1255,7 @@ export class PreMarketController {
           ? await this.preMarketService.resolveMatchedAgentForView(
             agentId,
             requestId,
+            request as any,
           )
           : null;
       const registeredAgentForView

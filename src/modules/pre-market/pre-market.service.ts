@@ -50,6 +50,7 @@ import type {
 
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { BlockedEmailService } from "../blocked-email/blocked-email.service";
+import { GrantAccessAuditRepository } from "../grant-access/grant-access-audit.repository";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
 import { PaymentService } from "../payment/payment.service";
 import { RenterRepository } from "../renter/renter.repository";
@@ -143,6 +144,7 @@ const DEFAULT_REFERRAL_AGENT_PHONE = SYSTEM_DEFAULT_AGENT.phoneNumber;
 export class PreMarketService {
   private readonly preMarketRepository: PreMarketRepository;
   private readonly grantAccessRepository: GrantAccessRepository;
+  private readonly grantAccessAuditRepository: GrantAccessAuditRepository;
   private renterRepository: RenterRepository;
   private agentRepository: AgentProfileRepository;
   private userRepository: UserRepository;
@@ -165,6 +167,7 @@ export class PreMarketService {
   constructor() {
     this.preMarketRepository = new PreMarketRepository();
     this.grantAccessRepository = new GrantAccessRepository();
+    this.grantAccessAuditRepository = new GrantAccessAuditRepository();
     this.agentRepository = new AgentProfileRepository();
     this.paymentService = new PaymentService();
     this.notifier = new PreMarketNotifier();
@@ -424,19 +427,55 @@ export class PreMarketService {
     return scope === "All Market" ? "All Market" : "Upcoming";
   }
 
+  /**
+   * Resolves the matched agent the viewer should see on this request.
+   *
+   * The picker walks `grantAccessRequest` records for the request and returns
+   * the FIRST qualifying record. Because the repository returns grants sorted
+   * OLDEST first, "first qualifying record" = oldest qualifying grant — i.e.
+   * the canonical "current match".
+   *
+   * In addition to the existing predicate (not owner-representation, not the
+   * viewer, status ∈ {free, paid, approved}), we defensively skip any
+   * candidate whose `agentId` is NOT present in the parent request's
+   * `viewedBy.grantAccessAgents[]`. This guards against "orphan" grants —
+   * records that exist in `grantaccessrequests` but whose agent was already
+   * un-matched (or never registered as a viewer). Without this guard, an
+   * orphan would be surfaced as the matched agent.
+   *
+   * @param viewerAgentId The agent asking for the view (excluded from results).
+   * @param requestId The pre-market request ID.
+   * @param parentRequest Optional pre-loaded parent request. When omitted,
+   *   the function fetches it via `getRequestById` (one extra DB read).
+   */
   public async resolveMatchedAgentForView(
     viewerAgentId: string | undefined,
     requestId: string,
+    parentRequest?: IPreMarketRequest,
   ): Promise<{ agentId: string; fullName: string } | null> {
     const records =
       await this.grantAccessRepository.findByPreMarketRequestId(requestId);
+
+    // Load parent request for the orphan-guard set.
+    const request = parentRequest ?? (await this.getRequestById(requestId));
+    if (!request) return null;
+    const viewedAgentIds = new Set(
+      (request.viewedBy?.grantAccessAgents ?? []).map((id) =>
+        id.toString(),
+      ),
+    );
+
     const matchedRecord = records.find(
       (record) =>
         record.representation_type !== "owner_representation" &&
-        (!viewerAgentId || record.agentId.toString() !== viewerAgentId) &&
+        (!viewerAgentId
+          || record.agentId.toString() !== viewerAgentId) &&
         (record.status === "free" ||
           record.status === "paid" ||
-          record.status === "approved"),
+          record.status === "approved") &&
+        // Orphan guard: skip grants whose agent isn't in the parent's
+        // `viewedBy.grantAccessAgents` set.
+        viewedAgentIds.has(record.agentId.toString()),
     );
     if (!matchedRecord) return null;
     const user = await this.userRepository.findById(
@@ -449,9 +488,26 @@ export class PreMarketService {
     };
   }
 
+  /**
+   * Builds a Map<requestId, matchedAgent> for a batch of pre-market requests.
+   *
+   * For each requestId, walks grant records sorted OLDEST first and picks the
+   * first qualifying record as the "current match". Same predicate as
+   * `resolveMatchedAgentForView` plus an optional orphan-guard: when
+   * `parentRequestsByRequestId` is provided, a candidate whose `agentId` is
+   * missing from the parent's `viewedBy.grantAccessAgents[]` is skipped and
+   * the picker falls through to the next qualifying grant.
+   *
+   * @param requestIds           The pre-market request IDs to resolve.
+   * @param excludedAgentId      Optional agent to skip (the viewer).
+   * @param parentRequestsByRequestId Optional lookup map of parent requests,
+   *   used to apply the orphan-guard. When a request isn't in the map, the
+   *   orphan-guard is skipped for that request (best-effort).
+   */
   private async buildMatchedAgentByRequestId(
     requestIds: string[],
     excludedAgentId?: string,
+    parentRequestsByRequestId?: Map<string, IPreMarketRequest>,
   ): Promise<Map<string, { agentId: string; fullName: string } | null>> {
     const matchedAgentByRequestId = new Map<
       string,
@@ -469,21 +525,52 @@ export class PreMarketService {
       await this.grantAccessRepository.findByPreMarketRequestIds(
         normalizedRequestIds,
       );
-    const matchedRecordByRequestId = new Map<string, IGrantAccessRequest>();
 
+    // Group records by requestId so we can walk them in iteration order
+    // (oldest-first) per request. The repository sorts globally ascending,
+    // so within each requestId group order is also oldest-first.
+    const recordsByRequestId = new Map<string, IGrantAccessRequest[]>();
     for (const record of records) {
       const requestId = record.preMarketRequestId?.toString();
-      if (
-        !requestId ||
-        matchedRecordByRequestId.has(requestId) ||
-        (excludedAgentId && record.agentId?.toString() === excludedAgentId) ||
-        record.representation_type === "owner_representation" ||
-        !["free", "paid", "approved"].includes(String(record.status))
-      ) {
-        continue;
-      }
+      if (!requestId) continue;
+      const arr = recordsByRequestId.get(requestId) ?? [];
+      arr.push(record);
+      recordsByRequestId.set(requestId, arr);
+    }
 
-      matchedRecordByRequestId.set(requestId, record);
+    const matchedRecordByRequestId = new Map<string, IGrantAccessRequest>();
+    for (const requestId of normalizedRequestIds) {
+      const requestRecords = recordsByRequestId.get(requestId) ?? [];
+      const parentRequest = parentRequestsByRequestId?.get(requestId);
+      const viewedAgentIds = parentRequest
+        ? new Set(
+          (parentRequest.viewedBy?.grantAccessAgents ?? []).map(id =>
+            id.toString(),
+          ),
+        )
+        : null;
+
+      for (const record of requestRecords) {
+        if (record.representation_type === "owner_representation") continue;
+        if (
+          excludedAgentId && record.agentId?.toString() === excludedAgentId
+        ) {
+          continue;
+        }
+        if (!["free", "paid", "approved"].includes(String(record.status))) {
+          continue;
+        }
+        // Orphan guard (best-effort: skipped when parent request isn't provided)
+        if (
+          viewedAgentIds
+          && !viewedAgentIds.has(record.agentId.toString())
+        ) {
+          continue;
+        }
+
+        matchedRecordByRequestId.set(requestId, record);
+        break; // first qualifying record wins (oldest, since repo is ascending)
+      }
     }
 
     const matchedAgentIds = Array.from(
@@ -1356,9 +1443,21 @@ export class PreMarketService {
     const matchedScopeRequestIds = requestIds.filter((requestId) =>
       globalMatchedScopeRequestIds.has(requestId as string),
     ) as string[];
+    // Build a lookup map of parent requests so the orphan-guard inside
+    // buildMatchedAgentByRequestId can verify each candidate's agentId is
+    // still in the parent's `viewedBy.grantAccessAgents[]`.
+    const parentRequestsByRequestId = new Map<string, IPreMarketRequest>();
+    for (const request of paginated.data) {
+      const id = request._id?.toString();
+      if (id) parentRequestsByRequestId.set(id, request as IPreMarketRequest);
+    }
     const [renterContext, matchedAgentByRequestId] = await Promise.all([
       this.buildRequestRenterContext(paginated.data),
-      this.buildMatchedAgentByRequestId(matchedScopeRequestIds, agentId),
+      this.buildMatchedAgentByRequestId(
+        matchedScopeRequestIds,
+        agentId,
+        parentRequestsByRequestId,
+      ),
     ]);
 
     const enrichedData = await Promise.all(
@@ -1664,6 +1763,14 @@ export class PreMarketService {
     const pagedMatchedVisibleRequestIds = pagedCandidates
       .map((candidate) => candidate.requestId)
       .filter((requestId) => globalMatchedScopeRequestIds.has(requestId));
+    // Build a lookup map of parent requests so the orphan-guard inside
+    // buildMatchedAgentByRequestId can verify each candidate's agentId is
+    // still in the parent's `viewedBy.grantAccessAgents[]`.
+    const parentRequestsByRequestId = new Map<string, IPreMarketRequest>();
+    for (const request of pagedRequests) {
+      const id = request?._id?.toString();
+      if (id) parentRequestsByRequestId.set(id, request as IPreMarketRequest);
+    }
     const [referralInfoByRenterId, matchedAgentByRequestId] = await Promise.all(
       [
         this.buildReferralInfoByRenterIdFromContext(
@@ -1673,6 +1780,7 @@ export class PreMarketService {
         this.buildMatchedAgentByRequestId(
           pagedMatchedVisibleRequestIds,
           agentId,
+          parentRequestsByRequestId,
         ),
       ],
     );
@@ -4460,6 +4568,22 @@ export class PreMarketService {
     }
 
     if (matchedRecord) {
+      // Write an audit document BEFORE flipping the status to "rejected".
+      // Captures the who/what/when of the unmatch so we have a forensic
+      // trail — the grant record itself stays in `grantaccessrequests`
+      // forever (unmatch is a soft-update), so this audit collection is the
+      // only place that records the moment of unmatch.
+      await this.grantAccessAuditRepository.create({
+        grantId: matchedRecord._id.toString(),
+        agentId: matchedRecord.agentId.toString(),
+        preMarketRequestId: requestId,
+        unmatchedByAgentId: agentId,
+        timestamp: new Date(),
+        previousStatus: matchedRecord.status as any,
+        sendEmailNotice: options.sendEmailNotice,
+        personalMessage: options.personalMessage ?? null,
+      } as any);
+
       await this.grantAccessRepository.updateById(
         matchedRecord._id.toString(),
         { status: "rejected" },
@@ -5028,7 +5152,11 @@ export class PreMarketService {
           matchedByAgent:
             globalMatchedScopeRequestIds.has(requestIdValue) &&
             isRegisteredAgent
-              ? await this.resolveMatchedAgentForView(agentId, requestIdValue)
+              ? await this.resolveMatchedAgentForView(
+                agentId,
+                requestIdValue,
+                request as IPreMarketRequest,
+              )
               : null,
           registeredAgentForView: globalMatchedScopeRequestIds.has(
             requestIdValue,
@@ -6181,7 +6309,11 @@ export class PreMarketService {
         const isRegisteredAgent = registeredAgentId === agentId;
         const matchedByAgent =
           shouldDisplayMatchedScope && isRegisteredAgent
-            ? await this.resolveMatchedAgentForView(agentId, requestId)
+            ? await this.resolveMatchedAgentForView(
+              agentId,
+              requestId,
+              request as IPreMarketRequest,
+            )
             : null;
         const hasCurrentAgentMatchedAccess =
           this.hasAgentMatchedAccess(accessRecord);
