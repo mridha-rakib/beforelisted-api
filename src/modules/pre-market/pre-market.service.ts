@@ -384,6 +384,9 @@ export class PreMarketService {
       grantAccessId: grantAccess?._id?.toString(),
       representation_type: grantAccess?.representation_type,
       representationSelectedAt: grantAccess?.representationSelectedAt,
+      // Expose the caller's immutable match snapshot for audit/UI consumers;
+      // never infer or overwrite it from the request's current scope.
+      scopeAtMatch: grantAccess?.scopeAtMatch ?? null,
       chargeAmount,
       payment: paymentInfo,
       showPayment,
@@ -425,6 +428,87 @@ export class PreMarketService {
     }
 
     return scope === "All Market" ? "All Market" : "Upcoming";
+  }
+
+  /**
+   * Resolves scope for one specific agent.  A request's current scope is not
+   * enough once multiple agents can match it: each match keeps the immutable
+   * scope it was made under.  Archived and deleted requests deliberately do
+   * not use this new presentation rule.
+   */
+  public async getScopePresentationForAgent(
+    agentId: string,
+    request: IPreMarketRequest,
+    accessRecord?: IGrantAccessRequest | null,
+  ): Promise<{
+    scope: "Upcoming" | "All Market" | "Upcoming (M)";
+    matchedByAgent: { agentId: string; fullName: string } | null;
+    registeredAgentForView: { agentId: string; fullName: string } | null;
+  }> {
+    const requestId = request._id?.toString();
+    if (!requestId) {
+      return { scope: this.resolveAgentVisibleScope(request.scope, false), matchedByAgent: null, registeredAgentForView: null };
+    }
+
+    // Scope snapshots are match history, not archive history.  Keep the
+    // legacy/raw display for archived or deleted requests.
+    if (request.isDeleted || this.getAgentArchiveStatus(request, agentId).isArchivedForAgent) {
+      return { scope: this.resolveAgentVisibleScope(request.scope, false), matchedByAgent: null, registeredAgentForView: null };
+    }
+
+    const viewerMatch = accessRecord === undefined
+      ? await this.getMatchedAccessRecord(agentId, requestId)
+      : accessRecord;
+    const records = await this.grantAccessRepository.findByPreMarketRequestId(requestId);
+    const activeRenterMatches = records.filter(record => this.hasAgentMatchedStatus(record));
+    const registeredAgentId = await this.resolveRegisteredAgentIdForRequest(request);
+    const isRegisteredAgent = registeredAgentId === agentId;
+    const viewerHasActiveMatch = this.hasAgentMatchedStatus(viewerMatch);
+    const hasAllMarketMatch = activeRenterMatches.some(
+      record => record.scopeAtMatch === "All Market",
+    );
+    const anotherAgentHasAllMarketMatch = activeRenterMatches.some(
+      record =>
+        record.agentId.toString() !== agentId
+        && record.scopeAtMatch === "All Market",
+    );
+
+    let scope: "Upcoming" | "All Market" | "Upcoming (M)";
+    if (request.scope !== "All Market") {
+      scope = "Upcoming";
+    } else if (viewerMatch?.scopeAtMatch === "Upcoming") {
+      // A match made in Upcoming always retains the agent's Upcoming view.
+      scope = "Upcoming";
+    } else if (
+      isRegisteredAgent
+      && viewerHasActiveMatch
+      && viewerMatch?.scopeAtMatch === "All Market"
+      && !anotherAgentHasAllMarketMatch
+    ) {
+      // A registered agent's own All Market match stays All Market until a
+      // different agent also matches this request.
+      scope = "All Market";
+    } else {
+      // A match made while the request was Upcoming must never turn another
+      // viewer's All Market request into Upcoming (M).
+      scope = hasAllMarketMatch ? "Upcoming (M)" : "All Market";
+    }
+
+    // Preserve the established name-above/name-below presentation whenever
+    // the agent sees Upcoming (M), including when both agents matched at
+    // All Market.
+    const showNames = scope === "Upcoming (M)";
+    return {
+      scope,
+      matchedByAgent:
+        showNames && isRegisteredAgent
+          ? await this.resolveMatchedAgentForView(agentId, requestId, request)
+          : null,
+      registeredAgentForView:
+        showNames && !isRegisteredAgent
+          ? await this.resolveRegisteredAgentForView(agentId, requestId)
+          : null,
+    };
   }
 
   /**
@@ -999,6 +1083,8 @@ export class PreMarketService {
   private async getGlobalMatchedScopeRequestIdSet(
     requestIds: string[],
   ): Promise<Set<string>> {
+    // Keep the existing broad query for non-viewer-specific match-search
+    // filtering. Viewer-facing scope labels use getScopePresentationForAgent.
     return this.preMarketRepository.getMatchedScopeRequestIdSet(requestIds);
   }
 
@@ -1425,14 +1511,11 @@ export class PreMarketService {
       .map((request) => request._id?.toString())
       .filter(Boolean);
 
-    const [grantAccessRecords, globalMatchedScopeRequestIds] =
-      await Promise.all([
-        this.grantAccessRepository.findByAgentIdAndRequestIds(
-          agentId,
-          requestIds as string[],
-        ),
-        this.getGlobalMatchedScopeRequestIdSet(requestIds as string[]),
-      ]);
+    const grantAccessRecords =
+      await this.grantAccessRepository.findByAgentIdAndRequestIds(
+        agentId,
+        requestIds as string[],
+      );
 
     const grantAccessByRequestId = new Map(
       grantAccessRecords.map((record) => [
@@ -1440,25 +1523,7 @@ export class PreMarketService {
         record,
       ]),
     );
-    const matchedScopeRequestIds = requestIds.filter((requestId) =>
-      globalMatchedScopeRequestIds.has(requestId as string),
-    ) as string[];
-    // Build a lookup map of parent requests so the orphan-guard inside
-    // buildMatchedAgentByRequestId can verify each candidate's agentId is
-    // still in the parent's `viewedBy.grantAccessAgents[]`.
-    const parentRequestsByRequestId = new Map<string, IPreMarketRequest>();
-    for (const request of paginated.data) {
-      const id = request._id?.toString();
-      if (id) parentRequestsByRequestId.set(id, request as IPreMarketRequest);
-    }
-    const [renterContext, matchedAgentByRequestId] = await Promise.all([
-      this.buildRequestRenterContext(paginated.data),
-      this.buildMatchedAgentByRequestId(
-        matchedScopeRequestIds,
-        agentId,
-        parentRequestsByRequestId,
-      ),
-    ]);
+    const renterContext = await this.buildRequestRenterContext(paginated.data);
 
     const enrichedData = await Promise.all(
       paginated.data.map(async (request) => {
@@ -1491,18 +1556,16 @@ export class PreMarketService {
           grantAccess.status !== "free" &&
           grantAccess.status !== "paid" &&
           grantAccess.status !== "rejected";
-        const visibleScope = this.resolveAgentVisibleScope(
-          request.scope,
-          globalMatchedScopeRequestIds.has(requestId),
+        const scopePresentation = await this.getScopePresentationForAgent(
+          agentId,
+          request as IPreMarketRequest,
+          grantAccess,
         );
+        const visibleScope = scopePresentation.scope;
         const currentRegisteredAgentId =
           renterContext.registeredAgentIdByRequestId.get(requestId) ?? null;
         const isCurrentRegisteredAgent = currentRegisteredAgentId === agentId;
-        const matchedByAgent =
-          globalMatchedScopeRequestIds.has(requestId) &&
-          isCurrentRegisteredAgent
-            ? (matchedAgentByRequestId.get(requestId) ?? null)
-            : null;
+        const matchedByAgent = scopePresentation.matchedByAgent;
         const isRegisteredMatchedOut =
           isCurrentRegisteredAgent &&
           Boolean(matchedByAgent) &&
@@ -1522,11 +1585,7 @@ export class PreMarketService {
         const responseGrantAccessStatus = isRegisteredMatchedOut
           ? request.status
           : accessSummary.grantAccessStatus;
-        const registeredAgentForView = globalMatchedScopeRequestIds.has(
-          requestId,
-        )
-          ? await this.resolveRegisteredAgentForView(agentId, requestId)
-          : null;
+        const registeredAgentForView = scopePresentation.registeredAgentForView;
         const referralInfo = renterId
           ? (renterContext.referralInfoByRenterId.get(renterId) ?? null)
           : null;
@@ -1569,6 +1628,7 @@ export class PreMarketService {
           grantAccessId: accessSummary.grantAccessId,
           representation_type: accessSummary.representation_type,
           representationSelectedAt: accessSummary.representationSelectedAt,
+          scopeAtMatch: accessSummary.scopeAtMatch,
           accessType: accessSummary.accessType,
           canRequestAccess: accessSummary.canRequestAccess,
           ownerRepresentationSelected: this.hasOwnerRepresentationMatchForAgent(
@@ -1807,20 +1867,14 @@ export class PreMarketService {
         const displayStatus = this.resolveAgentResponseStatus(
           isAlreadyMatchedByAgent,
         );
-        const visibleScope = this.resolveAgentVisibleScope(
-          request.scope,
-          globalMatchedScopeRequestIds.has(requestId),
+        const scopePresentation = await this.getScopePresentationForAgent(
+          agentId,
+          request as IPreMarketRequest,
+          grantAccess,
         );
-        const matchedByAgent =
-          globalMatchedScopeRequestIds.has(requestId) &&
-          isCurrentRegisteredAgent
-            ? (matchedAgentByRequestId.get(requestId) ?? null)
-            : null;
-        const registeredAgentForView = globalMatchedScopeRequestIds.has(
-          requestId,
-        )
-          ? await this.resolveRegisteredAgentForView(agentId, requestId)
-          : null;
+        const visibleScope = scopePresentation.scope;
+        const matchedByAgent = scopePresentation.matchedByAgent;
+        const registeredAgentForView = scopePresentation.registeredAgentForView;
         const referralInfo = renterId
           ? (referralInfoByRenterId.get(renterId) ?? null)
           : null;
@@ -5145,24 +5199,11 @@ export class PreMarketService {
 
         return {
           ...visibleRequest,
-          scope: this.resolveAgentVisibleScope(
-            request.scope,
-            globalMatchedScopeRequestIds.has(requestIdValue),
-          ),
-          matchedByAgent:
-            globalMatchedScopeRequestIds.has(requestIdValue) &&
-            isRegisteredAgent
-              ? await this.resolveMatchedAgentForView(
-                agentId,
-                requestIdValue,
-                request as IPreMarketRequest,
-              )
-              : null,
-          registeredAgentForView: globalMatchedScopeRequestIds.has(
-            requestIdValue,
-          )
-            ? await this.resolveRegisteredAgentForView(agentId, requestIdValue)
-            : null,
+          ...(await this.getScopePresentationForAgent(
+            agentId,
+            request as IPreMarketRequest,
+            grantAccess,
+          )),
           visibility: isRegisteredAgent ? "PRIVATE" : request.visibility,
           referralAgentId:
             registeredAgentId ??
@@ -6280,8 +6321,6 @@ export class PreMarketService {
     const paginatedRequestIds = paginatedData
       .map((request: any) => request._id?.toString())
       .filter((id: string | undefined): id is string => Boolean(id));
-    const globalMatchedScopeRequestIds =
-      await this.getGlobalMatchedScopeRequestIdSet(paginatedRequestIds);
     const accessRecordByRequestId = new Map(
       renterRepresentationAccessRecords.map((access) => [
         access.preMarketRequestId.toString(),
@@ -6298,23 +6337,16 @@ export class PreMarketService {
           accessRecord || null,
           agent.hasGrantAccess === true,
         );
-        const shouldDisplayMatchedScope =
-          globalMatchedScopeRequestIds.has(requestId);
-        const responseScope = this.resolveAgentVisibleScope(
-          request.scope,
-          shouldDisplayMatchedScope,
+        const scopePresentation = await this.getScopePresentationForAgent(
+          agentId,
+          request as IPreMarketRequest,
+          accessRecord,
         );
+        const responseScope = scopePresentation.scope;
         const registeredAgentId =
           await this.resolveRegisteredAgentIdForRequest(request);
         const isRegisteredAgent = registeredAgentId === agentId;
-        const matchedByAgent =
-          shouldDisplayMatchedScope && isRegisteredAgent
-            ? await this.resolveMatchedAgentForView(
-              agentId,
-              requestId,
-              request as IPreMarketRequest,
-            )
-            : null;
+        const matchedByAgent = scopePresentation.matchedByAgent;
         const hasCurrentAgentMatchedAccess =
           this.hasAgentMatchedAccess(accessRecord);
         const isAlreadyMatchedByAgent =
@@ -6341,9 +6373,7 @@ export class PreMarketService {
         const responseAccessType = isRegisteredMatchedOut
           ? "admin-granted"
           : accessSummary.accessType;
-        const registeredAgentForView = shouldDisplayMatchedScope
-          ? await this.resolveRegisteredAgentForView(agentId, requestId)
-          : null;
+        const registeredAgentForView = scopePresentation.registeredAgentForView;
         const visibleRequest =
           this.stripOwnerRepresentationMatchesForNonRegisteredAgent(
             request,
@@ -6366,6 +6396,7 @@ export class PreMarketService {
           grantAccessId: accessSummary.grantAccessId,
           representation_type: accessSummary.representation_type,
           representationSelectedAt: accessSummary.representationSelectedAt,
+          scopeAtMatch: accessSummary.scopeAtMatch,
           accessType: responseAccessType,
           canRequestAccess: false,
           chargeAmount: accessSummary.chargeAmount ?? null,
@@ -6734,6 +6765,7 @@ export class PreMarketService {
           phoneNumber: matchedAgent?.phoneNumber,
         },
         normalizedOpportunityDetails,
+        requestScopeAtMatch,
       );
 
       this.notifyRegisteredAgentAboutOwnerRepresentationMatch(

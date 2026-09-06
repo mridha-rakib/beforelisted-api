@@ -1,18 +1,20 @@
 /* eslint-disable no-console */
 /**
- * One-time backfill for `GrantAccessRequest.scopeAtMatch`.
+ * One-time backfill for match `scopeAtMatch` snapshots.
  *
- * Older grant records predate the `scopeAtMatch` field and have it as `null`.
+ * Older grant records and owner-representation entries predate the
+ * `scopeAtMatch` field and have it as `null`.
  * For those records, copy the parent preMarketRequest's CURRENT `scope`
  * value into the grant's `scopeAtMatch` field. This is a best-effort
- * approximation: we don't have a full scope-change history for legacy
- * requests, so the current scope is the best proxy available.
+ * value into the match's `scopeAtMatch` field. Existing data is safe here:
+ * scope-changing was introduced after these legacy matches, so the parent
+ * request's current scope is the correct legacy snapshot.
  *
  * IMPORTANT:
  *  - Dry-run by default. Pass `--apply` to actually write to MongoDB.
  *  - Only touches records where `scopeAtMatch` is currently `null`.
  *  - Records where `scopeAtMatch` already has a value are NEVER touched.
- *  - Records whose parent request is missing or has an undefined scope are
+ *  - Records whose parent request is deleted, missing, or has an undefined scope are
  *    skipped (we don't guess).
  *
  * Usage:
@@ -37,6 +39,8 @@ type Summary = {
   parentRequestNoScope: number;
   backfilled: number;
   errors: number;
+  ownerMatchesScanned: number;
+  ownerMatchesBackfilled: number;
 };
 
 async function main(): Promise<void> {
@@ -63,6 +67,8 @@ async function main(): Promise<void> {
     parentRequestNoScope: 0,
     backfilled: 0,
     errors: 0,
+    ownerMatchesScanned: 0,
+    ownerMatchesBackfilled: 0,
   };
 
   const cursor = GrantAccessRequestModel.find(
@@ -90,7 +96,7 @@ async function main(): Promise<void> {
     try {
       const parent = await PreMarketRequestModel.findById(
         grant.preMarketRequestId,
-        { scope: 1 },
+        { scope: 1, isDeleted: 1 },
       ).lean();
       if (!parent) {
         summary.parentRequestMissing += 1;
@@ -98,6 +104,11 @@ async function main(): Promise<void> {
           { grantId: grant._id.toString(), preMarketRequestId: grant.preMarketRequestId.toString() },
           "Parent preMarketRequest not found; skipping",
         );
+        continue;
+      }
+      if (parent.isDeleted) {
+        // Deleted requests do not participate in scope presentation, so do
+        // not introduce new snapshot data for them.
         continue;
       }
       if (parent.scope !== "Upcoming" && parent.scope !== "All Market") {
@@ -140,6 +151,48 @@ async function main(): Promise<void> {
     }
   }
 
+  // Owner-representation matches live inside the request document rather than
+  // in GrantAccessRequest. Update only elements still missing the snapshot.
+  const ownerCursor = PreMarketRequestModel.find(
+    {
+      isDeleted: { $ne: true },
+      ownerRepresentationMatches: { $elemMatch: { scopeAtMatch: null } },
+    },
+    { _id: 1, scope: 1, ownerRepresentationMatches: 1 },
+  ).cursor();
+
+  for await (const request of ownerCursor as unknown as AsyncIterable<{
+    _id: mongoose.Types.ObjectId;
+    scope?: Scope;
+    ownerRepresentationMatches?: Array<{ scopeAtMatch?: Scope | null }>;
+  }>) {
+    if (request.scope !== "Upcoming" && request.scope !== "All Market") {
+      summary.parentRequestNoScope += 1;
+      continue;
+    }
+    const missingCount = (request.ownerRepresentationMatches ?? []).filter(
+      match => match.scopeAtMatch == null,
+    ).length;
+    if (missingCount === 0) {
+      continue;
+    }
+    summary.ownerMatchesScanned += missingCount;
+    try {
+      if (apply) {
+        await PreMarketRequestModel.updateOne(
+          { _id: request._id, isDeleted: { $ne: true } },
+          { $set: { "ownerRepresentationMatches.$[match].scopeAtMatch": request.scope } },
+          { arrayFilters: [{ "match.scopeAtMatch": null }] },
+        );
+      }
+      summary.ownerMatchesBackfilled += missingCount;
+    }
+    catch (error) {
+      summary.errors += 1;
+      logger.error({ error, requestId: request._id.toString() }, "Failed to backfill owner-representation match scopes");
+    }
+  }
+
   console.log("\n=================================================");
   console.log("Summary");
   console.log("=================================================");
@@ -151,9 +204,11 @@ async function main(): Promise<void> {
   if (apply) {
     console.log(`  Successfully backfilled:                   ${summary.backfilled}`);
     console.log(`  Errors during update:                      ${summary.errors}`);
+    console.log(`  Owner matches backfilled:                  ${summary.ownerMatchesBackfilled}`);
   }
   else {
     console.log(`  Would backfill (DRY RUN):                  ${summary.backfilled}`);
+    console.log(`  Owner matches to backfill:                 ${summary.ownerMatchesBackfilled}`);
     console.log("");
     console.log("Run with --apply to perform the writes.");
   }

@@ -981,6 +981,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       phoneNumber?: string;
     },
     opportunityDetails?: string,
+    scopeAtMatch?: "Upcoming" | "All Market",
   ): Promise<IPreMarketRequest | null> {
     const agentObjectId = new Types.ObjectId(agentId);
 
@@ -996,6 +997,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
             ownerRepresentationMatches: {
               agentId: agentObjectId,
               representation_type: "owner_representation",
+              ...(scopeAtMatch ? { scopeAtMatch } : {}),
               selectedAt: new Date(),
               viewedAt: null,
               ...(agentSnapshot?.fullName

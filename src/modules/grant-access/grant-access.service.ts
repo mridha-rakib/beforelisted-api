@@ -219,6 +219,7 @@ export class GrantAccessService {
           phoneNumber: matchedAgent?.phoneNumber,
         },
         normalizedOpportunityDetails,
+        listingActivationCheck.scope === "All Market" ? "All Market" : "Upcoming",
       );
 
       await this.preMarketService.notifyRegisteredAgentAboutOwnerRepresentationMatch(
@@ -258,6 +259,8 @@ export class GrantAccessService {
         status: "pending",
         representation_type: representationType,
         representationSelectedAt: new Date(),
+        scopeAtMatch:
+          listingActivationCheck.scope === "All Market" ? "All Market" : "Upcoming",
         ...(normalizedOpportunityDetails
           ? { opportunityDetails: normalizedOpportunityDetails }
           : {}),

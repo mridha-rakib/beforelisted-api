@@ -110,6 +110,8 @@ export type IPreMarketRequest = {
   ownerRepresentationMatches?: Array<{
     agentId: Types.ObjectId | string;
     representation_type: "owner_representation";
+    /** Immutable request scope when this agent matched. */
+    scopeAtMatch?: "Upcoming" | "All Market" | null;
     selectedAt: Date;
     viewedAt?: Date | null;
     fullName?: string;
@@ -405,6 +407,11 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
         enum: ["owner_representation"],
         default: "owner_representation",
         required: true,
+      },
+      scopeAtMatch: {
+        type: String,
+        enum: ["Upcoming", "All Market", null],
+        default: null,
       },
       selectedAt: {
         type: Date,
