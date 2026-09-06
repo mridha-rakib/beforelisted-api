@@ -121,6 +121,13 @@ export class EmailService {
   }
 
   private async initializeTransporter(): Promise<void> {
+    if (this.config.postmark.sandboxMode) {
+      logger.info(
+        "📧 Email delivery is disabled for this environment; skipping Postmark verification",
+      );
+      return;
+    }
+
     try {
       const isConnected = await this.transporter.verify();
       if (isConnected) {
