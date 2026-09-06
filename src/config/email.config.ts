@@ -71,11 +71,17 @@ export function createEmailConfig(): IEmailConfig {
 
 function createPostmarkConfig(envVars: EmailConfigInput): IPostmarkConfig {
   const isProduction = env.NODE_ENV === "production";
+  // Local development and automated tests must never deliver email. This is
+  // enforced in code so an unsafe local .env value cannot send to real users.
+  const isLocalOrTest = ["development", "test", "testing"].includes(
+    env.NODE_ENV,
+  );
 
   return {
     apiToken: envVars.POSTMARK_API_TOKEN,
     messageStream: envVars.POSTMARK_MESSAGE_STREAM,
-    sandboxMode: envVars.POSTMARK_SANDBOX_MODE && !isProduction,
+    sandboxMode:
+      isLocalOrTest || (envVars.POSTMARK_SANDBOX_MODE && !isProduction),
     serverUrl: "https://api.postmarkapp.com",
     timeout: isProduction ? 15000 : 10000,
   };
