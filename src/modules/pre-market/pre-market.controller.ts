@@ -179,8 +179,7 @@ export class PreMarketController {
    * Protected: Renters only
    *
    * Returns `{ hasActiveRequest: true }` when the renter has at least one
-   * pre-market request that is currently active (not soft-deleted, with
-   * `isActive: true`). Returns `{ hasActiveRequest: false }` otherwise.
+   * saved, non-deleted pre-market request, regardless of its stage.
    */
   hasActiveRequest = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.userId;

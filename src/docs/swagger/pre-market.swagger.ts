@@ -40,7 +40,7 @@ export const preMarketPaths = {
   "/pre-market/has-active-request": {
     get: {
       tags: ["Pre-Market - Renter"],
-      summary: "Check whether the renter has any currently active pre-market request",
+      summary: "Check whether the renter has any saved pre-market request",
       operationId: "hasActivePreMarketRequest",
       security: [{ bearerAuth: [] }],
       responses: {

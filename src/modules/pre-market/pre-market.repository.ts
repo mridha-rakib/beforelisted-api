@@ -1340,6 +1340,14 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     });
   }
 
+  /** Counts every saved request except soft-deleted records. */
+  async countSavedByRenterId(renterId: string): Promise<number> {
+    return this.model.countDocuments({
+      renterId,
+      isDeleted: { $ne: true },
+    });
+  }
+
   async getActiveByRenterId(renterId: string): Promise<IPreMarketRequest[]> {
     return this.model
       .find({

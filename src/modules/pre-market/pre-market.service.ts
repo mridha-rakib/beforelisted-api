@@ -1985,15 +1985,14 @@ export class PreMarketService {
 
   /**
    * Lightweight check used by the frontend sign-in / homepage redirect so a
-   * renter with at least one currently-active pre-market request can be
+   * renter with at least one saved pre-market request can be
    * routed straight to `/renter/saved-requests` instead of the marketing
    * homepage.
    *
-   * Delegates to the repository's existing active-count helper, which
-   * filters out soft-deleted and deactivated listings.
+   * Includes every request stage and excludes only soft-deleted records.
    */
   async hasActiveRequestForRenter(renterId: string): Promise<boolean> {
-    const count = await this.preMarketRepository.countActiveByRenterId(renterId);
+    const count = await this.preMarketRepository.countSavedByRenterId(renterId);
     return count > 0;
   }
 
