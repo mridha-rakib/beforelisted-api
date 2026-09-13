@@ -1614,6 +1614,7 @@ export class PreMarketService {
         return {
           ...visibleRequest,
           scope: visibleScope,
+          matchScope: scopePresentation.scope,
           matchedByAgent,
           registeredAgentForView,
           referralAgentId:
@@ -1878,7 +1879,8 @@ export class PreMarketService {
           request as IPreMarketRequest,
           grantAccess,
         );
-        const visibleScope = scopePresentation.scope;
+        const visibleScope =
+          request.scope === "All Market" ? "All Market" : "Upcoming";
         const matchedByAgent = scopePresentation.matchedByAgent;
         const registeredAgentForView = scopePresentation.registeredAgentForView;
         const referralInfo = renterId
@@ -1900,6 +1902,7 @@ export class PreMarketService {
         return {
           ...visibleRequest,
           scope: visibleScope,
+          matchScope: scopePresentation.scope,
           matchedByAgent,
           registeredAgentForView,
           referralAgentId:
@@ -6347,7 +6350,8 @@ export class PreMarketService {
           request as IPreMarketRequest,
           accessRecord,
         );
-        const responseScope = scopePresentation.scope;
+        const responseScope =
+          request.scope === "All Market" ? "All Market" : "Upcoming";
         const registeredAgentId =
           await this.resolveRegisteredAgentIdForRequest(request);
         const isRegisteredAgent = registeredAgentId === agentId;
@@ -6391,6 +6395,7 @@ export class PreMarketService {
         return {
           ...visibleRequest,
           scope: responseScope,
+          matchScope: scopePresentation.scope,
           matchedByAgent,
           registeredAgentForView,
           renterInfo,

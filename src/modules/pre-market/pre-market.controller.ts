@@ -522,7 +522,8 @@ export class PreMarketController {
       const displayStatus = isAlreadyMatchedByAgent ? "Matched" : "Open";
       const listingStatus = matchRecord ? "matched" : request.status;
       const grantAccessStatus = "free";
-      const visibleScope = scopePresentation.scope;
+      const visibleScope =
+        request.scope === "All Market" ? "All Market" : "Upcoming";
 
       await this.preMarketRepository.addAgentToViewedBy(
         requestId,
@@ -541,6 +542,7 @@ export class PreMarketController {
         return withOwnerRepresentationDetails({
           ...enriched,
           scope: visibleScope,
+          matchScope: scopePresentation.scope,
           matchedByAgent: scopePresentation.matchedByAgent,
           registeredAgentForView: scopePresentation.registeredAgentForView,
           status: displayStatus,
@@ -561,6 +563,7 @@ export class PreMarketController {
       return withOwnerRepresentationDetails({
         ...request,
         scope: visibleScope,
+        matchScope: scopePresentation.scope,
         matchedByAgent: scopePresentation.matchedByAgent,
         registeredAgentForView: scopePresentation.registeredAgentForView,
         renterInfo: includeCreatorRenterInfo
@@ -609,7 +612,8 @@ export class PreMarketController {
           : hasRequestedAccess
             ? "requested"
             : request.status;
-    const visibleScope = scopePresentation.scope;
+    const visibleScope =
+      request.scope === "All Market" ? "All Market" : "Upcoming";
 
     await this.preMarketRepository.addAgentToViewedBy(
       requestId,
@@ -620,6 +624,7 @@ export class PreMarketController {
     let response: any = {
       ...request,
       scope: visibleScope,
+      matchScope: scopePresentation.scope,
       matchedByAgent: scopePresentation.matchedByAgent,
       registeredAgentForView: scopePresentation.registeredAgentForView,
       status: displayStatus,
@@ -1241,7 +1246,8 @@ export class PreMarketController {
             request,
             agentId,
           );
-        const visibleScope = scopePresentation.scope;
+        const visibleScope =
+          request.scope === "All Market" ? "All Market" : "Upcoming";
 
         await this.preMarketRepository.addAgentToViewedBy(
           requestId,
@@ -1256,6 +1262,7 @@ export class PreMarketController {
             {
               ...enriched,
               scope: visibleScope,
+              matchScope: scopePresentation.scope,
               matchedByAgent: scopePresentation.matchedByAgent,
               registeredAgentForView: scopePresentation.registeredAgentForView,
               scopeAtMatch: matchRecord.scopeAtMatch ?? null,
@@ -1313,7 +1320,8 @@ export class PreMarketController {
           request,
           agentId,
         );
-      const visibleScope = scopePresentation.scope;
+      const visibleScope =
+        request.scope === "All Market" ? "All Market" : "Upcoming";
 
       logger.info(
         { agentId, requestId },
@@ -1359,6 +1367,7 @@ export class PreMarketController {
           {
             ...enriched,
             scope: visibleScope,
+            matchScope: scopePresentation.scope,
             matchedByAgent: scopePresentation.matchedByAgent,
             registeredAgentForView: scopePresentation.registeredAgentForView,
             scopeAtMatch: paidAccess.scopeAtMatch ?? null,
