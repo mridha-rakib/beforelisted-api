@@ -1556,12 +1556,18 @@ export class PreMarketService {
           grantAccess.status !== "free" &&
           grantAccess.status !== "paid" &&
           grantAccess.status !== "rejected";
+        // The Requests tab is a view of the live marketplace.  It must
+        // always expose the request's current scope, even to an agent who
+        // matched when the request was in a different scope.  The immutable
+        // `scopeAtMatch` snapshot is intentionally used only by the Renter
+        // Matches flow below (`getAllRequestsForAgent`).
         const scopePresentation = await this.getScopePresentationForAgent(
           agentId,
           request as IPreMarketRequest,
           grantAccess,
         );
-        const visibleScope = scopePresentation.scope;
+        const visibleScope =
+          request.scope === "All Market" ? "All Market" : "Upcoming";
         const currentRegisteredAgentId =
           renterContext.registeredAgentIdByRequestId.get(requestId) ?? null;
         const isCurrentRegisteredAgent = currentRegisteredAgentId === agentId;
