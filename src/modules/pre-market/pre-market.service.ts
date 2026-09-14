@@ -463,14 +463,8 @@ export class PreMarketService {
     const activeRenterMatches = records.filter(record => this.hasAgentMatchedStatus(record));
     const registeredAgentId = await this.resolveRegisteredAgentIdForRequest(request);
     const isRegisteredAgent = registeredAgentId === agentId;
-    const viewerHasActiveMatch = this.hasAgentMatchedStatus(viewerMatch);
     const hasAllMarketMatch = activeRenterMatches.some(
       record => record.scopeAtMatch === "All Market",
-    );
-    const anotherAgentHasAllMarketMatch = activeRenterMatches.some(
-      record =>
-        record.agentId.toString() !== agentId
-        && record.scopeAtMatch === "All Market",
     );
 
     let scope: "Upcoming" | "All Market" | "Upcoming (M)";
@@ -479,18 +473,10 @@ export class PreMarketService {
     } else if (viewerMatch?.scopeAtMatch === "Upcoming") {
       // A match made in Upcoming always retains the agent's Upcoming view.
       scope = "Upcoming";
-    } else if (
-      isRegisteredAgent
-      && viewerHasActiveMatch
-      && viewerMatch?.scopeAtMatch === "All Market"
-      && !anotherAgentHasAllMarketMatch
-    ) {
-      // A registered agent's own All Market match stays All Market until a
-      // different agent also matches this request.
-      scope = "All Market";
     } else {
-      // A match made while the request was Upcoming must never turn another
-      // viewer's All Market request into Upcoming (M).
+      // All Market becomes Upcoming (M) as soon as any active renter-
+      // representation match was made while the request was All Market.
+      // A match made earlier in Upcoming does not cause that transition.
       scope = hasAllMarketMatch ? "Upcoming (M)" : "All Market";
     }
 
@@ -1701,14 +1687,31 @@ export class PreMarketService {
         ),
         this.getGlobalMatchedScopeRequestIdSet(requestIds),
       ]);
+    const grantAccessByRequestId = new Map(
+      grantAccessRecords.map((record) => [
+        record.preMarketRequestId.toString(),
+        record,
+      ]),
+    );
     const matchVisibleRequests: IPreMarketRequest[] = [];
     for (const request of requests) {
       const requestId = request._id?.toString() || "";
-      const isMatchVisible =
-        request.scope !== "All Market" ||
-        globalMatchedScopeRequestIds.has(requestId);
+      // Find Matches deliberately contains only Upcoming and Upcoming (M)
+      // rows. A current All Market request can appear here only when its
+      // viewer-specific match presentation is Upcoming (M); an effective
+      // All Market row belongs outside this tool.
+      if (request.scope === "All Market") {
+        const scopePresentation = await this.getScopePresentationForAgent(
+          agentId,
+          request,
+          grantAccessByRequestId.get(requestId) || null,
+        );
+        if (scopePresentation.scope === "All Market") {
+          continue;
+        }
+      }
 
-      if (!isMatchVisible) {
+      if (!requestId) {
         continue;
       }
 
@@ -1716,13 +1719,6 @@ export class PreMarketService {
     }
     const registeredAgentContext =
       await this.buildRegisteredAgentContext(matchVisibleRequests);
-    const grantAccessByRequestId = new Map(
-      grantAccessRecords.map((record) => [
-        record.preMarketRequestId.toString(),
-        record,
-      ]),
-    );
-
     let scoringExecutionTimeMs = 0;
     let disqualifiedCount = 0;
     setPerformanceMetric(
