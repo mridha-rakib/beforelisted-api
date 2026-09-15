@@ -245,11 +245,11 @@ describe("PreMarketService upcoming search expansion reminder sweep", () => {
     vi.useRealTimers();
   });
 
-  it("does not send Template 32 before 10 days after the request entered Upcoming mode", async () => {
+  it("does not send Template 32 before 7 days after the request entered Upcoming mode", async () => {
     const service = buildService();
     const request = buildRequest({
       searchActivity: {
-        upcomingScopeSelectedAt: new Date("2026-06-10T21:22:00.000Z"),
+        upcomingScopeSelectedAt: new Date("2026-06-12T21:22:00.000Z"),
         upcomingSearchExpansionReminderSentAt: null,
       },
     });
@@ -268,11 +268,11 @@ describe("PreMarketService upcoming search expansion reminder sweep", () => {
     expect(emailService.sendUpcomingRequestSearchExpansionReminder).not.toHaveBeenCalled();
   });
 
-  it("sends Template 32 once after 10 days for an active Upcoming request", async () => {
+  it("sends Template 32 once after 7 days for an active Upcoming request", async () => {
     const service = buildService();
     const request = buildRequest({
       searchActivity: {
-        upcomingScopeSelectedAt: new Date("2026-06-08T21:22:00.000Z"),
+        upcomingScopeSelectedAt: new Date("2026-06-11T21:22:00.000Z"),
         upcomingSearchExpansionReminderSentAt: null,
       },
     });

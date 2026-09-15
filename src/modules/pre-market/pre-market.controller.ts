@@ -203,7 +203,7 @@ export class PreMarketController {
    * Body: `{ enabled: boolean }`
    *
    * Only the **registered agent** for the renter can call this. Toggling
-   * to `enabled: false` sends the day-10 search-expansion reminder
+   * to `enabled: false` sends the day-7 search-expansion reminder
    * (Template #32) to the renter immediately (via the same path the
    * scheduled sweep uses) and locks the gate. Toggling back to
    * `enabled: true` is allowed only while the email has not yet been
@@ -226,7 +226,7 @@ export class PreMarketController {
       updated,
       validated.body.enabled
         ? "All Market Offer gate re-enabled."
-        : "Day-10 follow-up email sent and gate disabled.",
+        : "Day-7 follow-up email sent and gate disabled.",
     );
   });
 

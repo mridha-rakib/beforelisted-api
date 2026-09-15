@@ -360,7 +360,7 @@ export const toggleListingActivationSchema = z.object({
 /**
  * Body / params validation for `PATCH /pre-market/:requestId/all-market-offer`.
  *
- * The `enabled` flag controls whether the day-10 search-expansion reminder
+ * The `enabled` flag controls whether the day-7 search-expansion reminder
  * (Template #32) should fire for the request. Only the **registered agent**
  * for the renter can mutate it; that authorization happens in the
  * controller and is not encoded here.

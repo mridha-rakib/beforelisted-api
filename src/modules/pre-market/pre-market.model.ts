@@ -69,14 +69,14 @@ export type IPreMarketRequest = {
     upcomingScopeSelectedAt?: Date | null;
     upcomingSearchExpansionReminderSentAt?: Date | null;
     /**
-     * Gates the day-10 follow-up email (Template #32) for the request.
+     * Gates the day-7 follow-up email (Template #32) for the request.
      *
      * Defaults to `true` on every new request. The registered agent for the
      * renter can uncheck it from the agent dashboard "All Market Offer"
      * column, which:
      *   - sends Template #32 to the renter immediately (same path as the
      *     sweep),
-     *   - permanently opts the request out of the 10-day reminder sweep,
+     *   - permanently opts the request out of the 7-day reminder sweep,
      *   - locks the checkbox grey/disabled for the rest of the request's life.
      *
      * NOTE: this field is unrelated to the request's `scope`. Unchecking

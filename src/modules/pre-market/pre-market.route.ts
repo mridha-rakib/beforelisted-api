@@ -118,7 +118,7 @@ router.put(
 
 /**
  * PATCH /pre-market/:requestId/all-market-offer
- * Registered agent: toggles the per-request gate that controls the day-10
+ * Registered agent: toggles the per-request gate that controls the day-7
  * search-expansion reminder (Template #32).
  */
 router.patch(

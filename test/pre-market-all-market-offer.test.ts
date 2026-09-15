@@ -1,10 +1,10 @@
 // @vitest-environment node
 // Verifies the "All Market Offer" toggle behavior:
-//   - the registered agent can uncheck the day-10-reminder gate
+//   - the registered agent can uncheck the day-7-reminder gate
 //   - unchecking sends Template #32 (same path as the sweep) and locks
 //     the gate; it does NOT change the request's scope
 //   - non-registered agents are forbidden
-//   - the day-10 sweep respects the opt-out
+//   - the day-7 sweep respects the opt-out
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PreMarketService } from "../src/modules/pre-market/pre-market.service";
@@ -279,7 +279,7 @@ describe("PreMarketService.processUpcomingSearchExpansionReminderSweep + All Mar
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
-    // Now is more than 10 days past upcomingScopeSelectedAt so the sweep
+    // Now is more than 7 days past upcomingScopeSelectedAt so the sweep
     // would fire Template #32 if the gate were open.
     vi.setSystemTime(new Date("2026-08-16T00:00:00.000Z"));
   });

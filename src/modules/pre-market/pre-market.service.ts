@@ -127,7 +127,7 @@ const ARCHIVE_REASON_LABELS: Record<AgentArchiveReason, string> = {
 const SEARCH_CONFIRMATION_INTERVAL_MS = 14 * 24 * 60 * 60 * 1000;
 const SEARCH_CONFIRMATION_EXPIRY_MS = 3 * 24 * 60 * 60 * 1000;
 const UPCOMING_SEARCH_EXPANSION_REMINDER_DELAY_MS =
-  10 * 24 * 60 * 60 * 1000;
+  7 * 24 * 60 * 60 * 1000;
 const DEFAULT_PRODUCTION_API_ORIGIN = "https://api.beforelisted.com";
 const MARKET_SCOPE_SWITCH_LOCKED_MESSAGE =
   "A rental specialist is already assigned. To switch to upcoming only, you can notify your registered agent, delete the request and start again, or contact support@beforelisted.com.";
@@ -2004,7 +2004,7 @@ export class PreMarketService {
   /**
    * Toggles the "All Market Offer" gate for a single request.
    *
-   * The gate is purely a tracking signal for the day-10 search-expansion
+   * The gate is purely a tracking signal for the day-7 search-expansion
    * reminder email (Template #32). It has NO relationship to the
    * request's `scope` — scope is owned by the renter / admin and the
    * agent never mutates it through this endpoint.
@@ -2012,7 +2012,7 @@ export class PreMarketService {
    * State machine:
    *   - Toggle to `enabled: false` (agent manually fires the email):
    *       * Sends Template #32 to the renter right now, via the same
-   *         helper used by the day-10 sweep.
+   *         helper used by the day-7 sweep.
    *       * Records `searchActivity.upcomingSearchExpansionReminderSentAt`
    *         atomically so the sweep cannot double-send.
    *       * Sets `searchActivity.allMarketOfferEnabled = false` so the
@@ -2067,7 +2067,7 @@ export class PreMarketService {
     const now = new Date();
     const searchActivity = this.getSearchActivity(request);
 
-    // Unchecking the box = "send the day-10 email right now". We reuse the
+    // Unchecking the box = "send the day-7 email right now". We reuse the
     // sweep's send + atomic-claim helpers so behavior is identical to the
     // scheduled job (same template, same idempotency guard).
     if (enabled === false) {
@@ -2098,7 +2098,7 @@ export class PreMarketService {
       );
       if (!sent) {
         throw new BadRequestException(
-          "The day-10 follow-up email could not be sent. Please try again or check the renter's email address.",
+          "The day-7 follow-up email could not be sent. Please try again or check the renter's email address.",
         );
       }
 
@@ -2115,7 +2115,7 @@ export class PreMarketService {
       }
       logger.info(
         { agentId, requestId },
-        "Registered agent manually sent the day-10 search expansion reminder.",
+        "Registered agent manually sent the day-7 search expansion reminder.",
       );
       return updated;
     }
@@ -2124,7 +2124,7 @@ export class PreMarketService {
     // that the gate stays off permanently.
     if (searchActivity.upcomingSearchExpansionReminderSentAt) {
       throw new BadRequestException(
-        "The day-10 follow-up email has already been sent; the gate cannot be re-enabled.",
+        "The day-7 follow-up email has already been sent; the gate cannot be re-enabled.",
       );
     }
 
@@ -2859,7 +2859,7 @@ export class PreMarketService {
     upcomingScopeSelectedAt: Date | null;
     upcomingSearchExpansionReminderSentAt: Date | null;
     /**
-     * Gate for the day-10 follow-up email (Template #32). Default `true`
+     * Gate for the day-7 follow-up email (Template #32). Default `true`
      * (eligible) for documents that pre-date the field; explicitly
      * `false` once the registered agent unchecks the "All Market Offer"
      * column on the agent dashboard.
@@ -5062,7 +5062,7 @@ export class PreMarketService {
 
   /**
    * Runs the scheduled sweep for Upcoming-only requests that should receive
-   * the 10-day search expansion reminder.
+   * the 7-day search expansion reminder.
    */
   async processUpcomingSearchExpansionReminderSweep(): Promise<{
     remindersSent: number;

@@ -906,7 +906,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
 
   /**
    * Sets the "All Market Offer" gate for a single request. The gate is a
-   * pure tracking signal for the day-10 search-expansion reminder email
+   * pure tracking signal for the day-7 search-expansion reminder email
    * (Template #32); it does NOT mutate the request's `scope`.
    *
    * Returns `null` when the request is not in a state where the toggle
