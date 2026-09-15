@@ -387,6 +387,7 @@ export class PreMarketService {
       // Expose the caller's immutable match snapshot for audit/UI consumers;
       // never infer or overwrite it from the request's current scope.
       scopeAtMatch: grantAccess?.scopeAtMatch ?? null,
+      matchedRenterUpdatedAt: grantAccess?.matchedRenterUpdatedAt ?? null,
       chargeAmount,
       payment: paymentInfo,
       showPayment,
@@ -1622,6 +1623,7 @@ export class PreMarketService {
           representation_type: accessSummary.representation_type,
           representationSelectedAt: accessSummary.representationSelectedAt,
           scopeAtMatch: accessSummary.scopeAtMatch,
+          matchedRenterUpdatedAt: accessSummary.matchedRenterUpdatedAt,
           accessType: accessSummary.accessType,
           canRequestAccess: accessSummary.canRequestAccess,
           ownerRepresentationSelected: this.hasOwnerRepresentationMatchForAgent(
@@ -6403,6 +6405,7 @@ export class PreMarketService {
           representation_type: accessSummary.representation_type,
           representationSelectedAt: accessSummary.representationSelectedAt,
           scopeAtMatch: accessSummary.scopeAtMatch,
+          matchedRenterUpdatedAt: accessSummary.matchedRenterUpdatedAt,
           accessType: responseAccessType,
           canRequestAccess: false,
           chargeAmount: accessSummary.chargeAmount ?? null,
@@ -6639,6 +6642,8 @@ export class PreMarketService {
       representation_type: representationType,
       representationSelectedAt: matchedAt,
       scopeAtMatch: requestScopeAtMatch,
+      matchedRenterUpdatedAt:
+        listingActivationCheck.searchActivity?.lastRenterUpdatedAt ?? matchedAt,
       ...(normalizedOpportunityDetails
         ? { opportunityDetails: normalizedOpportunityDetails }
         : {}),
@@ -6727,6 +6732,18 @@ export class PreMarketService {
               );
             });
           }
+
+          // A repeated match confirms that this agent has reviewed the
+          // request's latest renter-authored revision. This is what lets the
+          // UI distinguish "Match Again" from "Add Opportunity".
+          await this.grantAccessRepository.updateById(
+            existing._id.toString(),
+            {
+              matchedRenterUpdatedAt:
+                listingActivationCheck.searchActivity?.lastRenterUpdatedAt ??
+                matchedAt,
+            },
+          );
 
           return existing;
         }

@@ -261,6 +261,8 @@ export class GrantAccessService {
         representationSelectedAt: new Date(),
         scopeAtMatch:
           listingActivationCheck.scope === "All Market" ? "All Market" : "Upcoming",
+        matchedRenterUpdatedAt:
+          listingActivationCheck.searchActivity?.lastRenterUpdatedAt ?? new Date(),
         ...(normalizedOpportunityDetails
           ? { opportunityDetails: normalizedOpportunityDetails }
           : {}),

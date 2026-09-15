@@ -35,6 +35,8 @@ export type IGrantAccessRequest = {
    * are treated as "matched at Upcoming" for backward compatibility.
    */
   scopeAtMatch?: "Upcoming" | "All Market" | null;
+  /** Renter-authored revision timestamp the agent last confirmed a match against. */
+  matchedRenterUpdatedAt?: Date;
 
   payment?: {
     amount: number;
@@ -118,6 +120,10 @@ const grantAccessSchema = BaseSchemaUtil.createSchema({
     enum: ["Upcoming", "All Market", null],
     default: null,
     index: true,
+  },
+
+  matchedRenterUpdatedAt: {
+    type: Date,
   },
 
   payment: {
