@@ -68,27 +68,12 @@ export type IPreMarketRequest = {
     lastConfirmationEmailSentAt?: Date | null;
     upcomingScopeSelectedAt?: Date | null;
     upcomingSearchExpansionReminderSentAt?: Date | null;
-    /**
-     * Gates the day-7 follow-up email (Template #32) for the request.
-     *
-     * Defaults to `true` on every new request. The registered agent for the
-     * renter can uncheck it from the agent dashboard "All Market Offer"
-     * column, which:
-     *   - sends Template #32 to the renter immediately (same path as the
-     *     sweep),
-     *   - permanently opts the request out of the 7-day reminder sweep,
-     *   - locks the checkbox grey/disabled for the rest of the request's life.
-     *
-     * NOTE: this field is unrelated to the request's `scope`. Unchecking
-     * it MUST NOT change the scope.
-     *
-     * When the scope leaves "Upcoming" via any other path (admin change, an
-     * agent match that flips the visible scope to "Upcoming (M)", etc.), the
-     * field is also flipped to `false` so the sweep never re-fires.
-     */
+    /** Current toggle value; it never locks solely because an email was sent. */
     allMarketOfferEnabled?: boolean | null;
     allMarketOfferToggledAt?: Date | null;
     allMarketOfferToggledByAgentId?: Types.ObjectId | string | null;
+    /** Number of pre-day-7 On → Off reminder emails sent by the agent. */
+    allMarketOfferToggleEmailCount?: number | null;
     pendingConfirmationToken?: string | null;
     pendingConfirmationSentAt?: Date | null;
     pendingConfirmationExpiresAt?: Date | null;
@@ -330,6 +315,12 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
       ref: "User",
       default: null,
       index: true,
+    },
+    allMarketOfferToggleEmailCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 4,
     },
     pendingConfirmationToken: {
       type: String,

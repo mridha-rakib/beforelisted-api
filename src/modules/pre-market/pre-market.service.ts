@@ -1297,6 +1297,7 @@ export class PreMarketService {
         lastConfirmationEmailSentAt: null,
         upcomingScopeSelectedAt: scope === "Upcoming" ? now : null,
         upcomingSearchExpansionReminderSentAt: null,
+        allMarketOfferToggleEmailCount: 0,
         pendingConfirmationToken: null,
         pendingConfirmationSentAt: null,
         pendingConfirmationExpiresAt: null,
@@ -2012,20 +2013,10 @@ export class PreMarketService {
    * agent never mutates it through this endpoint.
    *
    * State machine:
-   *   - Toggle to `enabled: false` (agent manually fires the email):
-   *       * Sends Template #32 to the renter right now, via the same
-   *         helper used by the day-7 sweep.
-   *       * Records `searchActivity.upcomingSearchExpansionReminderSentAt`
-   *         atomically so the sweep cannot double-send.
-   *       * Sets `searchActivity.allMarketOfferEnabled = false` so the
-   *         sweep will not re-fire later.
-   *       * Locks the checkbox for the rest of the request's life.
-   *   - Toggle to `enabled: true`:
-   *       * Allowed only while the request is still Upcoming and active
-   *         AND the email has NOT already been sent (either manually or
-   *         by the sweep). Once the email has gone out, the gate is
-   *         permanently disabled and cannot be re-enabled.
-   *       * Restores the gate; does NOT change scope.
+   *   - Before day 7, each On → Off action sends up to four emails total.
+   *   - The day-7 sweep sends one automatic email only when no toggle email
+   *     was previously sent.
+   *   - After day 7, changes remain interactive but never send another email.
    *
    * Authorization:
    *   - Only the **registered agent** for the renter (the agent the renter
@@ -2069,72 +2060,35 @@ export class PreMarketService {
     const now = new Date();
     const searchActivity = this.getSearchActivity(request);
 
-    // Unchecking the box = "send the day-7 email right now". We reuse the
-    // sweep's send + atomic-claim helpers so behavior is identical to the
-    // scheduled job (same template, same idempotency guard).
-    if (enabled === false) {
-      if (searchActivity.upcomingSearchExpansionReminderSentAt) {
-        // Email already went out (probably via the sweep). Just lock the
-        // gate so the UI reflects reality; no need to send again.
-        const locked = await this.preMarketRepository.toggleAllMarketOffer(
-          requestId,
-          false,
-          agentId,
-          now,
-        );
-        if (!locked) {
-          throw new BadRequestException(
-            "The All Market Offer gate could not be updated — the request may no longer be eligible.",
-          );
-        }
-        logger.info(
-          { agentId, requestId },
-          "Registered agent confirmed the All Market Offer gate is disabled (email already sent).",
-        );
-        return locked;
-      }
+    const deadline = searchActivity.upcomingScopeSelectedAt
+      ? searchActivity.upcomingScopeSelectedAt.getTime() +
+        UPCOMING_SEARCH_EXPANSION_REMINDER_DELAY_MS
+      : null;
+    const isBeforeDaySeven = deadline === null || now.getTime() < deadline;
+    const toggleEmailCount = searchActivity.allMarketOfferToggleEmailCount ?? 0;
+    const shouldSendToggleEmail =
+      enabled === false &&
+      request.searchActivity?.allMarketOfferEnabled !== false &&
+      isBeforeDaySeven &&
+      toggleEmailCount < 4;
 
-      const sent = await this.sendUpcomingSearchExpansionReminder(
-        request,
-        now,
-      );
+    if (shouldSendToggleEmail) {
+      const sent = await this.sendUpcomingSearchExpansionReminder(request, now, {
+        markReminderSent: false,
+      });
       if (!sent) {
         throw new BadRequestException(
-          "The day-7 follow-up email could not be sent. Please try again or check the renter's email address.",
+          "The follow-up email could not be sent. Please try again or check the renter's email address.",
         );
       }
-
-      const updated = await this.preMarketRepository.toggleAllMarketOffer(
-        requestId,
-        false,
-        agentId,
-        now,
-      );
-      if (!updated) {
-        throw new BadRequestException(
-          "The All Market Offer gate could not be disabled after sending the email.",
-        );
-      }
-      logger.info(
-        { agentId, requestId },
-        "Registered agent manually sent the day-7 search expansion reminder.",
-      );
-      return updated;
-    }
-
-    // Re-checking is only allowed before the email has been sent. After
-    // that the gate stays off permanently.
-    if (searchActivity.upcomingSearchExpansionReminderSentAt) {
-      throw new BadRequestException(
-        "The day-7 follow-up email has already been sent; the gate cannot be re-enabled.",
-      );
     }
 
     const updated = await this.preMarketRepository.toggleAllMarketOffer(
       requestId,
-      true,
+      enabled,
       agentId,
       now,
+      shouldSendToggleEmail,
     );
     if (!updated) {
       throw new BadRequestException(
@@ -2267,12 +2221,14 @@ export class PreMarketService {
             ? {
                 upcomingScopeSelectedAt: now,
                 upcomingSearchExpansionReminderSentAt: null,
+                allMarketOfferToggleEmailCount: 0,
               }
             : {}),
           ...(payload.scope === "All Market" && request.scope !== "All Market"
             ? {
                 upcomingScopeSelectedAt: null,
                 upcomingSearchExpansionReminderSentAt: null,
+                allMarketOfferToggleEmailCount: 0,
               }
             : {}),
         },
@@ -2860,13 +2816,10 @@ export class PreMarketService {
     lastConfirmationEmailSentAt: Date | null;
     upcomingScopeSelectedAt: Date | null;
     upcomingSearchExpansionReminderSentAt: Date | null;
-    /**
-     * Gate for the day-7 follow-up email (Template #32). Default `true`
-     * (eligible) for documents that pre-date the field; explicitly
-     * `false` once the registered agent unchecks the "All Market Offer"
-     * column on the agent dashboard.
-     */
+    /** Whether the registered agent currently has the offer switched on. */
     allMarketOfferEnabled: boolean;
+    /** Number of pre-day-7 toggle emails sent. Limited to four. */
+    allMarketOfferToggleEmailCount: number;
     pendingConfirmationToken: string | null;
     pendingConfirmationSentAt: Date | null;
     pendingConfirmationExpiresAt: Date | null;
@@ -2884,9 +2837,11 @@ export class PreMarketService {
       upcomingScopeSelectedAt: searchActivity.upcomingScopeSelectedAt ?? null,
       upcomingSearchExpansionReminderSentAt:
         searchActivity.upcomingSearchExpansionReminderSentAt ?? null,
-      // Treat `undefined` as opted-in so older documents continue to
-      // receive reminders until the registered agent explicitly opts out.
       allMarketOfferEnabled: searchActivity.allMarketOfferEnabled !== false,
+      allMarketOfferToggleEmailCount: Math.max(
+        0,
+        Number(searchActivity.allMarketOfferToggleEmailCount ?? 0) || 0,
+      ),
       pendingConfirmationToken: searchActivity.pendingConfirmationToken ?? null,
       pendingConfirmationSentAt:
         searchActivity.pendingConfirmationSentAt ?? null,
@@ -2979,6 +2934,7 @@ export class PreMarketService {
       lastConfirmedTokenUsedAt: Date;
       upcomingScopeSelectedAt: Date | null;
       upcomingSearchExpansionReminderSentAt: Date | null;
+      allMarketOfferToggleEmailCount: number;
     }> = {},
   ) {
     return {
@@ -5108,13 +5064,8 @@ export class PreMarketService {
           continue;
         }
 
-        // Defense-in-depth: the repository already filters on this, but if
-        // a request somehow ends up here with the gate disabled we must
-        // still respect the registered agent's opt-out. Older documents
-        // created before the field existed read with `undefined`, which
-        // passes the `!== false` check below so we keep sending reminders
-        // for them.
-        if (searchActivity.allMarketOfferEnabled === false) {
+        // Any pre-day-7 toggle email suppresses the single automatic email.
+        if (searchActivity.allMarketOfferToggleEmailCount > 0) {
           skippedCount += 1;
           continue;
         }
@@ -5418,6 +5369,7 @@ export class PreMarketService {
   private async sendUpcomingSearchExpansionReminder(
     request: IPreMarketRequest,
     now: Date,
+    options: { markReminderSent?: boolean } = {},
   ): Promise<boolean> {
     const requestId = request._id?.toString();
     if (!requestId) {
@@ -5464,13 +5416,15 @@ export class PreMarketService {
       <p>To continue searching only for upcoming opportunities, no action is needed. We&rsquo;ll continue working on your current request.</p>
       <p>Thank you,<br>BeforeListed&trade; Support</p>`;
 
-    const claimedRequest =
-      await this.preMarketRepository.markUpcomingSearchExpansionReminderSent(
-        requestId,
-        now,
-      );
-    if (!claimedRequest) {
-      return false;
+    if (options.markReminderSent !== false) {
+      const claimedRequest =
+        await this.preMarketRepository.markUpcomingSearchExpansionReminderSent(
+          requestId,
+          now,
+        );
+      if (!claimedRequest) {
+        return false;
+      }
     }
 
     const result =
