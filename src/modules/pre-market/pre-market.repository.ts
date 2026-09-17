@@ -859,11 +859,9 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
         "scope": "Upcoming",
         "searchActivity.upcomingScopeSelectedAt": { $ne: null },
         "searchActivity.upcomingSearchExpansionReminderSentAt": null,
-        // The "All Market Offer" gate is checked (default-on) unless the
-        // registered agent has explicitly opted the request out. Documents
-        // created before the field existed read with `undefined`, which
-        // matches `{ $ne: false }` so they continue to receive reminders.
-        "searchActivity.allMarketOfferEnabled": { $ne: false },
+        // An automatic reminder is sent only when no pre-day-7 toggle email
+        // was sent. `null` also matches legacy documents with no counter.
+        "searchActivity.allMarketOfferToggleEmailCount": { $in: [0, null] },
         "$or": [
           { agentArchives: { $exists: false } },
           { agentArchives: { $size: 0 } },
@@ -887,7 +885,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
           "scope": "Upcoming",
           "searchActivity.upcomingScopeSelectedAt": { $ne: null },
           "searchActivity.upcomingSearchExpansionReminderSentAt": null,
-          "searchActivity.allMarketOfferEnabled": { $ne: false },
+          "searchActivity.allMarketOfferToggleEmailCount": { $in: [0, null] },
           "$or": [
             { agentArchives: { $exists: false } },
             { agentArchives: { $size: 0 } },
@@ -924,6 +922,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     enabled: boolean,
     toggledByAgentId: string,
     now: Date,
+    incrementToggleEmailCount = false,
   ): Promise<IPreMarketRequest | null> {
     return this.model
       .findOneAndUpdate(
@@ -939,6 +938,9 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
             "searchActivity.allMarketOfferToggledAt": now,
             "searchActivity.allMarketOfferToggledByAgentId": toggledByAgentId,
           },
+          ...(incrementToggleEmailCount
+            ? { $inc: { "searchActivity.allMarketOfferToggleEmailCount": 1 } }
+            : {}),
         },
         { new: true },
       )
