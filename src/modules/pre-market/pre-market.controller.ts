@@ -202,12 +202,9 @@ export class PreMarketController {
    *
    * Body: `{ enabled: boolean }`
    *
-   * Only the **registered agent** for the renter can call this. Toggling
-   * to `enabled: false` sends the day-7 search-expansion reminder
-   * (Template #32) to the renter immediately (via the same path the
-   * scheduled sweep uses) and locks the gate. Toggling back to
-   * `enabled: true` is allowed only while the email has not yet been
-   * sent and the request is still in Upcoming scope.
+   * Only the **registered agent** for the renter can call this. Before day 7,
+   * an On → Off transition can send up to four follow-up emails. The toggle
+   * remains interactive before and after the automatic day-7 email.
    *
    * This endpoint never mutates the request's `scope`.
    */
@@ -225,8 +222,8 @@ export class PreMarketController {
       res,
       updated,
       validated.body.enabled
-        ? "All Market Offer gate re-enabled."
-        : "Day-7 follow-up email sent and gate disabled.",
+        ? "All Market Offer gate enabled."
+        : "All Market Offer gate disabled.",
     );
   });
 
