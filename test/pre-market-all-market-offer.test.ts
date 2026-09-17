@@ -1,8 +1,7 @@
 // @vitest-environment node
 // Verifies the "All Market Offer" toggle behavior:
-//   - the registered agent can uncheck the day-7-reminder gate
-//   - unchecking sends Template #32 (same path as the sweep) and locks
-//     the gate; it does NOT change the request's scope
+//   - before day 7, On → Off sends up to four emails and stays interactive
+//   - at day 7, the sweep sends once only when no toggle email was sent
 //   - non-registered agents are forbidden
 //   - the day-7 sweep respects the opt-out
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -46,6 +45,7 @@ function buildRequest(overrides: Record<string, any> = {}) {
       allMarketOfferEnabled: true,
       allMarketOfferToggledAt: null,
       allMarketOfferToggledByAgentId: null,
+      allMarketOfferToggleEmailCount: 0,
       pendingConfirmationToken: null,
       pendingConfirmationSentAt: null,
       pendingConfirmationExpiresAt: null,
@@ -86,6 +86,8 @@ function buildService(opts: { request?: any; registeredAgentId?: string | null }
       request.searchActivity?.upcomingSearchExpansionReminderSentAt ?? null,
     allMarketOfferEnabled:
       request.searchActivity?.allMarketOfferEnabled ?? true,
+    allMarketOfferToggleEmailCount:
+      request.searchActivity?.allMarketOfferToggleEmailCount ?? 0,
   }));
 
   return service;
@@ -102,8 +104,15 @@ describe("PreMarketService.toggleAllMarketOffer", () => {
     vi.useRealTimers();
   });
 
-  it("lets the registered agent uncheck the box, sends Template #32, and locks the gate without changing scope", async () => {
-    const service = buildService();
+  it("sends an email for a pre-day-7 On → Off transition and keeps the gate interactive", async () => {
+    const service = buildService({
+      request: buildRequest({
+        searchActivity: {
+          ...buildRequest().searchActivity,
+          upcomingScopeSelectedAt: new Date("2026-08-12T00:00:00.000Z"),
+        },
+      }),
+    });
     // sendUpcomingSearchExpansionReminder resolves the registered agent
     // and reads its archive info to set the reply-to header. Stub both.
     service.resolveRegisteredAgentIdForRequest = vi
@@ -113,20 +122,17 @@ describe("PreMarketService.toggleAllMarketOffer", () => {
       email: "agent@example.com",
       fullName: "Test Agent",
     });
-    // The sweep's atomic-claim helper should record the send time.
-    service.preMarketRepository.markUpcomingSearchExpansionReminderSent
-      = vi.fn().mockResolvedValue(buildRequest());
-    // The toggle helper should then disable the gate.
-    const lockedDoc = buildRequest({
+    const toggledDoc = buildRequest({
       scope: "Upcoming",
       searchActivity: {
         ...buildRequest().searchActivity,
         allMarketOfferEnabled: false,
         allMarketOfferToggledAt: NOW,
-        upcomingSearchExpansionReminderSentAt: NOW,
+        upcomingSearchExpansionReminderSentAt: null,
+        allMarketOfferToggleEmailCount: 1,
       },
     });
-    service.preMarketRepository.toggleAllMarketOffer.mockResolvedValue(lockedDoc);
+    service.preMarketRepository.toggleAllMarketOffer.mockResolvedValue(toggledDoc);
 
     const result = await service.toggleAllMarketOffer(
       REGISTERED_AGENT_ID,
@@ -142,13 +148,14 @@ describe("PreMarketService.toggleAllMarketOffer", () => {
       false,
       REGISTERED_AGENT_ID,
       expect.any(Date),
+      true,
     );
     // Scope MUST remain Upcoming — unchecking the gate must not mutate it.
     expect(result.scope).toBe("Upcoming");
     expect(result.searchActivity.allMarketOfferEnabled).toBe(false);
   });
 
-  it("just locks the gate when the email has already been sent by the sweep", async () => {
+  it("keeps the gate interactive after the automatic email has been sent", async () => {
     const service = buildService({
       request: buildRequest({
         searchActivity: {
@@ -159,7 +166,7 @@ describe("PreMarketService.toggleAllMarketOffer", () => {
         },
       }),
     });
-    const lockedDoc = buildRequest({
+    const toggledDoc = buildRequest({
       searchActivity: {
         ...buildRequest().searchActivity,
         allMarketOfferEnabled: false,
@@ -168,7 +175,7 @@ describe("PreMarketService.toggleAllMarketOffer", () => {
         ),
       },
     });
-    service.preMarketRepository.toggleAllMarketOffer.mockResolvedValue(lockedDoc);
+    service.preMarketRepository.toggleAllMarketOffer.mockResolvedValue(toggledDoc);
 
     await service.toggleAllMarketOffer(
       REGISTERED_AGENT_ID,
@@ -184,6 +191,7 @@ describe("PreMarketService.toggleAllMarketOffer", () => {
       false,
       REGISTERED_AGENT_ID,
       expect.any(Date),
+      false,
     );
   });
 
@@ -210,12 +218,13 @@ describe("PreMarketService.toggleAllMarketOffer", () => {
       true,
       REGISTERED_AGENT_ID,
       expect.any(Date),
+      false,
     );
     expect(result.searchActivity.allMarketOfferEnabled).toBe(true);
     expect(result.scope).toBe("Upcoming");
   });
 
-  it("refuses to re-enable the gate once the email has already been sent", async () => {
+  it("allows re-enabling the gate after the automatic email has been sent", async () => {
     const service = buildService({
       request: buildRequest({
         searchActivity: {
@@ -227,11 +236,44 @@ describe("PreMarketService.toggleAllMarketOffer", () => {
       }),
     });
 
+    service.preMarketRepository.toggleAllMarketOffer.mockResolvedValue(
+      buildRequest(),
+    );
+
     await expect(
       service.toggleAllMarketOffer(REGISTERED_AGENT_ID, REQUEST_ID, true),
-    ).rejects.toThrow(/already been sent/i);
+    ).resolves.toBeTruthy();
 
-    expect(service.preMarketRepository.toggleAllMarketOffer).not.toHaveBeenCalled();
+    expect(service.preMarketRepository.toggleAllMarketOffer).toHaveBeenCalled();
+  });
+
+  it("stops sending toggle emails after four pre-day-7 emails", async () => {
+    const service = buildService({
+      request: buildRequest({
+        searchActivity: {
+          ...buildRequest().searchActivity,
+          upcomingScopeSelectedAt: new Date("2026-08-12T00:00:00.000Z"),
+          allMarketOfferToggleEmailCount: 4,
+          allMarketOfferEnabled: true,
+        },
+      }),
+    });
+    service.preMarketRepository.toggleAllMarketOffer.mockResolvedValue(
+      buildRequest(),
+    );
+
+    await service.toggleAllMarketOffer(REGISTERED_AGENT_ID, REQUEST_ID, false);
+
+    expect(
+      emailService.sendUpcomingRequestSearchExpansionReminder,
+    ).not.toHaveBeenCalled();
+    expect(service.preMarketRepository.toggleAllMarketOffer).toHaveBeenCalledWith(
+      REQUEST_ID,
+      false,
+      REGISTERED_AGENT_ID,
+      expect.any(Date),
+      false,
+    );
   });
 
   it("forbids non-registered agents from toggling the gate", async () => {
@@ -288,26 +330,26 @@ describe("PreMarketService.processUpcomingSearchExpansionReminderSweep + All Mar
     vi.useRealTimers();
   });
 
-  it("skips a request whose allMarketOfferEnabled is false, even if it is still Upcoming", async () => {
+  it("skips a request that already received a pre-day-7 toggle email", async () => {
     const service = new PreMarketService() as any;
     // The repository filter already excludes opted-out requests, but the
     // service-level guard is the source of truth and is what we test here.
-    const optedOutRequest = buildRequest({
+    const manuallyEmailedRequest = buildRequest({
       searchActivity: {
         ...buildRequest().searchActivity,
-        allMarketOfferEnabled: false,
+        allMarketOfferToggleEmailCount: 1,
       },
     });
     service.preMarketRepository = {
       findActiveUpcomingRequestsForSearchExpansionReminderSweep: vi
         .fn()
-        .mockResolvedValue([optedOutRequest]),
+        .mockResolvedValue([manuallyEmailedRequest]),
       markUpcomingSearchExpansionReminderSent: vi.fn(),
     };
     service.getSearchActivity = vi.fn().mockReturnValue({
       upcomingScopeSelectedAt: new Date("2026-08-01T00:00:00.000Z"),
       upcomingSearchExpansionReminderSentAt: null,
-      allMarketOfferEnabled: false,
+      allMarketOfferToggleEmailCount: 1,
     });
 
     const result = await service.processUpcomingSearchExpansionReminderSweep();
