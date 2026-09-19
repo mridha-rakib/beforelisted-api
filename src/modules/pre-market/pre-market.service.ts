@@ -1696,30 +1696,12 @@ export class PreMarketService {
         record,
       ]),
     );
-    const matchVisibleRequests: IPreMarketRequest[] = [];
-    for (const request of requests) {
-      const requestId = request._id?.toString() || "";
-      // Find Matches deliberately contains only Upcoming and Upcoming (M)
-      // rows. A current All Market request can appear here only when its
-      // viewer-specific match presentation is Upcoming (M); an effective
-      // All Market row belongs outside this tool.
-      if (request.scope === "All Market") {
-        const scopePresentation = await this.getScopePresentationForAgent(
-          agentId,
-          request,
-          grantAccessByRequestId.get(requestId) || null,
-        );
-        if (scopePresentation.scope === "All Market") {
-          continue;
-        }
-      }
-
-      if (!requestId) {
-        continue;
-      }
-
-      matchVisibleRequests.push(request);
-    }
+    // Find Matches is a live request search. Do not remove or relabel a row
+    // based on match history: every agent must see the request's current
+    // scope, including All Market.
+    const matchVisibleRequests = requests.filter((request) =>
+      Boolean(request._id?.toString()),
+    );
     const registeredAgentContext =
       await this.buildRegisteredAgentContext(matchVisibleRequests);
     let scoringExecutionTimeMs = 0;
