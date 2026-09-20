@@ -36,7 +36,7 @@ import {
 } from "@/utils/performance-observer.utils";
 
 import type { IAgentProfile } from "../agent/agent.interface";
-import type { IGrantAccessRequest } from "../grant-access/grant-access.model";
+import type { BrokerFee, IGrantAccessRequest } from "../grant-access/grant-access.model";
 import type { MatchApartmentInput } from "./pre-market-match-scoring.js";
 import type { IPreMarketRequest } from "./pre-market.model";
 import type {
@@ -209,6 +209,10 @@ export class PreMarketService {
       preferenceMatches: preferences.filter(
         (_preference, index) => scoreResult.preferenceMatches[index],
       ),
+      preferenceDetails: preferences,
+      rent: request.priceRange?.max,
+      movingDateEarliest: request.movingDateRange?.earliest,
+      movingDateLatest: request.movingDateRange?.latest,
     };
   }
 
@@ -6490,6 +6494,7 @@ export class PreMarketService {
     opportunityDetails?: string,
     additionalOpportunity: boolean = false,
     matchContext?: MatchApartmentInput,
+    brokerFee?: BrokerFee,
   ): Promise<any> {
     const normalizedOpportunityDetails =
       this.normalizeOpportunityDetails(opportunityDetails);
@@ -6587,6 +6592,9 @@ export class PreMarketService {
       ...(normalizedOpportunityDetails
         ? { opportunityDetails: normalizedOpportunityDetails }
         : {}),
+      ...(representationType === "renter_representation" && brokerFee
+        ? { brokerFee }
+        : {}),
     };
 
     // Owner-representation matches do NOT create a grant-access record and do
@@ -6623,7 +6631,7 @@ export class PreMarketService {
                 listingActivationCheck,
                 existing._id,
                 normalizedOpportunityDetails,
-                { additionalOpportunity: true, matchSummary },
+              { additionalOpportunity: true, matchSummary, brokerFee },
               ).catch((error) => {
                 logger.error(
                   { error, requestId, agentId },
@@ -6664,7 +6672,7 @@ export class PreMarketService {
               listingActivationCheck,
               existing._id,
               normalizedOpportunityDetails,
-              { matchSummary },
+              { matchSummary, brokerFee },
             ).catch((error) => {
               logger.error(
                 { error, requestId, agentId },
@@ -6752,7 +6760,7 @@ export class PreMarketService {
         listingActivationCheck,
         matchRecord._id,
         normalizedOpportunityDetails,
-        { matchSummary },
+        { matchSummary, brokerFee },
       ).catch((error) => {
         logger.error(
           { error, requestId, agentId },
@@ -6771,6 +6779,7 @@ export class PreMarketService {
     opportunityDetails?: string,
     additionalOpportunity: boolean = false,
     matchContext?: MatchApartmentInput,
+    brokerFee?: BrokerFee,
   ): Promise<{
     matched: Array<{ requestId: string; result: any }>;
     failed: Array<{ requestId: string; message: string }>;
@@ -6788,6 +6797,7 @@ export class PreMarketService {
           opportunityDetails,
           additionalOpportunity,
           matchContext,
+          brokerFee,
         );
         matched.push({ requestId, result });
       } catch (error) {
@@ -8052,6 +8062,7 @@ export class PreMarketService {
     options: {
       additionalOpportunity?: boolean;
       matchSummary?: IMatchCompatibilitySummary;
+      brokerFee?: BrokerFee;
     } = {},
   ): Promise<void> {
     const renter = await this.renterRepository.findRenterWithReferrer(
@@ -8192,6 +8203,7 @@ export class PreMarketService {
         opportunityDetails,
         additionalOpportunity: options.additionalOpportunity,
         matchSummary: options.matchSummary,
+        brokerFee: options.brokerFee,
       });
     } else {
       const matchedAgentProfile =
@@ -8226,6 +8238,7 @@ export class PreMarketService {
         opportunityDetails,
         additionalOpportunity: options.additionalOpportunity,
         matchSummary: options.matchSummary,
+        brokerFee: options.brokerFee,
       });
 
       const agentAckCcEmails = buildCcList(

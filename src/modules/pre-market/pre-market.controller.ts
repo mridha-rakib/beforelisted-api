@@ -715,6 +715,7 @@ export class PreMarketController {
       validated.body.preMarketRequestId,
       validated.body.representation_type ?? "renter_representation",
       validated.body.opportunityDetails,
+      validated.body.brokerFee,
     );
 
     await this.recordOpportunityMessage(
@@ -1423,6 +1424,7 @@ export class PreMarketController {
       const representationType
         = validated.body.representation_type ?? "renter_representation";
       const opportunityDetails = validated.body.opportunityDetails;
+      const brokerFee = validated.body.brokerFee;
       const additionalOpportunity = validated.body.additionalOpportunity;
       const matchContext = validated.body.matchContext;
 
@@ -1440,6 +1442,7 @@ export class PreMarketController {
           opportunityDetails,
           additionalOpportunity,
           matchContext,
+          brokerFee,
         );
         if (result.matched.length > 0) {
           await this.recordOpportunityMessage(
@@ -1498,6 +1501,7 @@ export class PreMarketController {
             requestId,
             representationType,
             opportunityDetails,
+            brokerFee,
           );
 
           matched.push({ requestId, result: pendingAccess });
@@ -1554,6 +1558,8 @@ export class PreMarketController {
         representationType,
         validated.body.opportunityDetails,
         validated.body.additionalOpportunity,
+        undefined,
+        validated.body.brokerFee,
       );
 
       await this.recordOpportunityMessage(
@@ -1626,6 +1632,7 @@ export class PreMarketController {
       requestId,
       representationType,
       validated.body.opportunityDetails,
+      validated.body.brokerFee,
     );
 
     await this.recordOpportunityMessage(

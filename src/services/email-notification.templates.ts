@@ -37,11 +37,26 @@ function renderMatchCompatibilitySummary(
     .map(item => item.trim())
     .filter(Boolean)
     .map(escapeHtml);
+  const preferenceDetails = (matchSummary.preferenceDetails ?? [])
+    .slice(0, 4)
+    .map(item => escapeHtml(item.trim()))
+    .filter(Boolean);
+  const formatDate = (value?: Date | string) => value
+    ? escapeHtml(new Date(value).toLocaleDateString("en-US", {
+      month: "short", day: "numeric", year: "numeric",
+    }))
+    : "N/A";
+  const rent = typeof matchSummary.rent === "number"
+    ? `$${matchSummary.rent.toLocaleString("en-US")}`
+    : "N/A";
 
   return `
             <div class="match-summary">
                 <p><strong>Compatibility Misses:</strong> ${compatibilityMisses.length ? compatibilityMisses.join(", ") : "None"}</p>
                 <p><strong>Preferences Matches:</strong> ${preferenceMatches.length ? preferenceMatches.join(", ") : "None"}</p>
+                <p><strong>Preference Matches:</strong> ${preferenceDetails.length ? preferenceDetails.join(" | ") : "None"}</p>
+                <p><strong>Rent:</strong> ${rent}</p>
+                <p><strong>Moving Date:</strong> Earliest ${formatDate(matchSummary.movingDateEarliest)} / Latest ${formatDate(matchSummary.movingDateLatest)}</p>
             </div>
 `;
 }
@@ -1036,6 +1051,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
   brandColor: string = "#1890FF",
   additionalOpportunity: boolean = false,
   matchSummary?: IMatchCompatibilitySummary,
+  brokerFee?: string,
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = renterName?.trim().split(" ")[0] || renterName;
@@ -1065,6 +1081,9 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
 `
     : "";
   const matchSummaryMarkup = renderMatchCompatibilitySummary(matchSummary);
+  const brokerFeeMarkup = brokerFee
+    ? `<p><strong>Broker Fee:</strong> ${escapeHtml(brokerFee === "Talk to Renter First" ? "Reach out to agent to verify" : brokerFee)}</p>`
+    : "";
 
   return `
 <!DOCTYPE html>
@@ -1167,6 +1186,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
             <p>This opportunity is based on the criteria you submitted and may not be publicly advertised.</p>
 
 ${opportunityDetailsMarkup}
+${brokerFeeMarkup}
 ${matchSummaryMarkup}
 
             <p>Your agent may reach out separately with additional details and next steps. No action is required from you at this time unless requested by your agent.</p>
@@ -1213,6 +1233,7 @@ export function renterOpportunityFoundOtherAgentTemplate(
   brandColor: string = "#1890FF",
   additionalOpportunity: boolean = false,
   matchSummary?: IMatchCompatibilitySummary,
+  brokerFee?: string,
 ): string {
   const currentYear = new Date().getFullYear();
   const firstName = renterName?.trim().split(" ")[0] || renterName;
@@ -1261,10 +1282,14 @@ export function renterOpportunityFoundOtherAgentTemplate(
 `
     : "";
   const matchSummaryMarkup = renderMatchCompatibilitySummary(matchSummary);
+  const brokerFeeMarkup = brokerFee
+    ? `<p><strong>Broker Fee:</strong> ${escapeHtml(brokerFee === "Talk to Renter First" ? "Reach out to agent to verify" : brokerFee)}</p>`
+    : "";
   const introMarkup = additionalOpportunity
     ? `<p>Based on the preferences you selected when submitting your request on BeforeListed&trade;, the additional agent may be able to assist with your request for another rental opportunities that may not yet be publicly advertised.</p>
 
 ${additionalOpportunityDetailsMarkup}
+${brokerFeeMarkup}
 ${matchSummaryMarkup}
 
             <p>For your reference, the additional agent&rsquo;s information is:</p>`
@@ -1274,12 +1299,14 @@ ${matchSummaryMarkup}
             <p>This may include guidance throughout the search process, landlord and building screening, scheduling and coordinating tours, negotiations, and support through the rental process, subject to completion of required agency disclosures.</p>
 
 ${allMarketOpportunityDetailsMarkup}
+${brokerFeeMarkup}
 ${matchSummaryMarkup}
 
             <p>For your reference, the agent&apos;s information is:</p>`
       : `<p>Based on the preferences you selected when submitting your request on BeforeListed&trade;, an additional agent has been identified who may be able to assist with your request for rental opportunities that may not yet be publicly advertised.</p>
 
 ${upcomingOpportunityDetailsMarkup}
+${brokerFeeMarkup}
 ${matchSummaryMarkup}
 
             <p>For your reference, the additional agent&apos;s information is:</p>`;

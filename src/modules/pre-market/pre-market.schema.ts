@@ -23,6 +23,18 @@ const opportunityDetailsSchema = z
     OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE,
   );
 
+const brokerFeeSchema = z.enum([
+  "One Month Rent",
+  "9% Annual Rent",
+  "10% Annual Rent",
+  "11% Annual Rent",
+  "12% Annual Rent",
+  "13% Annual Rent",
+  "14% Annual Rent",
+  "15% Annual Rent",
+  "Talk to Renter First",
+]);
+
 export const createPreMarketRequestSchema = z.object({
   body: z
     .object({
@@ -180,6 +192,7 @@ export const requestAccessSchema = z.object({
       .enum(["owner_representation", "renter_representation"])
       .optional(),
     opportunityDetails: opportunityDetailsSchema.optional(),
+    brokerFee: brokerFeeSchema.optional(),
   }),
 });
 
@@ -193,6 +206,7 @@ export const agentMatchRequestSchema = z.object({
         .enum(["owner_representation", "renter_representation"])
         .optional(),
       opportunityDetails: opportunityDetailsSchema.optional(),
+      brokerFee: brokerFeeSchema.optional(),
       additionalOpportunity: z.boolean().optional(),
     })
     .optional()
@@ -284,6 +298,7 @@ export const agentBulkMatchRequestSchema = z.object({
       .enum(["owner_representation", "renter_representation"])
       .optional(),
     opportunityDetails: opportunityDetailsSchema.optional(),
+    brokerFee: brokerFeeSchema.optional(),
     additionalOpportunity: z.boolean().optional(),
     matchContext: matchApartmentInputSchema.optional(),
   }),

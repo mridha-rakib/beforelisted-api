@@ -14,6 +14,8 @@ export type IGrantAccessRequest = {
   status: "pending" | "approved" | "free" | "rejected" | "paid";
   representation_type?: "owner_representation" | "renter_representation";
   representationSelectedAt?: Date;
+  /** Optional fee selected by an agent representing the renter for this match. */
+  brokerFee?: BrokerFee;
   opportunityDetails?: string;
   /**
    * Chronological history of opportunityDetails messages the agent has sent
@@ -66,6 +68,20 @@ export type IGrantAccessRequest = {
   object
 >;
 
+export const BROKER_FEE_OPTIONS = [
+  "One Month Rent",
+  "9% Annual Rent",
+  "10% Annual Rent",
+  "11% Annual Rent",
+  "12% Annual Rent",
+  "13% Annual Rent",
+  "14% Annual Rent",
+  "15% Annual Rent",
+  "Talk to Renter First",
+] as const;
+
+export type BrokerFee = (typeof BROKER_FEE_OPTIONS)[number];
+
 const grantAccessSchema = BaseSchemaUtil.createSchema({
   preMarketRequestId: {
     type: Schema.Types.ObjectId,
@@ -96,6 +112,11 @@ const grantAccessSchema = BaseSchemaUtil.createSchema({
 
   representationSelectedAt: {
     type: Date,
+  },
+
+  brokerFee: {
+    type: String,
+    enum: BROKER_FEE_OPTIONS,
   },
 
   opportunityDetails: {

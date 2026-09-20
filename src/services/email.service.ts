@@ -1368,6 +1368,7 @@ export class EmailService {
         this.config.brandColor,
         payload.additionalOpportunity,
         payload.matchSummary,
+        payload.brokerFee,
       );
 
       const emailOptions: IEmailOptions = {
@@ -1429,6 +1430,7 @@ export class EmailService {
         this.config.brandColor,
         payload.additionalOpportunity,
         payload.matchSummary,
+        payload.brokerFee,
       );
       const subject = payload.additionalOpportunity
         ? "The additional agent may help your request with another opportunity \u2013 BeforeListed"

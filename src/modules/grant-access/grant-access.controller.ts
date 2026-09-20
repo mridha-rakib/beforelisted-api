@@ -337,7 +337,7 @@ export class GrantAccessController {
    */
   requestAccess = asyncHandler(async (req: Request, res: Response) => {
     const agentId = req.user!.userId;
-    const { preMarketRequestId, representation_type, opportunityDetails } = req.body;
+    const { preMarketRequestId, representation_type, opportunityDetails, brokerFee } = req.body;
 
     logger.info(
       { agentId, preMarketRequestId },
@@ -353,6 +353,7 @@ export class GrantAccessController {
       preMarketRequestId,
       representation_type ?? "renter_representation",
       opportunityDetails,
+      brokerFee,
     );
 
     await this.recordOpportunityMessage(
