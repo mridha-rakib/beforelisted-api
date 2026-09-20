@@ -33,10 +33,6 @@ function renderMatchCompatibilitySummary(
     .map(item => item.trim())
     .filter(Boolean)
     .map(escapeHtml);
-  const preferenceMatches = matchSummary.preferenceMatches
-    .map(item => item.trim())
-    .filter(Boolean)
-    .map(escapeHtml);
   const preferenceDetails = (matchSummary.preferenceDetails ?? [])
     .slice(0, 4)
     .map(item => escapeHtml(item.trim()))
@@ -53,7 +49,6 @@ function renderMatchCompatibilitySummary(
   return `
             <div class="match-summary">
                 <p><strong>Compatibility Misses:</strong> ${compatibilityMisses.length ? compatibilityMisses.join(", ") : "None"}</p>
-                <p><strong>Preferences Matches:</strong> ${preferenceMatches.length ? preferenceMatches.join(", ") : "None"}</p>
                 <p><strong>Preference Matches:</strong> ${preferenceDetails.length ? preferenceDetails.join(" | ") : "None"}</p>
                 <p><strong>Rent:</strong> ${rent}</p>
                 <p><strong>Moving Date:</strong> Earliest ${formatDate(matchSummary.movingDateEarliest)} / Latest ${formatDate(matchSummary.movingDateLatest)}</p>
