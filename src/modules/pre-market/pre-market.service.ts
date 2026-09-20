@@ -1403,6 +1403,10 @@ export class PreMarketService {
       registrationType: renter.registrationType,
       registeredAgentUserId:
         renter.registrationType === "agent_referral" ? referredAgentId : null,
+      purchaseTimeline:
+        renter.questionnaire?.buyerSpecialistNeeded === true
+          ? renter.questionnaire.purchaseTimeline || undefined
+          : undefined,
     };
 
     await preMarketNotifier.notifyNewRequest(request, renterData);

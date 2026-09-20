@@ -1307,6 +1307,7 @@ export class EmailService {
         payload.features,
         payload.preferencesByOrder,
         payload.submittedAt,
+        payload.purchaseTimeline,
         this.config.logoUrl,
         this.config.brandColor,
       );

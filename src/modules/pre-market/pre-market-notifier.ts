@@ -72,6 +72,7 @@ export class PreMarketNotifier {
       renterPhone?: string;
       referringAgentEmail?: string;
       referringAgentName?: string;
+      purchaseTimeline?: string;
       referringAgentTitle?: string;
       referringAgentBrokerage?: string;
       registrationType?: string;
@@ -534,6 +535,7 @@ export class PreMarketNotifier {
       renterEmail: string;
       referringAgentEmail?: string;
       referringAgentName?: string;
+      purchaseTimeline?: string;
       referringAgentTitle?: string;
       referringAgentBrokerage?: string;
     },
@@ -680,6 +682,7 @@ export class PreMarketNotifier {
           features,
           preferencesByOrder,
           submittedAt,
+          purchaseTimeline: renterData.purchaseTimeline,
         });
 
       if (emailResult.success) {

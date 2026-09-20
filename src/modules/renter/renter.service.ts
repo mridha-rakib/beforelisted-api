@@ -602,7 +602,7 @@ export class RenterService {
       payload = {
         ...payload,
         questionnaire: {
-          ...(existing.questionnaire?.toObject?.() ?? existing.questionnaire ?? {}),
+          ...(existing.questionnaire ?? {}),
           ...payload.questionnaire,
           ...(payload.questionnaire.buyerSpecialistNeeded === false
             ? { purchaseTimeline: "" }
