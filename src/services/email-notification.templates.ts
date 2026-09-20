@@ -761,6 +761,7 @@ export function agentRenterRequestConfirmationTemplate(
   features: string,
   preferencesByOrder: string,
   submittedAt: string,
+  purchaseTimeline?: string,
   logoUrl?: string,
   brandColor: string = "#1890FF",
 ): string {
@@ -785,6 +786,9 @@ export function agentRenterRequestConfirmationTemplate(
     limitPreferencesByOrder(preferencesByOrder),
   );
   const safeSubmittedAt = escapeHtml(submittedAt || "N/A");
+  const buyerInterestLine = purchaseTimeline
+    ? `<p><strong>Buyer interest:</strong><br>Renter indicated intent to buy and interest in upcoming sales in the next ${escapeHtml(purchaseTimeline)}.</p>`
+    : "";
 
   return `
 <!DOCTYPE html>
@@ -941,6 +945,7 @@ export function agentRenterRequestConfirmationTemplate(
                     <strong>Phone:</strong><br>
                     ${safeRenterPhoneNumber}
                 </p>
+                ${buyerInterestLine}
             </div>
 
             <div class="note-title">Request details:</div>
@@ -2879,6 +2884,7 @@ export function renterRegistrationVerifiedAdminTemplate(
   registrationDate: string,
   registeredAgentName: string,
   registeredAgentBrokerage: string,
+  purchaseTimeline?: string,
   logoUrl?: string,
   brandColor: string = "#1890FF",
 ): string {
@@ -2889,6 +2895,9 @@ export function renterRegistrationVerifiedAdminTemplate(
   const safeRegistrationDate = registrationDate || "N/A";
   const safeRegisteredAgentName = registeredAgentName || "N/A";
   const safeRegisteredAgentBrokerage = registeredAgentBrokerage || "N/A";
+  const buyerInterestRow = purchaseTimeline
+    ? `<tr><td>Buyer Interest</td><td>Renter indicated intent to buy and interest in upcoming sales in the next ${escapeHtml(purchaseTimeline)}.</td></tr>`
+    : "";
 
   return `
 <!DOCTYPE html>
@@ -3006,6 +3015,7 @@ export function renterRegistrationVerifiedAdminTemplate(
                         <td>Registered Agent</td>
                         <td>${safeRegisteredAgentName}, ${safeRegisteredAgentBrokerage}</td>
                     </tr>
+                    ${buyerInterestRow}
                 </table>
             </div>
 

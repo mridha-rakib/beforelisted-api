@@ -104,6 +104,7 @@ export type IAgentRequestConfirmationPayload = {
   features: string;
   preferencesByOrder: string;
   submittedAt: string;
+  purchaseTimeline?: string;
   cc?: string[];
 };
 
@@ -294,6 +295,7 @@ export type IRenterRegistrationVerifiedAdminPayload = {
   registeredAgentName: string;
   registeredAgentBrokerage: string;
   registeredAgentEmail?: string;
+  purchaseTimeline?: string;
 };
 
 export type IRenterRegisteredAgentInactivePayload = {
