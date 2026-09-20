@@ -594,6 +594,22 @@ export class RenterService {
     userId: string,
     payload: UpdateRenterProfilePayload,
   ): Promise<RenterResponse> {
+    if (payload.questionnaire) {
+      const existing = await this.repository.findByUserId(userId);
+      if (!existing) {
+        throw new NotFoundException("Renter profile not found");
+      }
+      payload = {
+        ...payload,
+        questionnaire: {
+          ...(existing.questionnaire?.toObject?.() ?? existing.questionnaire ?? {}),
+          ...payload.questionnaire,
+          ...(payload.questionnaire.buyerSpecialistNeeded === false
+            ? { purchaseTimeline: "" }
+            : {}),
+        },
+      };
+    }
     // Update Renter model
     const renter = await this.repository.updateProfile(userId, payload);
     if (!renter) {

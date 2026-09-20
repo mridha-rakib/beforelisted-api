@@ -200,6 +200,12 @@ export const updateRenterProfileSchema = z.object({
     fullName: z.string().optional(),
     phoneNumber: z.string().optional(),
     emailSubscriptionEnabled: z.boolean().optional(),
+    questionnaire: z
+      .object({
+        buyerSpecialistNeeded: z.boolean().optional(),
+        purchaseTimeline: z.string().max(100).optional(),
+      })
+      .optional(),
   }),
 });
 
