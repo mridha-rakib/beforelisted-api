@@ -613,6 +613,7 @@ export class PreMarketNotifier {
       renterPhone?: string;
       referringAgentEmail?: string;
       referringAgentName?: string;
+      purchaseTimeline?: string;
     },
   ): Promise<IPreMarketRequestEmailLog> {
     const requestId
