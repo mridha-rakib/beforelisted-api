@@ -1690,13 +1690,13 @@ export class PreMarketService {
       .map((request) => request._id?.toString())
       .filter((requestId): requestId is string => Boolean(requestId));
 
-    const [grantAccessRecords, globalMatchedScopeRequestIds] =
+    const [grantAccessRecords, allGrantAccessRecords] =
       await Promise.all([
         this.grantAccessRepository.findByAgentIdAndRequestIds(
           agentId,
           requestIds,
         ),
-        this.getGlobalMatchedScopeRequestIdSet(requestIds),
+        this.grantAccessRepository.findByPreMarketRequestIds(requestIds),
       ]);
     const grantAccessByRequestId = new Map(
       grantAccessRecords.map((record) => [
@@ -1704,12 +1704,29 @@ export class PreMarketService {
         record,
       ]),
     );
-    // Find Matches is a live request search. Do not remove or relabel a row
-    // based on match history: every agent must see the request's current
-    // scope, including All Market.
-    const matchVisibleRequests = requests.filter((request) =>
-      Boolean(request._id?.toString()),
+    // Find Matches is intentionally restricted to Upcoming and Upcoming (M).
+    // An All Market request becomes Upcoming (M) only when an active renter
+    // representation match was made while it was All Market. Plain All Market
+    // requests never appear in this tool.
+    const allMarketMatchedRequestIds = new Set(
+      allGrantAccessRecords
+        .filter(
+          (record) =>
+            this.hasAgentMatchedStatus(record) &&
+            record.representation_type !== "owner_representation" &&
+            record.scopeAtMatch === "All Market",
+        )
+        .map((record) => record.preMarketRequestId.toString()),
     );
+    const matchVisibleRequests = requests.filter((request) => {
+      const requestId = request._id?.toString();
+      if (!requestId) return false;
+
+      return (
+        request.scope !== "All Market" ||
+        allMarketMatchedRequestIds.has(requestId)
+      );
+    });
     const registeredAgentContext =
       await this.buildRegisteredAgentContext(matchVisibleRequests);
     let scoringExecutionTimeMs = 0;
@@ -1818,7 +1835,7 @@ export class PreMarketService {
     const enrichmentStartedAt = nowMs();
     const pagedMatchedVisibleRequestIds = pagedCandidates
       .map((candidate) => candidate.requestId)
-      .filter((requestId) => globalMatchedScopeRequestIds.has(requestId));
+      .filter((requestId) => allMarketMatchedRequestIds.has(requestId));
     // Build a lookup map of parent requests so the orphan-guard inside
     // buildMatchedAgentByRequestId can verify each candidate's agentId is
     // still in the parent's `viewedBy.grantAccessAgents[]`.
@@ -1868,8 +1885,10 @@ export class PreMarketService {
           request as IPreMarketRequest,
           grantAccess,
         );
-        const visibleScope =
-          request.scope === "All Market" ? "All Market" : "Upcoming";
+        // The preceding filter guarantees this is either Upcoming or an
+        // All-Market request with a qualifying All-Market match. The latter
+        // is deliberately presented as Upcoming (M) in Find Matches.
+        const visibleScope = scopePresentation.scope;
         const matchedByAgent = scopePresentation.matchedByAgent;
         const registeredAgentForView = scopePresentation.registeredAgentForView;
         const referralInfo = renterId
