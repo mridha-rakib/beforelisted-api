@@ -69,6 +69,17 @@ export const adminReferralRenterRegisterSchema = z.object({
           path: ["referralCode"],
         });
       }
+
+      if (
+        data.questionnaire?.buyerSpecialistNeeded === true &&
+        !data.questionnaire.purchaseTimeline?.trim()
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Please choose a buying timeline.",
+          path: ["questionnaire", "purchaseTimeline"],
+        });
+      }
     }),
 });
 
@@ -131,6 +142,17 @@ export const renterRegisterSchema = z.object({
             path: ["password"],
           });
         }
+      }
+
+      if (
+        data.questionnaire?.buyerSpecialistNeeded === true &&
+        !data.questionnaire.purchaseTimeline?.trim()
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Please choose a buying timeline.",
+          path: ["questionnaire", "purchaseTimeline"],
+        });
       }
     }),
 });
@@ -196,11 +218,30 @@ export const resetPasswordSchema = z.object({
  * Update Renter Profile Schema
  */
 export const updateRenterProfileSchema = z.object({
-  body: z.object({
-    fullName: z.string().optional(),
-    phoneNumber: z.string().optional(),
-    emailSubscriptionEnabled: z.boolean().optional(),
-  }),
+  body: z
+    .object({
+      fullName: z.string().optional(),
+      phoneNumber: z.string().optional(),
+      emailSubscriptionEnabled: z.boolean().optional(),
+      questionnaire: z
+        .object({
+          buyerSpecialistNeeded: z.boolean().optional(),
+          purchaseTimeline: z.string().max(100).optional(),
+        })
+        .optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (
+        data.questionnaire?.buyerSpecialistNeeded === true &&
+        !data.questionnaire.purchaseTimeline?.trim()
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Please choose a buying timeline.",
+          path: ["questionnaire", "purchaseTimeline"],
+        });
+      }
+    }),
 });
 
 /**

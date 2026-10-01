@@ -104,12 +104,17 @@ export type IAgentRequestConfirmationPayload = {
   features: string;
   preferencesByOrder: string;
   submittedAt: string;
+  purchaseTimeline?: string;
   cc?: string[];
 };
 
 export type IMatchCompatibilitySummary = {
   compatibilityMisses: string[];
   preferenceMatches: string[];
+  preferenceDetails?: string[];
+  rent?: number;
+  movingDateEarliest?: Date | string;
+  movingDateLatest?: Date | string;
 };
 
 export type IRenterOpportunityFoundRegisteredAgentPayload = {
@@ -123,6 +128,7 @@ export type IRenterOpportunityFoundRegisteredAgentPayload = {
   opportunityDetails?: string;
   additionalOpportunity?: boolean;
   matchSummary?: IMatchCompatibilitySummary;
+  brokerFee?: string;
 };
 
 export type IRenterOpportunityFoundOtherAgentPayload = {
@@ -140,6 +146,7 @@ export type IRenterOpportunityFoundOtherAgentPayload = {
   opportunityDetails?: string;
   additionalOpportunity?: boolean;
   matchSummary?: IMatchCompatibilitySummary;
+  brokerFee?: string;
 };
 
 export type IMatchReferralAcknowledgmentToMatchingAgentPayload = {
@@ -294,6 +301,7 @@ export type IRenterRegistrationVerifiedAdminPayload = {
   registeredAgentName: string;
   registeredAgentBrokerage: string;
   registeredAgentEmail?: string;
+  purchaseTimeline?: string;
 };
 
 export type IRenterRegisteredAgentInactivePayload = {

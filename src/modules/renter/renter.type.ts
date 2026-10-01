@@ -137,6 +137,10 @@ export type UpdateRenterProfilePayload = {
   fullName?: string;
   phoneNumber?: string;
   emailSubscriptionEnabled?: boolean;
+  questionnaire?: Pick<
+    RenterQuestionnairePayload,
+    "buyerSpecialistNeeded" | "purchaseTimeline"
+  >;
 };
 
 /**

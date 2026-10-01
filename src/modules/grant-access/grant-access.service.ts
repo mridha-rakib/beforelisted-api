@@ -16,7 +16,7 @@ import {
 import { Types } from "mongoose";
 
 import type { IPreMarketRequest } from "../pre-market/pre-market.model";
-import type { IGrantAccessRequest } from "./grant-access.model";
+import type { BrokerFee, IGrantAccessRequest } from "./grant-access.model";
 
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { NotificationService } from "../notification/notification.service";
@@ -141,12 +141,18 @@ export class GrantAccessService {
       | "owner_representation"
       | "renter_representation" = "renter_representation",
     opportunityDetails?: string,
+    brokerFee?: BrokerFee,
   ): Promise<IGrantAccessRequest> {
     const normalizedOpportunityDetails = opportunityDetails?.trim()
       ? opportunityDetails.trim().slice(0, 350)
       : undefined;
     if (hasRiskyOpportunityDetailsWording(normalizedOpportunityDetails)) {
       throw new BadRequestException(OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE);
+    }
+    if (brokerFee && representationType !== "renter_representation") {
+      throw new BadRequestException(
+        "Broker fee can only be selected when representing the renter",
+      );
     }
 
     const listingActivationCheck
@@ -246,6 +252,7 @@ export class GrantAccessService {
         ...(normalizedOpportunityDetails
           ? { opportunityDetails: normalizedOpportunityDetails }
           : {}),
+        ...(brokerFee ? { brokerFee } : {}),
         createdAt: stubCreatedAt,
       } as unknown as IGrantAccessRequest;
     }
