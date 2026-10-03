@@ -594,14 +594,8 @@ export class ExcelService {
         "lookingToPurchase",
         "isLookingToPurchase",
       ]),
-      this.getQuestionnaireValue(rowSource, [
-        "purchaseTimeline",
-        "purchaseTimeframe",
-      ]),
-      this.getQuestionnaireFlag(rowSource, [
-        "buyerSpecialistNeeded",
-        "needBuyerSpecialist",
-      ]),
+      this.getBuyerPurchaseTimeline(rowSource),
+      this.getBuyerSpecialistNeeded(rowSource),
       this.getQuestionnaireFlag(rowSource, [
         "renterSpecialistNeeded",
         "needRenterSpecialist",
@@ -972,6 +966,38 @@ export class ExcelService {
     }
 
     return "N/A";
+  }
+
+  /**
+   * Buyer-interest is available to standard and agent-referred renters. Admin
+   * referrals do not receive that option, so they are always represented as
+   * not interested with no purchase timeline in the consolidated report.
+   *
+   * Returning "No" for a missing questionnaire also backfills every existing
+   * renter/request row without requiring a data migration.
+   */
+  private getBuyerSpecialistNeeded(request: any): "Yes" | "No" {
+    if (this.getRenterRegistrationType(request) === "admin_referral") {
+      return "No";
+    }
+
+    const questionnaire = this.getRenterQuestionnaire(request);
+    return questionnaire?.buyerSpecialistNeeded === true ? "Yes" : "No";
+  }
+
+  /**
+   * A timeline is meaningful only when the renter opted into buyer interest.
+   * This keeps old records and unchecked renters blank rather than showing
+   * stale or incomplete questionnaire values.
+   */
+  private getBuyerPurchaseTimeline(request: any): string {
+    if (this.getBuyerSpecialistNeeded(request) !== "Yes") {
+      return "";
+    }
+
+    const questionnaire = this.getRenterQuestionnaire(request);
+    const timeline = questionnaire?.purchaseTimeline;
+    return typeof timeline === "string" ? timeline.trim() : "";
   }
 
   private formatNameEmail(
