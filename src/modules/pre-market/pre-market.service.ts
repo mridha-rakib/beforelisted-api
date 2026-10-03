@@ -210,9 +210,11 @@ export class PreMarketService {
         (_preference, index) => scoreResult.preferenceMatches[index],
       ),
       preferenceDetails: preferences,
-      rent: request.priceRange?.max,
-      movingDateEarliest: request.movingDateRange?.earliest,
-      movingDateLatest: request.movingDateRange?.latest,
+      // These values describe the apartment the agent entered in Find Matches,
+      // rather than the renter's requested budget and move window.
+      rent: matchContext.rent,
+      movingDateEarliest: matchContext.movingDateRange.earliest,
+      movingDateLatest: matchContext.movingDateRange.latest,
     };
   }
 
