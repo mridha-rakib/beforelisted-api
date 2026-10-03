@@ -374,6 +374,7 @@ export class AuthService {
         email?: string;
       }
       | undefined;
+    let renterPurchaseTimeline: string | undefined;
 
     const verifiedRole = this.normalizeVerifiedRole(result.userType, user.role);
 
@@ -464,6 +465,12 @@ export class AuthService {
         const renter = await this.renterRepository.findRenterWithReferrer(
           user._id.toString(),
         );
+        const savedPurchaseTimeline = renter?.questionnaire?.purchaseTimeline?.trim();
+        renterPurchaseTimeline =
+          renter?.questionnaire?.buyerSpecialistNeeded === true
+          && savedPurchaseTimeline
+            ? savedPurchaseTimeline
+            : undefined;
 
         const referredAgent = renter?.referredByAgentId as any;
         const referredAgentId
@@ -523,6 +530,7 @@ export class AuthService {
               registeredAgentBrokerage:
                 renterRegisteredAgent?.brokerage || "N/A",
               registeredAgentEmail: renterRegisteredAgent?.email,
+              purchaseTimeline: renterPurchaseTimeline,
             },
           );
         }

@@ -2127,6 +2127,7 @@ export class EmailService {
         payload.registrationDate,
         payload.registeredAgentName,
         payload.registeredAgentBrokerage,
+        payload.purchaseTimeline,
         this.config.logoUrl,
         this.config.brandColor,
       );
