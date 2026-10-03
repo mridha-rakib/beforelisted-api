@@ -187,6 +187,9 @@ export class RenterService {
       registrationType: "agent_referral",
       referredByAgentId: agentId,
       accountStatus: "pending",
+      questionnaire: payload.questionnaire
+        ? { ...payload.questionnaire, _id: false }
+        : undefined,
     });
 
     await this.referralService.recordReferral(agentId);
@@ -315,6 +318,11 @@ export class RenterService {
                 registeredAgentName: registeredAgent.fullName || "N/A",
                 registeredAgentBrokerage: registeredAgent.brokerage || "N/A",
                 registeredAgentEmail: registeredAgent.email,
+                purchaseTimeline:
+                  renterProfile.questionnaire?.buyerSpecialistNeeded === true
+                  && renterProfile.questionnaire.purchaseTimeline?.trim()
+                    ? renterProfile.questionnaire.purchaseTimeline.trim()
+                    : undefined,
               },
             );
           }
