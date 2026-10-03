@@ -22,8 +22,15 @@ function footerLinks(brandColor: string): string {
 `;
 }
 
+function renderBrokerFeeMarkup(brokerFee?: string): string {
+  return brokerFee
+    ? `<p><strong>Broker Fee:</strong> ${escapeHtml(brokerFee === "Talk to Renter First" ? "Reach out to agent to verify" : brokerFee)}</p>`
+    : "";
+}
+
 function renderMatchCompatibilitySummary(
   matchSummary?: IMatchCompatibilitySummary,
+  brokerFee?: string,
 ): string {
   if (!matchSummary) {
     return "";
@@ -51,6 +58,7 @@ function renderMatchCompatibilitySummary(
                 <p><strong>Compatibility Misses:</strong> ${compatibilityMisses.length ? compatibilityMisses.join(", ") : "None"}</p>
                 <p><strong>Preference Matches:</strong> ${preferenceDetails.length ? preferenceDetails.join(" | ") : "None"}</p>
                 <p><strong>Rent:</strong> ${rent}</p>
+                ${renderBrokerFeeMarkup(brokerFee)}
                 <p><strong>Moving Date:</strong> Earliest ${formatDate(matchSummary.movingDateEarliest)} / Latest ${formatDate(matchSummary.movingDateLatest)}</p>
             </div>
 `;
@@ -1075,10 +1083,13 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
             </div>
 `
     : "";
-  const matchSummaryMarkup = renderMatchCompatibilitySummary(matchSummary);
-  const brokerFeeMarkup = brokerFee
-    ? `<p><strong>Broker Fee:</strong> ${escapeHtml(brokerFee === "Talk to Renter First" ? "Reach out to agent to verify" : brokerFee)}</p>`
-    : "";
+  const matchSummaryMarkup = renderMatchCompatibilitySummary(matchSummary, brokerFee);
+  // A direct Match has no Find Matches context, so it only carries broker-fee
+  // data. Placing this immediately after the optional message satisfies the
+  // direct-match email requirement.
+  const directMatchBrokerFeeMarkup = matchSummary
+    ? ""
+    : renderBrokerFeeMarkup(brokerFee);
 
   return `
 <!DOCTYPE html>
@@ -1181,7 +1192,7 @@ export function renterOpportunityFoundRegisteredAgentTemplate(
             <p>This opportunity is based on the criteria you submitted and may not be publicly advertised.</p>
 
 ${opportunityDetailsMarkup}
-${brokerFeeMarkup}
+${directMatchBrokerFeeMarkup}
 ${matchSummaryMarkup}
 
             <p>Your agent may reach out separately with additional details and next steps. No action is required from you at this time unless requested by your agent.</p>
@@ -1276,15 +1287,17 @@ export function renterOpportunityFoundOtherAgentTemplate(
             </div>
 `
     : "";
-  const matchSummaryMarkup = renderMatchCompatibilitySummary(matchSummary);
-  const brokerFeeMarkup = brokerFee
-    ? `<p><strong>Broker Fee:</strong> ${escapeHtml(brokerFee === "Talk to Renter First" ? "Reach out to agent to verify" : brokerFee)}</p>`
-    : "";
+  const matchSummaryMarkup = renderMatchCompatibilitySummary(matchSummary, brokerFee);
+  // Direct Match does not supply apartment match context, so show only its
+  // broker-fee label directly after any optional opportunity message.
+  const directMatchBrokerFeeMarkup = matchSummary
+    ? ""
+    : renderBrokerFeeMarkup(brokerFee);
   const introMarkup = additionalOpportunity
     ? `<p>Based on the preferences you selected when submitting your request on BeforeListed&trade;, the additional agent may be able to assist with your request for another rental opportunities that may not yet be publicly advertised.</p>
 
 ${additionalOpportunityDetailsMarkup}
-${brokerFeeMarkup}
+${directMatchBrokerFeeMarkup}
 ${matchSummaryMarkup}
 
             <p>For your reference, the additional agent&rsquo;s information is:</p>`
@@ -1294,14 +1307,14 @@ ${matchSummaryMarkup}
             <p>This may include guidance throughout the search process, landlord and building screening, scheduling and coordinating tours, negotiations, and support through the rental process, subject to completion of required agency disclosures.</p>
 
 ${allMarketOpportunityDetailsMarkup}
-${brokerFeeMarkup}
+${directMatchBrokerFeeMarkup}
 ${matchSummaryMarkup}
 
             <p>For your reference, the agent&apos;s information is:</p>`
       : `<p>Based on the preferences you selected when submitting your request on BeforeListed&trade;, an additional agent has been identified who may be able to assist with your request for rental opportunities that may not yet be publicly advertised.</p>
 
 ${upcomingOpportunityDetailsMarkup}
-${brokerFeeMarkup}
+${directMatchBrokerFeeMarkup}
 ${matchSummaryMarkup}
 
             <p>For your reference, the additional agent&apos;s information is:</p>`;
