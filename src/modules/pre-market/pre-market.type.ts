@@ -17,6 +17,11 @@ export type PreMarketStatus
   = (typeof PREMARKET_CONFIG.REQUEST_STATUSES)[number];
 export type PreMarketScope = "Upcoming" | "All Market";
 
+export type PreMarketBuyerInterest = {
+  buyerSpecialistNeeded: boolean;
+  purchaseTimeline?: string;
+};
+
 export type CreatePreMarketRequestPayload = {
   movingDateRange: {
     earliest: Date;
@@ -48,6 +53,7 @@ export type CreatePreMarketRequestPayload = {
     personalGuarantor?: boolean;
     thirdPartyGuarantor?: boolean;
   };
+  buyerInterest?: PreMarketBuyerInterest;
   shareConsent?: boolean;
   scope?: PreMarketScope;
 };
