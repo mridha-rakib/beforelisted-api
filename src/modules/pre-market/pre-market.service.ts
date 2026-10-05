@@ -1177,6 +1177,10 @@ export class PreMarketService {
       buildingFeatures?: any;
       petPolicy?: any;
       guarantorRequired?: any;
+      buyerInterest?: {
+        buyerSpecialistNeeded: boolean;
+        purchaseTimeline?: string;
+      };
       preferences?: string[];
       shareConsent?: boolean;
       scope?: PreMarketScope;
@@ -1260,6 +1264,16 @@ export class PreMarketService {
     const requestName = requestId;
     const shareConsent = payload.shareConsent === true;
     const scope = payload.scope ?? "Upcoming";
+    const buyerInterest = payload.buyerInterest
+      ? {
+          buyerSpecialistNeeded:
+            payload.buyerInterest.buyerSpecialistNeeded === true,
+          ...(payload.buyerInterest.buyerSpecialistNeeded
+            && payload.buyerInterest.purchaseTimeline?.trim()
+            ? { purchaseTimeline: payload.buyerInterest.purchaseTimeline.trim() }
+            : {}),
+        }
+      : undefined;
     const now = new Date();
     const referralAgentId =
       await this.resolveRegisteredAgentIdFromRenter(renter);
@@ -1285,6 +1299,7 @@ export class PreMarketService {
       petPolicy: payload.petPolicy || {},
       preferences: payload.preferences || [],
       guarantorRequired: payload.guarantorRequired || {},
+      ...(buyerInterest ? { buyerInterest } : {}),
       shareConsent,
       scope,
       visibility: "PRIVATE",
@@ -1410,8 +1425,8 @@ export class PreMarketService {
       registeredAgentUserId:
         renter.registrationType === "agent_referral" ? referredAgentId : null,
       purchaseTimeline:
-        renter.questionnaire?.buyerSpecialistNeeded === true
-          ? renter.questionnaire.purchaseTimeline || undefined
+        request.buyerInterest?.buyerSpecialistNeeded === true
+          ? request.buyerInterest.purchaseTimeline || undefined
           : undefined,
     };
 
