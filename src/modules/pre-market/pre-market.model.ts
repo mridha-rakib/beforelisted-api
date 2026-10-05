@@ -51,6 +51,11 @@ export type IPreMarketRequest = {
     thirdPartyGuarantor: boolean;
   };
 
+  buyerInterest?: {
+    buyerSpecialistNeeded: boolean;
+    purchaseTimeline?: string;
+  };
+
   preferences: string[];
 
   shareConsent: boolean;
@@ -216,6 +221,12 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
   guarantorRequired: {
     personalGuarantor: { type: Boolean, default: false },
     thirdPartyGuarantor: { type: Boolean, default: false },
+  },
+
+  buyerInterest: {
+    buyerSpecialistNeeded: { type: Boolean, default: false },
+    purchaseTimeline: { type: String, maxlength: 100 },
+    _id: false,
   },
 
   status: {
