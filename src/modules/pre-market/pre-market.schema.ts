@@ -35,6 +35,21 @@ const brokerFeeSchema = z.enum([
   "Talk to Renter First",
 ]);
 
+const buyerInterestSchema = z
+  .object({
+    buyerSpecialistNeeded: z.boolean(),
+    purchaseTimeline: z.string().trim().max(100).optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.buyerSpecialistNeeded && !value.purchaseTimeline) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Purchase timeline is required when buyer interest is selected",
+        path: ["purchaseTimeline"],
+      });
+    }
+  });
+
 export const createPreMarketRequestSchema = z.object({
   body: z
     .object({
@@ -90,6 +105,7 @@ export const createPreMarketRequestSchema = z.object({
           thirdPartyGuarantor: z.boolean().default(false),
         })
         .optional(),
+      buyerInterest: buyerInterestSchema.optional(),
       preferences: z.array(z.string().trim()).optional(),
       shareConsent: z.boolean().optional(),
       scope: z.enum(["Upcoming", "All Market"]).default("Upcoming"),
@@ -156,6 +172,7 @@ export const updatePreMarketRequestSchema = z.object({
           thirdPartyGuarantor: z.boolean().optional(),
         })
         .optional(),
+      buyerInterest: buyerInterestSchema.optional(),
       preferences: z.array(z.string().trim()).optional(),
       shareConsent: z.boolean().optional(),
       scope: z.enum(["Upcoming", "All Market"]).optional(),
