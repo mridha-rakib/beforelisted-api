@@ -583,6 +583,7 @@ export class ExcelService {
       referredByAgentInfo: entry.referredByAgentInfo,
       referredByAdminInfo: entry.referredByAdminInfo,
     };
+    const buyerInterest = this.getBuyerInterestForReport(rowSource);
 
     return [
       latestRequest.requestId || latestRequest.requestCode || "N/A",
@@ -594,14 +595,8 @@ export class ExcelService {
         "lookingToPurchase",
         "isLookingToPurchase",
       ]),
-      this.getQuestionnaireValue(rowSource, [
-        "purchaseTimeline",
-        "purchaseTimeframe",
-      ]),
-      this.getQuestionnaireFlag(rowSource, [
-        "buyerSpecialistNeeded",
-        "needBuyerSpecialist",
-      ]),
+      buyerInterest.purchaseTimeline,
+      buyerInterest.buyerSpecialistNeeded,
       this.getQuestionnaireFlag(rowSource, [
         "renterSpecialistNeeded",
         "needRenterSpecialist",
@@ -972,6 +967,46 @@ export class ExcelService {
     }
 
     return "N/A";
+  }
+
+  /**
+   * Buyer interest belongs to the request when a request snapshot exists. Older
+   * requests and registered renters without a request fall back to the renter
+   * profile. Missing data is intentionally reported as No with no timeline.
+   */
+  private getBuyerInterestForReport(request: any): {
+    buyerSpecialistNeeded: "Yes" | "No";
+    purchaseTimeline: string;
+  } {
+    const requestBuyerInterest = request?.buyerInterest;
+    if (typeof requestBuyerInterest?.buyerSpecialistNeeded === "boolean") {
+      const needsBuyerSpecialist
+        = requestBuyerInterest.buyerSpecialistNeeded;
+      return {
+        buyerSpecialistNeeded: needsBuyerSpecialist ? "Yes" : "No",
+        purchaseTimeline:
+          needsBuyerSpecialist
+          && typeof requestBuyerInterest.purchaseTimeline === "string"
+          && requestBuyerInterest.purchaseTimeline.trim().length > 0
+            ? requestBuyerInterest.purchaseTimeline.trim()
+            : "",
+      };
+    }
+
+    const questionnaire = this.getRenterQuestionnaire(request);
+    const needsBuyerSpecialist
+      = questionnaire?.buyerSpecialistNeeded === true
+        || questionnaire?.needBuyerSpecialist === true;
+
+    return {
+      buyerSpecialistNeeded: needsBuyerSpecialist ? "Yes" : "No",
+      purchaseTimeline:
+        needsBuyerSpecialist
+        && typeof questionnaire?.purchaseTimeline === "string"
+        && questionnaire.purchaseTimeline.trim().length > 0
+          ? questionnaire.purchaseTimeline.trim()
+          : "",
+    };
   }
 
   private formatNameEmail(
