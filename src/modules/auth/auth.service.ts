@@ -8,6 +8,7 @@ import {
 } from "@/constants/app.constants";
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
+import { getProductionClientUrl } from "@/services/email-links";
 import { EmailService } from "@/services/email.service";
 import {
   BadRequestException,
@@ -1020,7 +1021,7 @@ export class AuthService {
     referralLink: string | null;
     loginLink: string | null;
   }> {
-    const baseUrl = env.CLIENT_URL || "https://app.rentersedge.com";
+    const baseUrl = getProductionClientUrl();
     const buildReferralLink = (referralCode: string | null) =>
       referralCode
         ? `${baseUrl}/signup/renter?ref=${encodeURIComponent(referralCode)}`
