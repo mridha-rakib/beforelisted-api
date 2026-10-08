@@ -5,17 +5,15 @@ import {
   normalizeEmailLogoUrl,
   renderEmailLogo,
 } from "./email-branding.js";
+import {
+  getPrivacyPolicyUrl,
+  getTermsAndConditionsUrl,
+} from "./email-links.js";
 
 export class EmailTemplates {
   private logoUrl: string = DEFAULT_EMAIL_LOGO_URL;
   private brandColor: string = "#1890FF";
   private contactUrl: string = "mailto:support@beforelisted.com";
-  private privacyUrl: string
-    = "https://rental-pennymore-frontend.vercel.app/privacy-policy";
-
-  private termsUrl: string
-    = "https://rental-pennymore-frontend.vercel.app/terms-conditions";
-
   private getLogoStyles(): string {
     return `
       .logo {
@@ -38,8 +36,8 @@ export class EmailTemplates {
     return `
             <p style="margin: 8px 0 0 0;">
                 <a href="${this.contactUrl}" style="color: ${color}; text-decoration: none;">Contact Us</a> |
-                <a href="${this.privacyUrl}" style="color: ${color}; text-decoration: none;">Privacy Policy</a> |
-                <a href="${this.termsUrl}" style="color: ${color}; text-decoration: none;">Terms and Conditions</a>
+                <a href="${getPrivacyPolicyUrl()}" style="color: ${color}; text-decoration: none;">Privacy Policy</a> |
+                <a href="${getTermsAndConditionsUrl()}" style="color: ${color}; text-decoration: none;">Terms and Conditions</a>
             </p>
     `;
   }
@@ -2413,8 +2411,8 @@ export class EmailTemplates {
       </p>
       <div class="footer-links">
         <a href="${this.contactUrl}">Contact Us</a> |
-        <a href="${this.privacyUrl}">Privacy Policy</a> |
-        <a href="${this.termsUrl}">Terms and Conditions</a>
+        <a href="${getPrivacyPolicyUrl()}">Privacy Policy</a> |
+        <a href="${getTermsAndConditionsUrl()}">Terms and Conditions</a>
       </div>
     </div>
   </div>

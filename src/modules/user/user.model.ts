@@ -5,7 +5,7 @@ import type { Query } from "mongoose";
 import mongoose, { model, Schema } from "mongoose";
 
 import { ACCOUNT_STATUS, ROLES } from "@/constants/app.constants";
-import { env } from "@/env";
+import { getProductionClientUrl } from "@/services/email-links";
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 
 import type { IUser } from "./user.interface";
@@ -143,7 +143,7 @@ userSchema.virtual("referralLink").get(function (this: IUser) {
   if (!this.referralCode)
     return null;
 
-  const baseUrl = env.CLIENT_URL || "https://app.rentersedge.com";
+  const baseUrl = getProductionClientUrl();
 
   return this.role === ROLES.ADMIN
     ? `${baseUrl}/mor-team-form?ref=${this.referralCode}`
@@ -154,7 +154,7 @@ userSchema.virtual("loginLink").get(function (this: IUser) {
   if (!this.referralCode)
     return null;
 
-  const baseUrl = env.CLIENT_URL || "https://app.rentersedge.com";
+  const baseUrl = getProductionClientUrl();
 
   return `${baseUrl}/signin?ref=${this.referralCode}`;
 });
