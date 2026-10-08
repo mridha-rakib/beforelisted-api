@@ -5421,25 +5421,27 @@ export class PreMarketService {
     const editRequestLink = this.buildRenterEditRequestLink(requestId);
     const bodyHtml = `
       <p>Hi ${this.escapeEmailHtml(firstName)},</p>
-      <p>Finding the right upcoming rental can sometimes take time because we not only need to locate an apartment before it is publicly advertised, but it also needs to match your specific request.</p>
-      <p>If you want to increase your chances of securing an apartment, you can switch your request to Rentals Publicly Advertised + BeforeListed.</p>
-      <p>With this option, we&rsquo;ll continue looking for upcoming opportunities for you while a rental specialist is also assigned to help you secure publicly advertised rentals.</p>
-      <p>Their broker fee is only due when an apartment is secured, and you pay it only once, whether it&rsquo;s an upcoming opportunity or a publicly advertised listing. The fee is typically one month&rsquo;s rent and will be confirmed by the specialist when they contact you.</p>
-      <p>Your rental specialist can help you:</p>
+      <p>Finding the right upcoming rental can take time because we&rsquo;re looking for an apartment before it is publicly advertised that also closely matches your request.</p>
+      <p>If you&rsquo;re concerned about missing apartments already on the market because they move quickly, you keep coming in second, you have trouble getting to showings, or you&rsquo;d simply appreciate a guiding hand, you can expand your request to include our Rental Specialist Service.</p>
+      <p>Your upcoming request stays active while a rental specialist also assists with the publicly advertised market. In some cases, this may be the same agent already handling your upcoming request.</p>
+      <p>Our rental specialists are experienced Corcoran agents with a proven rental track record, selected and matched to your request.</p>
+      <p><strong>Your Rental Specialist Service includes:</strong></p>
       <ul>
-        <li>Check multiple rental databases daily so you don&rsquo;t miss new opportunities.</li>
-        <li>Guide you, create and coordinate apartment tours.</li>
-        <li>Review your documents so your application is presented as strongly as possible.</li>
-        <li>Contact agents and owners before showings to confirm listings are legitimate and still available.</li>
-        <li>Filter out poor-quality or unsuitable listings.</li>
-        <li>Take apartment videos for you when needed.</li>
-        <li>Guide you throughout your rental search.</li>
-        <li>Help protect your interests through the lease-signing process.</li>
-        <li>Provide available information about known issues with specific buildings or owners.</li>
+        <li>Search multiple rental databases each morning for new opportunities.</li>
+        <li>Vet and filter out poor quality, misleading, or unsuitable listings.</li>
+        <li>Contact agents and owners to confirm availability before scheduling showings.</li>
+        <li>Create and coordinate apartment tours.</li>
+        <li>Take apartment videos for you when you cannot attend in person.</li>
+        <li>Share available information about known issues with certain buildings or owners, based on decades of NYC rental experience.</li>
+        <li>Review and organize your application documents and suggest ways to strengthen your application when needed.</li>
+        <li>Advise you on rental offers, help protect your interests, and guide you through the application and lease signing process.</li>
       </ul>
-      <p>If you are considering working with a rental specialist, simply update your request to Rentals Publicly Advertised + BeforeListed, and a specialist who fits your search will contact you.</p>
-      <p><a href="${this.escapeEmailHtml(editRequestLink)}"><strong style="color: #000000;">Edit My Request</strong></a></p>
-      <p>To continue searching only for upcoming opportunities, no action is needed. We&rsquo;ll continue working on your current request.</p>
+      <p>There is no upfront broker fee. A fee is due only if an apartment is secured, and you pay it only once, whether through an upcoming opportunity or a publicly advertised listing. The fee is typically one month&rsquo;s rent and must be agreed to before the rental specialist begins working with you.</p>
+      <p>Simply edit your request and change your agent assistance option to:</p>
+      <p><strong>Rentals Publicly Advertised + BeforeListed&reg;</strong></p>
+      <p>A rental specialist will then be matched with you and reach out directly.</p>
+      <p style="margin: 28px 0; text-align: center;"><a href="${this.escapeEmailHtml(editRequestLink)}" style="display: inline-block; padding: 12px 22px; background: #1890FF; border-radius: 6px; color: #FFFFFF; font-weight: 700; text-decoration: none;">Edit and Expand My Request</a></p>
+      <p>If you prefer your request to remain limited to upcoming rentals only, no action is needed.</p>
       <p>Thank you,<br>BeforeListed&trade; Support</p>`;
 
     if (options.markReminderSent !== false) {
@@ -5458,9 +5460,9 @@ export class PreMarketService {
         to: renter.email,
         renterName: renter.fullName,
         subject:
-          "Trouble Securing an Apartment? Increase Your Chances with a Rental Specialist \u2013 BeforeListed\u2122",
+          "Still Searching? Add Rental Specialist Service to Your Request | BeforeListed\u00ae",
         headerTitle:
-          "Increase Your Chances with a Rental Specialist",
+          "Still Searching? Add Rental Specialist Service to Your Request",
         bodyHtml,
         replyTo: registeredAgent.email || "support@beforelisted.com",
         templateType: "UPCOMING_REQUEST_SEARCH_EXPANSION_REMINDER",
