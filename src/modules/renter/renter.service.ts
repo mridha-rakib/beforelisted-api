@@ -5,6 +5,7 @@ import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 
 import { ROLES, SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
+import { getProductionClientUrl } from "@/services/email-links";
 import { EmailService } from "@/services/email.service";
 import { ExcelService } from "@/services/excel.service";
 import {
@@ -287,7 +288,7 @@ export class RenterService {
         to: user.email,
         userName: user.fullName,
         temporaryPassword,
-        loginLink: `${process.env.CLIENT_URL}/login`,
+        loginLink: `${getProductionClientUrl()}/login`,
       });
 
       if (emailResult?.success) {
@@ -346,7 +347,7 @@ export class RenterService {
             to: user.email,
             userName: user.fullName,
             userType: ROLES.RENTER,
-            loginLink: `${process.env.CLIENT_URL}/login`,
+            loginLink: `${getProductionClientUrl()}/login`,
             registeredAgent,
           });
 

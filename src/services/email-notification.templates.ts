@@ -1,7 +1,13 @@
 // file: src/services/email-notification.templates.ts
 
-import { renderEmailLogo } from "./email-branding.js";
 import type { IMatchCompatibilitySummary } from "./email-notification.types";
+
+import { renderEmailLogo } from "./email-branding.js";
+import {
+  getPrivacyPolicyUrl,
+  getProductionClientUrl,
+  getTermsAndConditionsUrl,
+} from "./email-links.js";
 
 // ============================================
 // AGENT NOTIFICATION EMAIL TEMPLATE
@@ -16,8 +22,8 @@ function footerLinks(brandColor: string): string {
   return `
             <p style="margin: 6px 0 0 0;">
                 <a href="mailto:support@beforelisted.com" style="color: ${brandColor}; text-decoration: none;">Contact Us</a> |
-                <a href="https://rental-pennymore-frontend.vercel.app/privacy-policy" style="color: ${brandColor}; text-decoration: none;">Privacy Policy</a> |
-                <a href="https://rental-pennymore-frontend.vercel.app/terms-conditions" style="color: ${brandColor}; text-decoration: none;">Terms and Conditions</a>
+                <a href="${getPrivacyPolicyUrl()}" style="color: ${brandColor}; text-decoration: none;">Privacy Policy</a> |
+                <a href="${getTermsAndConditionsUrl()}" style="color: ${brandColor}; text-decoration: none;">Terms and Conditions</a>
             </p>
 `;
 }
@@ -784,7 +790,7 @@ export function agentRenterRequestConfirmationTemplate(
   brandColor: string = "#1890FF",
 ): string {
   const currentYear = new Date().getFullYear();
-  const dashboardLink = `${(process.env.CLIENT_URL || "https://beforelisted.com").replace(/\/+$/, "")}/agent/dashboard`;
+  const dashboardLink = `${getProductionClientUrl()}/agent/dashboard`;
   const firstName = agentName?.trim().split(" ")[0] || agentName;
   const safeFirstName = escapeHtml(firstName);
   const safeRenterName = escapeHtml(renterName || "N/A");
@@ -2545,7 +2551,7 @@ export function nonRegisteredAgentRequestSubmissionNotificationTemplate(
   brandColor: string = "#1890FF",
 ): string {
   const currentYear = new Date().getFullYear();
-  const dashboardLink = `${(process.env.CLIENT_URL || "https://beforelisted.com").replace(/\/+$/, "")}/agent/dashboard`;
+  const dashboardLink = `${getProductionClientUrl()}/agent/dashboard`;
   const firstName = agentName?.trim().split(" ")[0] || agentName;
   const safeFirstName = escapeHtml(firstName || "there");
   const safeRenterFirstName = escapeHtml(renterFirstName || "Renter");

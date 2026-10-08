@@ -6,6 +6,7 @@ import { SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import { NotificationService } from "@/modules/notification/notification.service";
+import { getProductionClientUrl } from "@/services/email-links";
 import { emailService } from "@/services/email.service";
 
 import type { IGrantAccessRequest } from "../grant-access/grant-access.model";
@@ -1351,7 +1352,7 @@ export class PreMarketNotifier {
         agentName: agentUser.fullName || "Agent",
         propertyTitle,
         chargeAmount,
-        paymentLink: `${process.env.FRONTEND_URL || "https://app.beforelisted.com"}/payment/${grantAccess._id}`,
+        paymentLink: `${getProductionClientUrl()}/payment/${grantAccess._id}`,
         paymentDeadline: new Date(
           Date.now() + 7 * 24 * 60 * 60 * 1000,
         ).toLocaleString(), // 7 days
