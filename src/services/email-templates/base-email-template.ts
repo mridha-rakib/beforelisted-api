@@ -2,6 +2,10 @@
 
 import { logger } from "@/middlewares/pino-logger";
 import { renderEmailLogo } from "@/services/email-branding";
+import {
+  getPrivacyPolicyUrl,
+  getTermsAndConditionsUrl,
+} from "@/services/email-links";
 
 /**
  * Abstract base class for all email templates
@@ -57,8 +61,8 @@ export abstract class BaseEmailTemplate {
         <p style="margin: 0 0 10px 0;">&copy; ${new Date().getFullYear()} BeforeListed&trade;. All rights reserved.</p>
         <p style="margin: 8px 0 0 0;">
           <a href="mailto:support@beforelisted.com">Contact Us</a> |
-          <a href="https://rental-pennymore-frontend.vercel.app/privacy-policy">Privacy Policy</a> |
-          <a href="https://rental-pennymore-frontend.vercel.app/terms-conditions">Terms and Conditions</a>
+          <a href="${getPrivacyPolicyUrl()}">Privacy Policy</a> |
+          <a href="${getTermsAndConditionsUrl()}">Terms and Conditions</a>
         </p>
       </div>
     `;
