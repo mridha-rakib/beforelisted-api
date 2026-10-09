@@ -34,7 +34,6 @@ const configuredOrigins = [
   "https://beforelisted.com",
   "https://www.beforelisted.com",
   "https://dashboard.beforelisted.com",
-  "https://rental-pennymore-frontend.vercel.app",
   "https://rental-pennymore-dashboard.vercel.app",
   ...(env.CORS_ORIGINS?.split(",") ?? []),
 ];

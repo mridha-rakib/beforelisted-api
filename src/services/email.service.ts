@@ -20,6 +20,8 @@ import { emailConfig } from "@/config/email.config";
 import { logger } from "@/middlewares/pino-logger";
 import {
   EMAIL_LOGO_CONTENT_ID,
+  emailSiteUrl,
+  replaceLegacyEmailSiteUrls,
   renderEmailLogo,
 } from "@/services/email-branding";
 import { createEmailTransporter } from "@/services/email.transporter";
@@ -2436,8 +2438,8 @@ export class EmailService {
       <p>&copy; ${currentYear} BeforeListed&trade;. All rights reserved.</p>
       <p style="margin: 8px 0 0 0;">
         <a href="mailto:support@beforelisted.com">Contact Us</a> |
-        <a href="https://rental-pennymore-frontend.vercel.app/privacy-policy">Privacy Policy</a> |
-        <a href="https://rental-pennymore-frontend.vercel.app/terms-conditions">Terms and Conditions</a>
+        <a href="${emailSiteUrl("/privacy-policy")}">Privacy Policy</a> |
+        <a href="${emailSiteUrl("/terms-conditions")}">Terms and Conditions</a>
       </p>
     </div>
   </div>
@@ -2518,21 +2520,26 @@ export class EmailService {
   }
 
   private withDefaultEmailLogo(options: IEmailOptions): IEmailOptions {
-    if (!options.html.includes(EMAIL_LOGO_CONTENT_ID)) {
-      return options;
+    const sanitizedOptions = {
+      ...options,
+      html: replaceLegacyEmailSiteUrls(options.html),
+    };
+
+    if (!sanitizedOptions.html.includes(EMAIL_LOGO_CONTENT_ID)) {
+      return sanitizedOptions;
     }
 
-    const attachments = options.attachments ?? [];
+    const attachments = sanitizedOptions.attachments ?? [];
     const hasLogoAttachment = attachments.some(
       (attachment) => attachment.contentId === EMAIL_LOGO_CONTENT_ID,
     );
 
     if (hasLogoAttachment || !this.emailLogoAttachment) {
-      return options;
+      return sanitizedOptions;
     }
 
     return {
-      ...options,
+      ...sanitizedOptions,
       attachments: [
         ...attachments,
         {

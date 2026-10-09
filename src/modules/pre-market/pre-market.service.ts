@@ -15,6 +15,7 @@ import {
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import { NotificationService } from "@/modules/notification/notification.service";
+import { emailSiteUrl } from "@/services/email-branding";
 import { emailService } from "@/services/email.service";
 import { ExcelService } from "@/services/excel.service";
 import {
@@ -2829,7 +2830,7 @@ export class PreMarketService {
     requestId: string,
     isRegisteredAgent: boolean,
   ): string {
-    const baseUrl = env.CLIENT_URL || "https://beforelisted.com";
+    const baseUrl = emailSiteUrl();
     return isRegisteredAgent
       ? `${baseUrl}/agent/dashboard/${requestId}`
       : `${baseUrl}/agent/matches/${requestId}`;
@@ -2886,10 +2887,7 @@ export class PreMarketService {
   }
 
   private buildRenterEditRequestLink(requestId: string): string {
-    const baseUrl = (env.CLIENT_URL || "https://beforelisted.com").replace(
-      /\/+$/,
-      "",
-    );
+    const baseUrl = emailSiteUrl();
     return `${baseUrl}/renter/saved-requests/${requestId}`;
   }
 
@@ -2902,10 +2900,7 @@ export class PreMarketService {
       return env.PUBLIC_API_BASE_URL.replace(/\/+$/, "");
     }
 
-    const clientUrl = (env.CLIENT_URL || "https://beforelisted.com").replace(
-      /\/+$/,
-      "",
-    );
+    const clientUrl = emailSiteUrl();
 
     try {
       const clientHostname = new URL(clientUrl).hostname.toLowerCase();
