@@ -6,6 +6,7 @@ import { SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import { NotificationService } from "@/modules/notification/notification.service";
+import { emailSiteUrl } from "@/services/email-branding";
 import { emailService } from "@/services/email.service";
 
 import type { IGrantAccessRequest } from "../grant-access/grant-access.model";
@@ -212,7 +213,7 @@ export class PreMarketNotifier {
         renterName: renterData.renterName,
         renterEmail: renterData.renterEmail,
         renterPhone: renterData.renterPhone,
-        listingUrl: `${env.CLIENT_URL}/listings/${preMarketRequest._id}`,
+        listingUrl: emailSiteUrl(`/listings/${preMarketRequest._id}`),
       };
 
       const emailNotifications: IPreMarketRequestEmailLog[] = [];
@@ -1119,7 +1120,7 @@ export class PreMarketNotifier {
         requestedAt: this.formatEasternTime(
           new Date(grantAccess.createdAt || Date.now()),
         ),
-        adminDashboardLink: `${env.CLIENT_URL}/admin/pre-market/${preMarketRequest._id}?grantAccessId=${grantAccess._id}`,
+        adminDashboardLink: emailSiteUrl(`/admin/pre-market/${preMarketRequest._id}?grantAccessId=${grantAccess._id}`),
         isAdditionalOpportunity,
       });
 
@@ -1186,7 +1187,7 @@ export class PreMarketNotifier {
           ?.map(l => l.borough)
           .filter(Boolean)
           .join(", ") || "Multiple Locations";
-      const accessLink = `${env.CLIENT_URL}/listings/${preMarketRequest._id}`;
+      const accessLink = emailSiteUrl(`/listings/${preMarketRequest._id}`);
       const chargeAmount = grantAccess.adminDecision?.chargeAmount;
 
       logger.info(

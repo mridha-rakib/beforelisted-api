@@ -3,9 +3,9 @@
 import type { Request, Response } from "express";
 import type Stripe from "stripe";
 
-import { env } from "@/env";
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
+import { emailSiteUrl } from "@/services/email-branding";
 import { ExcelService } from "@/services/excel.service";
 import {
   BadRequestException,
@@ -298,7 +298,7 @@ export class PreMarketController {
   }): string {
     const redirectUrl = new URL(
       "/renter/confirm-active-request",
-      env.CLIENT_URL || "https://beforelisted.com",
+      emailSiteUrl(),
     );
     redirectUrl.searchParams.set("status", status);
     redirectUrl.searchParams.set("message", message);

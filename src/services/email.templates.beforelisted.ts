@@ -2,6 +2,7 @@
 
 import {
   DEFAULT_EMAIL_LOGO_URL,
+  emailSiteUrl,
   normalizeEmailLogoUrl,
   renderEmailLogo,
 } from "./email-branding.js";
@@ -11,10 +12,10 @@ export class EmailTemplates {
   private brandColor: string = "#1890FF";
   private contactUrl: string = "mailto:support@beforelisted.com";
   private privacyUrl: string
-    = "https://rental-pennymore-frontend.vercel.app/privacy-policy";
+    = emailSiteUrl("/privacy-policy");
 
   private termsUrl: string
-    = "https://rental-pennymore-frontend.vercel.app/terms-conditions";
+    = emailSiteUrl("/terms-conditions");
 
   private getLogoStyles(): string {
     return `
@@ -1901,7 +1902,7 @@ export class EmailTemplates {
     const headerTitle
       = "Your Registered Agent Is No Longer Active on BeforeListed";
     const referralLoginLink
-      = defaultAgentReferralLoginLink || "https://beforelisted.com/signin";
+      = defaultAgentReferralLoginLink || emailSiteUrl("/signin");
     const contentHtml = `
             <p>Your originally registered agent is no longer participating in the BeforeListed intake service. You may contact that agent directly if you wish. Your request will remain private on the BeforeListed website and will not be shared with any other agents unless you choose to continue.</p>
 

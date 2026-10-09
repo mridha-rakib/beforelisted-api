@@ -5,6 +5,7 @@ import type { Types } from "mongoose";
 import { ROLES, SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
+import { emailSiteUrl } from "@/services/email-branding";
 import { EmailService } from "@/services/email.service";
 import { ExcelService } from "@/services/excel.service";
 import { S3Service } from "@/services/s3.service";
@@ -661,7 +662,7 @@ export class AgentService {
 
     if (newStatus) {
       try {
-        const dashboardLink = `${env.CLIENT_URL.replace(/\/+$/, "")}/agent/dashboard`;
+        const dashboardLink = emailSiteUrl("/agent/dashboard");
 
         const emailResult
           = await this.emailService.sendAgentActivatedByAdminEmail({
@@ -806,7 +807,7 @@ export class AgentService {
       }
 
       try {
-        const dashboardLink = `${env.CLIENT_URL.replace(/\/+$/, "")}/agent/dashboard`;
+        const dashboardLink = emailSiteUrl("/agent/dashboard");
 
         const emailResult
           = await this.emailService.sendAgentActivatedByAdminEmail({
@@ -1084,10 +1085,10 @@ export class AgentService {
           { email: SYSTEM_DEFAULT_AGENT.email },
           "Default agent referral code not found; using fallback sign-in link",
         );
-        return `${env.CLIENT_URL}/signin`;
+        return emailSiteUrl("/signin");
       }
 
-      return `${env.CLIENT_URL}/signin?ref=${encodeURIComponent(defaultAgent.referralCode)}`;
+      return emailSiteUrl(`/signin?ref=${encodeURIComponent(defaultAgent.referralCode)}`);
     }
     catch (error) {
       logger.error(
@@ -1097,7 +1098,7 @@ export class AgentService {
         },
         "Failed to resolve default agent referral login link; using fallback sign-in link",
       );
-      return `${env.CLIENT_URL}/signin`;
+      return emailSiteUrl("/signin");
     }
   }
 
