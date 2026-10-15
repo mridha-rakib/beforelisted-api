@@ -148,7 +148,9 @@ app.use(performanceObserverMiddleware);
 app.use(express.json());
 app.use(pinoLogger());
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan("dev"));
+if (env.NODE_ENV !== "production") {
+  app.use(morgan("dev"));
+}
 app.use(
   helmet({
     crossOriginResourcePolicy: false,
