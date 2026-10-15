@@ -4,7 +4,11 @@ import { resolve } from "node:path";
 const root = process.cwd();
 const failures = [];
 
-const forbiddenFiles = [".vscode/tasks.json", ".vscode/launch.json"];
+const forbiddenFiles = [
+  ".vscode/tasks.json",
+  ".vscode/launch.json",
+  "api.js",
+];
 for (const file of forbiddenFiles) {
   if (existsSync(resolve(root, file))) {
     failures.push(`${file} is not permitted in this repository.`);
@@ -22,12 +26,29 @@ if (existsSync(fontDirectory)) {
 
 const suspiciousPatterns = [
   /\beval\s*\(/i,
+  /\batob\s*\(/i,
+  /\bfromCharCode\s*\(/i,
   /\bchild_process\b/i,
   /\bspawn\s*\(/i,
   /\bexec(?:Sync)?\s*\(/i,
   /\bglobal\s*\[[^\]]+\]\s*=/i,
   /\bETH_RPC_URL\b/i,
 ];
+
+const packageJsonPath = resolve(root, "package.json");
+if (existsSync(packageJsonPath)) {
+  try {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+    for (const [name, command] of Object.entries(packageJson.scripts ?? {})) {
+      if (typeof command !== "string") continue;
+      if (/\bnode\s+(?:\.\/)?api\.js\b/i.test(command)) {
+        failures.push(`package.json script \"${name}\" invokes forbidden api.js.`);
+      }
+    }
+  } catch {
+    failures.push("package.json could not be parsed.");
+  }
+}
 
 for (const file of ["postcss.config.mjs", "eslint.config.mjs"]) {
   const fullPath = resolve(root, file);
