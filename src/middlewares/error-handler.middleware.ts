@@ -16,6 +16,31 @@ import { AppError } from "@/utils/app-error.utils";
 
 import { logger } from "./pino-logger.js";
 
+/**
+ * Keep error logs useful for diagnosis without recording request values that
+ * may contain credentials, tokens, OTPs, or renter PII.
+ */
+function summarizeRequestInput(value: unknown) {
+  if (Buffer.isBuffer(value)) {
+    return { type: "buffer", bytes: value.length };
+  }
+
+  if (Array.isArray(value)) {
+    return { type: "array", length: value.length };
+  }
+
+  if (value && typeof value === "object") {
+    const keys = Object.keys(value as Record<string, unknown>);
+    return {
+      type: "object",
+      keys: keys.slice(0, 50),
+      truncated: keys.length > 50 || undefined,
+    };
+  }
+
+  return { type: value === null ? "null" : typeof value };
+}
+
 // Zod error formatter
 function formatZodError(res: Response, error: z.ZodError, requestId?: string) {
   const errors = error?.issues?.map(err => ({
@@ -109,7 +134,7 @@ export const errorHandler: ErrorRequestHandler = (
     {
       requestId,
       method: req.method,
-      url: req.originalUrl,
+      path: req.path,
       userAgent: req.get("User-Agent"),
       ip: req.ip || req.connection.remoteAddress,
       error: {
@@ -117,9 +142,9 @@ export const errorHandler: ErrorRequestHandler = (
         message: error.message,
         stack: env.NODE_ENV === "development" ? error.stack : undefined,
       },
-      body: req.body,
-      params: req.params,
-      query: req.query,
+      body: summarizeRequestInput(req.body),
+      params: summarizeRequestInput(req.params),
+      query: summarizeRequestInput(req.query),
     },
     `Error occurred on ${req.method} ${req.path}`,
   );
