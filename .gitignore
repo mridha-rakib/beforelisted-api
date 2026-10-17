@@ -54,8 +54,18 @@ typings/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variables file
-.env
+# dotenv environment variables and local secrets. Keep the documented template.
+.env*
+!.env.example
+
+# Local credentials, certificates, and editor state
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+.vscode/
+.idea/
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
