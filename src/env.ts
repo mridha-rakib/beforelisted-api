@@ -35,6 +35,13 @@ const envSchema = z.object({
     .default("outbound"),
   // Enables Postmark sandbox behavior outside production; set locally when testing email delivery.
   POSTMARK_SANDBOX_MODE: z.coerce.boolean().default(false),
+  // Temporarily controls delivery of the moving-discount promotional email.
+  // It is intentionally off by default so new deployments do not resume it
+  // until the business explicitly enables it.
+  MOVING_DISCOUNT_CODES_EMAIL_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform(value => value === "true"),
 
   // Sender display name for outbound emails; choose internally to match the product brand.
   EMAIL_FROM_NAME: z.string().default("BeforeListed"),

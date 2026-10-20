@@ -575,7 +575,16 @@ export class AuthService {
           renterName: user.fullName,
         });
 
-      if (movingDiscountEmailResult.success) {
+      if (movingDiscountEmailResult.skipped) {
+        logger.info(
+          {
+            userId: user._id,
+            email: user.email,
+          },
+          "Moving discount codes email remains paused after renter OTP verification",
+        );
+      }
+      else if (movingDiscountEmailResult.success) {
         logger.info(
           {
             userId: user._id,

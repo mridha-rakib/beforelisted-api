@@ -44,6 +44,7 @@ export type IEmailResponse = {
 
 export type IEmailResult = {
   success: boolean;
+  skipped?: boolean;
   messageId?: string;
   error?: string | Error;
   timestamp: Date;
@@ -68,6 +69,7 @@ export type IEmailConfig = {
   adminEmail: string;
   maxRetries: number;
   retryDelayMs: number;
+  movingDiscountCodesEmailEnabled: boolean;
 };
 
 export type IEmailTransporter = {
