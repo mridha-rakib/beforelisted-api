@@ -503,6 +503,14 @@ export class RenterService {
           renterName,
         });
 
+      if (movingDiscountEmailResult.skipped) {
+        logger.info(
+          { userId, email },
+          "Moving discount codes email remains paused after renter registration",
+        );
+        return;
+      }
+
       if (movingDiscountEmailResult.success) {
         logger.info(
           {

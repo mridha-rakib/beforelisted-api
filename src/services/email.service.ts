@@ -478,6 +478,21 @@ export class EmailService {
   async sendMovingDiscountCodesEmail(
     payload: IMovingDiscountCodesEmailPayload,
   ): Promise<IEmailResult> {
+    if (!this.config.movingDiscountCodesEmailEnabled) {
+      logger.info(
+        { email: payload.to },
+        "Moving discount codes email is temporarily paused",
+      );
+
+      return {
+        success: true,
+        skipped: true,
+        timestamp: new Date(),
+        attempt: 0,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+
     try {
       logger.debug(
         { email: payload.to },
