@@ -8,7 +8,7 @@
 
 import { Router } from "express";
 
-import { authLimiter } from "@/middlewares/rate-limit.middleware";
+import { apiLimiter, authLimiter } from "@/middlewares/rate-limit.middleware";
 
 import { PasswordResetController } from "./password.controller";
 
@@ -23,7 +23,7 @@ const controller = new PasswordResetController();
  * POST /auth/forgot-password
  * Request password reset OTP
  */
-router.post("/forgot-password", controller.requestPasswordReset);
+router.post("/forgot-password", apiLimiter, controller.requestPasswordReset);
 
 /**
  * POST /auth/verify-password-otp
@@ -35,7 +35,7 @@ router.post("/verify-password-otp", authLimiter, controller.verifyPasswordOTP);
  * POST /auth/reset-password
  * Reset password with verified OTP
  */
-router.post("/reset-password", controller.resetPassword);
+router.post("/reset-password", apiLimiter, controller.resetPassword);
 
 /**
  * POST /auth/resend-password-otp

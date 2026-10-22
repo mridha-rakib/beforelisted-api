@@ -2745,56 +2745,6 @@ export class EmailService {
   }
 
   /**
-   * Send payment link email to agent
-   */
-  async sendPaymentLinkToAgent(payload: {
-    to: string;
-    agentName: string;
-    propertyTitle: string;
-    chargeAmount: number;
-    paymentLink: string;
-    paymentDeadline: string;
-  }): Promise<IEmailResult> {
-    try {
-      const template = this.templateFactory.createPaymentLink(
-        payload.agentName,
-        payload.propertyTitle,
-        payload.chargeAmount,
-        payload.paymentLink,
-        payload.paymentDeadline,
-      );
-
-      const emailOptions: IEmailOptions = {
-        to: { email: payload.to, name: payload.agentName },
-        subject: template.getSubject(),
-        html: template.render(),
-        priority: template.getEmailPriority(),
-      };
-
-      return await this.sendEmail(
-        emailOptions,
-        "PAYMENT_LINK_AGENT",
-        payload.to,
-      );
-    } catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : String(error),
-          email: payload.to,
-        },
-        "Failed to send payment link email",
-      );
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-        timestamp: new Date(),
-        attempt: 1,
-        maxAttempts: this.config.maxRetries,
-      };
-    }
-  }
-
-  /**
    * EMAIL TEMPLATE #32 — Agent Unmatched from Renter Request
    * Sent to the unmatched agent when the registered agent confirms unmatch.
    */

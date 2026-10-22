@@ -12,7 +12,6 @@ const REDACTED_LOG_PATHS = [
   "req.headers.authorization",
   "req.headers.cookie",
   "req.headers.x-api-key",
-  "req.headers.stripe-signature",
   "req.body.password",
   "req.body.token",
   "req.body.accessToken",

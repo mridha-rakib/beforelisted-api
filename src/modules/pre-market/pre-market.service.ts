@@ -53,7 +53,6 @@ import { AgentProfileRepository } from "../agent/agent.repository";
 import { BlockedEmailService } from "../blocked-email/blocked-email.service";
 import { GrantAccessAuditRepository } from "../grant-access/grant-access-audit.repository";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
-import { PaymentService } from "../payment/payment.service";
 import { RenterRepository } from "../renter/renter.repository";
 import { UserRepository } from "../user/user.repository";
 import { resolveRenterOpportunityEmailScope } from "./pre-market-email-scope.utils";
@@ -151,7 +150,6 @@ export class PreMarketService {
   private userRepository: UserRepository;
   private readonly excelService: ExcelService;
 
-  private readonly paymentService: PaymentService;
   private readonly notifier: PreMarketNotifier;
   private readonly notificationService: NotificationService;
   private readonly blockedEmailService: BlockedEmailService;
@@ -170,7 +168,6 @@ export class PreMarketService {
     this.grantAccessRepository = new GrantAccessRepository();
     this.grantAccessAuditRepository = new GrantAccessAuditRepository();
     this.agentRepository = new AgentProfileRepository();
-    this.paymentService = new PaymentService();
     this.notifier = new PreMarketNotifier();
     this.notificationService = new NotificationService();
     this.blockedEmailService = new BlockedEmailService();
@@ -1135,28 +1132,6 @@ export class PreMarketService {
       agentId,
       requestId,
     );
-
-    const grantAccessId = grantAccess?._id;
-    if (
-      grantAccess &&
-      grantAccess.payment?.paymentStatus === "pending" &&
-      grantAccess.payment.stripePaymentIntentId
-    ) {
-      try {
-        await this.paymentService.reconcilePaymentIntent(
-          grantAccess.payment.stripePaymentIntentId,
-        );
-        grantAccess = await this.grantAccessRepository.findByAgentAndRequest(
-          agentId,
-          requestId,
-        );
-      } catch (error) {
-        logger.warn(
-          { error, grantAccessId },
-          "Failed to refresh payment status",
-        );
-      }
-    }
 
     return this.buildAgentAccessSummary(grantAccess, hasGrantAccess);
   }
@@ -7913,8 +7888,7 @@ export class PreMarketService {
 
   /**
    * Determines whether an agent can see renter info for a specific request.
-   * Expects an agent user ID and request ID; reconciles pending Stripe payment status when needed.
-   * Can return no access when payment is unpaid/rejected or log a warning if payment reconciliation fails.
+   * Access is granted by an administrator or a previously recorded approval.
    */
   public async checkAgentAccessToRequest(
     agentId: string,
@@ -7938,28 +7912,6 @@ export class PreMarketService {
       agentId,
       requestId,
     );
-
-    const grantAccessId = grantAccess?._id;
-    if (
-      grantAccess &&
-      grantAccess.payment?.paymentStatus === "pending" &&
-      grantAccess.payment.stripePaymentIntentId
-    ) {
-      try {
-        await this.paymentService.reconcilePaymentIntent(
-          grantAccess.payment.stripePaymentIntentId,
-        );
-        grantAccess = await this.grantAccessRepository.findByAgentAndRequest(
-          agentId,
-          requestId,
-        );
-      } catch (error) {
-        logger.warn(
-          { error, grantAccessId },
-          "Failed to refresh payment status",
-        );
-      }
-    }
 
     if (
       grantAccess &&

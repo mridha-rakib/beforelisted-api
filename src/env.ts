@@ -110,12 +110,9 @@ const envSchema = z.object({
   // Platform administrator email; use the monitored admin/support account for this environment.
   ADMIN_EMAIL: z.email().nonempty("Admin email is required."),
 
-  // Stripe secret API key for payment operations; get it from the Stripe dashboard for this environment.
-  STRIPE_SECRET_KEY: z.string().nonempty("Stripe secret key is required."),
-  // Stripe webhook signing secret for this API endpoint; get it from the Stripe webhook endpoint settings.
-  STRIPE_WEBHOOK_SECRET: z
-    .string()
-    .nonempty("Stripe webhook secret is required."),
+  // The API is served behind a single reverse proxy in production. This lets
+  // Express rate limits use the real client IP from X-Forwarded-For.
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(2).default(1),
 
   // Public frontend base URL used in links, redirects, and CORS; set to the deployed frontend domain.
   CLIENT_URL: z.string().url().default("https://beforelisted.com"),

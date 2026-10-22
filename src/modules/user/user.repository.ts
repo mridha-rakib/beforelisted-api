@@ -31,7 +31,7 @@ export class UserRepository extends BaseRepository<IUser> {
       return [];
     }
 
-    let query = this.model.find({ _id: { $in: userIds }, isDeleted: false });
+    let query: any = this.model.find({ _id: { $in: userIds }, isDeleted: false });
 
     if (select) {
       query = query.select(select);
@@ -48,7 +48,7 @@ export class UserRepository extends BaseRepository<IUser> {
       return [];
     }
 
-    let query = this.model.find({ _id: { $in: userIds } });
+    let query: any = this.model.find({ _id: { $in: userIds } });
 
     if (select) {
       query = query.select(select);

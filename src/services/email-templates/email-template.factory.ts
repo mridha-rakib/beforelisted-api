@@ -7,7 +7,6 @@ import type { BaseEmailTemplate } from "./base-email-template.js";
 import { GrantAccessApprovalTemplate } from "./grant-access-approval.template";
 import { GrantAccessRejectionTemplate } from "./grant-access-rejection.template";
 import { GrantAccessRequestTemplate } from "./grant-access-request.template";
-import { PaymentLinkTemplate } from "./payment-link.template";
 
 /**
  * Factory for creating email template instances
@@ -89,27 +88,6 @@ export class EmailTemplateFactory {
       propertyTitle,
       rejectionReason,
       contactEmail,
-      this.logoUrl,
-      this.brandColor,
-    );
-  }
-
-  /**
-   * Create payment link template (Agent notification)
-   */
-  createPaymentLink(
-    agentName: string,
-    propertyTitle: string,
-    chargeAmount: number,
-    paymentLink: string,
-    paymentDeadline: string,
-  ): BaseEmailTemplate {
-    return new PaymentLinkTemplate(
-      agentName,
-      propertyTitle,
-      chargeAmount,
-      paymentLink,
-      paymentDeadline,
       this.logoUrl,
       this.brandColor,
     );

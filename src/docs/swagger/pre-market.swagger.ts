@@ -383,32 +383,6 @@ export const preMarketPaths = {
     },
   },
 
-  "/pre-market/payment/create-intent": {
-    post: {
-      tags: ["Pre-Market - Agent"],
-      summary: "Create payment intent for grant access",
-      operationId: "createPreMarketPaymentIntent",
-      security: [{ bearerAuth: [] }],
-      requestBody: {
-        required: false,
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                requestId: { type: "string" },
-              },
-            },
-          },
-        },
-      },
-      responses: {
-        200: { description: "Payment intent created successfully" },
-        401: { description: "Unauthorized" },
-      },
-    },
-  },
-
   "/pre-market/admin/requests": {
     get: {
       tags: ["Pre-Market - Admin"],
@@ -482,29 +456,6 @@ export const preMarketPaths = {
       ],
       responses: {
         200: { description: "Grant access approved successfully" },
-        401: { description: "Unauthorized" },
-        403: { description: "Forbidden - Admin role required" },
-        404: { description: "Request not found" },
-      },
-    },
-  },
-
-  "/pre-market/grant-access/admin/{requestId}/charge": {
-    post: {
-      tags: ["Pre-Market - Admin"],
-      summary: "Charge grant-access request (Admin only)",
-      operationId: "adminChargeGrantAccess",
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        {
-          name: "requestId",
-          in: "path",
-          required: true,
-          schema: { type: "string" },
-        },
-      ],
-      responses: {
-        200: { description: "Charge completed successfully" },
         401: { description: "Unauthorized" },
         403: { description: "Forbidden - Admin role required" },
         404: { description: "Request not found" },

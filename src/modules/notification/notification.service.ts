@@ -650,15 +650,18 @@ export class NotificationService {
     return this.repository.getUnreadCount(userId);
   }
 
-  async markAsRead(notificationId: string): Promise<INotification | null> {
-    return this.repository.markAsRead(notificationId);
+  async markAsRead(
+    notificationId: string,
+    recipientId: string,
+  ): Promise<INotification | null> {
+    return this.repository.markAsRead(notificationId, recipientId);
   }
 
   async markAllAsRead(userId: string): Promise<any> {
     return this.repository.markAllAsRead(userId);
   }
 
-  async deleteNotification(notificationId: string): Promise<any> {
-    return this.repository.deleteNotification(notificationId);
+  async deleteNotification(notificationId: string, recipientId: string): Promise<any> {
+    return this.repository.deleteNotification(notificationId, recipientId);
   }
 }
