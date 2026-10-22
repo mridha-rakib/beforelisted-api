@@ -5,6 +5,7 @@ import type { NextFunction, Request, Response } from "express";
 import { MESSAGES } from "@/constants/app.constants";
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { ApiResponse } from "@/utils/response.utils";
+import { requiredRouteParam } from "@/utils/request-param.utils";
 import { zParse } from "@/utils/validators.utils";
 
 import { updateUserSchema } from "./user.schema";
@@ -52,7 +53,7 @@ export class UserController {
 
   adminGetUser = asyncHandler(
     async (req: Request, res: Response, _next: NextFunction) => {
-      const { userId } = req.params;
+      const userId = requiredRouteParam(req.params.userId, "userId");
 
       const result = await this.userService.adminGetUser(userId);
 
@@ -62,7 +63,7 @@ export class UserController {
 
   adminRestoreUser = asyncHandler(
     async (req: Request, res: Response, _next: NextFunction) => {
-      const { userId } = req.params;
+      const userId = requiredRouteParam(req.params.userId, "userId");
 
       const result = await this.userService.adminRestoreUser(userId);
 
@@ -76,7 +77,7 @@ export class UserController {
    */
   adminPermanentlyDeleteUser = asyncHandler(
     async (req: Request, res: Response, _next: NextFunction) => {
-      const { userId } = req.params;
+      const userId = requiredRouteParam(req.params.userId, "userId");
 
       const result = await this.userService.adminPermanentlyDeleteUser(userId);
 

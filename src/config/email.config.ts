@@ -46,6 +46,10 @@ const emailConfigSchema = z.object({
     .optional(),
   EMAIL_MAX_RETRIES: z.coerce.number().int(),
   EMAIL_RETRY_DELAY_MS: z.coerce.number().int(),
+  MOVING_DISCOUNT_CODES_EMAIL_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform(value => value === "true"),
 });
 
 type EmailConfigInput = z.infer<typeof emailConfigSchema>;
@@ -64,6 +68,8 @@ export function createEmailConfig(): IEmailConfig {
     adminEmail: env.ADMIN_EMAIL,
     maxRetries: env.EMAIL_MAX_RETRIES,
     retryDelayMs: env.EMAIL_RETRY_DELAY_MS,
+    movingDiscountCodesEmailEnabled:
+      envVars.MOVING_DISCOUNT_CODES_EMAIL_ENABLED,
   };
 
   return config;

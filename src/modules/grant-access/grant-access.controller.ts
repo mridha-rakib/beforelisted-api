@@ -10,6 +10,7 @@ import {
   NotFoundException,
 } from "@/utils/app-error.utils";
 import { ApiResponse } from "@/utils/response.utils";
+import { requiredRouteParam } from "@/utils/request-param.utils";
 
 import type { AgentRepresentationType } from "../agent/agent.interface";
 
@@ -128,36 +129,6 @@ export class GrantAccessController {
   });
 
   /**
-   * POST /grant-access/payment/create-intent
-   * Create payment intent for grant access
-   * Protected: Agents only
-   */
-  createPaymentIntent = asyncHandler(async (req: Request, res: Response) => {
-    const agentId = req.user!.userId;
-    const { grantAccessId } = req.body;
-
-    logger.info({ agentId, grantAccessId }, "Agent requesting payment intent");
-
-    if (!grantAccessId) {
-      throw new BadRequestException("Grant access ID is required");
-    }
-
-    const paymentIntent
-      = await this.grantAccessService.createPaymentIntent(grantAccessId);
-
-    logger.info(
-      { agentId, grantAccessId },
-      "Payment intent created successfully",
-    );
-
-    return ApiResponse.success(
-      res,
-      paymentIntent,
-      "Payment intent created successfully",
-    );
-  });
-
-  /**
    * GET /grant-access/request/:requestId
    * Get specific pre-market request details
    * Dual-path: Grant Access agents see ALL, Normal agents see ONLY paid
@@ -166,7 +137,7 @@ export class GrantAccessController {
   getRequestDetailsForGrantAccessAgent = asyncHandler(
     async (req: Request, res: Response) => {
       const agentId = req.user!.userId;
-      const { requestId } = req.params;
+      const requestId = requiredRouteParam(req.params.requestId, "requestId");
 
       const agent = await this.agentRepository.findByUserId(agentId);
 
@@ -381,7 +352,7 @@ export class GrantAccessController {
    */
   adminApprove = asyncHandler(async (req: Request, res: Response) => {
     const adminId = req.user!.userId;
-    const { requestId } = req.params;
+    const requestId = requiredRouteParam(req.params.requestId, "requestId");
     const { notes } = req.body;
 
     logger.info({ adminId, requestId }, "Admin approving free access");
@@ -399,45 +370,13 @@ export class GrantAccessController {
   });
 
   /**
-   * POST /grant-access/admin/:requestId/charge
-   * Admin charge for access
-   * Protected: Admin only
-   */
-  adminCharge = asyncHandler(async (req: Request, res: Response) => {
-    const adminId = req.user!.userId;
-    const { requestId } = req.params;
-    const { chargeAmount, notes } = req.body;
-
-    logger.info(
-      { adminId, requestId, chargeAmount },
-      "Admin charging for access",
-    );
-
-    if (!chargeAmount || chargeAmount <= 0) {
-      throw new BadRequestException("Valid charge amount is required");
-    }
-
-    const result = await this.grantAccessService.adminDecideAccess(requestId, {
-      action: "charge",
-      adminId,
-      isFree: false,
-      chargeAmount,
-      notes,
-    });
-
-    logger.info({ adminId, requestId, chargeAmount }, "✅ Access charged");
-
-    return ApiResponse.success(res, result, "Access charged successfully");
-  });
-
-  /**
    * POST /grant-access/admin/:requestId/reject
    * Admin reject access request
    * Protected: Admin only
    */
   adminReject = asyncHandler(async (req: Request, res: Response) => {
     const adminId = req.user!.userId;
-    const { requestId } = req.params;
+    const requestId = requiredRouteParam(req.params.requestId, "requestId");
     const { notes } = req.body;
 
     logger.warn({ adminId, requestId }, "Admin rejecting access request");
@@ -455,7 +394,7 @@ export class GrantAccessController {
 
   deletePayment = asyncHandler(async (req: Request, res: Response) => {
     const adminId = req.user!.userId;
-    const { paymentId } = req.params;
+    const paymentId = requiredRouteParam(req.params.paymentId, "paymentId");
     if (!paymentId)
       throw new BadRequestException("Payment ID required");
 
@@ -468,7 +407,7 @@ export class GrantAccessController {
 
   getPaymentDeletionHistory = asyncHandler(
     async (req: Request, res: Response) => {
-      const { paymentId } = req.params;
+      const paymentId = requiredRouteParam(req.params.paymentId, "paymentId");
       if (!paymentId)
         throw new BadRequestException("Payment ID required");
 
@@ -511,7 +450,8 @@ export class GrantAccessController {
    */
   getMonthlyIncomeDetail = asyncHandler(async (req: Request, res: Response) => {
     const adminId = req.user!.userId;
-    const { year, month } = req.params;
+    const year = requiredRouteParam(req.params.year, "year");
+    const month = requiredRouteParam(req.params.month, "month");
 
     logger.info(
       { adminId, year, month },
@@ -570,7 +510,7 @@ export class GrantAccessController {
    */
   getYearlyIncome = asyncHandler(async (req: Request, res: Response) => {
     const adminId = req.user!.userId;
-    const { year } = req.params;
+    const year = requiredRouteParam(req.params.year, "year");
 
     logger.info({ adminId, year }, "Admin viewing yearly income");
 
@@ -587,7 +527,7 @@ export class GrantAccessController {
 
   getPaymentDetails = asyncHandler(async (req: Request, res: Response) => {
     const adminId = req.user!.userId;
-    const { paymentId } = req.params;
+    const paymentId = requiredRouteParam(req.params.paymentId, "paymentId");
 
     logger.info({ adminId, paymentId }, "Admin requesting payment details");
 

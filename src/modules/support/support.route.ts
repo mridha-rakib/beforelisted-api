@@ -2,6 +2,8 @@
 
 import { Router } from "express";
 
+import { apiLimiter } from "@/middlewares/rate-limit.middleware";
+
 import { SupportController } from "./support.controller";
 
 const router = Router();
@@ -15,6 +17,10 @@ const controller = new SupportController();
  * POST /support/contact
  * Send a message to admin (public)
  */
-router.post("/contact", controller.sendContactMessage.bind(controller));
+router.post(
+  "/contact",
+  apiLimiter,
+  controller.sendContactMessage.bind(controller),
+);
 
 export default router;

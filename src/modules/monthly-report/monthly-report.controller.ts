@@ -6,6 +6,7 @@ import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
 import { BadRequestException } from "@/utils/app-error.utils";
 import { ApiResponse } from "@/utils/response.utils";
+import { requiredRouteParam } from "@/utils/request-param.utils";
 import { zParse } from "@/utils/validators.utils";
 
 import {
@@ -88,7 +89,7 @@ export class MonthlyReportController {
    */
   updateReport = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(updateMonthlyReportSchema, req);
-    const { id } = req.params;
+    const id = requiredRouteParam(req.params.id, "id");
     const adminId = req.user!.userId;
 
     const report = await this.reportService.updateReport(
@@ -145,7 +146,7 @@ export class MonthlyReportController {
    * Get reports by year (public)
    */
   getReportsByYear = asyncHandler(async (req: Request, res: Response) => {
-    const { year } = req.params;
+    const year = requiredRouteParam(req.params.year, "year");
     const yearNum = Number.parseInt(year);
 
     if (isNaN(yearNum) || yearNum < 2000 || yearNum > 2100) {

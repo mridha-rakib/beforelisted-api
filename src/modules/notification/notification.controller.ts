@@ -4,7 +4,9 @@ import type { NextFunction, Request, Response } from "express";
 
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
+import { NotFoundException } from "@/utils/app-error.utils";
 import { ApiResponse } from "@/utils/response.utils";
+import { requiredRouteParam } from "@/utils/request-param.utils";
 
 import { NotificationService } from "./notification.service";
 
@@ -62,11 +64,14 @@ export class NotificationController {
   });
 
   markAsRead = asyncHandler(async (req: Request, res: Response) => {
-    const { notificationId } = req.params;
-    const notification = await this.service.markAsRead(notificationId);
+    const notificationId = requiredRouteParam(req.params.notificationId, "notificationId");
+    const notification = await this.service.markAsRead(
+      notificationId,
+      req.user!.userId,
+    );
 
     if (!notification) {
-      return ApiResponse.success(res, "Notification not found");
+      throw new NotFoundException("Notification not found");
     }
 
     ApiResponse.success(
@@ -87,8 +92,15 @@ export class NotificationController {
 
   deleteNotification = asyncHandler(
     async (req: Request, res: Response, _next: NextFunction) => {
-      const { notificationId } = req.params;
-      await this.service.deleteNotification(notificationId);
+      const notificationId = requiredRouteParam(req.params.notificationId, "notificationId");
+      const notification = await this.service.deleteNotification(
+        notificationId,
+        req.user!.userId,
+      );
+
+      if (!notification) {
+        throw new NotFoundException("Notification not found");
+      }
 
       ApiResponse.success(res, {
         message: "Notification deleted successfully",

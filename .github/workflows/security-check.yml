@@ -32,13 +32,9 @@ jobs:
         run: node scripts/security-check.mjs
       - name: Lint without modifying source files
         run: npm exec eslint -- src
-        continue-on-error: true
       - name: Type-check
         run: npm run typecheck
-        continue-on-error: true
       - name: Test
         run: npm test
-        continue-on-error: true
       - name: Build production artifact
         run: npm run build
-        continue-on-error: true

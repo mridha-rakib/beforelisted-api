@@ -922,7 +922,6 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
           amount: payment.payment?.amount || 0,
           currency: payment.payment?.currency || "USD",
           paymentStatus: payment.payment?.paymentStatus || "pending",
-          stripePaymentIntentId: payment.payment?.stripePaymentIntentId || null,
           failureCount: payment.payment?.failureCount || 0,
           failedAt: payment.payment?.failedAt || [],
           succeededAt: payment.payment?.succeededAt || null,

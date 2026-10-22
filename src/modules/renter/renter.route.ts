@@ -3,6 +3,7 @@
 import { Router } from "express";
 
 import { authMiddleware } from "@/middlewares/auth.middleware";
+import { apiLimiter } from "@/middlewares/rate-limit.middleware";
 
 import { RenterController } from "./renter.controller";
 
@@ -11,11 +12,19 @@ const controller = new RenterController();
 
 router.get("/registration-link/status", controller.getRegistrationLinkStatus);
 
-router.post("/register", controller.registerRenter);
+router.post("/register", apiLimiter, controller.registerRenter);
 
-router.post("/register/agent-referral", controller.registerAgentReferralRenter);
+router.post(
+  "/register/agent-referral",
+  apiLimiter,
+  controller.registerAgentReferralRenter,
+);
 
-router.post("/register/admin-referral", controller.registerAdminReferralRenter);
+router.post(
+  "/register/admin-referral",
+  apiLimiter,
+  controller.registerAdminReferralRenter,
+);
 
 router.get(
   "/profile",

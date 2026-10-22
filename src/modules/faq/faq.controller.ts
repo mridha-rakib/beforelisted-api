@@ -5,6 +5,7 @@ import type { Request, Response } from "express";
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
 import { ApiResponse } from "@/utils/response.utils";
+import { requiredRouteParam } from "@/utils/request-param.utils";
 import { zParse } from "@/utils/validators.utils";
 
 import { createFAQSchema, updateFAQSchema } from "./faq.schema";
@@ -34,7 +35,7 @@ export class FAQController {
    * No auth required
    */
   getFAQById = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = requiredRouteParam(req.params.id, "id");
 
     const faq = await this.faqService.getFAQById(id);
 
@@ -84,7 +85,7 @@ export class FAQController {
    */
   updateFAQ = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(updateFAQSchema, req);
-    const { id } = req.params;
+    const id = requiredRouteParam(req.params.id, "id");
     const adminId = req.user!.userId;
 
     const faq = await this.faqService.updateFAQ(id, validated.body, adminId);
@@ -100,7 +101,7 @@ export class FAQController {
    * Protected: Admin only
    */
   deleteFAQ = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = requiredRouteParam(req.params.id, "id");
     const adminId = req.user!.userId;
 
     const faq = await this.faqService.deleteFAQ(id, adminId);
@@ -116,7 +117,7 @@ export class FAQController {
    * Protected: Admin only
    */
   hardDeleteFAQ = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = requiredRouteParam(req.params.id, "id");
     const adminId = req.user!.userId;
 
     await this.faqService.hardDeleteFAQ(id, adminId);

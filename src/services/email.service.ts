@@ -478,6 +478,21 @@ export class EmailService {
   async sendMovingDiscountCodesEmail(
     payload: IMovingDiscountCodesEmailPayload,
   ): Promise<IEmailResult> {
+    if (!this.config.movingDiscountCodesEmailEnabled) {
+      logger.info(
+        { email: payload.to },
+        "Moving discount codes email is temporarily paused",
+      );
+
+      return {
+        success: true,
+        skipped: true,
+        timestamp: new Date(),
+        attempt: 0,
+        maxAttempts: this.config.maxRetries,
+      };
+    }
+
     try {
       logger.debug(
         { email: payload.to },
@@ -2718,56 +2733,6 @@ export class EmailService {
           email: payload.to,
         },
         "Failed to send grant access rejection email",
-      );
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-        timestamp: new Date(),
-        attempt: 1,
-        maxAttempts: this.config.maxRetries,
-      };
-    }
-  }
-
-  /**
-   * Send payment link email to agent
-   */
-  async sendPaymentLinkToAgent(payload: {
-    to: string;
-    agentName: string;
-    propertyTitle: string;
-    chargeAmount: number;
-    paymentLink: string;
-    paymentDeadline: string;
-  }): Promise<IEmailResult> {
-    try {
-      const template = this.templateFactory.createPaymentLink(
-        payload.agentName,
-        payload.propertyTitle,
-        payload.chargeAmount,
-        payload.paymentLink,
-        payload.paymentDeadline,
-      );
-
-      const emailOptions: IEmailOptions = {
-        to: { email: payload.to, name: payload.agentName },
-        subject: template.getSubject(),
-        html: template.render(),
-        priority: template.getEmailPriority(),
-      };
-
-      return await this.sendEmail(
-        emailOptions,
-        "PAYMENT_LINK_AGENT",
-        payload.to,
-      );
-    } catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : String(error),
-          email: payload.to,
-        },
-        "Failed to send payment link email",
       );
       return {
         success: false,
