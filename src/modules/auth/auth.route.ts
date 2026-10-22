@@ -3,7 +3,7 @@
 import { Router } from "express";
 
 import { authMiddleware } from "@/middlewares/auth.middleware";
-import { authLimiter } from "@/middlewares/rate-limit.middleware";
+import { apiLimiter, authLimiter } from "@/middlewares/rate-limit.middleware";
 
 import passwordResetRoutes from "../password/password.route";
 import { AuthController } from "./auth.controller";
@@ -24,7 +24,7 @@ router.post(
 
 router.post("/verify-otp", authLimiter, authController.verifyOTP);
 
-router.post("/refresh-token", authController.refreshToken);
+router.post("/refresh-token", apiLimiter, authController.refreshToken);
 
 router.use("/", passwordResetRoutes);
 

@@ -1,7 +1,6 @@
 // file: src/modules/pre-market/pre-market.controller.ts
 
 import type { Request, Response } from "express";
-import type Stripe from "stripe";
 
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
@@ -23,11 +22,9 @@ import { AgentOpportunityMessageHistoryService } from "../agent/agent-opportunit
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { GrantAccessRepository } from "../grant-access/grant-access.repository";
 import { GrantAccessService } from "../grant-access/grant-access.service";
-import { PaymentService } from "../payment/payment.service";
 import { PreMarketRepository } from "./pre-market.repository";
 import {
   adminApproveSchema,
-  adminChargeSchema,
   adminRejectSchema,
   adminUpdateScopeSchema,
   agentBulkMatchRequestSchema,
@@ -54,7 +51,6 @@ import { PreMarketService } from "./pre-market.service";
 export class PreMarketController {
   private readonly preMarketService: PreMarketService;
   private readonly grantAccessService: GrantAccessService;
-  private readonly paymentService: PaymentService;
   private readonly agentRepository: AgentProfileRepository;
   private readonly opportunityMessageHistoryService: AgentOpportunityMessageHistoryService;
   private readonly preMarketRepository: PreMarketRepository;
@@ -64,7 +60,6 @@ export class PreMarketController {
   constructor() {
     this.preMarketService = new PreMarketService();
     this.grantAccessService = new GrantAccessService();
-    this.paymentService = new PaymentService();
     this.agentRepository = new AgentProfileRepository();
     this.opportunityMessageHistoryService
       = new AgentOpportunityMessageHistoryService();
@@ -732,29 +727,6 @@ export class PreMarketController {
   });
 
   // ============================================
-  // AGENT: CREATE PAYMENT INTENT
-  // ============================================
-
-  /**
-   * Create payment intent for grant access
-   * POST /pre-market/payment/create-intent
-   * Protected: Agents only
-   */
-  createPaymentIntent = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.userId;
-    const grantAccessId = this.singleParam(
-      req.body?.grantAccessId as string | string[] | undefined,
-      "grantAccessId",
-    );
-
-    const paymentIntent
-      = await this.grantAccessService.createPaymentIntent(grantAccessId);
-
-    logger.info({ userId, grantAccessId }, "Payment intent created");
-    ApiResponse.success(res, paymentIntent, "Payment intent created");
-  });
-
-  // ============================================
   // ADMIN: APPROVE (FREE)
   // ============================================
 
@@ -783,31 +755,6 @@ export class PreMarketController {
   });
 
   /**
-   * ADMIN: Charge for access
-   * POST /pre-market/grant-access/admin/:requestId/charge
-   * Protected: Admins only
-   */
-  adminCharge = asyncHandler(async (req: Request, res: Response) => {
-    const validated = await zParse(adminChargeSchema, req);
-    const adminId = req.user!.userId;
-    const { requestId } = validated.params;
-
-    const result = await this.grantAccessService.adminDecideAccess(requestId, {
-      action: "charge",
-      adminId,
-      isFree: false,
-      chargeAmount: validated.body.chargeAmount,
-      notes: validated.body.notes,
-    });
-
-    logger.info(
-      { adminId, requestId, amount: validated.body.chargeAmount },
-      "Access charged",
-    );
-    ApiResponse.success(res, result, "Access charged");
-  });
-
-  /**
    * ADMIN: Reject access request
    * POST /pre-market/grant-access/admin/:requestId/reject
    * Protected: Admins only
@@ -825,57 +772,6 @@ export class PreMarketController {
 
     logger.warn({ adminId, requestId }, "Access rejected");
     ApiResponse.success(res, result, "Access rejected");
-  });
-
-  // ============================================
-  // PAYMENT: WEBHOOK
-  // ============================================
-
-  /**
-   * Handle Stripe webhook event
-   * POST /pre-market/payment/webhook
-   * Public: No authentication required
-
-   */
-  handleWebhook = asyncHandler(async (req: Request, res: Response) => {
-    const signature = req.headers["stripe-signature"];
-    if (typeof signature !== "string" || !signature.trim()) {
-      logger.warn("Missing Stripe signature header");
-      throw new BadRequestException("Missing Stripe signature");
-    }
-
-    const rawBody = (req as any).rawBody ?? req.body;
-    const isBuffer = Buffer.isBuffer(rawBody);
-    if (
-      !rawBody
-      || (typeof rawBody === "string" && rawBody.length === 0)
-      || (isBuffer && rawBody.length === 0)
-    ) {
-      logger.warn("Stripe webhook received empty body");
-      throw new BadRequestException("Empty Stripe webhook payload");
-    }
-
-    if (!isBuffer && typeof rawBody !== "string") {
-      logger.warn("Stripe webhook payload is not raw");
-      throw new BadRequestException("Invalid Stripe webhook payload");
-    }
-
-    let stripeEvent: Stripe.Event;
-    try {
-      stripeEvent = await this.paymentService.constructWebhookEvent(
-        rawBody,
-        signature,
-      );
-    }
-    catch (error) {
-      logger.warn({ error }, "Stripe webhook signature verification failed");
-      throw new BadRequestException("Invalid Stripe signature");
-    }
-
-    await this.paymentService.handleWebhook(stripeEvent);
-
-    logger.debug({ eventType: stripeEvent.type }, "Webhook processed");
-    ApiResponse.success(res, { received: true });
   });
 
   getAllRequestsForAgent = asyncHandler(async (req: Request, res: Response) => {

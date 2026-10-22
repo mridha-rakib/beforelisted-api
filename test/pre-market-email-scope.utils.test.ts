@@ -124,7 +124,7 @@ describe("resolveRenterOpportunityEmailScope", () => {
 
     expect(html).toContain("Compatibility Misses:");
     expect(html).toContain("Rent over budget, Dishwasher");
-    expect(html).toContain("Preferences Matches:");
+    expect(html).toContain("Preference Matches:");
     expect(html).toContain("Large Apartment, Lots of Light");
   });
 
@@ -219,7 +219,7 @@ describe("renterOpportunityFoundRegisteredAgentTemplate", () => {
 
     expect(html).toContain("Compatibility Misses:");
     expect(html).toContain("Rent over budget, Dishwasher");
-    expect(html).toContain("Preferences Matches:");
+    expect(html).toContain("Preference Matches:");
     expect(html).toContain("Large Apartment, Lots of Light");
   });
 
@@ -278,7 +278,7 @@ describe("ownerRepresentationMatchReferralAcknowledgmentTemplate", () => {
 
     expect(html).toContain("Compatibility Misses:");
     expect(html).toContain("Rent over budget, Dishwasher");
-    expect(html).toContain("Preferences Matches:");
+    expect(html).toContain("Preference Matches:");
     expect(html).toContain("Large Apartment, Lots of Light");
   });
 });

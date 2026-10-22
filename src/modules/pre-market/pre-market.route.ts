@@ -218,17 +218,6 @@ router.post(
   controller.requestAccess.bind(controller),
 );
 
-/**
- * POST /pre-market/payment/create-intent
- * Create Stripe payment intent for access
- */
-router.post(
-  "/payment/create-intent",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize("Agent"),
-  controller.createPaymentIntent.bind(controller),
-);
-
 // ============================================
 // ADMIN ROUTES
 // ============================================
@@ -260,13 +249,6 @@ router.post(
   authMiddleware.verifyToken,
   authMiddleware.authorize("Admin"),
   controller.adminApprove.bind(controller),
-);
-
-router.post(
-  "/grant-access/admin/:requestId/charge",
-  authMiddleware.verifyToken,
-  authMiddleware.authorize("Admin"),
-  controller.adminCharge.bind(controller),
 );
 
 router.post(

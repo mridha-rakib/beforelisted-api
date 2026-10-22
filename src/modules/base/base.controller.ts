@@ -7,6 +7,7 @@ import type { BaseService } from "@/modules/base/base.service";
 
 import { PaginationHelper } from "@/utils/pagination-helper";
 import { ApiResponse } from "@/utils/response.utils";
+import { requiredRouteParam } from "@/utils/request-param.utils";
 
 export class BaseController<
   T extends Document<unknown, any, any, Record<string, any>, object>,
@@ -48,7 +49,7 @@ export class BaseController<
 
   getById = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const data = await this.service.getById(req.params.id);
+      const data = await this.service.getById(requiredRouteParam(req.params.id, "id"));
       ApiResponse.success(res, data);
     }
     catch (err) {
@@ -68,7 +69,7 @@ export class BaseController<
 
   update = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const data = await this.service.update(req.params.id, req.body);
+      const data = await this.service.update(requiredRouteParam(req.params.id, "id"), req.body);
       ApiResponse.success(res, data, "Resource updated successfully");
     }
     catch (err) {
@@ -78,7 +79,7 @@ export class BaseController<
 
   delete = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await this.service.delete(req.params.id);
+      await this.service.delete(requiredRouteParam(req.params.id, "id"));
       ApiResponse.noContent(res);
     }
     catch (err) {

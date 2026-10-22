@@ -2,7 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 
-const envPath = path.resolve(__dirname, ".env");
+// Tests must never load a developer or production .env file. The checked-in
+// sample contains placeholders only and lets unit tests start without real
+// provider credentials.
+const envPath = path.resolve(__dirname, ".env.sample");
 
 if (fs.existsSync(envPath)) {
   const envFile = fs.readFileSync(envPath, "utf8");

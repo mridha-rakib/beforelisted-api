@@ -330,16 +330,6 @@ export const adminApproveSchema = z.object({
   }),
 });
 
-export const adminChargeSchema = z.object({
-  params: z.object({
-    requestId: z.string().min(24, "Invalid request ID"),
-  }),
-  body: z.object({
-    chargeAmount: z.number().min(0, "Invalid charge amount"),
-    notes: z.string().optional(),
-  }),
-});
-
 export const adminRejectSchema = z.object({
   params: z.object({
     requestId: z.string().min(24, "Invalid request ID"),

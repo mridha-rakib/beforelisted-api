@@ -478,7 +478,6 @@ export const preMarketSchemas = {
             type: "string",
             enum: ["pending", "succeeded", "failed"],
           },
-          stripePaymentIntentId: { type: "string", nullable: true },
           failureCount: { type: "integer" },
           failedAt: {
             type: "array",

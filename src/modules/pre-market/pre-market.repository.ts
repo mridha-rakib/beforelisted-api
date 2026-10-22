@@ -280,7 +280,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     const skip = (page - 1) * limit;
     const filter = { renterId, isDeleted: false };
 
-    let queryBuilder = this.model
+    let queryBuilder: any = this.model
       .find(filter)
       .sort(sort)
       .skip(skip)
@@ -294,7 +294,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       queryBuilder = queryBuilder.populate(populate);
     }
 
-    const data = await queryBuilder.lean<IPreMarketRequest[]>().exec();
+    const data = await queryBuilder.lean().exec() as IPreMarketRequest[];
     const total = await this.model.countDocuments(filter);
 
     return PaginationHelper.buildResponse(data, total, page, limit);

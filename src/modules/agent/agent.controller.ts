@@ -12,6 +12,7 @@ import {
 } from "@/utils/app-error.utils";
 import { buildExcelDownloadResponse } from "@/utils/excel-response.utils";
 import { ApiResponse } from "@/utils/response.utils";
+import { requiredRouteParam } from "@/utils/request-param.utils";
 import { zParse } from "@/utils/validators.utils";
 
 import { UserService } from "../user/user.service";
@@ -208,7 +209,7 @@ export class AgentController {
    * GET /agent/admin/:userId
    */
   getSpecificAgent = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.params.userId;
+    const userId = requiredRouteParam(req.params.userId, "userId");
     const result = await this.service.adminGetSpecificAgent(userId);
 
     ApiResponse.success(res, result, "Agents retrieved successfully");
@@ -271,7 +272,7 @@ export class AgentController {
    */
   toggleAccess = asyncHandler(
     async (req: Request, res: Response, _next: NextFunction) => {
-      const { agentId } = req.params;
+      const agentId = requiredRouteParam(req.params.agentId, "agentId");
       const { reason } = req.body;
       const adminId = req.user!.userId;
       const userRole = req.user!.role;
@@ -343,7 +344,7 @@ export class AgentController {
    */
   getAccessStatus = asyncHandler(
     async (req: Request, res: Response, _next: NextFunction) => {
-      const { agentId } = req.params;
+      const agentId = requiredRouteParam(req.params.agentId, "agentId");
       const userRole = req.user!.role;
 
       if (userRole !== ROLES.ADMIN) {

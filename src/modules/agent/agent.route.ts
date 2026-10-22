@@ -5,13 +5,14 @@ import { Router } from "express";
 import { ROLES } from "@/constants/app.constants";
 import { agentActivationMiddleware } from "@/middlewares/agent-activation.middleware";
 import { authMiddleware } from "@/middlewares/auth.middleware";
+import { apiLimiter } from "@/middlewares/rate-limit.middleware";
 
 import { AgentController } from "./agent.controller";
 
 const router = Router();
 const controller = new AgentController();
 
-router.post("/register", controller.registerAgent);
+router.post("/register", apiLimiter, controller.registerAgent);
 
 router.get(
   "/profile",

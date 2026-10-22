@@ -43,7 +43,6 @@ export type IGrantAccessRequest = {
   payment?: {
     amount: number;
     currency: typeof GRANT_ACCESS_CONFIG.CURRENCY;
-    stripePaymentIntentId?: string;
     paymentStatus: (typeof GRANT_ACCESS_CONFIG.PAYMENT_STATUSES)[number];
     failureCount: number;
     failedAt: Date[];
@@ -157,7 +156,6 @@ const grantAccessSchema = BaseSchemaUtil.createSchema({
       enum: [GRANT_ACCESS_CONFIG.CURRENCY],
       default: GRANT_ACCESS_CONFIG.CURRENCY,
     },
-    stripePaymentIntentId: String,
     paymentStatus: {
       type: String,
       enum: GRANT_ACCESS_CONFIG.PAYMENT_STATUSES,

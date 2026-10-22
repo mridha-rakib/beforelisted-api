@@ -18,14 +18,16 @@ import rootRouter from "@/routes/index.route.js";
 
 import { env } from "./env.js";
 import { pinoLogger } from "./middlewares/pino-logger.js";
-import { PreMarketController } from "./modules/pre-market/pre-market.controller.js";
 import {
   installMongooseQueryObserver,
   performanceObserverMiddleware,
 } from "./utils/performance-observer.utils.js";
 
 const app: Application = express();
-const controller = new PreMarketController();
+
+// The production API is reached through one reverse proxy. Without this,
+// rate limiting would see the proxy as every client's IP address.
+app.set("trust proxy", env.TRUST_PROXY_HOPS);
 
 installMongooseQueryObserver();
 
@@ -116,30 +118,6 @@ app.use(
     ],
     optionsSuccessStatus: 204,
   }),
-);
-
-function captureRawBody(
-  req: any,
-  res: any,
-  buf: Buffer,
-  _encoding: string | undefined,
-) {
-  if (buf && buf.length) {
-    req.rawBody = buf;
-  }
-}
-
-const normalizedBaseUrl = env.BASE_URL.startsWith("/")
-  ? env.BASE_URL
-  : `/${env.BASE_URL}`;
-const basePath =
-  normalizedBaseUrl === "/" ? "" : normalizedBaseUrl.replace(/\/$/, "");
-const stripeWebhookPath = `${basePath}/pre-market/payment/webhook`;
-
-app.post(
-  stripeWebhookPath,
-  express.raw({ type: "application/json", verify: captureRawBody }),
-  controller.handleWebhook.bind(controller),
 );
 
 app.use(cookieParser());

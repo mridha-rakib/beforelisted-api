@@ -20,7 +20,6 @@ import type { BrokerFee, IGrantAccessRequest } from "./grant-access.model";
 
 import { AgentProfileRepository } from "../agent/agent.repository";
 import { NotificationService } from "../notification/notification.service";
-import { PaymentService } from "../payment/payment.service";
 import { resolveRenterOpportunityEmailScope } from "../pre-market/pre-market-email-scope.utils";
 import { PreMarketNotifier } from "../pre-market/pre-market-notifier.js";
 import { PreMarketRepository } from "../pre-market/pre-market.repository";
@@ -33,7 +32,6 @@ export class GrantAccessService {
   private readonly grantAccessRepository: GrantAccessRepository;
   private readonly preMarketRepository: PreMarketRepository;
   private readonly preMarketService: PreMarketService;
-  private readonly paymentService: PaymentService;
   private readonly notifier: PreMarketNotifier;
   private readonly notificationService: NotificationService;
   private readonly userRepository: UserRepository;
@@ -44,7 +42,6 @@ export class GrantAccessService {
     this.grantAccessRepository = new GrantAccessRepository();
     this.preMarketRepository = new PreMarketRepository();
     this.preMarketService = new PreMarketService();
-    this.paymentService = new PaymentService();
     this.notifier = new PreMarketNotifier();
     this.notificationService = new NotificationService();
     this.userRepository = new UserRepository();
@@ -477,17 +474,14 @@ export class GrantAccessService {
   }
 
   /**
-   * Applies an admin decision to a grant-access request: reject, approve free, or approve with charge.
-   * Expects a grant-access ID and admin decision payload with required charge amount when charging.
-   * Can fail when the request is missing, the charge amount is invalid, or persistence/payment-link operations fail; notifications are best-effort.
+   * Applies an admin decision to a grant-access request: reject or approve free.
    */
   async adminDecideAccess(
     grantAccessId: string,
     decision: {
-      action: "free" | "reject" | "charge";
+      action: "free" | "reject";
       adminId: string;
       isFree?: boolean;
-      chargeAmount?: number;
       notes?: string;
     },
   ): Promise<IGrantAccessRequest> {
@@ -632,128 +626,7 @@ export class GrantAccessService {
       return grantAccess;
     }
 
-    // CHARGE
-    if (decision.action === "charge" || !decision.isFree) {
-      if (!decision.chargeAmount || decision.chargeAmount <= 0) {
-        throw new BadRequestException("Invalid charge amount");
-      }
-
-      grantAccess.payment = {
-        amount: decision.chargeAmount,
-        currency: "USD",
-        paymentStatus: "pending",
-        failureCount: 0,
-        failedAt: [],
-      };
-
-      grantAccess.adminDecision = {
-        decidedBy: decision.adminId as any,
-        decidedAt: new Date(),
-        chargeAmount: decision.chargeAmount,
-        isFree: false,
-        notes: decision.notes,
-      };
-
-      grantAccess.status = "approved";
-
-      await this.grantAccessRepository.updateById(grantAccessId, grantAccess);
-      if (grantAccess.representation_type !== "owner_representation") {
-        await this.preMarketRepository.setAllMarketRequestPrivateAfterMatch(
-          grantAccess.preMarketRequestId,
-        );
-      }
-      await this.notifier.sendPaymentLinkToAgent(grantAccess);
-
-      try {
-        if (agent && preMarketRequest) {
-          await this.notificationService.notifyAgentAboutGrantAccessCharged({
-            grantAccessId,
-            agentId: grantAccess.agentId,
-            agentName: agent.fullName || "Agent",
-            propertyTitle: preMarketRequest.requestName || "Pre-Market Request",
-            location:
-              preMarketRequest.locations
-                ?.map(loc => loc?.borough)
-                .filter(Boolean)
-                .join(", ") || "Unknown Location",
-            chargeAmount: decision.chargeAmount,
-            currency: "USD",
-            chargedBy: decision.adminId,
-            paymentLink: `/agent/grant-access/${grantAccessId}/pay`,
-            notes: decision.notes,
-          });
-
-          logger.info(
-            {
-              grantAccessId,
-              agentId: grantAccess.agentId,
-              amount: decision.chargeAmount,
-            },
-            "✅ Agent notification sent for charge",
-          );
-        }
-      }
-      catch (notificationError) {
-        logger.error(
-          { error: notificationError, grantAccessId },
-          "⚠️ Failed to send agent charge notification (non-blocking)",
-        );
-      }
-
-      logger.info(
-        `Grant access charged: ${grantAccessId} - $${decision.chargeAmount}`,
-      );
-
-      return grantAccess;
-    }
-
     throw new BadRequestException("Invalid decision action");
-  }
-
-  // ============================================
-  // CREATE PAYMENT INTENT
-  // ============================================
-
-  /**
-   * Creates a Stripe payment intent for an approved paid grant-access request.
-   * Expects a grant-access ID whose payment state is approved or pending with payment metadata.
-   * Can fail when the grant-access request is missing, payment state is invalid, or Stripe intent creation fails.
-   */
-  async createPaymentIntent(
-    grantAccessId: string,
-  ): Promise<{ clientSecret: string; amount: number }> {
-    const grantAccess
-      = await this.grantAccessRepository.findById(grantAccessId);
-
-    if (!grantAccess) {
-      throw new NotFoundException("Grant access request not found");
-    }
-
-    if (
-      (grantAccess.status !== "approved" && grantAccess.status !== "pending")
-      || !grantAccess.payment
-    ) {
-      throw new BadRequestException("Invalid payment status");
-    }
-
-    const paymentIntent = await this.paymentService.createPaymentIntent({
-      amount: grantAccess.payment.amount,
-      metadata: {
-        grantAccessId: grantAccess._id.toString(),
-        agentId: grantAccess.agentId.toString(),
-        preMarketRequestId: grantAccess.preMarketRequestId.toString(),
-      },
-    });
-
-    // Store payment intent ID
-    grantAccess.payment.stripePaymentIntentId = paymentIntent.id;
-    grantAccess.payment.paymentStatus = "pending";
-    await this.grantAccessRepository.updateById(grantAccessId, grantAccess);
-
-    return {
-      clientSecret: paymentIntent.client_secret!,
-      amount: grantAccess.payment.amount,
-    };
   }
 
   async getAdminPayments(filters?: {

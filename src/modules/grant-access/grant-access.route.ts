@@ -12,10 +12,6 @@ const router = Router();
 // Initialize dependencies
 // const grantAccessRepository = new GrantAccessRepository();
 // const preMarketRepository = new PreMarketRepository();
-// const paymentService = new PaymentService(
-//   grantAccessRepository,
-//   preMarketRepository
-// );
 const _notifier = new PreMarketNotifier();
 
 // const grantAccessService = new GrantAccessService(
@@ -29,18 +25,6 @@ const controller = new GrantAccessController();
 // ============================================
 // AGENT ROUTES
 // ============================================
-
-/**
- * POST /grant-access/payment/create-intent
- * Create payment intent for grant access
- * Protected: Agents only
- */
-// router.post(
-//   "/payment/create-intent",
-//   authMiddleware.verifyToken,
-//   authMiddleware.authorize("Agent"),
-//   controller.createPaymentIntent.bind(controller)
-// );
 
 // ============================================
 // ADMIN ROUTES

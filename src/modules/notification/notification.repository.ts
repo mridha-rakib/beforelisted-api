@@ -38,9 +38,12 @@ export class NotificationRepository extends BaseRepository<INotification> {
       .exec();
   }
 
-  async markAsRead(notificationId: string): Promise<INotification | null> {
-    return this.model.findByIdAndUpdate(
-      notificationId,
+  async markAsRead(
+    notificationId: string,
+    recipientId: string,
+  ): Promise<INotification | null> {
+    return this.model.findOneAndUpdate(
+      { _id: notificationId, recipientId },
       { isRead: true, readAt: new Date() },
       { new: true },
     );
@@ -53,8 +56,8 @@ export class NotificationRepository extends BaseRepository<INotification> {
     );
   }
 
-  async deleteNotification(notificationId: string): Promise<any> {
-    return this.model.findByIdAndDelete(notificationId);
+  async deleteNotification(notificationId: string, recipientId: string): Promise<any> {
+    return this.model.findOneAndDelete({ _id: notificationId, recipientId });
   }
 
   async getByType(userId: string, type: string): Promise<INotification[]> {

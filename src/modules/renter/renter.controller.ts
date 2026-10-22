@@ -8,6 +8,7 @@ import { logger } from "@/middlewares/pino-logger";
 import { BadRequestException } from "@/utils/app-error.utils";
 import { buildExcelDownloadResponse } from "@/utils/excel-response.utils";
 import { ApiResponse } from "@/utils/response.utils";
+import { requiredRouteParam } from "@/utils/request-param.utils";
 import { zParse } from "@/utils/validators.utils";
 
 import {
@@ -218,7 +219,7 @@ export class RenterController {
    */
   getRenterDetailsForAdmin = asyncHandler(
     async (req: Request, res: Response) => {
-      const { renterId } = req.params;
+      const renterId = requiredRouteParam(req.params.renterId, "renterId");
 
       if (!renterId || renterId.length !== 24) {
         throw new BadRequestException("Invalid renter ID format");
