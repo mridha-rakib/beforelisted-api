@@ -53,7 +53,7 @@
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",
     "pino-pretty": "^13.2.0",
-    "postmark": "^4.0.7",
+    "postmark": "^5.1.0",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui": "^5.33.3",
     "swagger-ui-express": "^5.0.1",
