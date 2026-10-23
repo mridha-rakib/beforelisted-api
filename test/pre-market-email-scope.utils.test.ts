@@ -11,6 +11,12 @@ import type { IMatchCompatibilitySummary } from "../src/services/email-notificat
 const matchSummary: IMatchCompatibilitySummary = {
   compatibilityMisses: ["Rent over budget", "Dishwasher"],
   preferenceMatches: ["Large Apartment", "Lots of Light"],
+  preferenceDetails: [
+    "Large Apartment",
+    "Lots of Light",
+    "Private Outdoor Space",
+    "In-unit Laundry",
+  ],
 };
 
 describe("resolveRenterOpportunityEmailScope", () => {
@@ -126,6 +132,7 @@ describe("resolveRenterOpportunityEmailScope", () => {
     expect(html).toContain("Rent over budget, Dishwasher");
     expect(html).toContain("Preference Matches:");
     expect(html).toContain("Large Apartment, Lots of Light");
+    expect(html).not.toContain("Private Outdoor Space");
   });
 
   it("omits Template 31B agent message when no message was submitted", () => {
@@ -221,6 +228,7 @@ describe("renterOpportunityFoundRegisteredAgentTemplate", () => {
     expect(html).toContain("Rent over budget, Dishwasher");
     expect(html).toContain("Preference Matches:");
     expect(html).toContain("Large Apartment, Lots of Light");
+    expect(html).not.toContain("Private Outdoor Space");
   });
 
   it("omits Template 31A agent message when no message was submitted", () => {
@@ -280,6 +288,7 @@ describe("ownerRepresentationMatchReferralAcknowledgmentTemplate", () => {
     expect(html).toContain("Rent over budget, Dishwasher");
     expect(html).toContain("Preference Matches:");
     expect(html).toContain("Large Apartment, Lots of Light");
+    expect(html).not.toContain("Private Outdoor Space");
   });
 });
 
