@@ -40,8 +40,10 @@ function renderMatchCompatibilitySummary(
     .map(item => item.trim())
     .filter(Boolean)
     .map(escapeHtml);
-  const preferenceDetails = (matchSummary.preferenceDetails ?? [])
-    .slice(0, 4)
+  // This is already filtered by the matching engine. Do not use
+  // `preferenceDetails` here: that field contains the renter's full priority
+  // list, including preferences the apartment did not meet.
+  const preferenceMatches = matchSummary.preferenceMatches
     .map(item => escapeHtml(item.trim()))
     .filter(Boolean);
   const formatDate = (value?: Date | string) => value
@@ -56,7 +58,7 @@ function renderMatchCompatibilitySummary(
   return `
             <div class="match-summary">
                 <p><strong>Compatibility Misses:</strong> ${compatibilityMisses.length ? compatibilityMisses.join(", ") : "None"}</p>
-                <p><strong>Preference Matches:</strong> ${preferenceDetails.length ? preferenceDetails.join(" | ") : "None"}</p>
+                <p><strong>Preference Matches:</strong> ${preferenceMatches.length ? preferenceMatches.join(", ") : "None"}</p>
                 <p><strong>Rent:</strong> ${rent}</p>
                 ${renderBrokerFeeMarkup(brokerFee)}
                 <p><strong>Moving Date:</strong> Earliest ${formatDate(matchSummary.movingDateEarliest)} / Latest ${formatDate(matchSummary.movingDateLatest)}</p>
