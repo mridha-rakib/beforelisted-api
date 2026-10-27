@@ -298,10 +298,10 @@ describe("PreMarketService upcoming search expansion reminder sweep", () => {
           renterName: "Test Renter",
           replyTo: "agent@example.com",
           subject:
-            "Trouble Securing an Apartment? Increase Your Chances with a Rental Specialist – BeforeListed™",
+            "Still Searching? Add Rental Specialist Service to Your Request | BeforeListed®",
           templateType: "UPCOMING_REQUEST_SEARCH_EXPANSION_REMINDER",
           bodyHtml: expect.stringContaining(
-            `/renter/saved-requests/${requestId}`,
+            `https://beforelisted.com/renter/saved-requests/${requestId}`,
           ),
         }),
       );

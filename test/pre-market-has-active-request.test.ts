@@ -17,7 +17,7 @@ describe("PreMarketService.hasActiveRequestForRenter", () => {
 
     const countSpy = vi.fn().mockResolvedValue(1);
     serviceAny.preMarketRepository = {
-      countActiveByRenterId: countSpy,
+      countSavedByRenterId: countSpy,
     };
 
     const result = await service.hasActiveRequestForRenter("renter-1");
@@ -31,7 +31,7 @@ describe("PreMarketService.hasActiveRequestForRenter", () => {
     const serviceAny = service as any;
 
     serviceAny.preMarketRepository = {
-      countActiveByRenterId: vi.fn().mockResolvedValue(0),
+      countSavedByRenterId: vi.fn().mockResolvedValue(0),
     };
 
     const result = await service.hasActiveRequestForRenter("renter-2");
@@ -44,7 +44,7 @@ describe("PreMarketService.hasActiveRequestForRenter", () => {
     const serviceAny = service as any;
 
     serviceAny.preMarketRepository = {
-      countActiveByRenterId: vi
+      countSavedByRenterId: vi
         .fn()
         .mockRejectedValue(new Error("db unavailable")),
     };
