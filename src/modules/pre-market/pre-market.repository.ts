@@ -10,15 +10,15 @@ import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import { PaginationHelper } from "@/utils/pagination-helper";
 
-import type { IPreMarketRequest } from "./pre-market.model";
+import type { IPreMarketRequest } from "./pre-market.model.js";
 
-import { AgentProfile } from "../agent/agent.model";
-import { BaseRepository } from "../base/base.repository";
-import { GrantAccessRequestModel } from "../grant-access/grant-access.model";
+import { AgentProfile } from "../agent/agent.model.js";
+import { BaseRepository } from "../base/base.repository.js";
+import { GrantAccessRequestModel } from "../grant-access/grant-access.model.js";
 import {
 
   PreMarketRequestModel,
-} from "./pre-market.model";
+} from "./pre-market.model.js";
 
 const MATCHED_SCOPE_GRANT_ACCESS_STATUSES = [
   "pending",

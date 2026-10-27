@@ -1,4 +1,4 @@
-import { BadRequestException } from "./app-error.utils";
+import { BadRequestException } from "./app-error.utils.js";
 
 /** Return one route parameter and reject repeated/missing values. */
 export function requiredRouteParam(

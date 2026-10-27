@@ -9,15 +9,15 @@ import { NotificationService } from "@/modules/notification/notification.service
 import { emailSiteUrl } from "@/services/email-branding";
 import { emailService } from "@/services/email.service";
 
-import type { IGrantAccessRequest } from "../grant-access/grant-access.model";
-import type { IPreMarketNotificationCreateResponse } from "./pre-market-notification.types";
-import type { IPreMarketRequest } from "./pre-market.model";
+import type { IGrantAccessRequest } from "../grant-access/grant-access.model.js";
+import type { IPreMarketNotificationCreateResponse } from "./pre-market-notification.types.js";
+import type { IPreMarketRequest } from "./pre-market.model.js";
 
-import { AgentProfileRepository } from "../agent/agent.repository";
-import { GrantAccessRepository } from "../grant-access/grant-access.repository";
-import { RenterRepository } from "../renter/renter.repository";
-import { UserRepository } from "../user/user.repository";
-import { PreMarketRepository } from "./pre-market.repository";
+import { AgentProfileRepository } from "../agent/agent.repository.js";
+import { GrantAccessRepository } from "../grant-access/grant-access.repository.js";
+import { RenterRepository } from "../renter/renter.repository.js";
+import { UserRepository } from "../user/user.repository.js";
+import { PreMarketRepository } from "./pre-market.repository.js";
 
 const DEFAULT_REFERRAL_AGENT_EMAIL = SYSTEM_DEFAULT_AGENT.email;
 const DEFAULT_REFERRAL_AGENT_NAME = SYSTEM_DEFAULT_AGENT.fullName;
@@ -409,8 +409,8 @@ export class PreMarketNotifier {
 
       // Reuse the helper that already resolves registered + matched agents
       // for the same request. We only need the agent list for CC.
-      const { registeredAgent, matchedAgents } =
-        await this.getRegisteredAndMatchedAgentsForRequestUpdate(
+      const { registeredAgent, matchedAgents }
+        = await this.getRegisteredAndMatchedAgentsForRequestUpdate(
           preMarketRequest,
         );
 

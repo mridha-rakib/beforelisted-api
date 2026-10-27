@@ -29,7 +29,7 @@ const appLogo = env.EMAIL_LOGO_URL;
 const infoDescription = `
 ![BeforeListed Logo](${appLogo})
 
-> **BeforeListed API**  
+> **BeforeListed API**
 > Comprehensive API documentation for the BeforeListed platform, covering authentication, user management, agents, renters, files, and reports.
 
 ---

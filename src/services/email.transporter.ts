@@ -12,7 +12,7 @@ import type {
   IEmailResponse,
   IEmailTransporter,
   IPostmarkConfig,
-} from "./email.types";
+} from "./email.types.js";
 
 export class PostmarkEmailTransporter implements IEmailTransporter {
   private client: AxiosInstance;

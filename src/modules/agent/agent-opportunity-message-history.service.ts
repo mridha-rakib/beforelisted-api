@@ -2,17 +2,19 @@ import type {
   AgentRepresentationType,
   IAgentProfile,
   OpportunityMessageHistory,
-} from "./agent.interface";
+} from "./agent.interface.js";
 
-import { AgentProfileRepository } from "./agent.repository";
+import { AgentProfileRepository } from "./agent.repository.js";
 
 export const OPPORTUNITY_MESSAGE_HISTORY_LIMIT = 10;
 export const OPPORTUNITY_MESSAGE_MAX_LENGTH = 350;
 
-const emptyHistory = (): OpportunityMessageHistory => ({
-  ownerRepresentation: [],
-  renterRepresentation: [],
-});
+function emptyHistory(): OpportunityMessageHistory {
+  return {
+    ownerRepresentation: [],
+    renterRepresentation: [],
+  };
+}
 
 export class AgentOpportunityMessageHistoryService {
   constructor(

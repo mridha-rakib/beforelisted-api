@@ -1,7 +1,8 @@
 // file: src/services/email-notification.templates.ts
 
+import type { IMatchCompatibilitySummary } from "./email-notification.types.js";
+
 import { emailSiteUrl, renderEmailLogo } from "./email-branding.js";
-import type { IMatchCompatibilitySummary } from "./email-notification.types";
 
 // ============================================
 // AGENT NOTIFICATION EMAIL TEMPLATE
@@ -48,8 +49,10 @@ function renderMatchCompatibilitySummary(
     .filter(Boolean);
   const formatDate = (value?: Date | string) => value
     ? escapeHtml(new Date(value).toLocaleDateString("en-US", {
-      month: "short", day: "numeric", year: "numeric",
-    }))
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }))
     : "N/A";
   const rent = typeof matchSummary.rent === "number"
     ? `$${matchSummary.rent.toLocaleString("en-US")}`
@@ -224,7 +227,7 @@ export function preMarketAgentNotificationTemplate(
             </div>
 
             <!-- Call to Action -->
-           
+
             <div class="info-text">
                 <strong>Note:</strong> Renter details will be available after you request access and complete the verification process.
             </div>

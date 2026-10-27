@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 import { JWT, OTP, REFERRAL_CODE } from "@/constants/app.constants";
 import { env } from "@/env";
 
-import type { JWTPayload } from "../user/user.type";
+import type { JWTPayload } from "../user/user.type.js";
 
 export class AuthUtil {
   static generateAccessToken(payload: JWTPayload): string {
@@ -16,7 +16,7 @@ export class AuthUtil {
   }
 
   /**
-   
+
 Generate Refresh Token
    */
   static generateRefreshToken(userId: string): string {
@@ -26,7 +26,7 @@ Generate Refresh Token
   }
 
   /**
-   
+
 Verify Access Token
    */
   static verifyAccessToken(token: string): JWTPayload {
@@ -40,7 +40,7 @@ Verify Access Token
   }
 
   /**
-   
+
 Verify Refresh Token
    */
   static verifyRefreshToken(token: string): JWTPayload {
@@ -54,7 +54,7 @@ Verify Refresh Token
   }
 
   /**
-   
+
 Decode token without verification (for debugging)
    */
   static decodeToken(token: string): any {
@@ -62,7 +62,7 @@ Decode token without verification (for debugging)
   }
 
   /**
-   
+
 Generate Email Verification Token
    */
   static generateEmailVerificationToken(): string {
@@ -70,7 +70,7 @@ Generate Email Verification Token
   }
 
   /**
-   
+
 Generate OTP (4 digits)
    */
   static generateOTP(): string {
@@ -87,7 +87,7 @@ Generate OTP (4 digits)
   }
 
   /**
-   
+
 Generate Referral URL Slug
    */
   static generateReferralSlug(fullName: string): string {

@@ -6,9 +6,9 @@ import {
   NotFoundException,
 } from "@/utils/app-error.utils";
 
-import type { IMonthlyReport } from "./monthly-report.model";
+import type { IMonthlyReport } from "./monthly-report.model.js";
 
-import { MonthlyReportRepository } from "./monthly-report.repository";
+import { MonthlyReportRepository } from "./monthly-report.repository.js";
 
 export class MonthlyReportService {
   private readonly reportRepository: MonthlyReportRepository;

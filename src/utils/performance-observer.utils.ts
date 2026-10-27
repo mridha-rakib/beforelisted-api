@@ -2,9 +2,9 @@
 
 import type { NextFunction, Request, Response } from "express";
 
+import mongoose from "mongoose";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { performance } from "node:perf_hooks";
-import mongoose from "mongoose";
 
 import { logger } from "@/middlewares/pino-logger";
 

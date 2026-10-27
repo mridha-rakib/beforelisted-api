@@ -3,7 +3,7 @@
 import type { Types } from "mongoose";
 import type { z } from "zod";
 
-import type { renterDetailSchema, renterListSchema } from "./renter.schema";
+import type { renterDetailSchema, renterListSchema } from "./renter.schema.js";
 
 // ============================================
 // REGISTRATION PAYLOADS

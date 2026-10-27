@@ -4,9 +4,9 @@ import { logger } from "@/middlewares/pino-logger";
 
 import type { BaseEmailTemplate } from "./base-email-template.js";
 
-import { GrantAccessApprovalTemplate } from "./grant-access-approval.template";
-import { GrantAccessRejectionTemplate } from "./grant-access-rejection.template";
-import { GrantAccessRequestTemplate } from "./grant-access-request.template";
+import { GrantAccessApprovalTemplate } from "./grant-access-approval.template.js";
+import { GrantAccessRejectionTemplate } from "./grant-access-rejection.template.js";
+import { GrantAccessRequestTemplate } from "./grant-access-request.template.js";
 
 /**
  * Factory for creating email template instances

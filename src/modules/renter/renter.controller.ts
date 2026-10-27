@@ -7,8 +7,8 @@ import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
 import { BadRequestException } from "@/utils/app-error.utils";
 import { buildExcelDownloadResponse } from "@/utils/excel-response.utils";
-import { ApiResponse } from "@/utils/response.utils";
 import { requiredRouteParam } from "@/utils/request-param.utils";
+import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 
 import {
@@ -18,8 +18,8 @@ import {
   renterListSchema,
   renterRegisterSchema,
   updateRenterProfileSchema,
-} from "./renter.schema";
-import { RenterService } from "./renter.service";
+} from "./renter.schema.js";
+import { RenterService } from "./renter.service.js";
 
 /**
  * Renter Controller

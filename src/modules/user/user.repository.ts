@@ -5,9 +5,9 @@ import type { ObjectId } from "mongoose";
 import { logger } from "@/middlewares/pino-logger";
 import { BaseRepository } from "@/modules/base/base.repository";
 
-import type { IUser } from "./user.interface";
+import type { IUser } from "./user.interface.js";
 
-import { RefreshTokenBlacklist, User } from "./user.model";
+import { RefreshTokenBlacklist, User } from "./user.model.js";
 
 /**
  * User Repository - Extended with referral operations

@@ -10,7 +10,7 @@ import { Router } from "express";
 
 import { apiLimiter, authLimiter } from "@/middlewares/rate-limit.middleware";
 
-import { PasswordResetController } from "./password.controller";
+import { PasswordResetController } from "./password.controller.js";
 
 const router = Router();
 const controller = new PasswordResetController();
