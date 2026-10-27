@@ -449,6 +449,25 @@ describe("PreMarketService match search disclosure behavior", () => {
           representation_type: "renter_representation",
         },
       ],
+      findByPreMarketRequestIds: async () => [
+        {
+          _id: "grant-1",
+          preMarketRequestId: "shared-matched",
+          status: "free",
+          representation_type: "renter_representation",
+        },
+      ],
+      findByPreMarketRequestId: async (requestId: string) =>
+        requestId === "shared-matched"
+          ? [
+              {
+                _id: "grant-1",
+                preMarketRequestId: "shared-matched",
+                status: "free",
+                representation_type: "renter_representation",
+              },
+            ]
+          : [],
     };
     serviceAny.buildRequestVisibilityFilterForAgent = async () => ({});
     serviceAny.buildAgentVisibilityFilter = () => ({});
@@ -524,6 +543,7 @@ describe("PreMarketService.getAllRequestsForAgent (Matches page)", () => {
           ];
         },
       ),
+      findByPreMarketRequestId: vi.fn().mockResolvedValue([]),
     };
 
     const matchedRequest = {
@@ -747,6 +767,7 @@ describe("PreMarketService additional opportunities", () => {
     };
     serviceAny.grantAccessRepository = {
       findByAgentAndRequest: async () => existingMatch,
+      updateById: async () => existingMatch,
     };
     serviceAny.isRegisteredAgentForRequest = async () => false;
     serviceAny.ensureAgentCanViewRequest = () => undefined;

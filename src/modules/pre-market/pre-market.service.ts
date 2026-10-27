@@ -2862,8 +2862,7 @@ export class PreMarketService {
   }
 
   private buildRenterEditRequestLink(requestId: string): string {
-    const baseUrl = emailSiteUrl();
-    return `${baseUrl}/renter/saved-requests/${requestId}`;
+    return emailSiteUrl(`/renter/saved-requests/${requestId}`);
   }
 
   private getPublicApiBaseUrl(): string {
