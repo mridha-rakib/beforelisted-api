@@ -20,8 +20,8 @@ async function runUpcomingSearchExpansionReminderSweep(
   isRunning = true;
 
   try {
-    const result =
-      await service.processUpcomingSearchExpansionReminderSweep();
+    const result
+      = await service.processUpcomingSearchExpansionReminderSweep();
     if (
       result.remindersSent > 0
       || result.failedCount > 0
@@ -31,12 +31,14 @@ async function runUpcomingSearchExpansionReminderSweep(
         "Pre-market upcoming search expansion reminder sweep processed",
       );
     }
-  } catch (error) {
+  }
+  catch (error) {
     logger.error(
       { error },
       "Failed to process pre-market upcoming search expansion reminder sweep",
     );
-  } finally {
+  }
+  finally {
     isRunning = false;
   }
 }

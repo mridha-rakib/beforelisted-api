@@ -9,11 +9,11 @@ import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import { logger } from "@/middlewares/pino-logger";
 import { PaginationHelper } from "@/utils/pagination-helper";
 
-import type { IRenterModel } from "./renter.model";
-import type { UpdateRenterProfilePayload } from "./renter.type";
+import type { IRenterModel } from "./renter.model.js";
+import type { UpdateRenterProfilePayload } from "./renter.type.js";
 
-import { BaseRepository } from "../base/base.repository";
-import { RenterModel } from "./renter.model";
+import { BaseRepository } from "../base/base.repository.js";
+import { RenterModel } from "./renter.model.js";
 
 /**
  * Renter Repository

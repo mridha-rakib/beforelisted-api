@@ -5,7 +5,7 @@ import { model } from "mongoose";
 import { OTP } from "@/constants/app.constants";
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 
-import type { IPasswordResetOTP } from "./password.interface";
+import type { IPasswordResetOTP } from "./password.interface.js";
 
 /**
  * Password Reset OTP Schema

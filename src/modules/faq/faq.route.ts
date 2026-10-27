@@ -4,7 +4,7 @@ import { Router } from "express";
 
 import { authMiddleware } from "@/middlewares/auth.middleware";
 
-import { FAQController } from "./faq.controller";
+import { FAQController } from "./faq.controller.js";
 
 const router = Router();
 const controller = new FAQController();

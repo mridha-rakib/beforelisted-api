@@ -44,7 +44,8 @@ function normalizeOrigin(origin: string) {
   try {
     const url = new URL(origin.trim());
     return `${url.protocol}//${url.host}`;
-  } catch {
+  }
+  catch {
     return origin.trim().replace(/\/$/, "");
   }
 }
@@ -58,8 +59,8 @@ const allowedVercelOriginPatterns = [
   /^https:\/\/rental-pennymore-dashboard(?:-[a-z0-9-]+)?\.vercel\.app$/,
 ];
 
-const allowedDevOriginPatterns =
-  env.NODE_ENV === "production"
+const allowedDevOriginPatterns
+  = env.NODE_ENV === "production"
     ? []
     : [
         /^https?:\/\/localhost(?::\d+)?$/,
@@ -77,17 +78,17 @@ const allowedDevOriginPatterns =
   "http://localhost:3002",
   "http://127.0.0.1:6060",
   "https://evict-spender-unaware.ngrok-free.dev",
-].forEach((origin) => allowedOrigins.add(origin));
+].forEach(origin => allowedOrigins.add(origin));
 
 function isAllowedOrigin(origin: string) {
   const normalizedOrigin = normalizeOrigin(origin);
 
   return (
-    allowedOrigins.has(normalizedOrigin) ||
-    allowedVercelOriginPatterns.some((pattern) =>
+    allowedOrigins.has(normalizedOrigin)
+    || allowedVercelOriginPatterns.some(pattern =>
       pattern.test(normalizedOrigin),
-    ) ||
-    allowedDevOriginPatterns.some((pattern) => pattern.test(normalizedOrigin))
+    )
+    || allowedDevOriginPatterns.some(pattern => pattern.test(normalizedOrigin))
   );
 }
 

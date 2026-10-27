@@ -3,7 +3,7 @@
 import type {
   IMovingDiscountCategory,
   IMovingDiscountItem,
-} from "./moving-discounts.model";
+} from "./moving-discounts.model.js";
 
 export type MovingDiscountCategoryResponse = IMovingDiscountCategory;
 export type MovingDiscountItemResponse = IMovingDiscountItem;

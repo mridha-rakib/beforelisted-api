@@ -5,7 +5,7 @@ import { Router } from "express";
 import upload from "@/config/multer.config";
 import { authMiddleware } from "@/middlewares/auth.middleware";
 
-import { FileController } from "./file.controller";
+import { FileController } from "./file.controller.js";
 
 const router = Router();
 const fileController = new FileController();

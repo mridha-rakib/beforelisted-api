@@ -247,56 +247,56 @@ const matchSectionTogglesSchema = z
   });
 
 const matchApartmentInputSchema = z.object({
-    borough: z.enum(["Manhattan", "Brooklyn"]),
-    neighborhood: z.string().trim().min(1, "Neighborhood is required"),
-    bedrooms: bedroomSchema,
-    bathrooms: bathroomSchema,
-    rent: z.coerce.number().min(0, "Rent must be zero or greater"),
-    movingDateRange: movingDateRangeSchema,
-    unitFeatures: z
-      .object({
-        laundryInUnit: z.boolean().default(false),
-        privateOutdoorSpace: z.boolean().default(false),
-        dishwasher: z.boolean().default(false),
-      })
-      .default({
-        laundryInUnit: false,
-        privateOutdoorSpace: false,
-        dishwasher: false,
-      }),
-    buildingFeatures: z
-      .object({
-        doorman: z.boolean().default(false),
-        elevator: z.boolean().default(false),
-        laundryInBuilding: z.boolean().default(false),
-      })
-      .default({
-        doorman: false,
-        elevator: false,
-        laundryInBuilding: false,
-      }),
-    petPolicy: z
-      .object({
-        catsAllowed: z.boolean().default(false),
-        dogsAllowed: z.boolean().default(false),
-      })
-      .default({
-        catsAllowed: false,
-        dogsAllowed: false,
-      }),
-    guarantorPolicy: z
-      .object({
-        personalGuarantor: z.boolean().default(false),
-        thirdPartyGuarantor: z.boolean().default(false),
-      })
-      .default({
-        personalGuarantor: false,
-        thirdPartyGuarantor: false,
-      }),
-    availableFeatures: z
-      .record(z.string(), z.boolean())
-      .default({}),
-    toggles: matchSectionTogglesSchema,
+  borough: z.enum(["Manhattan", "Brooklyn"]),
+  neighborhood: z.string().trim().min(1, "Neighborhood is required"),
+  bedrooms: bedroomSchema,
+  bathrooms: bathroomSchema,
+  rent: z.coerce.number().min(0, "Rent must be zero or greater"),
+  movingDateRange: movingDateRangeSchema,
+  unitFeatures: z
+    .object({
+      laundryInUnit: z.boolean().default(false),
+      privateOutdoorSpace: z.boolean().default(false),
+      dishwasher: z.boolean().default(false),
+    })
+    .default({
+      laundryInUnit: false,
+      privateOutdoorSpace: false,
+      dishwasher: false,
+    }),
+  buildingFeatures: z
+    .object({
+      doorman: z.boolean().default(false),
+      elevator: z.boolean().default(false),
+      laundryInBuilding: z.boolean().default(false),
+    })
+    .default({
+      doorman: false,
+      elevator: false,
+      laundryInBuilding: false,
+    }),
+  petPolicy: z
+    .object({
+      catsAllowed: z.boolean().default(false),
+      dogsAllowed: z.boolean().default(false),
+    })
+    .default({
+      catsAllowed: false,
+      dogsAllowed: false,
+    }),
+  guarantorPolicy: z
+    .object({
+      personalGuarantor: z.boolean().default(false),
+      thirdPartyGuarantor: z.boolean().default(false),
+    })
+    .default({
+      personalGuarantor: false,
+      thirdPartyGuarantor: false,
+    }),
+  availableFeatures: z
+    .record(z.string(), z.boolean())
+    .default({}),
+  toggles: matchSectionTogglesSchema,
 });
 
 export const agentMatchSearchSchema = z.object({

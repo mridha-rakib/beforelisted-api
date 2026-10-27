@@ -3,7 +3,6 @@
 import type { Types } from "mongoose";
 
 import { ROLES, SYSTEM_DEFAULT_AGENT } from "@/constants/app.constants";
-import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import { emailSiteUrl } from "@/services/email-branding";
 import { EmailService } from "@/services/email.service";
@@ -17,7 +16,7 @@ import {
 } from "@/utils/app-error.utils";
 import { hashPassword } from "@/utils/password.utils";
 
-import type { IAgentProfile } from "./agent.interface";
+import type { IAgentProfile } from "./agent.interface.js";
 import type {
   ActivateAgentWithLinkPayload,
   AdminAgentMetricsResponse,
@@ -26,16 +25,16 @@ import type {
   AgentRegistrationResponse,
   CreateAgentProfilePayload,
   UpdateAgentProfilePayload,
-} from "./agent.type";
+} from "./agent.type.js";
 
-import { AuthUtil } from "../auth/auth.utils";
-import { BlockedEmailService } from "../blocked-email/blocked-email.service";
-import { EmailVerificationService } from "../email-verification/email-verification.service";
-import { PreMarketService } from "../pre-market/pre-market.service";
-import { ReferralService } from "../referral/referral.service";
-import { RenterRepository } from "../renter/renter.repository";
-import { UserService } from "../user/user.service";
-import { AgentProfileRepository } from "./agent.repository";
+import { AuthUtil } from "../auth/auth.utils.js";
+import { BlockedEmailService } from "../blocked-email/blocked-email.service.js";
+import { EmailVerificationService } from "../email-verification/email-verification.service.js";
+import { PreMarketService } from "../pre-market/pre-market.service.js";
+import { ReferralService } from "../referral/referral.service.js";
+import { RenterRepository } from "../renter/renter.repository.js";
+import { UserService } from "../user/user.service.js";
+import { AgentProfileRepository } from "./agent.repository.js";
 
 export class AgentService {
   private repository: AgentProfileRepository;
@@ -234,7 +233,7 @@ export class AgentService {
       userPayload.phoneNumber = payload.phoneNumber;
 
     if (Object.keys(userPayload).length > 0) {
-      const { UserRepository } = await import("../user/user.repository");
+      const { UserRepository } = await import("../user/user.repository.js");
       const userRepository = new UserRepository();
       await userRepository.updateById(userId, userPayload);
       logger.info({ userId }, "Agent profile synced to User model");
@@ -633,7 +632,7 @@ export class AgentService {
     ]);
 
     const { NotificationService }
-      = await import("../notification/notification.service");
+      = await import("../notification/notification.service.js");
     const notificationService = new NotificationService();
 
     try {
@@ -788,7 +787,7 @@ export class AgentService {
       await this.userService.updateAccountStatus(resolvedUserId, "active");
 
       const { NotificationService }
-        = await import("../notification/notification.service");
+        = await import("../notification/notification.service.js");
       const notificationService = new NotificationService();
 
       try {
@@ -972,7 +971,7 @@ export class AgentService {
       = await this.renterRepository.clearReferredAgentFromRenters(userId);
 
     if (referralCleanup.renterUserIds.length > 0) {
-      const { UserRepository } = await import("../user/user.repository");
+      const { UserRepository } = await import("../user/user.repository.js");
       const userRepository = new UserRepository();
       const userRefCleanupCount
         = await userRepository.clearAgentReferrerFromUsers(
@@ -1021,7 +1020,7 @@ export class AgentService {
     await this.repository.deleteById(profile._id.toString());
 
     // Permanently delete the user account
-    const { UserRepository } = await import("../user/user.repository");
+    const { UserRepository } = await import("../user/user.repository.js");
     const userRepository = new UserRepository();
     await userRepository.permanentlyDeleteUser(userId);
 

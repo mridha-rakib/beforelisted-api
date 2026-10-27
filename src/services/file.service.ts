@@ -7,7 +7,7 @@ import { logger } from "@/middlewares/pino-logger";
 import { UserRepository } from "@/modules/user/user.repository";
 import { BadRequestException } from "@/utils/app-error.utils";
 
-import { S3Service } from "./s3.service";
+import { S3Service } from "./s3.service.js";
 
 /**
  * File Service

@@ -5,7 +5,7 @@ import { Router } from "express";
 import { ROLES } from "@/constants/app.constants";
 import { authMiddleware } from "@/middlewares/auth.middleware";
 
-import { UserController } from "./user.controller";
+import { UserController } from "./user.controller.js";
 
 const router = Router();
 const userController = new UserController();

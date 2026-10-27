@@ -1,8 +1,8 @@
 // file: src/modules/moving-discounts-settings/moving-discounts-settings.repository.ts
 
-import { MovingDiscountSettings } from "./moving-discounts-settings.model";
+import type { IMovingDiscountSettings } from "./moving-discounts-settings.model.js";
 
-import type { IMovingDiscountSettings } from "./moving-discounts-settings.model";
+import { MovingDiscountSettings } from "./moving-discounts-settings.model.js";
 
 export class MovingDiscountSettingsRepository {
   private readonly model: typeof MovingDiscountSettings;
@@ -13,7 +13,8 @@ export class MovingDiscountSettingsRepository {
 
   async getSingleton(): Promise<IMovingDiscountSettings> {
     const existing = await this.model.findById("singleton");
-    if (existing) return existing;
+    if (existing)
+      return existing;
     return this.model.create({
       _id: "singleton",
       disclaimer: "",
@@ -25,7 +26,8 @@ export class MovingDiscountSettingsRepository {
     updatedBy?: string,
   ): Promise<IMovingDiscountSettings> {
     const update: Record<string, unknown> = { disclaimer };
-    if (updatedBy) update.updatedBy = updatedBy;
+    if (updatedBy)
+      update.updatedBy = updatedBy;
 
     return this.model.findByIdAndUpdate(
       "singleton",

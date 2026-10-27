@@ -5,7 +5,7 @@ import { Router } from "express";
 import { authMiddleware } from "@/middlewares/auth.middleware";
 
 import { PreMarketNotifier } from "../pre-market/pre-market-notifier.js";
-import { GrantAccessController } from "./grant-access.controller";
+import { GrantAccessController } from "./grant-access.controller.js";
 
 const router = Router();
 

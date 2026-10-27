@@ -15,8 +15,8 @@ import {
   reorderItemsSchema,
   updateCategorySchema,
   updateItemSchema,
-} from "./moving-discounts.schema";
-import { MovingDiscountService } from "./moving-discounts.service";
+} from "./moving-discounts.schema.js";
+import { MovingDiscountService } from "./moving-discounts.service.js";
 
 export class MovingDiscountController {
   private readonly service: MovingDiscountService;
@@ -109,8 +109,8 @@ export class MovingDiscountController {
 
   getItemsByCategoryForAdmin = asyncHandler(async (req: Request, res: Response) => {
     const validated = await zParse(paginationSchema, req);
-    const categoryId =
-      validated.query.categoryId ?? String(req.params.id ?? "");
+    const categoryId
+      = validated.query.categoryId ?? String(req.params.id ?? "");
     const result = await this.service.getAdminItemsPaginated({
       page: validated.query.page,
       pageSize: validated.query.pageSize,

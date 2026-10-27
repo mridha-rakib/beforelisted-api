@@ -5,9 +5,9 @@ import { EmailService } from "@/services/email.service";
 import { OTPService } from "@/services/otp.service";
 import { BadRequestException } from "@/utils/app-error.utils";
 
-import type { IPasswordResetOTP } from "./password.interface";
+import type { IPasswordResetOTP } from "./password.interface.js";
 
-import { PasswordResetOTPRepository } from "./password.repository";
+import { PasswordResetOTPRepository } from "./password.repository.js";
 
 /**
  * Password Reset Service

@@ -5,7 +5,7 @@ import type { Types } from "mongoose";
 import type { PREMARKET_CONFIG } from "@/config/pre-market.config";
 import type { PaginatedResponse } from "@/ts/pagination.types";
 
-import type { IPreMarketRequest } from "./pre-market.model";
+import type { IPreMarketRequest } from "./pre-market.model.js";
 
 export type PreMarketLocation = {
   borough: string;

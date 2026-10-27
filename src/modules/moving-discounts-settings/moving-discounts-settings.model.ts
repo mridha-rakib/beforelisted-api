@@ -36,7 +36,8 @@ const movingDiscountSettingsSchema = new Schema<IMovingDiscountSettings>(
 
 movingDiscountSettingsSchema.statics.getSingleton = async function () {
   const doc = await this.findById("singleton");
-  if (doc) return doc;
+  if (doc)
+    return doc;
   return this.create({ _id: "singleton", disclaimer: "" });
 };
 

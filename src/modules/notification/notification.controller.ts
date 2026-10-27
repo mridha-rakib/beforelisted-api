@@ -5,10 +5,10 @@ import type { NextFunction, Request, Response } from "express";
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
 import { NotFoundException } from "@/utils/app-error.utils";
-import { ApiResponse } from "@/utils/response.utils";
 import { requiredRouteParam } from "@/utils/request-param.utils";
+import { ApiResponse } from "@/utils/response.utils";
 
-import { NotificationService } from "./notification.service";
+import { NotificationService } from "./notification.service.js";
 
 export class NotificationController {
   private service: NotificationService;

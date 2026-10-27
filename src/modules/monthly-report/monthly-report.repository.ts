@@ -2,9 +2,9 @@
 
 import { BaseRepository } from "@/modules/base/base.repository";
 
-import type { IMonthlyReport } from "./monthly-report.model";
+import type { IMonthlyReport } from "./monthly-report.model.js";
 
-import { MonthlyReport } from "./monthly-report.model";
+import { MonthlyReport } from "./monthly-report.model.js";
 
 export class MonthlyReportRepository extends BaseRepository<IMonthlyReport> {
   constructor() {

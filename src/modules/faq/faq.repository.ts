@@ -1,9 +1,9 @@
 // file: src/modules/faq/faq.repository.ts
 
-import type { IFAQ } from "./faq.model";
+import type { IFAQ } from "./faq.model.js";
 
-import { BaseRepository } from "../base/base.repository";
-import { FAQ } from "./faq.model";
+import { BaseRepository } from "../base/base.repository.js";
+import { FAQ } from "./faq.model.js";
 
 export class FAQRepository extends BaseRepository<IFAQ> {
   constructor() {

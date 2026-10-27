@@ -4,7 +4,7 @@ import { model } from "mongoose";
 
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 
-import type { IEmailVerificationOTP } from "./email-verification.types";
+import type { IEmailVerificationOTP } from "./email-verification.types.js";
 
 const emailVerificationOTPSchema
   = BaseSchemaUtil.createSchema<IEmailVerificationOTP>({

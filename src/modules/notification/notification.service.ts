@@ -8,10 +8,10 @@ import type {
   IInAppNotification,
   INotification,
   NotificationType,
-} from "./notification.interface";
+} from "./notification.interface.js";
 
-import { AgentProfileRepository } from "../agent/agent.repository";
-import { NotificationRepository } from "./notification.repository";
+import { AgentProfileRepository } from "../agent/agent.repository.js";
+import { NotificationRepository } from "./notification.repository.js";
 
 export class NotificationService {
   private repository: NotificationRepository;

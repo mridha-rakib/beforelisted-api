@@ -8,8 +8,8 @@ import {
   createBlockedEmailSchema,
   listBlockedEmailSchema,
   unblockEmailSchema,
-} from "./blocked-email.schema";
-import { BlockedEmailService } from "./blocked-email.service";
+} from "./blocked-email.schema.js";
+import { BlockedEmailService } from "./blocked-email.service.js";
 
 export class BlockedEmailController {
   private readonly service = new BlockedEmailService();

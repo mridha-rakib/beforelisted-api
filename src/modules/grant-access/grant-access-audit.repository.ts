@@ -2,9 +2,9 @@
 
 import { BaseRepository } from "@/modules/base/base.repository";
 
-import { GrantAccessUnmatchAuditModel } from "./grant-access-audit.model";
+import type { IGrantAccessUnmatchAudit } from "./grant-access-audit.model.js";
 
-import type { IGrantAccessUnmatchAudit } from "./grant-access-audit.model";
+import { GrantAccessUnmatchAuditModel } from "./grant-access-audit.model.js";
 
 /**
  * Repository for the `grantaccess_unmatch_audit` collection.

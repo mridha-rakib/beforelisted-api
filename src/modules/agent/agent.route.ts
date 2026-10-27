@@ -7,7 +7,7 @@ import { agentActivationMiddleware } from "@/middlewares/agent-activation.middle
 import { authMiddleware } from "@/middlewares/auth.middleware";
 import { apiLimiter } from "@/middlewares/rate-limit.middleware";
 
-import { AgentController } from "./agent.controller";
+import { AgentController } from "./agent.controller.js";
 
 const router = Router();
 const controller = new AgentController();

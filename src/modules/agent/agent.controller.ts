@@ -11,11 +11,12 @@ import {
   ForbiddenException,
 } from "@/utils/app-error.utils";
 import { buildExcelDownloadResponse } from "@/utils/excel-response.utils";
-import { ApiResponse } from "@/utils/response.utils";
 import { requiredRouteParam } from "@/utils/request-param.utils";
+import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 
-import { UserService } from "../user/user.service";
+import { UserService } from "../user/user.service.js";
+import { AgentOpportunityMessageHistoryService } from "./agent-opportunity-message-history.service.js";
 import {
   activateAgentWithLinkSchema,
   agentRegisterSchema,
@@ -23,9 +24,8 @@ import {
   createAgentProfileSchema,
   getAgentProfileSchema,
   updateAgentProfileSchema,
-} from "./agent.schema";
-import { AgentOpportunityMessageHistoryService } from "./agent-opportunity-message-history.service";
-import { AgentService } from "./agent.service";
+} from "./agent.schema.js";
+import { AgentService } from "./agent.service.js";
 
 export class AgentController {
   private service: AgentService;
@@ -293,7 +293,7 @@ export class AgentController {
       const result = await this.service.toggleAccess(agentId, adminId, reason);
 
       const { NotificationService }
-        = await import("../notification/notification.service");
+        = await import("../notification/notification.service.js");
       const notificationService = new NotificationService();
 
       try {

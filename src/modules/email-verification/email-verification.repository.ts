@@ -9,9 +9,9 @@
 import { logger } from "@/middlewares/pino-logger";
 import { BaseRepository } from "@/modules/base/base.repository";
 
-import type { IEmailVerificationOTP } from "./email-verification.types";
+import type { IEmailVerificationOTP } from "./email-verification.types.js";
 
-import { EmailVerificationOTP } from "./email-verification.model";
+import { EmailVerificationOTP } from "./email-verification.model.js";
 
 /**
  * Email Verification OTP Repository
@@ -28,7 +28,7 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
    * @param code - OTP code
    * @param expiresAt - Expiration time
    * @returns Created document
-   
+
    */
   async createOTP(
     data: Partial<IEmailVerificationOTP>,

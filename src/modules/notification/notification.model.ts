@@ -4,7 +4,7 @@ import { model, Schema } from "mongoose";
 
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 
-import type { INotification } from "./notification.interface";
+import type { INotification } from "./notification.interface.js";
 
 const notificationSchema = BaseSchemaUtil.createSchema<INotification>({
   recipientId: {

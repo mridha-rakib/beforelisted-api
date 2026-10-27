@@ -4,7 +4,7 @@ import { Router } from "express";
 
 import { authMiddleware } from "@/middlewares/auth.middleware";
 
-import { MovingDiscountController } from "./moving-discounts.controller";
+import { MovingDiscountController } from "./moving-discounts.controller.js";
 
 const router = Router();
 const controller = new MovingDiscountController();

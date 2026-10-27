@@ -5,8 +5,8 @@ import { Router } from "express";
 import { authMiddleware } from "@/middlewares/auth.middleware";
 import { apiLimiter, authLimiter } from "@/middlewares/rate-limit.middleware";
 
-import passwordResetRoutes from "../password/password.route";
-import { AuthController } from "./auth.controller";
+import passwordResetRoutes from "../password/password.route.js";
+import { AuthController } from "./auth.controller.js";
 
 const router = Router();
 const authController = new AuthController();

@@ -9,7 +9,7 @@ import { UnauthorizedException } from "@/utils/app-error.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 
-import type { AuthControllerResponse } from "./auth.type";
+import type { AuthControllerResponse } from "./auth.type.js";
 
 import {
   changePasswordSchema,
@@ -18,8 +18,8 @@ import {
   resetPasswordSchema,
   verifyEmailSchema,
   verifyOTPSchema,
-} from "./auth.schema";
-import { AuthService } from "./auth.service";
+} from "./auth.schema.js";
+import { AuthService } from "./auth.service.js";
 
 export class AuthController {
   private authService: AuthService;

@@ -16,13 +16,13 @@ import { observePerformanceAsync } from "@/utils/performance-observer.utils";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 
-import type { AgentRepresentationType } from "../agent/agent.interface";
+import type { AgentRepresentationType } from "../agent/agent.interface.js";
 
-import { AgentOpportunityMessageHistoryService } from "../agent/agent-opportunity-message-history.service";
-import { AgentProfileRepository } from "../agent/agent.repository";
-import { GrantAccessRepository } from "../grant-access/grant-access.repository";
-import { GrantAccessService } from "../grant-access/grant-access.service";
-import { PreMarketRepository } from "./pre-market.repository";
+import { AgentOpportunityMessageHistoryService } from "../agent/agent-opportunity-message-history.service.js";
+import { AgentProfileRepository } from "../agent/agent.repository.js";
+import { GrantAccessRepository } from "../grant-access/grant-access.repository.js";
+import { GrantAccessService } from "../grant-access/grant-access.service.js";
+import { PreMarketRepository } from "./pre-market.repository.js";
 import {
   adminApproveSchema,
   adminRejectSchema,
@@ -45,8 +45,8 @@ import {
   unmatchRequestSchema,
   updatePreMarketRequestSchema,
   updateRequestVisibilitySchema,
-} from "./pre-market.schema";
-import { PreMarketService } from "./pre-market.service";
+} from "./pre-market.schema.js";
+import { PreMarketService } from "./pre-market.service.js";
 
 export class PreMarketController {
   private readonly preMarketService: PreMarketService;
@@ -102,7 +102,8 @@ export class PreMarketController {
     representationType: AgentRepresentationType,
     message?: string,
   ): Promise<void> {
-    if (!message?.trim()) return;
+    if (!message?.trim())
+      return;
 
     try {
       await this.opportunityMessageHistoryService.record(
@@ -110,7 +111,8 @@ export class PreMarketController {
         representationType,
         message,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error, agentId, representationType },
         "Failed to save agent opportunity message history",
@@ -179,8 +181,8 @@ export class PreMarketController {
   hasActiveRequest = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.userId;
 
-    const hasActiveRequest =
-      await this.preMarketService.hasActiveRequestForRenter(userId);
+    const hasActiveRequest
+      = await this.preMarketService.hasActiveRequestForRenter(userId);
 
     return ApiResponse.success(
       res,
@@ -514,8 +516,8 @@ export class PreMarketController {
       const displayStatus = isAlreadyMatchedByAgent ? "Matched" : "Open";
       const listingStatus = matchRecord ? "matched" : request.status;
       const grantAccessStatus = "free";
-      const visibleScope =
-        request.scope === "All Market" ? "All Market" : "Upcoming";
+      const visibleScope
+        = request.scope === "All Market" ? "All Market" : "Upcoming";
 
       await this.preMarketRepository.addAgentToViewedBy(
         requestId,
@@ -605,8 +607,8 @@ export class PreMarketController {
           : hasRequestedAccess
             ? "requested"
             : request.status;
-    const visibleScope =
-      request.scope === "All Market" ? "All Market" : "Upcoming";
+    const visibleScope
+      = request.scope === "All Market" ? "All Market" : "Upcoming";
 
     await this.preMarketRepository.addAgentToViewedBy(
       requestId,
@@ -1142,8 +1144,8 @@ export class PreMarketController {
             request,
             agentId,
           );
-        const visibleScope =
-          request.scope === "All Market" ? "All Market" : "Upcoming";
+        const visibleScope
+          = request.scope === "All Market" ? "All Market" : "Upcoming";
 
         await this.preMarketRepository.addAgentToViewedBy(
           requestId,
@@ -1217,8 +1219,8 @@ export class PreMarketController {
           request,
           agentId,
         );
-      const visibleScope =
-        request.scope === "All Market" ? "All Market" : "Upcoming";
+      const visibleScope
+        = request.scope === "All Market" ? "All Market" : "Upcoming";
 
       logger.info(
         { agentId, requestId },

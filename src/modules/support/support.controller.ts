@@ -6,8 +6,8 @@ import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 
-import { contactAdminSchema } from "./support.schema";
-import { SupportService } from "./support.service";
+import { contactAdminSchema } from "./support.schema.js";
+import { SupportService } from "./support.service.js";
 
 export class SupportController {
   private supportService: SupportService;

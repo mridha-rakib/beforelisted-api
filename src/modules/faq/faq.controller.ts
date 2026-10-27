@@ -4,12 +4,12 @@ import type { Request, Response } from "express";
 
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
-import { ApiResponse } from "@/utils/response.utils";
 import { requiredRouteParam } from "@/utils/request-param.utils";
+import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 
-import { createFAQSchema, updateFAQSchema } from "./faq.schema";
-import { FAQService } from "./faq.service";
+import { createFAQSchema, updateFAQSchema } from "./faq.schema.js";
+import { FAQService } from "./faq.service.js";
 
 export class FAQController {
   private readonly faqService: FAQService;

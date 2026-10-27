@@ -26,7 +26,7 @@ export class EmailTemplates {
         height: auto;
         margin: 0 auto 20px auto;
       }
-      
+
       @media (max-width: 480px) {
         .logo {
           max-width: 120px;
@@ -2393,7 +2393,7 @@ export class EmailTemplates {
       </div>
 
       <!-- Action Button -->
-    
+
 
       <!-- Getting Started Checklist -->
       <div class="getting-started">

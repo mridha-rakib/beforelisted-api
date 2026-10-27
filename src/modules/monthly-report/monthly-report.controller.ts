@@ -5,8 +5,8 @@ import type { Request, Response } from "express";
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { logger } from "@/middlewares/pino-logger";
 import { BadRequestException } from "@/utils/app-error.utils";
-import { ApiResponse } from "@/utils/response.utils";
 import { requiredRouteParam } from "@/utils/request-param.utils";
+import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 
 import {
@@ -14,8 +14,8 @@ import {
   deleteReportSchema,
   getReportByIdSchema,
   updateMonthlyReportSchema,
-} from "./monthly-report.schema";
-import { MonthlyReportService } from "./monthly-report.service";
+} from "./monthly-report.schema.js";
+import { MonthlyReportService } from "./monthly-report.service.js";
 
 export class MonthlyReportController {
   private readonly reportService: MonthlyReportService;

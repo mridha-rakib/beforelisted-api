@@ -4,12 +4,12 @@ import type { NextFunction, Request, Response } from "express";
 
 import { MESSAGES } from "@/constants/app.constants";
 import { asyncHandler } from "@/middlewares/async-handler.middleware";
-import { ApiResponse } from "@/utils/response.utils";
 import { requiredRouteParam } from "@/utils/request-param.utils";
+import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 
-import { updateUserSchema } from "./user.schema";
-import { UserService } from "./user.service";
+import { updateUserSchema } from "./user.schema.js";
+import { UserService } from "./user.service.js";
 
 export class UserController {
   private userService: UserService;

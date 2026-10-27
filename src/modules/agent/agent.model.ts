@@ -4,9 +4,9 @@ import { model, Types } from "mongoose";
 
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 
-import type { IAgentProfile } from "./agent.interface";
+import type { IAgentProfile } from "./agent.interface.js";
 
-import { AGENT_TITLES } from "./agent.type";
+import { AGENT_TITLES } from "./agent.type.js";
 
 const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
   userId: {

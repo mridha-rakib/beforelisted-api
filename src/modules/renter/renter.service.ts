@@ -24,20 +24,20 @@ import type {
   RenterResponse,
   ResetPasswordPayload,
   UpdateRenterProfilePayload,
-} from "./renter.type";
+} from "./renter.type.js";
 
-import { AgentProfileRepository } from "../agent/agent.repository";
-import { AuthUtil } from "../auth/auth.utils";
-import { BlockedEmailService } from "../blocked-email/blocked-email.service";
-import { EmailVerificationService } from "../email-verification/email-verification.service";
-import { PasswordResetService } from "../password/password.service";
-import { PreMarketRepository } from "../pre-market/pre-market.repository";
-import { PreMarketService } from "../pre-market/pre-market.service";
-import { ReferralService } from "../referral/referral.service";
-import { UserRepository } from "../user/user.repository";
-import { UserService } from "../user/user.service";
-import { RenterRepository } from "./renter.repository";
-import { RenterUtil } from "./renter.utils";
+import { AgentProfileRepository } from "../agent/agent.repository.js";
+import { AuthUtil } from "../auth/auth.utils.js";
+import { BlockedEmailService } from "../blocked-email/blocked-email.service.js";
+import { EmailVerificationService } from "../email-verification/email-verification.service.js";
+import { PasswordResetService } from "../password/password.service.js";
+import { PreMarketRepository } from "../pre-market/pre-market.repository.js";
+import { PreMarketService } from "../pre-market/pre-market.service.js";
+import { ReferralService } from "../referral/referral.service.js";
+import { UserRepository } from "../user/user.repository.js";
+import { UserService } from "../user/user.service.js";
+import { RenterRepository } from "./renter.repository.js";
+import { RenterUtil } from "./renter.utils.js";
 
 export class RenterService {
   private repository: RenterRepository;
@@ -640,7 +640,7 @@ export class RenterService {
       syncPayload.phoneNumber = payload.phoneNumber;
 
     if (Object.keys(syncPayload).length > 0) {
-      const { UserRepository } = await import("../user/user.repository");
+      const { UserRepository } = await import("../user/user.repository.js");
       const userRepository = new UserRepository();
       await userRepository.updateById(userId, syncPayload);
       logger.info({ userId }, "Profile synced to User model");
@@ -676,7 +676,7 @@ export class RenterService {
     const renterEmail = renterUser?.email || renter.email;
     const renterName = renterUser?.fullName || renter.fullName || renterEmail;
 
-    const { UserRepository } = await import("../user/user.repository");
+    const { UserRepository } = await import("../user/user.repository.js");
     const userRepository = new UserRepository();
     await this.repository.permanentlyDeleteRenter(userId);
     await userRepository.permanentlyDeleteUser(userId);

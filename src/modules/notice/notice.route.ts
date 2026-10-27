@@ -4,7 +4,7 @@ import { Router } from "express";
 
 import { authMiddleware } from "@/middlewares/auth.middleware";
 
-import { NoticeController } from "./notice.controller";
+import { NoticeController } from "./notice.controller.js";
 
 const router = Router();
 const controller = new NoticeController();

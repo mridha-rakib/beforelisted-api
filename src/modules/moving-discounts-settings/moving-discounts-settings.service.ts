@@ -2,9 +2,9 @@
 
 import { logger } from "@/middlewares/pino-logger";
 
-import { MovingDiscountSettingsRepository } from "./moving-discounts-settings.repository";
+import type { IMovingDiscountSettings } from "./moving-discounts-settings.model.js";
 
-import type { IMovingDiscountSettings } from "./moving-discounts-settings.model";
+import { MovingDiscountSettingsRepository } from "./moving-discounts-settings.repository.js";
 
 export class MovingDiscountSettingsService {
   private readonly repo: MovingDiscountSettingsRepository;

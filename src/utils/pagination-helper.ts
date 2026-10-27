@@ -6,7 +6,7 @@ import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 
 import { ErrorCodeEnum } from "@/enums/error-code.enum";
 
-import { BadRequestException } from "./app-error.utils";
+import { BadRequestException } from "./app-error.utils.js";
 
 export class PaginationHelper {
   private static readonly DEFAULT_PAGE = 1;

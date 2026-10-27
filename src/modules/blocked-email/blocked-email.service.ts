@@ -8,14 +8,14 @@ import {
   NotFoundException,
 } from "@/utils/app-error.utils";
 
-import type { IBlockedEmail } from "./blocked-email.model";
+import type { IBlockedEmail } from "./blocked-email.model.js";
 import type {
   BlockedEmailStatus,
   CreateBlockedEmailPayload,
-} from "./blocked-email.type";
+} from "./blocked-email.type.js";
 
-import { UserRepository } from "../user/user.repository";
-import { BlockedEmailRepository } from "./blocked-email.repository";
+import { UserRepository } from "../user/user.repository.js";
+import { BlockedEmailRepository } from "./blocked-email.repository.js";
 
 type PopulatedUser
   = | {

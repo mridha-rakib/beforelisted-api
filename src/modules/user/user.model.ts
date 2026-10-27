@@ -8,7 +8,7 @@ import { ACCOUNT_STATUS, ROLES } from "@/constants/app.constants";
 import { emailSiteUrl } from "@/services/email-branding";
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 
-import type { IUser } from "./user.interface";
+import type { IUser } from "./user.interface.js";
 
 const userSchema = BaseSchemaUtil.createSchema<IUser>({
   ...BaseSchemaUtil.mergeDefinitions(

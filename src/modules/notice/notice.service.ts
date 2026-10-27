@@ -3,9 +3,9 @@
 import { logger } from "@/middlewares/pino-logger";
 import { NotFoundException } from "@/utils/app-error.utils";
 
-import type { INotice } from "./notice.model";
+import type { INotice } from "./notice.model.js";
 
-import { NoticeRepository } from "./notice.repository";
+import { NoticeRepository } from "./notice.repository.js";
 
 export class NoticeService {
   private readonly noticeRepository: NoticeRepository;
