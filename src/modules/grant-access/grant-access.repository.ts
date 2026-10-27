@@ -8,12 +8,12 @@ import type { GRANT_ACCESS_CONFIG } from "@/config/pre-market.config";
 
 import { BaseRepository } from "@/modules/base/base.repository";
 
-import type { IGrantAccessRequest } from "./grant-access.model";
+import type { IGrantAccessRequest } from "./grant-access.model.js";
 
 import {
   GrantAccessRequestModel,
 
-} from "./grant-access.model";
+} from "./grant-access.model.js";
 
 type GrantAccessStatus = (typeof GRANT_ACCESS_CONFIG.STATUSES)[number];
 type GrantAccessPaymentStatus
@@ -180,9 +180,9 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
       return new Map();
     }
     const requestObjectIds = preMarketRequestIds
-      .map((id) => id.toString())
-      .filter((id) => Types.ObjectId.isValid(id))
-      .map((id) => new Types.ObjectId(id));
+      .map(id => id.toString())
+      .filter(id => Types.ObjectId.isValid(id))
+      .map(id => new Types.ObjectId(id));
 
     if (requestObjectIds.length === 0) {
       return new Map();

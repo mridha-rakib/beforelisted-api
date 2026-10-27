@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 
-import { AGENT_TITLES } from "./agent.type";
+import { AGENT_TITLES } from "./agent.type.js";
 
 export const agentRegisterSchema = z.object({
   body: z.object({

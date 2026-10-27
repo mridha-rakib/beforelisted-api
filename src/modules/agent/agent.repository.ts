@@ -8,9 +8,9 @@ import { NotFoundException } from "@/utils/app-error.utils";
 import type {
   AgentRepresentationType,
   IAgentProfile,
-} from "./agent.interface";
+} from "./agent.interface.js";
 
-import { AgentProfile } from "./agent.model";
+import { AgentProfile } from "./agent.model.js";
 
 /**
  * Agent Profile Repository

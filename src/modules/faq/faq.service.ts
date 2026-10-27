@@ -6,9 +6,9 @@ import {
   NotFoundException,
 } from "@/utils/app-error.utils";
 
-import type { IFAQ } from "./faq.model";
+import type { IFAQ } from "./faq.model.js";
 
-import { FAQRepository } from "./faq.repository";
+import { FAQRepository } from "./faq.repository.js";
 
 export class FAQService {
   private readonly faqRepository: FAQRepository;

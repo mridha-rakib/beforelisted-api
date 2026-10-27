@@ -6,8 +6,8 @@ import { asyncHandler } from "@/middlewares/async-handler.middleware";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 
-import { updateSettingsSchema } from "./moving-discounts-settings.schema";
-import { MovingDiscountSettingsService } from "./moving-discounts-settings.service";
+import { updateSettingsSchema } from "./moving-discounts-settings.schema.js";
+import { MovingDiscountSettingsService } from "./moving-discounts-settings.service.js";
 
 export class MovingDiscountSettingsController {
   private readonly service: MovingDiscountSettingsService;

@@ -9,17 +9,17 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@/utils/app-error.utils";
-import { ApiResponse } from "@/utils/response.utils";
 import { requiredRouteParam } from "@/utils/request-param.utils";
+import { ApiResponse } from "@/utils/response.utils";
 
-import type { AgentRepresentationType } from "../agent/agent.interface";
+import type { AgentRepresentationType } from "../agent/agent.interface.js";
 
-import { AgentOpportunityMessageHistoryService } from "../agent/agent-opportunity-message-history.service";
-import { AgentProfileRepository } from "../agent/agent.repository";
+import { AgentOpportunityMessageHistoryService } from "../agent/agent-opportunity-message-history.service.js";
+import { AgentProfileRepository } from "../agent/agent.repository.js";
 import { PreMarketNotifier } from "../pre-market/pre-market-notifier.js";
-import { PreMarketRepository } from "../pre-market/pre-market.repository";
-import { GrantAccessRepository } from "./grant-access.repository";
-import { GrantAccessService } from "./grant-access.service";
+import { PreMarketRepository } from "../pre-market/pre-market.repository.js";
+import { GrantAccessRepository } from "./grant-access.repository.js";
+import { GrantAccessService } from "./grant-access.service.js";
 
 export class GrantAccessController {
   private readonly grantAccessService: GrantAccessService;
@@ -45,7 +45,8 @@ export class GrantAccessController {
     representationType: AgentRepresentationType,
     message?: string,
   ): Promise<void> {
-    if (!message?.trim()) return;
+    if (!message?.trim())
+      return;
 
     try {
       await this.opportunityMessageHistoryService.record(
@@ -53,7 +54,8 @@ export class GrantAccessController {
         representationType,
         message,
       );
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(
         { error, agentId, representationType },
         "Failed to save agent opportunity message history",

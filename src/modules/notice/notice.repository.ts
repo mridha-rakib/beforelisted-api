@@ -1,9 +1,9 @@
 // file: src/modules/notice/notice.repository.ts
 
-import type { INotice } from "./notice.model";
+import type { INotice } from "./notice.model.js";
 
-import { BaseRepository } from "../base/base.repository";
-import { Notice } from "./notice.model";
+import { BaseRepository } from "../base/base.repository.js";
+import { Notice } from "./notice.model.js";
 
 export class NoticeRepository extends BaseRepository<INotice> {
   constructor() {

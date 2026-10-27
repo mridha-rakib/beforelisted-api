@@ -7,8 +7,8 @@ import { logger } from "@/middlewares/pino-logger";
 import { ApiResponse } from "@/utils/response.utils";
 import { zParse } from "@/utils/validators.utils";
 
-import { updateNoticeSchema } from "./notice.schema";
-import { NoticeService } from "./notice.service";
+import { updateNoticeSchema } from "./notice.schema.js";
+import { NoticeService } from "./notice.service.js";
 
 export class NoticeController {
   private readonly noticeService: NoticeService;

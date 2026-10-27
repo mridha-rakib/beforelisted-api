@@ -1,12 +1,12 @@
 import { Types } from "mongoose";
 
-import type { IBlockedEmail } from "./blocked-email.model";
+import type { IBlockedEmail } from "./blocked-email.model.js";
 import type {
   BlockedEmailReason,
   BlockedEmailStatus,
-} from "./blocked-email.type";
+} from "./blocked-email.type.js";
 
-import { BlockedEmail } from "./blocked-email.model";
+import { BlockedEmail } from "./blocked-email.model.js";
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 

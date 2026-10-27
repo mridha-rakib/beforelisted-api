@@ -8,7 +8,7 @@ import { AgentProfileRepository } from "@/modules/agent/agent.repository";
 import { PreMarketRepository } from "@/modules/pre-market/pre-market.repository";
 import { RenterRepository } from "@/modules/renter/renter.repository";
 
-import { S3Service } from "./s3.service";
+import { S3Service } from "./s3.service.js";
 
 export class ExcelService {
   private static readonly EXCEL_MIME_TYPE

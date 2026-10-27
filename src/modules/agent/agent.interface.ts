@@ -2,7 +2,7 @@
 
 import type { Document, Types } from "mongoose";
 
-import type { AgentTitle } from "./agent.type";
+import type { AgentTitle } from "./agent.type.js";
 
 export type IAccessToggleRecord = {
   action: "granted" | "revoked";
@@ -18,9 +18,9 @@ export type IActivationRecord = {
   reason?: string;
 };
 
-export type AgentRepresentationType =
-  | "owner_representation"
-  | "renter_representation";
+export type AgentRepresentationType
+  = | "owner_representation"
+    | "renter_representation";
 
 export type OpportunityMessageHistory = {
   ownerRepresentation: string[];

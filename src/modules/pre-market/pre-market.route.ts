@@ -4,7 +4,7 @@ import { Router } from "express";
 
 import { authMiddleware } from "@/middlewares/auth.middleware";
 
-import { PreMarketController } from "./pre-market.controller";
+import { PreMarketController } from "./pre-market.controller.js";
 
 const router = Router();
 

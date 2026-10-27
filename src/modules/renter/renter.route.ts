@@ -5,7 +5,7 @@ import { Router } from "express";
 import { authMiddleware } from "@/middlewares/auth.middleware";
 import { apiLimiter } from "@/middlewares/rate-limit.middleware";
 
-import { RenterController } from "./renter.controller";
+import { RenterController } from "./renter.controller.js";
 
 const router = Router();
 const controller = new RenterController();

@@ -4,7 +4,7 @@ export const EMAIL_LOGO_CONTENT_ID = "cid:beforelisted-email-logo.png";
 // Keep every BeforeListed-owned link in outbound email on the production site.
 export const EMAIL_SITE_URL = "https://beforelisted.com";
 const LEGACY_EMAIL_SITE_URL_PATTERN
-  = /https?:\/\/rental-pennymore-frontend\.vercel\.app(?=\/|["'<\s]|$)/gi;
+  = /https?:\/\/rental-pennymore-frontend\.vercel\.app(?=[/"'<\s]|$)/gi;
 
 export function emailSiteUrl(path: string = "/"): string {
   return `${EMAIL_SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;

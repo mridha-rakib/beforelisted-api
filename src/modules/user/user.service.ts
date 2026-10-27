@@ -13,16 +13,16 @@ import {
   NotFoundException,
 } from "@/utils/app-error.utils";
 
-import type { IUser } from "./user.interface";
+import type { IUser } from "./user.interface.js";
 import type {
   UpdateUserPayload,
   UserCreatePayload,
   UserResponse,
-} from "./user.type";
+} from "./user.type.js";
 
-import { PreMarketService } from "../pre-market/pre-market.service";
-import { ReferralService } from "../referral/referral.service";
-import { UserRepository } from "./user.repository";
+import { PreMarketService } from "../pre-market/pre-market.service.js";
+import { ReferralService } from "../referral/referral.service.js";
+import { UserRepository } from "./user.repository.js";
 
 export class UserService {
   private userRepository: UserRepository;
@@ -202,14 +202,14 @@ export class UserService {
     if (Object.keys(syncPayload).length > 0) {
       if (user.role === "Renter") {
         // Sync to Renter profile
-        const { RenterRepository } = await import("../renter/renter.repository");
+        const { RenterRepository } = await import("../renter/renter.repository.js");
         const renterRepository = new RenterRepository();
         await renterRepository.updateByUserId(userId, syncPayload);
         logger.info({ userId, role: "Renter" }, "Profile synced to Renter model");
       }
       else if (user.role === "Agent") {
         // Sync to Agent profile
-        const { AgentProfileRepository } = await import("../agent/agent.repository");
+        const { AgentProfileRepository } = await import("../agent/agent.repository.js");
         const agentRepository = new AgentProfileRepository();
         await agentRepository.updateByUserId(userId, syncPayload);
         logger.info({ userId, role: "Agent" }, "Profile synced to Agent model");
@@ -318,7 +318,7 @@ export class UserService {
 
     let referredRenters: any[] = [];
     if (user.role === ROLES.AGENT) {
-      const { RenterRepository } = await import("../renter/renter.repository");
+      const { RenterRepository } = await import("../renter/renter.repository.js");
       const renterRepository = new RenterRepository();
       referredRenters = await renterRepository.findRentersByAgent(userId);
     }

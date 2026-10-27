@@ -2,12 +2,12 @@ import type { Document, Types } from "mongoose";
 
 import mongoose, { Schema } from "mongoose";
 
-import type { BlockedEmailReason, BlockedEmailStatus } from "./blocked-email.type";
+import type { BlockedEmailReason, BlockedEmailStatus } from "./blocked-email.type.js";
 
 import {
   BLOCKED_EMAIL_REASONS,
 
-} from "./blocked-email.type";
+} from "./blocked-email.type.js";
 
 export type IBlockedEmail = {
   _id: Types.ObjectId;

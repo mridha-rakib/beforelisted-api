@@ -4,12 +4,12 @@ import { model, models } from "mongoose";
 
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 
-import type { ActivityLogActionType } from "./activity-log.type";
+import type { ActivityLogActionType } from "./activity-log.type.js";
 
 import {
   ACTIVITY_LOG_ACTION_TYPES,
 
-} from "./activity-log.type";
+} from "./activity-log.type.js";
 
 export type IActivityLog = {
   _id: Types.ObjectId;

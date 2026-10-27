@@ -18,10 +18,10 @@ import type {
   IVerificationStatus,
   IVerifyOTPRequest,
   IVerifyOTPResponse,
-} from "./email-verification.types";
+} from "./email-verification.types.js";
 
 // import { ICreateOTPResponse } from "./email-verification.interface";
-import { EmailVerificationOTPRepository } from "./email-verification.repository";
+import { EmailVerificationOTPRepository } from "./email-verification.repository.js";
 
 export class EmailVerificationService {
   private repository: EmailVerificationOTPRepository;

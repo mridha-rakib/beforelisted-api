@@ -1,9 +1,10 @@
-import type { IPreMarketRequest } from "./pre-market.model";
+import type { PreMarketNeighborhoodLookupEntry } from "./pre-market-neighborhood-lookup.generated.js";
+import type { IPreMarketRequest } from "./pre-market.model.js";
 
 import {
   PRE_MARKET_NEIGHBORHOOD_LOOKUP,
-  type PreMarketNeighborhoodLookupEntry,
-} from "./pre-market-neighborhood-lookup.generated";
+
+} from "./pre-market-neighborhood-lookup.generated.js";
 
 export type MatchSectionToggles = {
   unitFeatures: boolean;
@@ -45,20 +46,20 @@ export type MatchApartmentInput = {
   toggles: MatchSectionToggles;
 };
 
-export type MissingFeatureCode =
-  | "bedrooms"
-  | "bathrooms"
-  | "rent"
-  | "rentBelowMin"
-  | "location"
-  | "moveDateTotalMiss"
-  | "moveDateNearMiss"
-  | "laundryInUnit"
-  | "privateOutdoorSpace"
-  | "dishwasher"
-  | "doorman"
-  | "elevator"
-  | "laundryInBuilding";
+export type MissingFeatureCode
+  = | "bedrooms"
+    | "bathrooms"
+    | "rent"
+    | "rentBelowMin"
+    | "location"
+    | "moveDateTotalMiss"
+    | "moveDateNearMiss"
+    | "laundryInUnit"
+    | "privateOutdoorSpace"
+    | "dishwasher"
+    | "doorman"
+    | "elevator"
+    | "laundryInBuilding";
 
 export type MatchMissingFeature = {
   code: MissingFeatureCode;
@@ -67,34 +68,34 @@ export type MatchMissingFeature = {
   deduction: number;
 };
 
-export type MatchDisqualificationReason =
-  | "registrationDisclosureMissing"
-  | "location"
-  | "bedrooms"
-  | "bathrooms"
-  | "rent"
-  | "petPolicy"
-  | "guarantorPolicy"
-  | "tooManySoftMisses";
+export type MatchDisqualificationReason
+  = | "registrationDisclosureMissing"
+    | "location"
+    | "bedrooms"
+    | "bathrooms"
+    | "rent"
+    | "petPolicy"
+    | "guarantorPolicy"
+    | "tooManySoftMisses";
 
-export type MatchScoreResult =
+export type MatchScoreResult
+  = | {
+    disqualified: true;
+    reason: MatchDisqualificationReason;
+    missingFeatures: MatchMissingFeature[];
+  }
   | {
-      disqualified: true;
-      reason: MatchDisqualificationReason;
-      missingFeatures: MatchMissingFeature[];
-    }
-  | {
-      disqualified: false;
-      score: number;
-      starRating: number;
-      missingFeatures: MatchMissingFeature[];
-      preferenceMatches: boolean[];
-      priorityBonus: number;
-      primaryDeduction: number;
-      secondaryDeduction: number;
-      exactLocationMatch: boolean;
-      regionLocationMatch: boolean;
-    };
+    disqualified: false;
+    score: number;
+    starRating: number;
+    missingFeatures: MatchMissingFeature[];
+    preferenceMatches: boolean[];
+    priorityBonus: number;
+    primaryDeduction: number;
+    secondaryDeduction: number;
+    exactLocationMatch: boolean;
+    regionLocationMatch: boolean;
+  };
 
 type RequestWithMatchContext = Pick<
   IPreMarketRequest,
@@ -120,7 +121,7 @@ type PreferenceMatchSource = {
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const BEDROOM_VALUES: Record<string, number> = {
-  Studio: 0,
+  "Studio": 0,
   "1BR": 1,
   "2BR": 2,
   "3BR": 3,
@@ -202,8 +203,8 @@ const MISSING_FEATURE_META: Record<MissingFeatureCode, Omit<MatchMissingFeature,
   },
 };
 
-const normalizeText = (value: unknown): string =>
-  String(value ?? "")
+function normalizeText(value: unknown): string {
+  return String(value ?? "")
     .trim()
     .toLowerCase()
     .replace(/[–—]/g, "-")
@@ -211,6 +212,7 @@ const normalizeText = (value: unknown): string =>
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
 
 const neighborhoodLookupByName = PRE_MARKET_NEIGHBORHOOD_LOOKUP.reduce(
   (lookup, entry) => {
@@ -223,7 +225,7 @@ const neighborhoodLookupByName = PRE_MARKET_NEIGHBORHOOD_LOOKUP.reduce(
   new Map<string, PreMarketNeighborhoodLookupEntry>(),
 );
 
-export const getPreMarketNeighborhoodsByBorough = () => {
+export function getPreMarketNeighborhoodsByBorough() {
   const grouped = PRE_MARKET_NEIGHBORHOOD_LOOKUP.reduce<
     Record<string, PreMarketNeighborhoodLookupEntry[]>
   >((acc, entry) => {
@@ -233,41 +235,36 @@ export const getPreMarketNeighborhoodsByBorough = () => {
   }, {});
 
   return grouped;
-};
+}
 
-const getNeighborhoodLookup = (
-  neighborhood: string,
-): PreMarketNeighborhoodLookupEntry | null =>
-  neighborhoodLookupByName.get(normalizeText(neighborhood)) ?? null;
+function getNeighborhoodLookup(neighborhood: string): PreMarketNeighborhoodLookupEntry | null {
+  return neighborhoodLookupByName.get(normalizeText(neighborhood)) ?? null;
+}
 
-const toDate = (value: Date | string | undefined): Date | null => {
-  if (!value) return null;
+function toDate(value: Date | string | undefined): Date | null {
+  if (!value)
+    return null;
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
-};
+}
 
-const toNumber = (value: unknown): number | null => {
+function toNumber(value: unknown): number | null {
   const numberValue = Number(value);
   return Number.isFinite(numberValue) ? numberValue : null;
-};
+}
 
-const smallestRequestedValue = (
-  values: unknown,
-  mapping: Record<string, number>,
-): number | null => {
-  if (!Array.isArray(values) || values.length === 0) return null;
+function smallestRequestedValue(values: unknown, mapping: Record<string, number>): number | null {
+  if (!Array.isArray(values) || values.length === 0)
+    return null;
   const numericValues = values
     .map(value => mapping[String(value)])
     .filter((value): value is number => typeof value === "number");
   return numericValues.length ? Math.min(...numericValues) : null;
-};
+}
 
 const isTruthy = (value: unknown): boolean => value === true;
 
-const hasCompatibleGuarantorPolicy = (
-  apartment: MatchApartmentInput,
-  request: RequestWithMatchContext,
-): boolean => {
+function hasCompatibleGuarantorPolicy(apartment: MatchApartmentInput, request: RequestWithMatchContext): boolean {
   const renterAcceptsPersonal = isTruthy(
     request.guarantorRequired?.personalGuarantor,
   );
@@ -283,37 +280,28 @@ const hasCompatibleGuarantorPolicy = (
     (renterAcceptsPersonal && apartment.guarantorPolicy.personalGuarantor)
     || (renterAcceptsThirdParty && apartment.guarantorPolicy.thirdPartyGuarantor)
   );
-};
+}
 
-const missingFeature = (code: MissingFeatureCode): MatchMissingFeature => ({
-  code,
-  ...MISSING_FEATURE_META[code],
-});
+function missingFeature(code: MissingFeatureCode): MatchMissingFeature {
+  return {
+    code,
+    ...MISSING_FEATURE_META[code],
+  };
+}
 
-const hasDateOverlap = (
-  apartmentStart: Date,
-  apartmentEnd: Date,
-  requestStart: Date,
-  requestEnd: Date,
-) => apartmentStart <= requestEnd && apartmentEnd >= requestStart;
+function hasDateOverlap(apartmentStart: Date, apartmentEnd: Date, requestStart: Date, requestEnd: Date) {
+  return apartmentStart <= requestEnd && apartmentEnd >= requestStart;
+}
 
-const dateGapInDays = (
-  apartmentStart: Date,
-  apartmentEnd: Date,
-  requestStart: Date,
-  requestEnd: Date,
-) => {
+function dateGapInDays(apartmentStart: Date, apartmentEnd: Date, requestStart: Date, requestEnd: Date) {
   if (apartmentEnd < requestStart) {
     return Math.ceil((requestStart.getTime() - apartmentEnd.getTime()) / MS_PER_DAY);
   }
 
   return Math.ceil((apartmentStart.getTime() - requestEnd.getTime()) / MS_PER_DAY);
-};
+}
 
-const resolveLocationMatch = (
-  apartment: MatchApartmentInput,
-  request: RequestWithMatchContext,
-) => {
+function resolveLocationMatch(apartment: MatchApartmentInput, request: RequestWithMatchContext) {
   const apartmentLookup = getNeighborhoodLookup(apartment.neighborhood);
   const requestLocations = Array.isArray(request.locations)
     ? request.locations
@@ -355,11 +343,9 @@ const resolveLocationMatch = (
     exactLocationMatch: false,
     regionLocationMatch,
   };
-};
+}
 
-const buildPreferenceSources = (
-  apartment: MatchApartmentInput,
-): PreferenceMatchSource[] => {
+function buildPreferenceSources(apartment: MatchApartmentInput): PreferenceMatchSource[] {
   const available = apartment.availableFeatures ?? {};
 
   return [
@@ -399,12 +385,9 @@ const buildPreferenceSources = (
       present: apartment.buildingFeatures.laundryInBuilding,
     },
   ];
-};
+}
 
-const resolvePreferenceMatches = (
-  apartment: MatchApartmentInput,
-  request: RequestWithMatchContext,
-) => {
+function resolvePreferenceMatches(apartment: MatchApartmentInput, request: RequestWithMatchContext) {
   const topPreferences = Array.isArray(request.preferences)
     ? request.preferences.slice(0, 4)
     : [];
@@ -433,12 +416,9 @@ const resolvePreferenceMatches = (
     preferenceMatches,
     priorityBonus: Math.min(priorityBonus, 20),
   };
-};
+}
 
-const scoreFromDeductions = (
-  missingFeatures: MatchMissingFeature[],
-  priorityBonus: number,
-) => {
+function scoreFromDeductions(missingFeatures: MatchMissingFeature[], priorityBonus: number) {
   const deductions = missingFeatures.map(feature => feature.deduction);
   const primaryDeduction = deductions.length ? Math.min(...deductions) : 0;
   const secondaryDeduction = deductions.length > 1
@@ -450,26 +430,33 @@ const scoreFromDeductions = (
   );
 
   return { score, primaryDeduction, secondaryDeduction };
-};
+}
 
-const starRatingFromScore = (score: number): number => {
-  if (score === 100) return 5;
-  if (score >= 90) return 4.5;
-  if (score >= 80) return 4;
-  if (score >= 70) return 3.5;
-  if (score >= 60) return 3;
-  if (score >= 50) return 2.5;
-  if (score >= 40) return 2;
-  if (score >= 30) return 1.5;
-  if (score >= 20) return 1;
-  if (score >= 10) return 0.5;
+function starRatingFromScore(score: number): number {
+  if (score === 100)
+    return 5;
+  if (score >= 90)
+    return 4.5;
+  if (score >= 80)
+    return 4;
+  if (score >= 70)
+    return 3.5;
+  if (score >= 60)
+    return 3;
+  if (score >= 50)
+    return 2.5;
+  if (score >= 40)
+    return 2;
+  if (score >= 30)
+    return 1.5;
+  if (score >= 20)
+    return 1;
+  if (score >= 10)
+    return 0.5;
   return 0;
-};
+}
 
-export const scorePreMarketRequest = (
-  apartment: MatchApartmentInput,
-  request: RequestWithMatchContext,
-): MatchScoreResult => {
+export function scorePreMarketRequest(apartment: MatchApartmentInput, request: RequestWithMatchContext): MatchScoreResult {
   const missingFeatures: MatchMissingFeature[] = [];
   const { toggles } = apartment;
   const apartmentBedrooms = BEDROOM_VALUES[apartment.bedrooms];
@@ -673,4 +660,4 @@ export const scorePreMarketRequest = (
     exactLocationMatch: locationMatch.exactLocationMatch,
     regionLocationMatch: locationMatch.regionLocationMatch,
   };
-};
+}
