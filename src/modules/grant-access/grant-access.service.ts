@@ -1,5 +1,7 @@
 // file: src/modules/grant-access/grant-access.service.ts
 
+import { Types } from "mongoose";
+
 import { logger } from "@/middlewares/pino-logger";
 import { emailService } from "@/services/email.service";
 import {
@@ -13,20 +15,18 @@ import {
   OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE,
 } from "@/utils/opportunity-details.utils";
 
-import { Types } from "mongoose";
+import type { IPreMarketRequest } from "../pre-market/pre-market.model.js";
+import type { BrokerFee, IGrantAccessRequest } from "./grant-access.model.js";
 
-import type { IPreMarketRequest } from "../pre-market/pre-market.model";
-import type { BrokerFee, IGrantAccessRequest } from "./grant-access.model";
-
-import { AgentProfileRepository } from "../agent/agent.repository";
-import { NotificationService } from "../notification/notification.service";
-import { resolveRenterOpportunityEmailScope } from "../pre-market/pre-market-email-scope.utils";
+import { AgentProfileRepository } from "../agent/agent.repository.js";
+import { NotificationService } from "../notification/notification.service.js";
+import { resolveRenterOpportunityEmailScope } from "../pre-market/pre-market-email-scope.utils.js";
 import { PreMarketNotifier } from "../pre-market/pre-market-notifier.js";
-import { PreMarketRepository } from "../pre-market/pre-market.repository";
-import { PreMarketService } from "../pre-market/pre-market.service";
-import { RenterRepository } from "../renter/renter.repository";
-import { UserRepository } from "../user/user.repository";
-import { GrantAccessRepository } from "./grant-access.repository";
+import { PreMarketRepository } from "../pre-market/pre-market.repository.js";
+import { PreMarketService } from "../pre-market/pre-market.service.js";
+import { RenterRepository } from "../renter/renter.repository.js";
+import { UserRepository } from "../user/user.repository.js";
+import { GrantAccessRepository } from "./grant-access.repository.js";
 
 export class GrantAccessService {
   private readonly grantAccessRepository: GrantAccessRepository;

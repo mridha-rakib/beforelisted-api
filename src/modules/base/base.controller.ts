@@ -6,8 +6,8 @@ import type { Document } from "mongoose";
 import type { BaseService } from "@/modules/base/base.service";
 
 import { PaginationHelper } from "@/utils/pagination-helper";
-import { ApiResponse } from "@/utils/response.utils";
 import { requiredRouteParam } from "@/utils/request-param.utils";
+import { ApiResponse } from "@/utils/response.utils";
 
 export class BaseController<
   T extends Document<unknown, any, any, Record<string, any>, object>,

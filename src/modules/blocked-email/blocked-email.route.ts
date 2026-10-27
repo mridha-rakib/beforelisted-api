@@ -3,7 +3,7 @@ import { Router } from "express";
 import { ROLES } from "@/constants/app.constants";
 import { authMiddleware } from "@/middlewares/auth.middleware";
 
-import { BlockedEmailController } from "./blocked-email.controller";
+import { BlockedEmailController } from "./blocked-email.controller.js";
 
 const router = Router();
 const controller = new BlockedEmailController();

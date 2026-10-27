@@ -177,7 +177,7 @@ try {
 }
 catch (error) {
   if (error instanceof z.ZodError) {
-    const formatted = error.issues.map(issue => {
+    const formatted = error.issues.map((issue) => {
       const path = issue.path.join(".") || "(root)";
       return `${path}: ${issue.message}`;
     });

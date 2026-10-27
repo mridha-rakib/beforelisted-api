@@ -2,9 +2,9 @@
 
 import { BaseRepository } from "@/modules/base/base.repository";
 
-import type { INotification } from "./notification.interface";
+import type { INotification } from "./notification.interface.js";
 
-import { Notification } from "./notification.model";
+import { Notification } from "./notification.model.js";
 
 export class NotificationRepository extends BaseRepository<INotification> {
   constructor() {

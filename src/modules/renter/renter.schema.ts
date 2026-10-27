@@ -71,8 +71,8 @@ export const adminReferralRenterRegisterSchema = z.object({
       }
 
       if (
-        data.questionnaire?.buyerSpecialistNeeded === true &&
-        !data.questionnaire.purchaseTimeline?.trim()
+        data.questionnaire?.buyerSpecialistNeeded === true
+        && !data.questionnaire.purchaseTimeline?.trim()
       ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -145,8 +145,8 @@ export const renterRegisterSchema = z.object({
       }
 
       if (
-        data.questionnaire?.buyerSpecialistNeeded === true &&
-        !data.questionnaire.purchaseTimeline?.trim()
+        data.questionnaire?.buyerSpecialistNeeded === true
+        && !data.questionnaire.purchaseTimeline?.trim()
       ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -232,8 +232,8 @@ export const updateRenterProfileSchema = z.object({
     })
     .superRefine((data, ctx) => {
       if (
-        data.questionnaire?.buyerSpecialistNeeded === true &&
-        !data.questionnaire.purchaseTimeline?.trim()
+        data.questionnaire?.buyerSpecialistNeeded === true
+        && !data.questionnaire.purchaseTimeline?.trim()
       ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

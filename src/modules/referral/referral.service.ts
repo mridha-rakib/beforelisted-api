@@ -8,10 +8,10 @@ import {
 } from "@/utils/app-error.utils";
 import { ReferralUtil } from "@/utils/referral.utils";
 
-import type { IUser } from "../user/user.interface";
+import type { IUser } from "../user/user.interface.js";
 
-import { AgentProfileRepository } from "../agent/agent.repository";
-import { UserRepository } from "../user/user.repository";
+import { AgentProfileRepository } from "../agent/agent.repository.js";
+import { UserRepository } from "../user/user.repository.js";
 
 /**
  * Referral Service

@@ -7,6 +7,11 @@ import {
 } from "@/utils/app-error.utils";
 
 import type {
+  IMovingDiscountCategory,
+  IMovingDiscountItem,
+} from "./moving-discounts.model.js";
+import type { PaginationParams } from "./moving-discounts.schema.js";
+import type {
   CreateCategoryPayload,
   CreateItemPayload,
   PublicMovingDiscountsResponse,
@@ -14,26 +19,22 @@ import type {
   ReorderPayload,
   UpdateCategoryPayload,
   UpdateItemPayload,
-} from "./moving-discounts.types";
-import type { PaginationParams } from "./moving-discounts.schema";
-import type {
-  IMovingDiscountCategory,
-  IMovingDiscountItem,
-} from "./moving-discounts.model";
+} from "./moving-discounts.types.js";
 
 import {
   MovingDiscountCategoryRepository,
   MovingDiscountItemRepository,
-} from "./moving-discounts.repository";
+} from "./moving-discounts.repository.js";
 
-const slugify = (value: string): string =>
-  value
+function slugify(value: string): string {
+  return value
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
 
 export class MovingDiscountService {
   private readonly categoryRepo: MovingDiscountCategoryRepository;
@@ -391,7 +392,7 @@ export class MovingDiscountService {
   ): Promise<string> {
     let candidate = baseSlug;
     let counter = 1;
-    // eslint-disable-next-line no-constant-condition
+
     while (true) {
       const existing = await this.categoryRepo.getCategoryBySlug(candidate);
       if (!existing || (excludeId && existing._id.toString() === excludeId)) {

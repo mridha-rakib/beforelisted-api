@@ -1,7 +1,7 @@
 // file: src/modules/renter/renter.utils.ts
 
-import type { IGeneratedPasswordResponse } from "./renter.interface";
-import type { RenterQuestionnairePayload } from "./renter.type";
+import type { IGeneratedPasswordResponse } from "./renter.interface.js";
+import type { RenterQuestionnairePayload } from "./renter.type.js";
 
 export class RenterUtil {
   /**

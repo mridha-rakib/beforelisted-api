@@ -17,30 +17,30 @@ import {
 } from "@/utils/app-error.utils";
 import { comparePassword, hashPassword } from "@/utils/password.utils";
 
-import type { IAgentProfile } from "../agent/agent.interface";
-import type { AgentProfileResponse } from "../agent/agent.type";
+import type { IAgentProfile } from "../agent/agent.interface.js";
+import type { AgentProfileResponse } from "../agent/agent.type.js";
 import type {
   IResendOTPRequest,
   UserType,
-} from "../email-verification/email-verification.types";
-import type { IUser } from "../user/user.interface";
-import type { UserResponse } from "../user/user.type";
+} from "../email-verification/email-verification.types.js";
+import type { IUser } from "../user/user.interface.js";
+import type { UserResponse } from "../user/user.type.js";
 import type {
   AuthServiceResponse,
   LoginPayload,
   ReferralInfo,
   VerifyEmailPayload,
-} from "./auth.type";
+} from "./auth.type.js";
 
-import { AgentProfileRepository } from "../agent/agent.repository";
-import { BlockedEmailService } from "../blocked-email/blocked-email.service";
-import { EmailVerificationService } from "../email-verification/email-verification.service";
-import { PasswordResetService } from "../password/password.service";
-import { PreMarketService } from "../pre-market/pre-market.service";
-import { ReferralService } from "../referral/referral.service";
-import { RenterRepository } from "../renter/renter.repository";
-import { UserService } from "../user/user.service";
-import { AuthUtil } from "./auth.utils";
+import { AgentProfileRepository } from "../agent/agent.repository.js";
+import { BlockedEmailService } from "../blocked-email/blocked-email.service.js";
+import { EmailVerificationService } from "../email-verification/email-verification.service.js";
+import { PasswordResetService } from "../password/password.service.js";
+import { PreMarketService } from "../pre-market/pre-market.service.js";
+import { ReferralService } from "../referral/referral.service.js";
+import { RenterRepository } from "../renter/renter.repository.js";
+import { UserService } from "../user/user.service.js";
+import { AuthUtil } from "./auth.utils.js";
 
 const AGENT_REGISTRATION_ADMIN_EMAIL = SYSTEM_DEFAULT_ADMIN.email;
 const AGENT_REGISTRATION_SUPPORT_EMAIL = "support@beforelisted.com";
@@ -391,7 +391,7 @@ export class AuthService {
       agentActivationLink = agentProfile?.activationLink ?? null;
 
       const { NotificationService }
-        = await import("../notification/notification.service");
+        = await import("../notification/notification.service.js");
       const notificationService = new NotificationService();
 
       try {
@@ -467,9 +467,9 @@ export class AuthService {
           user._id.toString(),
         );
         const savedPurchaseTimeline = renter?.questionnaire?.purchaseTimeline?.trim();
-        renterPurchaseTimeline =
-          renter?.questionnaire?.buyerSpecialistNeeded === true
-          && savedPurchaseTimeline
+        renterPurchaseTimeline
+          = renter?.questionnaire?.buyerSpecialistNeeded === true
+            && savedPurchaseTimeline
             ? savedPurchaseTimeline
             : undefined;
 

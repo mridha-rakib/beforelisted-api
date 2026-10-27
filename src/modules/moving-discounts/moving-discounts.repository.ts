@@ -3,13 +3,13 @@
 import type {
   IMovingDiscountCategory,
   IMovingDiscountItem,
-} from "./moving-discounts.model";
+} from "./moving-discounts.model.js";
 
-import { BaseRepository } from "../base/base.repository";
+import { BaseRepository } from "../base/base.repository.js";
 import {
   MovingDiscountCategory,
   MovingDiscountItem,
-} from "./moving-discounts.model";
+} from "./moving-discounts.model.js";
 
 export class MovingDiscountCategoryRepository extends BaseRepository<IMovingDiscountCategory> {
   constructor() {
@@ -86,7 +86,8 @@ export class MovingDiscountItemRepository extends BaseRepository<IMovingDiscount
     isActive?: boolean,
   ): Promise<IMovingDiscountItem[]> {
     const filter: any = { categoryId };
-    if (isActive !== undefined) filter.isActive = isActive;
+    if (isActive !== undefined)
+      filter.isActive = isActive;
     return this.model
       .find(filter)
       .sort({ order: 1, createdAt: -1 });
@@ -105,8 +106,10 @@ export class MovingDiscountItemRepository extends BaseRepository<IMovingDiscount
     totalPages: number;
   }> {
     const filter: any = {};
-    if (categoryId) filter.categoryId = categoryId;
-    if (isActive !== undefined) filter.isActive = isActive;
+    if (categoryId)
+      filter.categoryId = categoryId;
+    if (isActive !== undefined)
+      filter.isActive = isActive;
 
     const skip = (page - 1) * pageSize;
     const [items, total] = await Promise.all([

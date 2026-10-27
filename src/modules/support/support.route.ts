@@ -4,7 +4,7 @@ import { Router } from "express";
 
 import { apiLimiter } from "@/middlewares/rate-limit.middleware";
 
-import { SupportController } from "./support.controller";
+import { SupportController } from "./support.controller.js";
 
 const router = Router();
 const controller = new SupportController();
