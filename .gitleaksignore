@@ -1,0 +1,52 @@
+# Reviewed historical false positives only. See SECURITY_SCAN.md.
+# Each fingerprint is scoped to a commit, file, rule, and line.
+# New commits and new findings remain subject to the full scan.
+
+# Base64 source chunk decoding to the xorDecode loop; not a credential.
+0daf3ab0827952ffbec78c854d18ff996bbb5f46:api.js:generic-api-key:1
+0daf3ab0827952ffbec78c854d18ff996bbb5f46:eslint.config.mjs:generic-api-key:65
+29bc4d8b3af94569e2f9dffa9e5ded651160f49e:api.js:generic-api-key:1
+29bc4d8b3af94569e2f9dffa9e5ded651160f49e:eslint.config.mjs:generic-api-key:65
+2c33980e5db07783d396fe7ddd5267cfd9f432a0:api.js:generic-api-key:1
+2c33980e5db07783d396fe7ddd5267cfd9f432a0:eslint.config.mjs:generic-api-key:65
+2f304ae1da9f48c1c241160b4492c9eb76a29401:api.js:generic-api-key:1
+2f304ae1da9f48c1c241160b4492c9eb76a29401:eslint.config.mjs:generic-api-key:65
+322e39995faee6481e75d781f9b485d65b939aca:api.js:generic-api-key:1
+322e39995faee6481e75d781f9b485d65b939aca:eslint.config.mjs:generic-api-key:65
+423a783c34cb1eea6ade59b01f7419236b468945:api.js:generic-api-key:1
+423a783c34cb1eea6ade59b01f7419236b468945:eslint.config.mjs:generic-api-key:65
+4a3db2bdc54711d8aff7613763b8ef2a680af986:api.js:generic-api-key:1
+4a3db2bdc54711d8aff7613763b8ef2a680af986:eslint.config.mjs:generic-api-key:65
+54947e58647b787aceb13cfd5235554da70f1b23:api.js:generic-api-key:1
+54947e58647b787aceb13cfd5235554da70f1b23:eslint.config.mjs:generic-api-key:65
+65282ea65c14b860b6db78a1c53eb289a941e983:api.js:generic-api-key:1
+65282ea65c14b860b6db78a1c53eb289a941e983:eslint.config.mjs:generic-api-key:65
+81372def648c078c32568b8dbb9fb3e3c270e475:api.js:generic-api-key:1
+81372def648c078c32568b8dbb9fb3e3c270e475:eslint.config.mjs:generic-api-key:65
+854afad122f0259df7d253c8a6eaae7ecf0708d9:api.js:generic-api-key:1
+854afad122f0259df7d253c8a6eaae7ecf0708d9:eslint.config.mjs:generic-api-key:65
+97016a30f9d7e3771a5a7ea6679d7b0a9edcfdd6:api.js:generic-api-key:1
+97016a30f9d7e3771a5a7ea6679d7b0a9edcfdd6:eslint.config.mjs:generic-api-key:65
+9c741e71a283bf0bb990f255f54b5b5f7a0580fa:api.js:generic-api-key:1
+9c741e71a283bf0bb990f255f54b5b5f7a0580fa:eslint.config.mjs:generic-api-key:65
+aeb8ed02b32c2c44e0a013f622b39d703bd42629:api.js:generic-api-key:1
+aeb8ed02b32c2c44e0a013f622b39d703bd42629:eslint.config.mjs:generic-api-key:65
+c32e05a0ab6e022d727da054e10d76a323efa03b:api.js:generic-api-key:1
+c32e05a0ab6e022d727da054e10d76a323efa03b:eslint.config.mjs:generic-api-key:65
+c7c7dafe254a8fafde8c0a8eeb8dc5a85b211986:api.js:generic-api-key:1
+c7c7dafe254a8fafde8c0a8eeb8dc5a85b211986:eslint.config.mjs:generic-api-key:65
+cec3da8a1b28916be486100d29f188ed047ac0d7:api.js:generic-api-key:1
+cec3da8a1b28916be486100d29f188ed047ac0d7:eslint.config.mjs:generic-api-key:65
+d8b97b18c7b80289344c1cfdacba31c14a7b8f02:api.js:generic-api-key:1
+d8b97b18c7b80289344c1cfdacba31c14a7b8f02:eslint.config.mjs:generic-api-key:65
+da8c249385513e7c172127bf8637b1ee620b408f:api.js:generic-api-key:1
+da8c249385513e7c172127bf8637b1ee620b408f:eslint.config.mjs:generic-api-key:65
+db8119eba3ce8e36d4f8b44cc362a1190b1053a9:api.js:generic-api-key:1
+db8119eba3ce8e36d4f8b44cc362a1190b1053a9:eslint.config.mjs:generic-api-key:65
+f060734dd027604a8b4b7ff7cff41a2633879962:api.js:generic-api-key:1
+f060734dd027604a8b4b7ff7cff41a2633879962:eslint.config.mjs:generic-api-key:65
+f3fdbb160f788a8f75b403ff3477eab3cfeec485:api.js:generic-api-key:1
+f3fdbb160f788a8f75b403ff3477eab3cfeec485:eslint.config.mjs:generic-api-key:65
+
+# Truncated documentation token example, ending in an ellipsis.
+2d5a3ec76a42f7fa738068dde52ed96d9db83f2c:src/docs/swagger/renter.swagger.ts:generic-api-key:45
