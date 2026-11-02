@@ -13,7 +13,6 @@
         "compression": "^1.8.1",
         "cookie-parser": "^1.4.7",
         "cors": "^2.8.5",
-        "crypto": "^1.0.1",
         "dayjs": "^1.11.18",
         "exceljs": "^4.4.0",
         "express": "^5.1.0",
@@ -41,7 +40,6 @@
         "swagger-ui": "^5.29.5",
         "swagger-ui-express": "^5.0.1",
         "tsconfig-paths": "^4.2.0",
-        "url": "^0.11.4",
         "uuid": "^13.0.0",
         "yamljs": "^0.3.0",
         "zod": "^4.1.12",
@@ -983,7 +981,6 @@
 
     "cross-spawn": ["cross-spawn@7.0.6", "https://registry.npmmirror.com/cross-spawn/-/cross-spawn-7.0.6.tgz", { "dependencies": { "path-key": "^3.1.0", "shebang-command": "^2.0.0", "which": "^2.0.1" } }, "sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA=="],
 
-    "crypto": ["crypto@1.0.1", "https://registry.npmmirror.com/crypto/-/crypto-1.0.1.tgz", {}, "sha512-VxBKmeNcqQdiUQUW2Tzq0t377b54N2bMtXO/qiLa+6eRRmmC4qT3D4OnTGoT/U6O9aklQ/jTwbOtRMTTY8G0Ig=="],
 
     "crypto-random-string": ["crypto-random-string@1.0.0", "https://registry.npmmirror.com/crypto-random-string/-/crypto-random-string-1.0.0.tgz", {}, "sha512-GsVpkFPlycH7/fRR7Dhcmnoii54gV1nz7y4CWyeFS14N+JVBBhY+r8amRHE4BwSYal7BPTDp8isvAlCxyFt3Hg=="],
 
@@ -2477,7 +2474,6 @@
 
     "urix": ["urix@0.1.0", "https://registry.npmmirror.com/urix/-/urix-0.1.0.tgz", {}, "sha512-Am1ousAhSLBeB9cG/7k7r2R0zj50uDRlZHPGbazid5s9rlF1F/QKYObEKSIunSjIOkJZqwRRLpvewjEkM7pSqg=="],
 
-    "url": ["url@0.11.4", "https://registry.npmmirror.com/url/-/url-0.11.4.tgz", { "dependencies": { "punycode": "^1.4.1", "qs": "^6.12.3" } }, "sha512-oCwdVC7mTuWiPyjLUz/COz5TLk6wgp0RCsN+wHZ2Ekneac9w8uuV0njcbbie2ME+Vs+d6duwmYuR3HgQXs1fOg=="],
 
     "url-parse": ["url-parse@1.5.10", "https://registry.npmmirror.com/url-parse/-/url-parse-1.5.10.tgz", { "dependencies": { "querystringify": "^2.1.1", "requires-port": "^1.0.0" } }, "sha512-WypcfiRhfeUP9vvF0j6rw0J3hrWrw6iZv3+22h6iRMJ/8z1Tj6XfLP4DsUix5MhMPnXpiHDoKyoZ/bdCkwBCiQ=="],
 
