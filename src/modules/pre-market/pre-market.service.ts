@@ -1,5 +1,7 @@
 // file: src/modules/pre-market/pre-market.service.ts
 
+import type { ClientSession } from "mongoose";
+
 import { Types } from "mongoose";
 import { randomBytes, randomInt } from "node:crypto";
 
@@ -35,6 +37,7 @@ import {
   nowMs,
   setPerformanceMetric,
 } from "@/utils/performance-observer.utils";
+import { TransactionHelper } from "@/utils/transaction.utils";
 
 import type { IAgentProfile } from "../agent/agent.interface.js";
 import type { BrokerFee, IGrantAccessRequest } from "../grant-access/grant-access.model.js";
@@ -46,6 +49,7 @@ import type {
   AdminPreMarketRequestItem,
   AdminRenterInfo,
   AgentRequestDetail,
+  PreMarketBuyerInterest,
   PreMarketScope,
 } from "./pre-market.type.js";
 
@@ -1260,16 +1264,7 @@ export class PreMarketService {
     const requestName = requestId;
     const shareConsent = payload.shareConsent === true;
     const scope = payload.scope ?? "Upcoming";
-    const buyerInterest = payload.buyerInterest
-      ? {
-          buyerSpecialistNeeded:
-            payload.buyerInterest.buyerSpecialistNeeded === true,
-          ...(payload.buyerInterest.buyerSpecialistNeeded
-            && payload.buyerInterest.purchaseTimeline?.trim()
-            ? { purchaseTimeline: payload.buyerInterest.purchaseTimeline.trim() }
-            : {}),
-        }
-      : undefined;
+    const buyerInterest = this.normalizeBuyerInterest(payload.buyerInterest);
     const now = new Date();
     const referralAgentId
       = await this.resolveRegisteredAgentIdFromRenter(renter);
@@ -1280,7 +1275,7 @@ export class PreMarketService {
     }
 
     // Create request
-    const request = await this.preMarketRepository.create({
+    const requestData: Partial<IPreMarketRequest> = {
       requestId,
       requestName,
       requestNumber,
@@ -1319,7 +1314,14 @@ export class PreMarketService {
         pendingConfirmationSentAt: null,
         pendingConfirmationExpiresAt: null,
       },
-    });
+    };
+    const request = await this.saveRequestWithBuyerInterest(
+      renterId,
+      buyerInterest,
+      session => session
+        ? this.preMarketRepository.create(requestData, session)
+        : this.preMarketRepository.create(requestData),
+    );
 
     // Send notifications
     this.sendNotifications(request, renterId).catch((error) => {
@@ -1356,6 +1358,51 @@ export class PreMarketService {
     );
 
     return request;
+  }
+
+  private normalizeBuyerInterest(
+    interest?: PreMarketBuyerInterest,
+  ): PreMarketBuyerInterest | undefined {
+    if (!interest) {
+      return undefined;
+    }
+    const buyerSpecialistNeeded = interest.buyerSpecialistNeeded === true;
+    const purchaseTimeline = buyerSpecialistNeeded
+      ? interest.purchaseTimeline?.trim() || ""
+      : "";
+    if (buyerSpecialistNeeded && !purchaseTimeline) {
+      throw new BadRequestException(
+        "Purchase timeline is required when buyer interest is selected",
+      );
+    }
+    return { buyerSpecialistNeeded, purchaseTimeline };
+  }
+
+  private async saveRequestWithBuyerInterest<T>(
+    renterId: string,
+    buyerInterest: PreMarketBuyerInterest | undefined,
+    saveRequest: (session?: ClientSession) => Promise<T>,
+  ): Promise<T> {
+    if (!buyerInterest) {
+      return saveRequest();
+    }
+    // A rejected request must not change the next form's defaults, and a
+    // successful request must never leave those defaults at the signup value.
+    return TransactionHelper.withTransaction(async (session) => {
+      const request = await saveRequest(session);
+      if (!request) {
+        throw new NotFoundException("Pre-market request not found");
+      }
+      const renter = await this.renterRepository.updateProfile(
+        renterId,
+        { questionnaire: buyerInterest },
+        session,
+      );
+      if (!renter) {
+        throw new NotFoundException("Renter profile not found");
+      }
+      return request;
+    });
   }
 
   private async sendNotifications(
@@ -2208,6 +2255,10 @@ export class PreMarketService {
     const nextRequestPayload = {
       ...(payload as Partial<IPreMarketRequest>),
     };
+    const buyerInterest = this.normalizeBuyerInterest(payload.buyerInterest);
+    if (buyerInterest) {
+      nextRequestPayload.buyerInterest = buyerInterest;
+    }
 
     if (
       payload.scope === "Upcoming"
@@ -2260,9 +2311,12 @@ export class PreMarketService {
     };
 
     // Update
-    const updated = await this.preMarketRepository.updateById(
-      requestId,
-      nextPayload as Partial<IPreMarketRequest>,
+    const updated = await this.saveRequestWithBuyerInterest(
+      renterId,
+      buyerInterest,
+      session => session
+        ? this.preMarketRepository.updateById(requestId, nextPayload, session)
+        : this.preMarketRepository.updateById(requestId, nextPayload),
     );
 
     logger.info({ renterId }, `Pre-market request updated: ${requestId}`);

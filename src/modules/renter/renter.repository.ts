@@ -1,6 +1,6 @@
 // file: src/modules/renter/renter.repository.ts
 
-import type { ObjectId, Types } from "mongoose";
+import type { ClientSession, ObjectId, Types } from "mongoose";
 
 import mongoose from "mongoose";
 
@@ -237,11 +237,27 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
   async updateProfile(
     userId: string | Types.ObjectId,
     data: UpdateRenterProfilePayload,
+    session?: ClientSession,
   ): Promise<IRenterModel | null> {
+    const { questionnaire, ...profile } = data;
+    const updates: Record<string, unknown> = { ...profile };
+    if (questionnaire) {
+      // Update individual answers so a stale profile read cannot replace other
+      // answers or undo preferences saved by a later request.
+      for (const [key, value] of Object.entries(questionnaire)) {
+        if (value !== undefined) {
+          updates[`questionnaire.${key}`]
+            = typeof value === "string" ? value.trim() : value;
+        }
+      }
+      if (questionnaire.buyerSpecialistNeeded === false) {
+        updates["questionnaire.purchaseTimeline"] = "";
+      }
+    }
     return this.model.findOneAndUpdate(
       { userId, isDeleted: false },
-      { $set: data },
-      { new: true },
+      { $set: updates },
+      { new: true, runValidators: true, ...(session ? { session } : {}) },
     );
   }
 

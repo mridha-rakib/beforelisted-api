@@ -1,6 +1,6 @@
 // file: src/modules/base/base.repository.ts
 
-import type { Document, FilterQuery, Model, PaginateOptions } from "mongoose";
+import type { ClientSession, Document, FilterQuery, Model, PaginateOptions } from "mongoose";
 
 import type { PaginateResult } from "@/ts/pagination.types";
 
@@ -21,12 +21,25 @@ export class BaseRepository<
     return this.model.findOne(filter).exec();
   }
 
-  async create(data: Partial<T>): Promise<T> {
+  async create(data: Partial<T>, session?: ClientSession): Promise<T> {
+    if (session) {
+      const [document] = await this.model.create([data], { session });
+      return document;
+    }
     return this.model.create(data);
   }
 
-  async updateById(id: string, data: Partial<T>): Promise<T | null> {
-    return this.model.findByIdAndUpdate(id, data, { new: true }).exec();
+  async updateById(
+    id: string,
+    data: Partial<T>,
+    session?: ClientSession,
+  ): Promise<T | null> {
+    return this.model
+      .findByIdAndUpdate(id, data, {
+        new: true,
+        ...(session ? { session } : {}),
+      })
+      .exec();
   }
 
   async deleteById(id: string): Promise<T | null> {
