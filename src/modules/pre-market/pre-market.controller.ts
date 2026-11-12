@@ -517,7 +517,7 @@ export class PreMarketController {
       const listingStatus = matchRecord ? "matched" : request.status;
       const grantAccessStatus = "free";
       const visibleScope
-        = request.scope === "All Market" ? "All Market" : "Upcoming";
+        = scopePresentation.scope;
 
       await this.preMarketRepository.addAgentToViewedBy(
         requestId,
@@ -608,7 +608,7 @@ export class PreMarketController {
             ? "requested"
             : request.status;
     const visibleScope
-      = request.scope === "All Market" ? "All Market" : "Upcoming";
+      = scopePresentation.scope;
 
     await this.preMarketRepository.addAgentToViewedBy(
       requestId,
@@ -1145,7 +1145,7 @@ export class PreMarketController {
             agentId,
           );
         const visibleScope
-          = request.scope === "All Market" ? "All Market" : "Upcoming";
+          = scopePresentation.scope;
 
         await this.preMarketRepository.addAgentToViewedBy(
           requestId,
@@ -1220,7 +1220,7 @@ export class PreMarketController {
           agentId,
         );
       const visibleScope
-        = request.scope === "All Market" ? "All Market" : "Upcoming";
+        = scopePresentation.scope;
 
       logger.info(
         { agentId, requestId },

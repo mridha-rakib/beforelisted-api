@@ -41,6 +41,7 @@ import {
   nowMs,
   setPerformanceMetric,
 } from "@/utils/performance-observer.utils";
+import { hasRequestMatch } from "@/utils/request-match-scope.utils";
 import { TransactionHelper } from "@/utils/transaction.utils";
 
 import type { IAgentProfile } from "../agent/agent.interface.js";
@@ -447,15 +448,13 @@ export class PreMarketService {
   }
 
   /**
-   * Resolves scope for one specific agent.  A request's current scope is not
-   * enough once multiple agents can match it: each match keeps the immutable
-   * scope it was made under.  Archived and deleted requests deliberately do
-   * not use this new presentation rule.
+   * All Market displays Upcoming (M) when any agent has matched, regardless
+   * of representation or the scope at the time of the match.
    */
   public async getScopePresentationForAgent(
     agentId: string,
     request: IPreMarketRequest,
-    accessRecord?: IGrantAccessRequest | null,
+    _accessRecord?: IGrantAccessRequest | null,
   ): Promise<{
     scope: "Upcoming" | "All Market" | "Upcoming (M)";
     matchedByAgent: { agentId: string; fullName: string } | null;
@@ -472,31 +471,10 @@ export class PreMarketService {
       return { scope: this.resolveAgentVisibleScope(request.scope, false), matchedByAgent: null, registeredAgentForView: null };
     }
 
-    const viewerMatch = accessRecord === undefined
-      ? await this.getMatchedAccessRecord(agentId, requestId)
-      : accessRecord;
     const records = await this.grantAccessRepository.findByPreMarketRequestId(requestId);
-    const activeRenterMatches = records.filter(record => this.hasAgentMatchedStatus(record));
     const registeredAgentId = await this.resolveRegisteredAgentIdForRequest(request);
     const isRegisteredAgent = registeredAgentId === agentId;
-    const hasAllMarketMatch = activeRenterMatches.some(
-      record => record.scopeAtMatch === "All Market",
-    );
-
-    let scope: "Upcoming" | "All Market" | "Upcoming (M)";
-    if (request.scope !== "All Market") {
-      scope = "Upcoming";
-    }
-    else if (viewerMatch?.scopeAtMatch === "Upcoming") {
-      // A match made in Upcoming always retains the agent's Upcoming view.
-      scope = "Upcoming";
-    }
-    else {
-      // All Market becomes Upcoming (M) as soon as any active renter-
-      // representation match was made while the request was All Market.
-      // A match made earlier in Upcoming does not cause that transition.
-      scope = hasAllMarketMatch ? "Upcoming (M)" : "All Market";
-    }
+    const scope = this.resolveAgentVisibleScope(request.scope, hasRequestMatch(request, records));
 
     // Preserve the established name-above/name-below presentation whenever
     // the agent sees Upcoming (M), including when both agents matched at
@@ -1616,18 +1594,14 @@ export class PreMarketService {
             && grantAccess.status !== "free"
             && grantAccess.status !== "paid"
             && grantAccess.status !== "rejected";
-        // The Requests tab is a view of the live marketplace.  It must
-        // always expose the request's current scope, even to an agent who
-        // matched when the request was in a different scope.  The immutable
-        // `scopeAtMatch` snapshot is intentionally used only by the Renter
-        // Matches flow below (`getAllRequestsForAgent`).
+        // Every agent view uses the same matched scope for either representation.
         const scopePresentation = await this.getScopePresentationForAgent(
           agentId,
           request as IPreMarketRequest,
           grantAccess,
         );
         const visibleScope
-          = request.scope === "All Market" ? "All Market" : "Upcoming";
+          = scopePresentation.scope;
         const currentRegisteredAgentId
           = renterContext.registeredAgentIdByRequestId.get(requestId) ?? null;
         const isCurrentRegisteredAgent = currentRegisteredAgentId === agentId;
@@ -1768,18 +1742,11 @@ export class PreMarketService {
         record,
       ]),
     );
-    // Find Matches is intentionally restricted to Upcoming and Upcoming (M).
-    // An All Market request becomes Upcoming (M) only when an active renter
-    // representation match was made while it was All Market. Plain All Market
-    // requests never appear in this tool.
+    // Find Matches includes Upcoming requests and All Market requests with
+    // any match, including owner matches stored directly on the request.
     const allMarketMatchedRequestIds = new Set(
       allGrantAccessRecords
-        .filter(
-          record =>
-            this.hasAgentMatchedStatus(record)
-            && record.representation_type !== "owner_representation"
-            && record.scopeAtMatch === "All Market",
-        )
+        .filter(record => hasRequestMatch({}, [record]))
         .map(record => record.preMarketRequestId.toString()),
     );
     const matchVisibleRequests = requests.filter((request) => {
@@ -1790,6 +1757,7 @@ export class PreMarketService {
       return (
         request.scope !== "All Market"
         || allMarketMatchedRequestIds.has(requestId)
+        || Boolean(request.ownerRepresentationMatches?.length)
       );
     });
     const registeredAgentContext
@@ -3400,7 +3368,8 @@ export class PreMarketService {
     return requests.filter((request) => {
       const requestId = request._id?.toString() || "";
       return (
-        request.scope === "All Market" && matchedScopeRequestIds.has(requestId)
+        request.scope === "All Market"
+        && (matchedScopeRequestIds.has(requestId) || Boolean(request.ownerRepresentationMatches?.length))
       );
     });
   }
@@ -6401,7 +6370,7 @@ export class PreMarketService {
           accessRecord,
         );
         const responseScope
-          = request.scope === "All Market" ? "All Market" : "Upcoming";
+          = scopePresentation.scope;
         const registeredAgentId
           = await this.resolveRegisteredAgentIdForRequest(request);
         const isRegisteredAgent = registeredAgentId === agentId;
@@ -6709,8 +6678,8 @@ export class PreMarketService {
         : {}),
     };
 
-    // Owner-representation matches do NOT create a grant-access record and do
-    // NOT flip the request to PRIVATE / Upcoming (M). They are recorded on the
+    // Owner-representation matches do not create a grant-access record or
+    // change visibility. Their match still produces Upcoming (M). Stored on the
     // request as `ownerRepresentationMatches[]` and the registered agent (the
     // renter's referring agent) is notified by email #29.
     const isOwnerRepresentationMatch = representationType === "owner_representation"

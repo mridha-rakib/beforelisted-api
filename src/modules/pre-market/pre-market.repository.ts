@@ -9,6 +9,7 @@ import type { PaginatedResponse, PaginationQuery } from "@/ts/pagination.types";
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
 import { PaginationHelper } from "@/utils/pagination-helper";
+import { hasRequestMatch } from "@/utils/request-match-scope.utils";
 
 import type { IPreMarketRequest } from "./pre-market.model.js";
 
@@ -123,7 +124,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     return matchedRequestIds.has(requestId.toString());
   }
 
-  async applyAgentVisibleScopes<T extends { _id?: unknown; scope?: string }>(
+  async applyAgentVisibleScopes<T extends { _id?: unknown; scope?: string; ownerRepresentationMatches?: readonly unknown[] }>(
     requests: T[],
   ): Promise<Array<T & { scope: AgentVisibleScope }>> {
     if (!requests || requests.length === 0) {
@@ -143,12 +144,12 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
       ...request,
       scope: this.resolveAgentVisibleScope(
         request.scope,
-        matchedRequestIds.has(request._id?.toString() || ""),
+        matchedRequestIds.has(request._id?.toString() || "") || hasRequestMatch(request, []),
       ),
     }));
   }
 
-  async applyAgentVisibleScope<T extends { _id?: unknown; scope?: string }>(
+  async applyAgentVisibleScope<T extends { _id?: unknown; scope?: string; ownerRepresentationMatches?: readonly unknown[] }>(
     request: T | null,
   ): Promise<(T & { scope: AgentVisibleScope }) | null> {
     if (!request) {
