@@ -183,6 +183,7 @@ describe("GrantAccessService owner-representation requestAccess", () => {
       preMarketRequestId,
       "renter_representation",
       "renter-side opportunity details.",
+      "Talk to Renter First",
     );
 
     expect(grantAccessCreated).toBe(1);
@@ -291,6 +292,7 @@ describe("GrantAccessService owner-representation requestAccess", () => {
       preMarketRequestId,
       "renter_representation",
       "I found another place for you.",
+      "Talk to Renter First",
     );
 
     // No duplicate pending grant should be created
@@ -356,6 +358,7 @@ describe("GrantAccessService owner-representation requestAccess", () => {
         preMarketRequestId,
         "renter_representation",
         "second message",
+        "Talk to Renter First",
       ),
     ).rejects.toThrow(/already have access/i);
   });
@@ -402,6 +405,7 @@ describe("GrantAccessService owner-representation requestAccess", () => {
         preMarketRequestId,
         "renter_representation",
         "second message",
+        "Talk to Renter First",
       ),
     ).rejects.toThrow(/already have access/i);
   });

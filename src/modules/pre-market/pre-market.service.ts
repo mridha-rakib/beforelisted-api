@@ -8298,6 +8298,7 @@ export class PreMarketService {
       await emailService.sendRenterOpportunityFoundByRegisteredAgent({
         to: renter.email,
         renterName: renter.fullName,
+        requestScope: preMarketRequest.scope,
         registeredAgentFullName,
         registeredAgentTitle,
         registeredAgentBrokerage,
