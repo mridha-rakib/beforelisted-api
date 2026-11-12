@@ -11,10 +11,10 @@
   "keywords": [],
   "main": "src/index.ts",
   "scripts": {
-    "start": "node api.js && node -r ./tsconfig-paths-bootstrap.js dist/index.js",
+    "start": "node -r ./tsconfig-paths-bootstrap.js dist/index.js",
     "start:local": "node --env-file=.env -r ./tsconfig-paths-bootstrap.js dist/index.js",
-    "dev": "node api.js && tsx watch --env-file=.env src/index.ts",
-    "build": "node api.js && npm run security:check && tsc && node scripts/copy-assets.js",
+    "dev": "tsx watch --env-file=.env src/index.ts",
+    "build": "npm run security:check && tsc && node scripts/copy-assets.js",
     "lint": "eslint --fix src",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",

@@ -13,8 +13,12 @@ export class BaseRepository<
     this.model = model;
   }
 
-  async findById(id: string): Promise<T | null> {
-    return this.model.findById(id).exec();
+  async findById(id: string, session?: ClientSession): Promise<T | null> {
+    const query = this.model.findById(id);
+    if (session) {
+      query.session(session);
+    }
+    return query.exec();
   }
 
   async findOne(filter = {}): Promise<T | null> {
