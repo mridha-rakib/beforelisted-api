@@ -4,6 +4,7 @@ import { Types } from "mongoose";
 import { describe, expect, it, vi } from "vitest";
 
 import { PreMarketService } from "../src/modules/pre-market/pre-market.service";
+import { TransactionHelper } from "../src/utils/transaction.utils";
 
 /**
  * Tests for the matched-agent picker (`resolveMatchedAgentForView` +
@@ -17,6 +18,7 @@ import { PreMarketService } from "../src/modules/pre-market/pre-market.service";
  *  - Unmatch writes an audit document to `grantaccess_unmatch_audit` before
  *    flipping the grant's status to "rejected".
  */
+
 
 const REQUEST_ID = "507f1f77bcf86cd799439500";
 const AGENT_ID_OLDEST = "507f1f77bcf86cd799439601"; // Ayana
@@ -241,6 +243,7 @@ describe("unmatch audit log", () => {
     // preMarketRepository.updateById — we mock the ones not already stubbed.
     service.getRequestById = vi.fn().mockResolvedValue({
       _id: REQUEST_ID,
+      isActive: true,
       renterId: "renter-1",
       viewedBy: {
         grantAccessAgents: [new Types.ObjectId(AGENT_ID_MIDDLE)],
@@ -273,6 +276,8 @@ describe("unmatch audit log", () => {
       .spyOn(emailServiceModule.emailService, "sendAgentUnmatchedNotification")
       .mockResolvedValue({ success: true } as any);
 
+    const transactionSpy = vi.spyOn(TransactionHelper, "withTransaction")
+      .mockImplementation(async run => run({} as any));
     try {
       await service.unmatchRequestForRegisteredAgent(AGENT_ID_MIDDLE, REQUEST_ID, {
         sendEmailNotice: true,
@@ -297,10 +302,12 @@ describe("unmatch audit log", () => {
       expect(service.grantAccessRepository.updateById).toHaveBeenCalledWith(
         "grant-middle",
         { status: "rejected" },
+        expect.anything(),
       );
     }
     finally {
       emailSpy.mockRestore();
+      transactionSpy.mockRestore();
     }
   });
 });

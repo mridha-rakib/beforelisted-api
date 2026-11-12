@@ -5,7 +5,7 @@ import type { Document } from "mongoose";
 import { model, Schema } from "mongoose";
 
 /**
- * Audit document for `GrantAccessRequest` unmatch events.
+ * Audit document for renter and owner match removal.
  *
  * Written by `unmatchRequestForRegisteredAgent` in `pre-market.service.ts`
  * BEFORE the grant's status is flipped to "rejected". Captures who
@@ -15,7 +15,9 @@ import { model, Schema } from "mongoose";
  * `grantaccessrequests`).
  */
 export type IGrantAccessUnmatchAudit = {
-  grantId: string;
+  grantId?: string;
+  matchType?: "grant_access" | "owner_representation";
+  ownerMatchSnapshot?: Record<string, unknown>;
   agentId: string;
   preMarketRequestId: string;
   /**
@@ -25,21 +27,23 @@ export type IGrantAccessUnmatchAudit = {
   unmatchedByAgentId: string;
   timestamp: Date;
   /**
-   * The status the grant had right before being flipped to "rejected".
-   * Mirrors the literal union on `IGrantAccessRequest.status`.
+   * Previous grant status, or owner_matched for an owner-side snapshot.
    */
   previousStatus:
     | "pending"
     | "approved"
     | "free"
     | "rejected"
-    | "paid";
+    | "paid"
+    | "owner_matched";
   sendEmailNotice: boolean;
   personalMessage?: string | null;
 } & Document<unknown, any, any, Record<string, any>, object>;
 
 const GrantAccessUnmatchAuditSchema = new Schema<IGrantAccessUnmatchAudit>({
-  grantId: { type: String, required: true, index: true },
+  grantId: { type: String, index: true },
+  matchType: { type: String, enum: ["grant_access", "owner_representation"], default: "grant_access" },
+  ownerMatchSnapshot: { type: Schema.Types.Mixed },
   agentId: { type: String, required: true, index: true },
   preMarketRequestId: { type: String, required: true, index: true },
   unmatchedByAgentId: { type: String, required: true },
@@ -52,7 +56,7 @@ const GrantAccessUnmatchAuditSchema = new Schema<IGrantAccessUnmatchAudit>({
   previousStatus: {
     type: String,
     required: true,
-    enum: ["pending", "approved", "free", "rejected", "paid"],
+    enum: ["pending", "approved", "free", "rejected", "paid", "owner_matched"],
   },
   sendEmailNotice: { type: Boolean, required: true },
   personalMessage: { type: String, default: null },

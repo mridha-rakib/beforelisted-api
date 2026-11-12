@@ -1505,9 +1505,8 @@ export class PreMarketService {
       requestFilter,
     ]);
     const filterAllMarketReferrals = this.shouldFilterAllMarketReferrals(query);
-    // Exclude any request this agent was previously unmatched from — once
-    // an agent is unmatched they never see that request again, even if it
-    // later becomes Upcoming (M) for a different matched agent.
+    // Previously unmatched agents lose access, while the registered agent
+    // retains their own renter's request even after a self-unmatch.
     const unmatchedRequestIds
       = await this.getUnmatchedRequestIdsForAgent(agentId);
     const paginated = filterAllMarketReferrals
@@ -2165,8 +2164,10 @@ export class PreMarketService {
     );
   }
 
-  async getRequestById(requestId: string): Promise<IPreMarketRequest> {
-    const request = await this.preMarketRepository.findById(requestId);
+  async getRequestById(requestId: string, session?: ClientSession): Promise<IPreMarketRequest> {
+    const request = session
+      ? await this.preMarketRepository.findById(requestId, session)
+      : await this.preMarketRepository.findById(requestId);
 
     if (!request) {
       throw new NotFoundException("Pre-market request not found");
@@ -3411,10 +3412,17 @@ export class PreMarketService {
       = await this.grantAccessRepository.findByAgentIdAndStatuses(agentId, [
         "rejected",
       ]);
-    const ids = rejectedRecords
+    const ids = Array.from(new Set(rejectedRecords
       .map(record => record.preMarketRequestId?.toString())
-      .filter((id): id is string => Boolean(id));
-    return Array.from(new Set(ids));
+      .filter((id): id is string => Boolean(id))));
+    const excludedIds: string[] = [];
+    for (const id of ids) {
+      const request = await this.preMarketRepository.findById(id);
+      if (!request || await this.resolveRegisteredAgentIdForRequest(request) !== agentId) {
+        excludedIds.push(id);
+      }
+    }
+    return excludedIds;
   }
 
   private async buildRequestVisibilityFilterForAgent(
@@ -4606,122 +4614,138 @@ export class PreMarketService {
     emailSent: boolean;
     completedAt: string;
   }> {
-    const request = await this.getRequestById(requestId);
-    if (!request) {
-      throw new NotFoundException("Request not found");
-    }
-
-    const registeredAgentId = await this.resolveRegisteredAgentIdForRequest(
-      request as IPreMarketRequest,
-    );
-    if (registeredAgentId !== agentId) {
-      throw new ForbiddenException(
-        "Only the registered agent for this request can unmatch it.",
-      );
-    }
-
-    const grantRecords
-      = await this.grantAccessRepository.findByPreMarketRequestId(requestId);
-    const matchedRecord = grantRecords.find(
-      record =>
-        record.representation_type !== "owner_representation"
-        && (record.status === "free"
-          || record.status === "paid"
-          || record.status === "approved"),
-    );
-
-    let unmatchedAgentId: string | null = null;
+    // This action returns the whole request to All Market, so all current
+    // matches must be ended together, including owner-side matches.
+    const { request, unmatchedAgentIds } = await TransactionHelper.withTransaction(async (session) => {
+      const request = await this.getRequestById(requestId, session);
+      const registeredAgentId = await this.resolveRegisteredAgentIdForRequest(request);
+      if (registeredAgentId !== agentId) {
+        throw new ForbiddenException("Only the registered agent for this request can unmatch it.");
+      }
+      if (request.isDeleted || !request.isActive) {
+        throw new BadRequestException("Inactive requests cannot be unmatched.");
+      }
+      const records = await this.grantAccessRepository.findByPreMarketRequestId(requestId, session);
+      const activeRecords = records.filter(record => hasRequestMatch({}, [record]));
+      const ownerMatches = request.ownerRepresentationMatches ?? [];
+      const unmatchedAgentIds = Array.from(new Set([
+        ...activeRecords.map(record => record.agentId.toString()),
+        ...ownerMatches.map(record => record.agentId.toString()),
+      ]));
+      const timestamp = new Date();
+      for (const record of activeRecords) {
+        await this.grantAccessAuditRepository.create({
+          grantId: record._id.toString(),
+          matchType: "grant_access",
+          agentId: record.agentId.toString(),
+          preMarketRequestId: requestId,
+          unmatchedByAgentId: agentId,
+          timestamp,
+          previousStatus: record.status,
+          sendEmailNotice: options.sendEmailNotice,
+          personalMessage: options.personalMessage ?? null,
+        }, session);
+        await this.grantAccessRepository.updateById(record._id.toString(), { status: "rejected" }, session);
+      }
+      for (const ownerMatch of ownerMatches) {
+        await this.grantAccessAuditRepository.create({
+          matchType: "owner_representation",
+          agentId: ownerMatch.agentId.toString(),
+          preMarketRequestId: requestId,
+          unmatchedByAgentId: agentId,
+          timestamp,
+          previousStatus: "owner_matched",
+          ownerMatchSnapshot: { ...ownerMatch },
+          sendEmailNotice: options.sendEmailNotice,
+          personalMessage: options.personalMessage ?? null,
+        }, session);
+      }
+      const canShare = request.shareConsent === true
+        && this.getRegistrationDisclosureStatus(request, agentId).registrationDisclosureConfirmed
+        && !this.getAgentArchiveStatus(request, agentId).isArchivedForAgent;
+      const updated = await this.preMarketRepository.updateById(requestId, {
+        scope: "All Market",
+        visibility: canShare ? "SHARED" : "PRIVATE",
+        ownerRepresentationMatches: [],
+        viewedBy: {
+          grantAccessAgents: (request.viewedBy?.grantAccessAgents ?? [])
+            .filter(id => !unmatchedAgentIds.includes(id.toString())),
+          normalAgents: (request.viewedBy?.normalAgents ?? [])
+            .filter(id => !unmatchedAgentIds.includes(id.toString())),
+        },
+        sharedVisibilityNotificationSentAt: null,
+      } as any, session);
+      if (!updated) {
+        throw new NotFoundException("Pre-market request not found");
+      }
+      return { request, unmatchedAgentIds };
+    });
+    const unmatchedAgentId = unmatchedAgentIds[0] ?? null;
+    const unmatchedAgents = [];
     let unmatchedAgent: Awaited<ReturnType<UserRepository["findById"]>> = null;
-    if (matchedRecord) {
-      unmatchedAgentId = matchedRecord.agentId.toString();
-      unmatchedAgent = await this.userRepository.findById(unmatchedAgentId);
+    for (const id of unmatchedAgentIds) {
+      const user = await this.userRepository.findById(id);
+      if (id === unmatchedAgentId) {
+        unmatchedAgent = user;
+      }
+      if (user?.email) {
+        unmatchedAgents.push(user);
+      }
     }
-
-    if (matchedRecord) {
-      // Write an audit document BEFORE flipping the status to "rejected".
-      // Captures the who/what/when of the unmatch so we have a forensic
-      // trail — the grant record itself stays in `grantaccessrequests`
-      // forever (unmatch is a soft-update), so this audit collection is the
-      // only place that records the moment of unmatch.
-      await this.grantAccessAuditRepository.create({
-        grantId: matchedRecord._id.toString(),
-        agentId: matchedRecord.agentId.toString(),
-        preMarketRequestId: requestId,
-        unmatchedByAgentId: agentId,
-        timestamp: new Date(),
-        previousStatus: matchedRecord.status as any,
-        sendEmailNotice: options.sendEmailNotice,
-        personalMessage: options.personalMessage ?? null,
-      } as any);
-
-      await this.grantAccessRepository.updateById(
-        matchedRecord._id.toString(),
-        { status: "rejected" },
-      );
-    }
-
-    await this.preMarketRepository.updateById(requestId, {
-      scope: "All Market",
-      visibility: "PRIVATE",
-      // Reset the "shared blast already sent" flag so the next PRIVATE→SHARED
-      // transition after this unmatch behaves like a fresh first share and
-      // fires the share-notification email blast again (to all eligible agents
-      // except opted-out and the just-unmatched one). The service-side gate
-      // treats any falsy value (null/undefined) as "blast not yet sent".
-      sharedVisibilityNotificationSentAt: null,
-    } as any);
-
     let emailSent = false;
-    if (options.sendEmailNotice && unmatchedAgent && unmatchedAgent.email) {
-      const registeredAgent = await this.userRepository.findById(agentId);
-      const renter = await this.renterRepository.findRenterWithReferrer(
-        request.renterId.toString(),
-      );
-
-      const unmatchedAgentFullName
-        = unmatchedAgent.fullName?.trim() || unmatchedAgent.email;
-      const unmatchedAgentFirstName
-        = unmatchedAgentFullName.split(/\s+/)[0] || unmatchedAgentFullName;
-      const registeredAgentFullName
-        = registeredAgent?.fullName?.trim() || registeredAgent?.email || "Agent";
-      const renterFullName
-        = renter?.fullName?.trim() || renter?.email || "the renter";
-      const renterFirstName = renterFullName.split(/\s+/)[0] || renterFullName;
-      const renterLastInitial = (() => {
-        const parts = renterFullName.split(/\s+/).filter(Boolean);
-        const last = parts[parts.length - 1] || "";
-        return last.charAt(0).toUpperCase() || "";
-      })();
-
-      const trimmedMessage
-        = typeof options.personalMessage === "string"
-          && options.personalMessage.trim().length > 0
-          ? options.personalMessage.trim()
-          : undefined;
-
-      const sendResult = await emailService.sendAgentUnmatchedNotification({
-        to: unmatchedAgent.email,
-        unmatchedAgentFirstName,
-        unmatchedAgentFullName,
-        registeredAgentFullName,
-        registeredAgentEmail:
-          registeredAgent?.email || "support@beforelisted.com",
-        renterFullName,
-        renterFirstName,
-        renterLastInitial,
-        personalMessage: trimmedMessage,
-      });
-
-      emailSent = Boolean(sendResult.success);
-      if (!sendResult.success) {
-        logger.error(
-          {
-            requestId,
-            unmatchedAgentId,
-            error: sendResult.error,
-          },
-          "Failed to send agent unmatched notification (Email #32)",
+    if (options.sendEmailNotice && unmatchedAgents.length > 0) {
+      emailSent = true;
+      for (const unmatchedAgent of unmatchedAgents) {
+        const registeredAgent = await this.userRepository.findById(agentId);
+        const renter = await this.renterRepository.findRenterWithReferrer(
+          request.renterId.toString(),
         );
+
+        const unmatchedAgentFullName
+          = unmatchedAgent.fullName?.trim() || unmatchedAgent.email;
+        const unmatchedAgentFirstName
+          = unmatchedAgentFullName.split(/\s+/)[0] || unmatchedAgentFullName;
+        const registeredAgentFullName
+          = registeredAgent?.fullName?.trim() || registeredAgent?.email || "Agent";
+        const renterFullName
+          = renter?.fullName?.trim() || renter?.email || "the renter";
+        const renterFirstName = renterFullName.split(/\s+/)[0] || renterFullName;
+        const renterLastInitial = (() => {
+          const parts = renterFullName.split(/\s+/).filter(Boolean);
+          const last = parts[parts.length - 1] || "";
+          return last.charAt(0).toUpperCase() || "";
+        })();
+
+        const trimmedMessage
+          = typeof options.personalMessage === "string"
+            && options.personalMessage.trim().length > 0
+            ? options.personalMessage.trim()
+            : undefined;
+
+        const sendResult = await emailService.sendAgentUnmatchedNotification({
+          to: unmatchedAgent.email,
+          unmatchedAgentFirstName,
+          unmatchedAgentFullName,
+          registeredAgentFullName,
+          registeredAgentEmail:
+            registeredAgent?.email || "support@beforelisted.com",
+          renterFullName,
+          renterFirstName,
+          renterLastInitial,
+          personalMessage: trimmedMessage,
+        });
+
+        emailSent = emailSent && Boolean(sendResult.success);
+        if (!sendResult.success) {
+          logger.error(
+            {
+              requestId,
+              unmatchedAgentId,
+              error: sendResult.error,
+            },
+            "Failed to send agent unmatched notification (Email #32)",
+          );
+        }
       }
     }
 

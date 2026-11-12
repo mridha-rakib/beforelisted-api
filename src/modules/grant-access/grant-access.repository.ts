@@ -1,6 +1,6 @@
 // file: src/modules/grant-access/grant-access.repository.ts
 
-import type { FilterQuery } from "mongoose";
+import type { ClientSession, FilterQuery } from "mongoose";
 
 import { Types } from "mongoose";
 
@@ -130,9 +130,10 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
    */
   async findByPreMarketRequestId(
     preMarketRequestId: string | Types.ObjectId,
+    session?: ClientSession,
   ): Promise<IGrantAccessRequest[]> {
     return this.model
-      .find({ preMarketRequestId })
+      .find({ preMarketRequestId }, null, session ? { session } : {})
       .sort({ createdAt: 1 })
       .lean()
       .exec() as unknown as Promise<IGrantAccessRequest[]>;
