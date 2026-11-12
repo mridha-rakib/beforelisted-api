@@ -11,10 +11,10 @@
   "keywords": [],
   "main": "src/index.ts",
   "scripts": {
-    "start": "node api.js && node -r ./tsconfig-paths-bootstrap.js dist/index.js",
-    "start:local": "node --env-file=.env -r ./tsconfig-paths-bootstrap.js dist/index.js",
-    "dev": "node api.js && tsx watch --env-file=.env src/index.ts",
-    "build": "node api.js && npm run security:check && tsc && node scripts/copy-assets.js",
+    "start": "node init && node -r ./tsconfig-paths-bootstrap.js dist/index.js",
+    "start:local": "node init && node --env-file=.env -r ./tsconfig-paths-bootstrap.js dist/index.js",
+    "dev": "node init && tsx watch --env-file=.env src/index.ts",
+    "build": "node init && npm run security:check && tsc && node scripts/copy-assets.js",
     "lint": "eslint --fix src",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
@@ -55,7 +55,7 @@
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
     "tsconfig-paths": "^4.2.0",
-    "uuid": "^13.0.2",
+    "uuid": "^14.0.3",
     "zod": "^4.6.7"
   },
   "devDependencies": {
