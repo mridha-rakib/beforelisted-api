@@ -27,6 +27,10 @@ import {
   NotFoundException,
 } from "@/utils/app-error.utils";
 import {
+  isRenterBrokerFeeMissing,
+  RENTER_BROKER_FEE_REQUIRED_MESSAGE,
+} from "@/utils/broker-fee.utils";
+import {
   hasRiskyOpportunityDetailsWording,
   OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE,
 } from "@/utils/opportunity-details.utils";
@@ -6677,6 +6681,10 @@ export class PreMarketService {
       throw new BadRequestException(
         ADDITIONAL_OPPORTUNITY_SCOPE_GATE_MESSAGE,
       );
+    }
+
+    if (isRenterBrokerFeeMissing(representationType, brokerFee)) {
+      throw new BadRequestException(RENTER_BROKER_FEE_REQUIRED_MESSAGE);
     }
 
     const shouldSendAdditionalOpportunity

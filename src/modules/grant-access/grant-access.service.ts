@@ -11,6 +11,10 @@ import {
   NotFoundException,
 } from "@/utils/app-error.utils";
 import {
+  isRenterBrokerFeeMissing,
+  RENTER_BROKER_FEE_REQUIRED_MESSAGE,
+} from "@/utils/broker-fee.utils";
+import {
   hasRiskyOpportunityDetailsWording,
   OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE,
 } from "@/utils/opportunity-details.utils";
@@ -150,6 +154,9 @@ export class GrantAccessService {
       throw new BadRequestException(
         "Broker fee can only be selected when representing the renter",
       );
+    }
+    if (isRenterBrokerFeeMissing(representationType, brokerFee)) {
+      throw new BadRequestException(RENTER_BROKER_FEE_REQUIRED_MESSAGE);
     }
 
     const listingActivationCheck
