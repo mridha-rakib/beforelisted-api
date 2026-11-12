@@ -270,9 +270,13 @@ export class GrantAccessRepository extends BaseRepository<IGrantAccessRequest> {
   async updateById(
     id: string,
     data: Partial<IGrantAccessRequest>,
+    session?: ClientSession,
   ): Promise<IGrantAccessRequest | null> {
     return this.model
-      .findByIdAndUpdate(id, data, { new: true })
+      .findByIdAndUpdate(id, data, {
+        new: true,
+        ...(session ? { session } : {}),
+      })
       .lean() as Promise<IGrantAccessRequest | null>;
   }
 
