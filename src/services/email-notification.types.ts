@@ -125,6 +125,7 @@ export type IRenterOpportunityFoundRegisteredAgentPayload = {
   registeredAgentBrokerage: string;
   registeredAgentEmail: string;
   registeredAgentPhone: string;
+  requestScope?: "Upcoming" | "All Market" | "Upcoming (M)";
   opportunityDetails?: string;
   additionalOpportunity?: boolean;
   matchSummary?: IMatchCompatibilitySummary;
