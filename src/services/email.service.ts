@@ -66,6 +66,7 @@ import {
   ownerRepresentationMatchReferralAcknowledgmentTemplate,
   preMarketAdminNotificationTemplate,
   preMarketAgentNotificationTemplate,
+  registeredAgentAllMarketMatchTemplate,
   renterOpportunityFoundOtherAgentTemplate,
   renterOpportunityFoundRegisteredAgentTemplate,
   renterRegistrationVerifiedAdminTemplate,
@@ -1396,33 +1397,45 @@ export class EmailService {
         "Sending registered agent opportunity notification to renter",
       );
 
-      const html = renterOpportunityFoundRegisteredAgentTemplate(
-        payload.renterName,
-        payload.registeredAgentFullName,
-        payload.registeredAgentTitle,
-        payload.registeredAgentBrokerage,
-        payload.registeredAgentEmail,
-        payload.registeredAgentPhone,
-        payload.opportunityDetails,
-        this.config.logoUrl,
-        this.config.brandColor,
-        payload.additionalOpportunity,
-        payload.matchSummary,
-        payload.brokerFee,
-      );
+      const isAllMarket = payload.requestScope === "All Market";
+      const html = isAllMarket
+        ? registeredAgentAllMarketMatchTemplate(
+            payload,
+            this.config.logoUrl,
+            this.config.brandColor,
+          )
+        : renterOpportunityFoundRegisteredAgentTemplate(
+            payload.renterName,
+            payload.registeredAgentFullName,
+            payload.registeredAgentTitle,
+            payload.registeredAgentBrokerage,
+            payload.registeredAgentEmail,
+            payload.registeredAgentPhone,
+            payload.opportunityDetails,
+            this.config.logoUrl,
+            this.config.brandColor,
+            payload.additionalOpportunity,
+            payload.matchSummary,
+            payload.brokerFee,
+          );
 
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.renterName },
+        ...(isAllMarket ? { cc: [payload.registeredAgentEmail] } : {}),
         replyTo: payload.registeredAgentEmail || "support@beforelisted.com",
-        subject: payload.additionalOpportunity
-          ? "An additional opportunity matching your request has been identified \u2013 BeforeListed"
-          : "An opportunity matching your request has been identified \u2013 BeforeListed",
+        subject: isAllMarket
+          ? "A renter specialist may assist with your rental search – BeforeListed"
+          : payload.additionalOpportunity
+            ? "An additional opportunity matching your request has been identified \u2013 BeforeListed"
+            : "An opportunity matching your request has been identified \u2013 BeforeListed",
         html,
       };
 
       return await this.sendEmail(
         emailOptions,
-        "RENTER_OPPORTUNITY_FOUND_REGISTERED_AGENT",
+        isAllMarket
+          ? "REGISTERED_AGENT_MATCH_ALL_MARKET_6C"
+          : "RENTER_OPPORTUNITY_FOUND_REGISTERED_AGENT",
         payload.to,
       );
     }

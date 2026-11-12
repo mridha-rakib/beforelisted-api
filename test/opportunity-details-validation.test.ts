@@ -41,6 +41,7 @@ describe("opportunity details risky wording validation", () => {
       params: { requestId: validObjectId },
       body: {
         representation_type: "renter_representation" as const,
+        brokerFee: "Talk to Renter First" as const,
         opportunityDetails,
       },
     });
@@ -54,6 +55,7 @@ describe("opportunity details risky wording validation", () => {
       params: { requestId: validObjectId },
       body: {
         representation_type: "renter_representation",
+        brokerFee: "Talk to Renter First",
         opportunityDetails: "I have a listing available Thursday.",
       },
     });
@@ -69,6 +71,7 @@ describe("opportunity details risky wording validation", () => {
       body: {
         preMarketRequestId: validObjectId,
         representation_type: "renter_representation",
+        brokerFee: "Talk to Renter First",
         opportunityDetails: "No one else has access to this apartment.",
       },
     });

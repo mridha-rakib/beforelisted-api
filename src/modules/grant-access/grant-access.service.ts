@@ -11,6 +11,10 @@ import {
   NotFoundException,
 } from "@/utils/app-error.utils";
 import {
+  isRenterBrokerFeeMissing,
+  RENTER_BROKER_FEE_REQUIRED_MESSAGE,
+} from "@/utils/broker-fee.utils";
+import {
   hasRiskyOpportunityDetailsWording,
   OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE,
 } from "@/utils/opportunity-details.utils";
@@ -151,6 +155,9 @@ export class GrantAccessService {
         "Broker fee can only be selected when representing the renter",
       );
     }
+    if (isRenterBrokerFeeMissing(representationType, brokerFee)) {
+      throw new BadRequestException(RENTER_BROKER_FEE_REQUIRED_MESSAGE);
+    }
 
     const listingActivationCheck
       = await this.preMarketRepository.findByIdWithActivationStatus(
@@ -201,8 +208,8 @@ export class GrantAccessService {
       );
     }
 
-    // Owner-representation matches do NOT create a grant-access record and do
-    // NOT flip the request to PRIVATE / Upcoming (M). They are recorded on the
+    // Owner-representation matches do not create a grant-access record or
+    // change visibility. Their match still produces Upcoming (M). Stored on the
     // request as `ownerRepresentationMatches[]` and the registered agent (the
     // renter's referring agent) is notified by email #29. The match also does
     // NOT require admin approval — owner-rep is a heads-up, not access.
@@ -580,7 +587,18 @@ export class GrantAccessService {
           grantAccess.preMarketRequestId,
         );
       }
-      await this.notifier.notifyAgentOfApproval(grantAccess, true);
+      const isRegisteredAllMarketMatch
+        = preMarketRequest?.scope === "All Market"
+          && grantAccess.representation_type !== "owner_representation"
+          && await this.preMarketService.isRegisteredAgentForRequest(
+            grantAccess.agentId.toString(),
+            preMarketRequest,
+          );
+      // Template #6C already CCs the registered agent. Do not send a second
+      // approval/match email for their own All Market renter.
+      if (!isRegisteredAllMarketMatch) {
+        await this.notifier.notifyAgentOfApproval(grantAccess, true);
+      }
       this.notifyRenterOpportunityForFreeMatch(
         grantAccess,
         preMarketRequest,
@@ -875,7 +893,10 @@ export class GrantAccessService {
     grantAccess: IGrantAccessRequest,
     preMarketRequest: IPreMarketRequest | null,
   ): Promise<void> {
-    if (!preMarketRequest) {
+    if (
+      !preMarketRequest
+      || grantAccess.representation_type === "owner_representation"
+    ) {
       return;
     }
 
@@ -950,12 +971,14 @@ export class GrantAccessService {
         = await emailService.sendRenterOpportunityFoundByRegisteredAgent({
           to: renter.email,
           renterName: renter.fullName,
+          requestScope: preMarketRequest.scope,
           registeredAgentFullName,
           registeredAgentTitle,
           registeredAgentBrokerage,
           registeredAgentEmail,
           registeredAgentPhone,
           opportunityDetails: grantAccess.opportunityDetails,
+          brokerFee: grantAccess.brokerFee,
         });
 
       if (!result.success) {

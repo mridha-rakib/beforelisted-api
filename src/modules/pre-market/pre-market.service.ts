@@ -1,5 +1,7 @@
 // file: src/modules/pre-market/pre-market.service.ts
 
+import type { ClientSession } from "mongoose";
+
 import { Types } from "mongoose";
 import { randomBytes, randomInt } from "node:crypto";
 
@@ -25,6 +27,10 @@ import {
   NotFoundException,
 } from "@/utils/app-error.utils";
 import {
+  isRenterBrokerFeeMissing,
+  RENTER_BROKER_FEE_REQUIRED_MESSAGE,
+} from "@/utils/broker-fee.utils";
+import {
   hasRiskyOpportunityDetailsWording,
   OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE,
 } from "@/utils/opportunity-details.utils";
@@ -35,6 +41,8 @@ import {
   nowMs,
   setPerformanceMetric,
 } from "@/utils/performance-observer.utils";
+import { hasRequestMatch } from "@/utils/request-match-scope.utils";
+import { TransactionHelper } from "@/utils/transaction.utils";
 
 import type { IAgentProfile } from "../agent/agent.interface.js";
 import type { BrokerFee, IGrantAccessRequest } from "../grant-access/grant-access.model.js";
@@ -46,6 +54,7 @@ import type {
   AdminPreMarketRequestItem,
   AdminRenterInfo,
   AgentRequestDetail,
+  PreMarketBuyerInterest,
   PreMarketScope,
 } from "./pre-market.type.js";
 
@@ -439,15 +448,13 @@ export class PreMarketService {
   }
 
   /**
-   * Resolves scope for one specific agent.  A request's current scope is not
-   * enough once multiple agents can match it: each match keeps the immutable
-   * scope it was made under.  Archived and deleted requests deliberately do
-   * not use this new presentation rule.
+   * All Market displays Upcoming (M) when any agent has matched, regardless
+   * of representation or the scope at the time of the match.
    */
   public async getScopePresentationForAgent(
     agentId: string,
     request: IPreMarketRequest,
-    accessRecord?: IGrantAccessRequest | null,
+    _accessRecord?: IGrantAccessRequest | null,
   ): Promise<{
     scope: "Upcoming" | "All Market" | "Upcoming (M)";
     matchedByAgent: { agentId: string; fullName: string } | null;
@@ -464,31 +471,10 @@ export class PreMarketService {
       return { scope: this.resolveAgentVisibleScope(request.scope, false), matchedByAgent: null, registeredAgentForView: null };
     }
 
-    const viewerMatch = accessRecord === undefined
-      ? await this.getMatchedAccessRecord(agentId, requestId)
-      : accessRecord;
     const records = await this.grantAccessRepository.findByPreMarketRequestId(requestId);
-    const activeRenterMatches = records.filter(record => this.hasAgentMatchedStatus(record));
     const registeredAgentId = await this.resolveRegisteredAgentIdForRequest(request);
     const isRegisteredAgent = registeredAgentId === agentId;
-    const hasAllMarketMatch = activeRenterMatches.some(
-      record => record.scopeAtMatch === "All Market",
-    );
-
-    let scope: "Upcoming" | "All Market" | "Upcoming (M)";
-    if (request.scope !== "All Market") {
-      scope = "Upcoming";
-    }
-    else if (viewerMatch?.scopeAtMatch === "Upcoming") {
-      // A match made in Upcoming always retains the agent's Upcoming view.
-      scope = "Upcoming";
-    }
-    else {
-      // All Market becomes Upcoming (M) as soon as any active renter-
-      // representation match was made while the request was All Market.
-      // A match made earlier in Upcoming does not cause that transition.
-      scope = hasAllMarketMatch ? "Upcoming (M)" : "All Market";
-    }
+    const scope = this.resolveAgentVisibleScope(request.scope, hasRequestMatch(request, records));
 
     // Preserve the established name-above/name-below presentation whenever
     // the agent sees Upcoming (M), including when both agents matched at
@@ -1260,16 +1246,7 @@ export class PreMarketService {
     const requestName = requestId;
     const shareConsent = payload.shareConsent === true;
     const scope = payload.scope ?? "Upcoming";
-    const buyerInterest = payload.buyerInterest
-      ? {
-          buyerSpecialistNeeded:
-            payload.buyerInterest.buyerSpecialistNeeded === true,
-          ...(payload.buyerInterest.buyerSpecialistNeeded
-            && payload.buyerInterest.purchaseTimeline?.trim()
-            ? { purchaseTimeline: payload.buyerInterest.purchaseTimeline.trim() }
-            : {}),
-        }
-      : undefined;
+    const buyerInterest = this.normalizeBuyerInterest(payload.buyerInterest);
     const now = new Date();
     const referralAgentId
       = await this.resolveRegisteredAgentIdFromRenter(renter);
@@ -1280,7 +1257,7 @@ export class PreMarketService {
     }
 
     // Create request
-    const request = await this.preMarketRepository.create({
+    const requestData: Partial<IPreMarketRequest> = {
       requestId,
       requestName,
       requestNumber,
@@ -1319,7 +1296,14 @@ export class PreMarketService {
         pendingConfirmationSentAt: null,
         pendingConfirmationExpiresAt: null,
       },
-    });
+    };
+    const request = await this.saveRequestWithBuyerInterest(
+      renterId,
+      buyerInterest,
+      session => session
+        ? this.preMarketRepository.create(requestData, session)
+        : this.preMarketRepository.create(requestData),
+    );
 
     // Send notifications
     this.sendNotifications(request, renterId).catch((error) => {
@@ -1356,6 +1340,51 @@ export class PreMarketService {
     );
 
     return request;
+  }
+
+  private normalizeBuyerInterest(
+    interest?: PreMarketBuyerInterest,
+  ): PreMarketBuyerInterest | undefined {
+    if (!interest) {
+      return undefined;
+    }
+    const buyerSpecialistNeeded = interest.buyerSpecialistNeeded === true;
+    const purchaseTimeline = buyerSpecialistNeeded
+      ? interest.purchaseTimeline?.trim() || ""
+      : "";
+    if (buyerSpecialistNeeded && !purchaseTimeline) {
+      throw new BadRequestException(
+        "Purchase timeline is required when buyer interest is selected",
+      );
+    }
+    return { buyerSpecialistNeeded, purchaseTimeline };
+  }
+
+  private async saveRequestWithBuyerInterest<T>(
+    renterId: string,
+    buyerInterest: PreMarketBuyerInterest | undefined,
+    saveRequest: (session?: ClientSession) => Promise<T>,
+  ): Promise<T> {
+    if (!buyerInterest) {
+      return saveRequest();
+    }
+    // A rejected request must not change the next form's defaults, and a
+    // successful request must never leave those defaults at the signup value.
+    return TransactionHelper.withTransaction(async (session) => {
+      const request = await saveRequest(session);
+      if (!request) {
+        throw new NotFoundException("Pre-market request not found");
+      }
+      const renter = await this.renterRepository.updateProfile(
+        renterId,
+        { questionnaire: buyerInterest },
+        session,
+      );
+      if (!renter) {
+        throw new NotFoundException("Renter profile not found");
+      }
+      return request;
+    });
   }
 
   private async sendNotifications(
@@ -1565,18 +1594,14 @@ export class PreMarketService {
             && grantAccess.status !== "free"
             && grantAccess.status !== "paid"
             && grantAccess.status !== "rejected";
-        // The Requests tab is a view of the live marketplace.  It must
-        // always expose the request's current scope, even to an agent who
-        // matched when the request was in a different scope.  The immutable
-        // `scopeAtMatch` snapshot is intentionally used only by the Renter
-        // Matches flow below (`getAllRequestsForAgent`).
+        // Every agent view uses the same matched scope for either representation.
         const scopePresentation = await this.getScopePresentationForAgent(
           agentId,
           request as IPreMarketRequest,
           grantAccess,
         );
         const visibleScope
-          = request.scope === "All Market" ? "All Market" : "Upcoming";
+          = scopePresentation.scope;
         const currentRegisteredAgentId
           = renterContext.registeredAgentIdByRequestId.get(requestId) ?? null;
         const isCurrentRegisteredAgent = currentRegisteredAgentId === agentId;
@@ -1717,18 +1742,11 @@ export class PreMarketService {
         record,
       ]),
     );
-    // Find Matches is intentionally restricted to Upcoming and Upcoming (M).
-    // An All Market request becomes Upcoming (M) only when an active renter
-    // representation match was made while it was All Market. Plain All Market
-    // requests never appear in this tool.
+    // Find Matches includes Upcoming requests and All Market requests with
+    // any match, including owner matches stored directly on the request.
     const allMarketMatchedRequestIds = new Set(
       allGrantAccessRecords
-        .filter(
-          record =>
-            this.hasAgentMatchedStatus(record)
-            && record.representation_type !== "owner_representation"
-            && record.scopeAtMatch === "All Market",
-        )
+        .filter(record => hasRequestMatch({}, [record]))
         .map(record => record.preMarketRequestId.toString()),
     );
     const matchVisibleRequests = requests.filter((request) => {
@@ -1739,6 +1757,7 @@ export class PreMarketService {
       return (
         request.scope !== "All Market"
         || allMarketMatchedRequestIds.has(requestId)
+        || Boolean(request.ownerRepresentationMatches?.length)
       );
     });
     const registeredAgentContext
@@ -2208,6 +2227,10 @@ export class PreMarketService {
     const nextRequestPayload = {
       ...(payload as Partial<IPreMarketRequest>),
     };
+    const buyerInterest = this.normalizeBuyerInterest(payload.buyerInterest);
+    if (buyerInterest) {
+      nextRequestPayload.buyerInterest = buyerInterest;
+    }
 
     if (
       payload.scope === "Upcoming"
@@ -2260,9 +2283,12 @@ export class PreMarketService {
     };
 
     // Update
-    const updated = await this.preMarketRepository.updateById(
-      requestId,
-      nextPayload as Partial<IPreMarketRequest>,
+    const updated = await this.saveRequestWithBuyerInterest(
+      renterId,
+      buyerInterest,
+      session => session
+        ? this.preMarketRepository.updateById(requestId, nextPayload, session)
+        : this.preMarketRepository.updateById(requestId, nextPayload),
     );
 
     logger.info({ renterId }, `Pre-market request updated: ${requestId}`);
@@ -3342,7 +3368,8 @@ export class PreMarketService {
     return requests.filter((request) => {
       const requestId = request._id?.toString() || "";
       return (
-        request.scope === "All Market" && matchedScopeRequestIds.has(requestId)
+        request.scope === "All Market"
+        && (matchedScopeRequestIds.has(requestId) || Boolean(request.ownerRepresentationMatches?.length))
       );
     });
   }
@@ -6343,7 +6370,7 @@ export class PreMarketService {
           accessRecord,
         );
         const responseScope
-          = request.scope === "All Market" ? "All Market" : "Upcoming";
+          = scopePresentation.scope;
         const registeredAgentId
           = await this.resolveRegisteredAgentIdForRequest(request);
         const isRegisteredAgent = registeredAgentId === agentId;
@@ -6625,6 +6652,10 @@ export class PreMarketService {
       );
     }
 
+    if (isRenterBrokerFeeMissing(representationType, brokerFee)) {
+      throw new BadRequestException(RENTER_BROKER_FEE_REQUIRED_MESSAGE);
+    }
+
     const shouldSendAdditionalOpportunity
       = additionalOpportunity
         && Boolean(
@@ -6647,8 +6678,8 @@ export class PreMarketService {
         : {}),
     };
 
-    // Owner-representation matches do NOT create a grant-access record and do
-    // NOT flip the request to PRIVATE / Upcoming (M). They are recorded on the
+    // Owner-representation matches do not create a grant-access record or
+    // change visibility. Their match still produces Upcoming (M). Stored on the
     // request as `ownerRepresentationMatches[]` and the registered agent (the
     // renter's referring agent) is notified by email #29.
     const isOwnerRepresentationMatch = representationType === "owner_representation"
@@ -8236,6 +8267,7 @@ export class PreMarketService {
       await emailService.sendRenterOpportunityFoundByRegisteredAgent({
         to: renter.email,
         renterName: renter.fullName,
+        requestScope: preMarketRequest.scope,
         registeredAgentFullName,
         registeredAgentTitle,
         registeredAgentBrokerage,

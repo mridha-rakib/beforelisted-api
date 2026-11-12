@@ -708,6 +708,10 @@ describe("PreMarketService registered-agent matching", () => {
       agentId,
       requestId,
       "renter_representation",
+      undefined,
+      false,
+      undefined,
+      "Talk to Renter First",
     );
 
     expect(result).toMatchObject({
@@ -787,6 +791,9 @@ describe("PreMarketService additional opportunities", () => {
       requestId,
       "renter_representation",
       "Still available.",
+      false,
+      undefined,
+      "Talk to Renter First",
     );
 
     expect(result).toBe(existingMatch);
@@ -859,6 +866,8 @@ describe("PreMarketService additional opportunities", () => {
       "renter_representation",
       "Another suitable opportunity.",
       true,
+      undefined,
+      "Talk to Renter First",
     );
 
     expect(result).toMatchObject({
