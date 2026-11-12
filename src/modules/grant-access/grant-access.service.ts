@@ -587,7 +587,18 @@ export class GrantAccessService {
           grantAccess.preMarketRequestId,
         );
       }
-      await this.notifier.notifyAgentOfApproval(grantAccess, true);
+      const isRegisteredAllMarketMatch
+        = preMarketRequest?.scope === "All Market"
+          && grantAccess.representation_type !== "owner_representation"
+          && await this.preMarketService.isRegisteredAgentForRequest(
+            grantAccess.agentId.toString(),
+            preMarketRequest,
+          );
+      // Template #6C already CCs the registered agent. Do not send a second
+      // approval/match email for their own All Market renter.
+      if (!isRegisteredAllMarketMatch) {
+        await this.notifier.notifyAgentOfApproval(grantAccess, true);
+      }
       this.notifyRenterOpportunityForFreeMatch(
         grantAccess,
         preMarketRequest,
@@ -882,7 +893,10 @@ export class GrantAccessService {
     grantAccess: IGrantAccessRequest,
     preMarketRequest: IPreMarketRequest | null,
   ): Promise<void> {
-    if (!preMarketRequest) {
+    if (
+      !preMarketRequest
+      || grantAccess.representation_type === "owner_representation"
+    ) {
       return;
     }
 
@@ -957,12 +971,14 @@ export class GrantAccessService {
         = await emailService.sendRenterOpportunityFoundByRegisteredAgent({
           to: renter.email,
           renterName: renter.fullName,
+          requestScope: preMarketRequest.scope,
           registeredAgentFullName,
           registeredAgentTitle,
           registeredAgentBrokerage,
           registeredAgentEmail,
           registeredAgentPhone,
           opportunityDetails: grantAccess.opportunityDetails,
+          brokerFee: grantAccess.brokerFee,
         });
 
       if (!result.success) {

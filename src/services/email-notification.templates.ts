@@ -1,6 +1,9 @@
 // file: src/services/email-notification.templates.ts
 
-import type { IMatchCompatibilitySummary } from "./email-notification.types.js";
+import type {
+  IMatchCompatibilitySummary,
+  IRenterOpportunityFoundRegisteredAgentPayload,
+} from "./email-notification.types.js";
 
 import { emailSiteUrl, renderEmailLogo } from "./email-branding.js";
 
@@ -1225,6 +1228,57 @@ ${matchSummaryMarkup}
 </body>
 </html>
   `;
+}
+
+/** EMAIL TEMPLATE #6C: a registered agent matches their own All Market renter. */
+export function registeredAgentAllMarketMatchTemplate(
+  payload: IRenterOpportunityFoundRegisteredAgentPayload,
+  logoUrl?: string,
+  brandColor: string = "#1890FF",
+): string {
+  const firstName = escapeHtml(
+    payload.renterName?.trim().split(/\s+/)[0] || "there",
+  );
+  const name = escapeHtml(payload.registeredAgentFullName?.trim() || "N/A");
+  const title = escapeHtml(payload.registeredAgentTitle?.trim() || "N/A");
+  const brokerage = escapeHtml(payload.registeredAgentBrokerage?.trim() || "N/A");
+  const email = escapeHtml(payload.registeredAgentEmail?.trim() || "N/A");
+  const phone = escapeHtml(payload.registeredAgentPhone?.trim() || "N/A");
+  const message = payload.opportunityDetails?.trim();
+  const list = (items: string[] = []) => {
+    const values = items.map(item => item.trim()).filter(Boolean).map(escapeHtml);
+    return values.length ? values.join(" | ") : "None";
+  };
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A renter specialist may assist with your rental search – BeforeListed</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: 20px auto; background-color: #fff; padding: 24px;">
+    ${renderEmailLogo(logoUrl, { alt: "BeforeListed" })}
+    <p>Hi ${firstName},</p>
+    <p>Good news!</p>
+    <p>Based on the preferences you selected when submitting your request on BeforeListed&trade;, including assistance with publicly listed apartments, your registered agent will be the renter specialist assisting with your rental search.</p>
+    <p>This may include guidance throughout the search process, landlord and building screening, scheduling and coordinating tours, negotiations, and support through the rental process.</p>
+    ${message ? `<p><strong>Message from the agent ${name}:</strong></p><p style="white-space: pre-line;">${escapeHtml(message)}</p>` : ""}
+    <p><strong>Compatibility Misses:</strong> ${list(payload.matchSummary?.compatibilityMisses)}</p>
+    <p><strong>Preferences Matches:</strong> ${list(payload.matchSummary?.preferenceMatches)}</p>
+    <p>For your reference, the agent&rsquo;s information is:</p>
+    <p>${name}, ${title} with ${brokerage}<br>Email: ${email}<br>Phone: ${phone}</p>
+    <p>As a reminder, a broker fee is only payable if you successfully rent an apartment presented to you by the agent assisting with your request. The fee is paid only once and does not change based on the number of agents assisting you.</p>
+    <p>If you have any questions, you may reply directly to this email. Your reply will be directed to your registered agent.</p>
+    <p>Thank you,<br>BeforeListed&trade; Support</p>
+    <div style="font-size: 12px; color: #999;">
+      <p>&copy; ${new Date().getFullYear()} BeforeListed&trade;. All rights reserved.</p>
+      ${footerLinks(brandColor)}
+    </div>
+  </div>
+</body>
+</html>`;
 }
 
 /**
