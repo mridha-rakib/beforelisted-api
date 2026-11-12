@@ -55,7 +55,6 @@ typings/
 .yarn-integrity
 
 # dotenv environment variables and local secrets. Keep the documented template.
-.env*
 !.env.example
 
 # Local credentials, certificates, and editor state
@@ -64,7 +63,6 @@ typings/
 *.p12
 *.pfx
 *.crt
-.vscode/
 .idea/
 
 # parcel-bundler cache (https://parceljs.org/)
@@ -86,3 +84,4 @@ dist
 branch_structure.json
 temp_auto_push.bat
 temp_interactive_push.bat
+config.bat
