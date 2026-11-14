@@ -10,8 +10,8 @@ import {
   priceRangeSchema,
 } from "@/config/pre-market.config";
 import {
-  isRenterBrokerFeeMissing,
-  RENTER_BROKER_FEE_REQUIRED_MESSAGE,
+  BROKER_FEE_REQUIRED_MESSAGE,
+  isBrokerFeeMissing,
 } from "@/utils/broker-fee.utils";
 import {
   hasRiskyOpportunityDetailsWording,
@@ -39,14 +39,14 @@ const brokerFeeSchema = z.enum([
   "Talk to Renter First",
 ]);
 
-function requireRenterBrokerFee(
+function requireBrokerFee(
   body: { representation_type?: string; brokerFee?: string },
   context: z.RefinementCtx,
 ): void {
-  if (isRenterBrokerFeeMissing(body.representation_type, body.brokerFee)) {
+  if (isBrokerFeeMissing(body.brokerFee)) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
-      message: RENTER_BROKER_FEE_REQUIRED_MESSAGE,
+      message: BROKER_FEE_REQUIRED_MESSAGE,
       path: ["brokerFee"],
     });
   }
@@ -227,7 +227,7 @@ export const requestAccessSchema = z.object({
       .optional(),
     opportunityDetails: opportunityDetailsSchema.optional(),
     brokerFee: brokerFeeSchema.optional(),
-  }).superRefine(requireRenterBrokerFee),
+  }).superRefine(requireBrokerFee),
 });
 
 export const agentMatchRequestSchema = z.object({
@@ -245,7 +245,7 @@ export const agentMatchRequestSchema = z.object({
     })
     .optional()
     .default({})
-    .superRefine(requireRenterBrokerFee),
+    .superRefine(requireBrokerFee),
 });
 
 const matchSectionTogglesSchema = z
@@ -336,7 +336,7 @@ export const agentBulkMatchRequestSchema = z.object({
     brokerFee: brokerFeeSchema.optional(),
     additionalOpportunity: z.boolean().optional(),
     matchContext: matchApartmentInputSchema.optional(),
-  }).superRefine(requireRenterBrokerFee),
+  }).superRefine(requireBrokerFee),
 });
 
 export const adminApproveSchema = z.object({
