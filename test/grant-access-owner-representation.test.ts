@@ -97,6 +97,7 @@ describe("GrantAccessService owner-representation requestAccess", () => {
       preMarketRequestId,
       "owner_representation",
       "owner-side opportunity details.",
+      "Talk to Renter First",
     );
 
     expect(grantAccessCreated).toBe(0);

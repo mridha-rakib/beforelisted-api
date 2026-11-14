@@ -771,7 +771,7 @@ describe("PreMarketService additional opportunities", () => {
     };
     serviceAny.grantAccessRepository = {
       findByAgentAndRequest: async () => existingMatch,
-      updateById: async () => existingMatch,
+      updateById: async (_id: string, update: Record<string, unknown>) => Object.assign(existingMatch, update),
     };
     serviceAny.isRegisteredAgentForRequest = async () => false;
     serviceAny.ensureAgentCanViewRequest = () => undefined;
@@ -845,6 +845,7 @@ describe("PreMarketService additional opportunities", () => {
     };
     serviceAny.grantAccessRepository = {
       findByAgentAndRequest: async () => existingMatch,
+      updateById: async (_id: string, update: Record<string, unknown>) => Object.assign(existingMatch, update),
     };
     serviceAny.isRegisteredAgentForRequest = async () => false;
     serviceAny.ensureAgentCanViewRequest = () => undefined;
@@ -987,6 +988,9 @@ describe("PreMarketService owner-representation notifications", () => {
       requestId,
       "owner_representation",
       "Owner-side opportunity details.",
+      undefined,
+      undefined,
+      "Talk to Renter First",
     );
 
     expect(grantAccessCreated).toBe(0);
@@ -1045,6 +1049,7 @@ describe("PreMarketService owner-representation notifications", () => {
     };
     serviceAny.grantAccessRepository = {
       findByAgentAndRequest: async () => existingMatch,
+      updateById: async (_id: string, update: Record<string, unknown>) => Object.assign(existingMatch, update),
     };
     serviceAny.isRegisteredAgentForRequest = async () => false;
     serviceAny.ensureAgentCanViewRequest = () => undefined;
@@ -1073,6 +1078,8 @@ describe("PreMarketService owner-representation notifications", () => {
       "owner_representation",
       "A second owner-side opportunity.",
       true,
+      undefined,
+      "Talk to Renter First",
     );
 
     expect(result).toMatchObject({
@@ -1125,6 +1132,7 @@ describe("PreMarketService owner-representation notifications", () => {
     };
     serviceAny.grantAccessRepository = {
       findByAgentAndRequest: async () => existingMatch,
+      updateById: async (_id: string, update: Record<string, unknown>) => Object.assign(existingMatch, update),
     };
     serviceAny.isRegisteredAgentForRequest = async () => false;
     serviceAny.ensureAgentCanViewRequest = () => undefined;
@@ -1140,6 +1148,8 @@ describe("PreMarketService owner-representation notifications", () => {
         "owner_representation",
         "Should be rejected.",
         true,
+        undefined,
+        "Talk to Renter First",
       ),
     ).rejects.toThrow(
       "Additional opportunity matching is only available for Upcoming / Upcoming (M) requests.",

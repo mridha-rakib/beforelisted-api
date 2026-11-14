@@ -27,8 +27,8 @@ import {
   NotFoundException,
 } from "@/utils/app-error.utils";
 import {
-  isRenterBrokerFeeMissing,
-  RENTER_BROKER_FEE_REQUIRED_MESSAGE,
+  BROKER_FEE_REQUIRED_MESSAGE,
+  isBrokerFeeMissing,
 } from "@/utils/broker-fee.utils";
 import {
   hasRiskyOpportunityDetailsWording,
@@ -6676,8 +6676,8 @@ export class PreMarketService {
       );
     }
 
-    if (isRenterBrokerFeeMissing(representationType, brokerFee)) {
-      throw new BadRequestException(RENTER_BROKER_FEE_REQUIRED_MESSAGE);
+    if (isBrokerFeeMissing(brokerFee)) {
+      throw new BadRequestException(BROKER_FEE_REQUIRED_MESSAGE);
     }
 
     const shouldSendAdditionalOpportunity
@@ -6697,9 +6697,7 @@ export class PreMarketService {
       ...(normalizedOpportunityDetails
         ? { opportunityDetails: normalizedOpportunityDetails }
         : {}),
-      ...(representationType === "renter_representation" && brokerFee
-        ? { brokerFee }
-        : {}),
+      brokerFee,
     };
 
     // Owner-representation matches do not create a grant-access record or
@@ -6713,6 +6711,8 @@ export class PreMarketService {
       if (existing) {
         if (existing.status === "free" || existing.status === "paid") {
           if (shouldSendAdditionalOpportunity) {
+            await this.grantAccessRepository.updateById(existing._id.toString(), { brokerFee });
+            existing.brokerFee = brokerFee;
             await this.markSearchMatchedActivity(
               listingActivationCheck,
               matchedAt,
@@ -6794,12 +6794,14 @@ export class PreMarketService {
           await this.grantAccessRepository.updateById(
             existing._id.toString(),
             {
+              brokerFee,
               matchedRenterUpdatedAt:
                 listingActivationCheck.searchActivity?.lastRenterUpdatedAt
                 ?? matchedAt,
             },
           );
 
+          existing.brokerFee = brokerFee;
           return existing;
         }
 
@@ -6847,6 +6849,7 @@ export class PreMarketService {
         },
         normalizedOpportunityDetails,
         requestScopeAtMatch,
+        brokerFee,
       );
 
       this.notifyRegisteredAgentAboutOwnerRepresentationMatch(
