@@ -6,6 +6,10 @@ import { model, Types } from "mongoose";
 
 import { BaseSchemaUtil } from "@/utils/base-schema.utils";
 
+import type { BrokerFee } from "../grant-access/grant-access.model.js";
+
+import { BROKER_FEE_OPTIONS } from "../grant-access/grant-access.model.js";
+
 export type IPreMarketRequest = {
   requestId: string;
   renterId: Types.ObjectId | string;
@@ -100,6 +104,7 @@ export type IPreMarketRequest = {
   ownerRepresentationMatches?: Array<{
     agentId: Types.ObjectId | string;
     representation_type: "owner_representation";
+    brokerFee?: BrokerFee;
     /** Immutable request scope when this agent matched. */
     scopeAtMatch?: "Upcoming" | "All Market" | null;
     selectedAt: Date;
@@ -409,6 +414,10 @@ const preMarketSchema = BaseSchemaUtil.createSchema({
         enum: ["owner_representation"],
         default: "owner_representation",
         required: true,
+      },
+      brokerFee: {
+        type: String,
+        enum: BROKER_FEE_OPTIONS,
       },
       scopeAtMatch: {
         type: String,

@@ -11,8 +11,8 @@ import {
   NotFoundException,
 } from "@/utils/app-error.utils";
 import {
-  isRenterBrokerFeeMissing,
-  RENTER_BROKER_FEE_REQUIRED_MESSAGE,
+  BROKER_FEE_REQUIRED_MESSAGE,
+  isBrokerFeeMissing,
 } from "@/utils/broker-fee.utils";
 import {
   hasRiskyOpportunityDetailsWording,
@@ -150,13 +150,8 @@ export class GrantAccessService {
     if (hasRiskyOpportunityDetailsWording(normalizedOpportunityDetails)) {
       throw new BadRequestException(OPPORTUNITY_DETAILS_RISKY_WORDING_MESSAGE);
     }
-    if (brokerFee && representationType !== "renter_representation") {
-      throw new BadRequestException(
-        "Broker fee can only be selected when representing the renter",
-      );
-    }
-    if (isRenterBrokerFeeMissing(representationType, brokerFee)) {
-      throw new BadRequestException(RENTER_BROKER_FEE_REQUIRED_MESSAGE);
+    if (isBrokerFeeMissing(brokerFee)) {
+      throw new BadRequestException(BROKER_FEE_REQUIRED_MESSAGE);
     }
 
     const listingActivationCheck
@@ -197,6 +192,7 @@ export class GrantAccessService {
           preMarketRequestId,
           normalizedOpportunityDetails,
           listingActivationCheck,
+          brokerFee,
         );
       }
 
@@ -230,6 +226,7 @@ export class GrantAccessService {
         },
         normalizedOpportunityDetails,
         listingActivationCheck.scope === "All Market" ? "All Market" : "Upcoming",
+        brokerFee,
       );
 
       await this.preMarketService.notifyRegisteredAgentAboutOwnerRepresentationMatch(
@@ -268,6 +265,7 @@ export class GrantAccessService {
         preMarketRequestId,
         agentId,
         status: "pending",
+        brokerFee,
         representation_type: representationType,
         representationSelectedAt: new Date(),
         scopeAtMatch:
@@ -334,6 +332,7 @@ export class GrantAccessService {
     preMarketRequestId: string,
     normalizedOpportunityDetails: string | undefined,
     listingActivationCheck: IPreMarketRequest,
+    brokerFee?: BrokerFee,
   ): Promise<IGrantAccessRequest> {
     const now = new Date();
 
@@ -355,6 +354,7 @@ export class GrantAccessService {
       const updatedGrant = await this.grantAccessRepository.updateById(
         existing._id.toString(),
         {
+          brokerFee,
           opportunityDetails: normalizedOpportunityDetails,
           opportunityDetailsHistory: updatedHistory,
         },
@@ -382,17 +382,21 @@ export class GrantAccessService {
       return grantForNotifications;
     }
 
-    // No new message — still re-notify admin so they see the agent is
-    // actively following up (e.g. they pressed the match button twice).
+    // A follow-up can change the fee even without a new message.
+    const updatedGrant = await this.grantAccessRepository.updateById(
+      existing._id.toString(),
+      { brokerFee },
+    );
+    const grantForNotifications = updatedGrant ?? { ...existing, brokerFee };
     await this.notifyAdminOfGrantRequest(
-      existing,
+      grantForNotifications,
       agentId,
       preMarketRequestId,
       listingActivationCheck,
       { isAdditionalOpportunity: true },
     );
 
-    return existing;
+    return grantForNotifications;
   }
 
   /**
