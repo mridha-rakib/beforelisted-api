@@ -996,9 +996,9 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
         { "_id": requestId, "isDeleted": { $ne: true }, "ownerRepresentationMatches.agentId": agentObjectId },
         { $set: { "ownerRepresentationMatches.$.brokerFee": brokerFee } },
         { new: true },
-      ).lean().exec();
+      ).exec();
       if (existing) {
-        return existing as IPreMarketRequest;
+        return existing;
       }
     }
 
@@ -1037,8 +1037,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
         },
         { new: true },
       )
-      .lean()
-      .exec() as Promise<IPreMarketRequest | null>;
+      .exec();
   }
 
   async markOwnerRepresentationMatchesViewed(
