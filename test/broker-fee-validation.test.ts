@@ -7,7 +7,7 @@ import {
   requestAccessSchema,
 } from "../src/modules/pre-market/pre-market.schema";
 import { PreMarketService } from "../src/modules/pre-market/pre-market.service";
-import { RENTER_BROKER_FEE_REQUIRED_MESSAGE } from "../src/utils/broker-fee.utils";
+import { BROKER_FEE_REQUIRED_MESSAGE } from "../src/utils/broker-fee.utils";
 
 const requestId = "507f1f77bcf86cd799439011";
 const fees = ["One Month Rent", "9% Annual Rent", "10% Annual Rent", "11% Annual Rent", "12% Annual Rent", "13% Annual Rent", "14% Annual Rent", "15% Annual Rent", "Talk to Renter First"];
@@ -22,7 +22,7 @@ describe.each(endpoints)("broker fee for $name", ({ schema, params, body }) => {
     const result = schema.safeParse({ params, body: { ...body, representation_type: "renter_representation" } });
     expect(result.success).toBe(false);
     expect(result.error?.issues).toEqual(expect.arrayContaining([
-      expect.objectContaining({ path: ["body", "brokerFee"], message: RENTER_BROKER_FEE_REQUIRED_MESSAGE }),
+      expect.objectContaining({ path: ["body", "brokerFee"], message: BROKER_FEE_REQUIRED_MESSAGE }),
     ]));
   });
 
@@ -30,8 +30,12 @@ describe.each(endpoints)("broker fee for $name", ({ schema, params, body }) => {
     expect(schema.safeParse({ params, body: { ...body, representation_type: "renter_representation", brokerFee } }).success).toBe(true);
   });
 
-  it("accepts owner representation without a broker fee", () => {
-    expect(schema.safeParse({ params, body: { ...body, representation_type: "owner_representation" } }).success).toBe(true);
+  it("rejects owner representation without a broker fee", () => {
+    expect(schema.safeParse({ params, body: { ...body, representation_type: "owner_representation" } }).success).toBe(false);
+  });
+
+  it.each(fees)("accepts owner representation with %s", (brokerFee) => {
+    expect(schema.safeParse({ params, body: { ...body, representation_type: "owner_representation", brokerFee } }).success).toBe(true);
   });
 
   it("requires a fee when representation is omitted and defaults to renter", () => {
@@ -39,8 +43,10 @@ describe.each(endpoints)("broker fee for $name", ({ schema, params, body }) => {
   });
 
   it("rejects an empty or unsupported fee", () => {
-    for (const brokerFee of ["", " ", "Unsupported fee"]) {
-      expect(schema.safeParse({ params, body: { ...body, representation_type: "renter_representation", brokerFee } }).success).toBe(false);
+    for (const representation_type of ["renter_representation", "owner_representation"]) {
+      for (const brokerFee of ["", " ", "Unsupported fee"]) {
+        expect(schema.safeParse({ params, body: { ...body, representation_type, brokerFee } }).success).toBe(false);
+      }
     }
   });
 });
@@ -61,13 +67,13 @@ it("blocks direct renter matches before writing a match record", async () => {
     ensureAgentCanViewRequestVisibility: vi.fn(),
     ensureRegisteredAgentCanMatchRequest: vi.fn(),
   });
-  await expect(service.matchRequestForAgent("agent-1", requestId, "renter_representation")).rejects.toThrow(RENTER_BROKER_FEE_REQUIRED_MESSAGE);
+  await expect(service.matchRequestForAgent("agent-1", requestId, "renter_representation")).rejects.toThrow(BROKER_FEE_REQUIRED_MESSAGE);
   expect(service.grantAccessRepository.create).not.toHaveBeenCalled();
 });
 
 it("blocks direct renter access requests before looking up or writing records", async () => {
   const service = Object.create(GrantAccessService.prototype) as any;
   service.preMarketRepository = { findByIdWithActivationStatus: vi.fn() };
-  await expect(service.requestAccess("agent-1", requestId, "renter_representation")).rejects.toThrow(RENTER_BROKER_FEE_REQUIRED_MESSAGE);
+  await expect(service.requestAccess("agent-1", requestId, "renter_representation")).rejects.toThrow(BROKER_FEE_REQUIRED_MESSAGE);
   expect(service.preMarketRepository.findByIdWithActivationStatus).not.toHaveBeenCalled();
 });

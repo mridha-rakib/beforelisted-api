@@ -62,7 +62,7 @@ describe("registered-agent match email routing", () => {
   it("does not send a second approval email for the registered agent's own All Market renter", async () => {
     const source = fixture();
     const service = Object.create(GrantAccessService.prototype) as any;
-    const grant = { _id: "grant-1", agentId, preMarketRequestId: request._id, representation_type: "renter_representation", status: "pending", opportunityDetails: "Thursday tour" };
+    const grant = { _id: "grant-1", agentId, preMarketRequestId: request._id, representation_type: "renter_representation", status: "pending", brokerFee: "One Month Rent", opportunityDetails: "Thursday tour" };
     Object.assign(service, {
       renterRepository: source.renterRepository, userRepository: source.userRepository, agentRepository: source.agentRepository,
       preMarketRepository: { findById: vi.fn().mockResolvedValue(request), addAgentToViewedBy: vi.fn(), setAllMarketRequestPrivateAfterMatch: vi.fn() },
@@ -82,7 +82,7 @@ describe("registered-agent match email routing", () => {
     await Promise.all(pending);
     expect(service.notifier.notifyAgentOfApproval).not.toHaveBeenCalled();
     expect(emailService.sendRenterOpportunityFoundByRegisteredAgent).toHaveBeenCalledOnce();
-    expect(emailService.sendRenterOpportunityFoundByRegisteredAgent).toHaveBeenCalledWith(expect.objectContaining({ requestScope: "All Market" }));
+    expect(emailService.sendRenterOpportunityFoundByRegisteredAgent).toHaveBeenCalledWith(expect.objectContaining({ requestScope: "All Market", brokerFee: "One Month Rent" }));
     expect(emailService.sendRenterOpportunityFoundByOtherAgent).not.toHaveBeenCalled();
     expect(emailService.sendMatchReferralAcknowledgmentToMatchingAgent).not.toHaveBeenCalled();
   });

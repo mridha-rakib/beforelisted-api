@@ -11,6 +11,7 @@ import { logger } from "@/middlewares/pino-logger";
 import { PaginationHelper } from "@/utils/pagination-helper";
 import { hasRequestMatch } from "@/utils/request-match-scope.utils";
 
+import type { BrokerFee } from "../grant-access/grant-access.model.js";
 import type { IPreMarketRequest } from "./pre-market.model.js";
 
 import { AgentProfile } from "../agent/agent.model.js";
@@ -985,8 +986,21 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
     },
     opportunityDetails?: string,
     scopeAtMatch?: "Upcoming" | "All Market",
+    brokerFee?: BrokerFee,
   ): Promise<IPreMarketRequest | null> {
     const agentObjectId = new Types.ObjectId(agentId);
+
+    // Repeated owner matches keep the latest explicitly selected fee.
+    if (brokerFee) {
+      const existing = await this.model.findOneAndUpdate(
+        { "_id": requestId, "isDeleted": { $ne: true }, "ownerRepresentationMatches.agentId": agentObjectId },
+        { $set: { "ownerRepresentationMatches.$.brokerFee": brokerFee } },
+        { new: true },
+      ).lean().exec();
+      if (existing) {
+        return existing as IPreMarketRequest;
+      }
+    }
 
     return this.model
       .findOneAndUpdate(
@@ -1000,6 +1014,7 @@ export class PreMarketRepository extends BaseRepository<IPreMarketRequest> {
             ownerRepresentationMatches: {
               agentId: agentObjectId,
               representation_type: "owner_representation",
+              ...(brokerFee ? { brokerFee } : {}),
               ...(scopeAtMatch ? { scopeAtMatch } : {}),
               selectedAt: new Date(),
               viewedAt: null,
