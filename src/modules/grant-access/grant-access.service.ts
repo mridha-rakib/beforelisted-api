@@ -387,7 +387,7 @@ export class GrantAccessService {
       existing._id.toString(),
       { brokerFee },
     );
-    const grantForNotifications = updatedGrant ?? { ...existing, brokerFee };
+    const grantForNotifications = updatedGrant ?? Object.assign(existing, { brokerFee });
     await this.notifyAdminOfGrantRequest(
       grantForNotifications,
       agentId,

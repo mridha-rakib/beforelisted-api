@@ -120,6 +120,28 @@ describe("broker fee validation and persistence for every match", () => {
   }
 });
 
+describe("pending grant fallback documents", () => {
+  it("preserves document identity and methods when an update returns no record", async () => {
+    class ExistingGrant {
+      _id = "grant-1";
+      status = "pending";
+      brokerFee = "One Month Rent";
+      opportunityDetailsHistory = [];
+      documentMethod() { return "document preserved"; }
+    }
+    const existing = new ExistingGrant();
+    const f = accessFixture(existing);
+    f.service.grantAccessRepository.updateById = async () => null;
+    let notified: unknown;
+    f.service.notifyAdminOfGrantRequest = async (grant: unknown) => { notified = grant; };
+    const result = await f.service.requestAccess(agentId, requestId, "renter_representation", undefined, "15% Annual Rent");
+    assert.equal(result, existing);
+    assert.equal(notified, existing);
+    assert.equal(result.brokerFee, "15% Annual Rent");
+    assert.equal(result.documentMethod(), "document preserved");
+  });
+});
+
 describe("owner fee storage in the request repository", () => {
   for (const alreadyMatched of [false, true]) {
     it(`persists the selected owner fee (${alreadyMatched ? "existing" : "new"} owner match)`, async () => {
@@ -127,14 +149,14 @@ describe("owner fee storage in the request repository", () => {
       const result = { _id: requestId };
       let writes = 0;
       repository.model = {
-        findOneAndUpdate: (_filter: any, update: any) => ({ lean: () => ({ exec: async () => {
+        findOneAndUpdate: (_filter: any, update: any) => ({ exec: async () => {
           if (update.$set) {
             assert.equal(update.$set["ownerRepresentationMatches.$.brokerFee"], "Talk to Renter First");
             if (!alreadyMatched) return null;
           }
           else assert.equal(update.$push.ownerRepresentationMatches.brokerFee, "Talk to Renter First");
           writes++; return result;
-        } }) }),
+        } }),
       };
       assert.equal(await repository.addOwnerRepresentationMatch(requestId, agentId, {}, undefined, "All Market", "Talk to Renter First"), result);
       assert.equal(writes, 1);
