@@ -169,6 +169,11 @@ export class GrantAccessService {
       );
     }
 
+    await this.preMarketService.ensureRegisteredAgentCanMatchRequest(
+      agentId,
+      listingActivationCheck,
+    );
+
     const existing = await this.grantAccessRepository.findByAgentAndRequest(
       agentId,
       preMarketRequestId,
@@ -563,6 +568,14 @@ export class GrantAccessService {
     }
 
     if (decision.action === "free" && decision.isFree) {
+      if (!preMarketRequest) {
+        throw new NotFoundException("Pre-market request not found");
+      }
+      await this.preMarketService.ensureRegisteredAgentCanMatchRequest(
+        grantAccess.agentId.toString(),
+        preMarketRequest,
+      );
+
       grantAccess.status = "free";
       grantAccess.payment = {
         amount: grantAccess.payment?.amount ?? 0,

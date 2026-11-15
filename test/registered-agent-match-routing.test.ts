@@ -67,7 +67,7 @@ describe("registered-agent match email routing", () => {
       renterRepository: source.renterRepository, userRepository: source.userRepository, agentRepository: source.agentRepository,
       preMarketRepository: { findById: vi.fn().mockResolvedValue(request), addAgentToViewedBy: vi.fn(), setAllMarketRequestPrivateAfterMatch: vi.fn() },
       grantAccessRepository: { findById: vi.fn().mockResolvedValue(grant), updateById: vi.fn().mockResolvedValue(grant) },
-      preMarketService: { isRegisteredAgentForRequest: vi.fn().mockResolvedValue(true) },
+      preMarketService: { ensureRegisteredAgentCanMatchRequest: vi.fn(), isRegisteredAgentForRequest: vi.fn().mockResolvedValue(true) },
       notifier: { notifyAgentOfApproval: vi.fn() },
       notificationService: { notifyAgentAboutGrantAccessApproved: vi.fn() },
     });
