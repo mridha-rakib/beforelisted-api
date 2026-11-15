@@ -20,6 +20,7 @@ describe("GrantAccessService owner-representation requestAccess", () => {
 
     const service = new GrantAccessService();
     const serviceAny = service as any;
+    serviceAny.preMarketService.ensureRegisteredAgentCanMatchRequest = async () => undefined;
 
     let grantAccessCreated = 0;
     let setAllMarketPrivateCalled = 0;
@@ -71,6 +72,7 @@ describe("GrantAccessService owner-representation requestAccess", () => {
       }),
     };
     serviceAny.preMarketService = {
+      ensureRegisteredAgentCanMatchRequest: async () => undefined,
       notifyRegisteredAgentAboutOwnerRepresentationMatch: async (
         matchedAgentId: string,
         matchedRequest: unknown,
@@ -138,6 +140,7 @@ describe("GrantAccessService owner-representation requestAccess", () => {
 
     const service = new GrantAccessService();
     const serviceAny = service as any;
+    serviceAny.preMarketService.ensureRegisteredAgentCanMatchRequest = async () => undefined;
 
     let grantAccessCreated = 0;
     let setAllMarketPrivateCalled = 0;
@@ -169,7 +172,7 @@ describe("GrantAccessService owner-representation requestAccess", () => {
     };
     serviceAny.userRepository = { findById: async () => null };
     serviceAny.agentRepository = { findByUserId: async () => null };
-    serviceAny.preMarketService = {};
+    serviceAny.preMarketService = { ensureRegisteredAgentCanMatchRequest: async () => undefined };
     serviceAny.notifier = {
       notifyAdminOfGrantAccessRequest: async () => undefined,
     };
@@ -229,6 +232,7 @@ describe("GrantAccessService owner-representation requestAccess", () => {
 
     const service = new GrantAccessService();
     const serviceAny = service as any;
+    serviceAny.preMarketService.ensureRegisteredAgentCanMatchRequest = async () => undefined;
 
     let createCalls = 0;
     let updateCalls = 0;
@@ -268,7 +272,7 @@ describe("GrantAccessService owner-representation requestAccess", () => {
         licenseNumber: "LIC-123",
       }),
     };
-    serviceAny.preMarketService = {};
+    serviceAny.preMarketService = { ensureRegisteredAgentCanMatchRequest: async () => undefined };
     serviceAny.notifier = {
       notifyAdminOfGrantAccessRequest: async (
         _grant: unknown,
@@ -343,6 +347,7 @@ describe("GrantAccessService owner-representation requestAccess", () => {
 
     const service = new GrantAccessService();
     const serviceAny = service as any;
+    serviceAny.preMarketService.ensureRegisteredAgentCanMatchRequest = async () => undefined;
 
     serviceAny.preMarketRepository = {
       findByIdWithActivationStatus: async () => request,
@@ -390,6 +395,7 @@ describe("GrantAccessService owner-representation requestAccess", () => {
 
     const service = new GrantAccessService();
     const serviceAny = service as any;
+    serviceAny.preMarketService.ensureRegisteredAgentCanMatchRequest = async () => undefined;
 
     serviceAny.preMarketRepository = {
       findByIdWithActivationStatus: async () => request,

@@ -41,6 +41,7 @@ import {
   nowMs,
   setPerformanceMetric,
 } from "@/utils/performance-observer.utils";
+import { REGISTRATION_ACKNOWLEDGMENT_REQUIRED_MESSAGE } from "@/utils/registration-acknowledgment.utils";
 import { hasRequestMatch } from "@/utils/request-match-scope.utils";
 import { TransactionHelper } from "@/utils/transaction.utils";
 
@@ -2618,7 +2619,7 @@ export class PreMarketService {
     );
     if (!registrationStatus.registrationDisclosureConfirmed) {
       throw new ForbiddenException(
-        "Registration / Disclosure confirmation is required before matching this request",
+        REGISTRATION_ACKNOWLEDGMENT_REQUIRED_MESSAGE,
       );
     }
   }

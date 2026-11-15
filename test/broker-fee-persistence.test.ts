@@ -30,7 +30,7 @@ function accessFixture(existing: any = null) {
     },
     userRepository: { findById: async () => ({ fullName: "Agent", email: "agent@example.invalid" }) },
     agentRepository: { findByUserId: async () => ({ title: "Agent", brokerageName: "Brokerage" }) },
-    preMarketService: { notifyRegisteredAgentAboutOwnerRepresentationMatch: noop },
+    preMarketService: { notifyRegisteredAgentAboutOwnerRepresentationMatch: noop, ensureRegisteredAgentCanMatchRequest: noop },
     notifyAdminOfGrantRequest: async (grant: any) => { notifications.push({ ...grant }); },
   });
   return { service, saved: () => saved, owners, notifications, lookups: () => lookups };
