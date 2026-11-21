@@ -14,6 +14,15 @@ import type {
   IPostmarkConfig,
 } from "./email.types.js";
 
+export function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#?\w+;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export class PostmarkEmailTransporter implements IEmailTransporter {
   private client: AxiosInstance;
   private config: IEmailConfig;
@@ -243,7 +252,7 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
       Bcc: options.bcc ? this.formatRecipients(options.bcc) : undefined,
       Subject: options.subject,
       HtmlBody: options.html,
-      TextBody: options.text || this.stripHtmlTags(options.html),
+      TextBody: options.text || htmlToPlainText(options.html),
       ReplyTo: options.replyTo || this.config.replyTo,
       MessageStream: this.postmarkConfig.messageStream,
       TrackOpens: true, // Enable open tracking
@@ -302,15 +311,6 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
       ContentType: attachment.contentType || "application/octet-stream",
       ContentID: attachment.contentId,
     }));
-  }
-
-  private stripHtmlTags(html: string): string {
-    return html
-      .replace(/<[^>]*>/g, "")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&#?\w+;/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
   }
 
   /**
