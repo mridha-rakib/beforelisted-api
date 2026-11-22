@@ -7,6 +7,10 @@ import {
   renderEmailLogo,
 } from "./email-branding.js";
 
+function escapeWelcomeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[char]!);
+}
+
 export class EmailTemplates {
   private logoUrl: string = DEFAULT_EMAIL_LOGO_URL;
   private brandColor: string = "#1890FF";
@@ -247,14 +251,14 @@ export class EmailTemplates {
     const agentTitle = registeredAgent?.title?.trim();
     const agentBrokerage = registeredAgent?.brokerage?.trim();
     const registeredAgentIdentity = agentName
-      ? `<strong>${agentName}${agentTitle ? `, ${agentTitle}` : ""}${agentBrokerage ? ` with ${agentBrokerage}` : ""}</strong>`
+      ? `<strong>${escapeWelcomeHtml(agentName)}${agentTitle ? `, ${escapeWelcomeHtml(agentTitle)}` : ""}${agentBrokerage ? ` with ${escapeWelcomeHtml(agentBrokerage)}` : ""}</strong>`
       : "<strong>your assigned licensed real estate agent</strong>";
     const registeredAgentLine = `Your renter account is currently registered with ${registeredAgentIdentity}.`;
     const registeredAgentSupportLine
       = "Rental requests you submit will be shared with this agent. They may begin assisting you with your search once all required agency disclosures and agreements are reviewed and completed.";
     const contentHtml = isRenter
       ? `
-            <h2>Hi ${firstName},</h2>
+            <h2>Hi ${escapeWelcomeHtml(firstName)},</h2>
             <p>Welcome to BeforeListed&trade;. Your account has been successfully created and verified.</p>
 
             <p>${registeredAgentLine}</p>
@@ -270,7 +274,12 @@ export class EmailTemplates {
                 <li>Receive notifications if an agent identifies an opportunity that aligns with your request.</li>
                 <li>Receive notifications if another licensed agent may be able to further assist with your request, with your consent and required disclosures.</li>
                 <li>Access the monthly 15-Second NYC Rental Report, including market signals and trends, through the BeforeListed website.</li>
+                <li>Access exclusive moving discounts for BeforeListed users, including moving companies like Piece of Cake, internet providers and more.</li>
             </ul>
+
+            <p><strong>Know where the rental market stands</strong><br>As a BeforeListed member, you now also have access to an exclusive monthly 15-Second NYC Rental Report. It recaps last month’s rental activity, compares inventory then and now, and covers the latest renter news.</p>
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="${color}" style="border-radius:6px"><a href="${emailSiteUrl("/report/latest")}" style="display:inline-block;background-color:${color};color:#ffffff;padding:14px 24px;text-decoration:none;font-weight:600;border-radius:6px">Read the Latest Report &amp; News</a></td></tr></table>
+            <p>A new report is released every month, and you can view past reports anytime from your BeforeListed homepage by clicking Monthly Report.</p>
 
             <p>If you have any questions or need assistance, you may reply directly to this email.</p>
 
@@ -452,6 +461,15 @@ export class EmailTemplates {
 </body>
 </html>
     `;
+  }
+
+  renterWelcomeText(userName: string, registeredAgent?: { fullName?: string; title?: string; brokerage?: string }): string {
+    const firstName = userName?.trim().split(/\s+/)[0] || userName || "there";
+    const agentName = registeredAgent?.fullName?.trim();
+    const agentTitle = registeredAgent?.title?.trim();
+    const brokerage = registeredAgent?.brokerage?.trim();
+    const agent = agentName ? `${agentName}${agentTitle ? `, ${agentTitle}` : ""}${brokerage ? ` with ${brokerage}` : ""}` : "your assigned licensed real estate agent";
+    return `Hi ${firstName},\n\nWelcome to BeforeListed™. Your account has been successfully created and verified.\n\nYour renter account is currently registered with ${agent}.\n\nRental requests you submit will be shared with this agent. They may begin assisting you with your search once all required agency disclosures and agreements are reviewed and completed.\n\nBeforeListed is an intake-focused website designed to help licensed real estate agents collect and review renter-initiated requests and facilitate outreach based on renter criteria, including requests focused on opportunities that may not be publicly advertised.\n\nYou can now:\n- Submit your first rental request.\n- Edit or delete your rental request at any time.\n- Track updates related to your requests from your registered agent.\n- Receive notifications if an agent identifies an opportunity that aligns with your request.\n- Receive notifications if another licensed agent may be able to further assist with your request, with your consent and required disclosures.\n- Access the monthly 15-Second NYC Rental Report, including market signals and trends, through the BeforeListed website.\n- Access exclusive moving discounts for BeforeListed users, including moving companies like Piece of Cake, internet providers and more.\n\nKnow where the rental market stands\nAs a BeforeListed member, you now also have access to an exclusive monthly 15-Second NYC Rental Report. It recaps last month’s rental activity, compares inventory then and now, and covers the latest renter news.\n\nRead the Latest Report & News: ${emailSiteUrl("/report/latest")}\n\nA new report is released every month, and you can view past reports anytime from your BeforeListed homepage by clicking Monthly Report.\n\nIf you have any questions or need assistance, you may reply directly to this email.\n\nWe're glad to have you here.\n\nThank you,\nBeforeListed™ Support`;
   }
 
   /**

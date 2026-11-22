@@ -11,6 +11,10 @@ export class MonthlyReportRepository extends BaseRepository<IMonthlyReport> {
     super(MonthlyReport);
   }
 
+  async getActiveReportsByCreationDate(): Promise<IMonthlyReport[]> {
+    return this.model.find({ isActive: true }).sort({ createdAt: -1, _id: -1 }).lean() as unknown as Promise<IMonthlyReport[]>;
+  }
+
   /**
    * Get all active reports (public view)
    */

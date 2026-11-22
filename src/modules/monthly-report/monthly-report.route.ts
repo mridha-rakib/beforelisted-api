@@ -18,6 +18,7 @@ const controller = new MonthlyReportController();
  * Get all active reports
  */
 router.get("/", controller.getAllPublicReports.bind(controller));
+router.get("/latest", controller.getLatestReport);
 
 /**
  * GET /monthly-report/:id
