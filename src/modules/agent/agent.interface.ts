@@ -36,6 +36,8 @@ export type IAgentProfile = {
   userId: Types.ObjectId;
   licenseNumber: string;
   brokerageName: string;
+  secondaryEmail?: string;
+  secondaryEmailIsCrm?: boolean;
   title: AgentTitle;
 
   // Activation Status

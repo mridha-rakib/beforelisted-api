@@ -29,6 +29,9 @@ const agentProfileSchema = BaseSchemaUtil.createSchema<IAgentProfile>({
     required: true,
   },
 
+  secondaryEmail: { type: String, trim: true },
+  secondaryEmailIsCrm: { type: Boolean, default: false },
+
   title: {
     type: String,
     enum: AGENT_TITLES,

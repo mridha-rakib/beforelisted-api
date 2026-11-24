@@ -31,9 +31,9 @@ export class RenterRepository extends BaseRepository<IRenterModel> {
   /**
    * Create new renter profile
    */
-  async createRenter(data: Partial<IRenterModel>): Promise<IRenterModel> {
+  async createRenter(data: Partial<IRenterModel>, session?: ClientSession): Promise<IRenterModel> {
     const renter = new this.model(data);
-    return renter.save();
+    return renter.save(session ? { session } : undefined);
   }
 
   // ============================================

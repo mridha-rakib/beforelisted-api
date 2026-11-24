@@ -1,5 +1,7 @@
 // file: src/modules/referral/referral.service.ts
 
+import type { ClientSession } from "mongoose";
+
 import { ROLES as RolesEnum } from "@/constants/app.constants";
 import { ErrorCodeEnum } from "@/enums/error-code.enum";
 import {
@@ -100,8 +102,10 @@ export class ReferralService {
    * Expects a referrer user ID that has already passed validation.
    * Can fail if the referrer no longer exists or the counter update cannot be saved.
    */
-  async recordReferral(referrerId: string): Promise<void> {
-    await this.userRepository.incrementReferralCount(referrerId);
+  async recordReferral(referrerId: string, session?: ClientSession): Promise<void> {
+    const updated = await this.userRepository.incrementReferralCount(referrerId, session);
+    if (session && !updated)
+      throw new NotFoundException("Referrer not found");
   }
 
   /**

@@ -93,6 +93,9 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
    * @returns Promise<IEmailResponse> - Send result
    */
   async send(options: IEmailOptions): Promise<IEmailResponse> {
+    if (options.deliveryPolicy === "crm-single-attempt" || options.deliveryPolicy === "otp-single-attempt" || options.deliveryPolicy === "secondary-copy-single-attempt")
+      return this.sendCrmOnce(options);
+    const sensitive = options.deliveryPolicy === "secondary-copy" || options.deliveryPolicy === "sensitive-email";
     // Hard-suppress when sandbox mode is on. Postmark's sandbox mode accepts
     // the call but does not deliver; the user wants zero Postmark API
     // traffic at all when this flag is set. Returning a synthetic success
@@ -106,10 +109,14 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
       logger.info(
         {
           sandboxMessageId,
-          to: recipientEmails,
-          cc: this.getRecipientEmails(options.cc),
-          bcc: this.getRecipientEmails(options.bcc),
-          subject: options.subject,
+          ...(options.deliveryPolicy === "secondary-copy"
+            ? {}
+            : {
+                to: recipientEmails,
+                cc: this.getRecipientEmails(options.cc),
+                bcc: this.getRecipientEmails(options.bcc),
+                subject: options.subject,
+              }),
           messageStream: this.postmarkConfig.messageStream,
         },
         "📧 Email suppressed (POSTMARK_SANDBOX_MODE=true); no Postmark API call made",
@@ -118,6 +125,7 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
       return {
         messageId: sandboxMessageId,
         response: "Email suppressed: POSTMARK_SANDBOX_MODE is enabled",
+        deliveryOutcome: "suppressed",
         accepted: recipientEmails,
         timestamp: new Date(),
         retries: 0,
@@ -135,8 +143,7 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
 
         logger.debug(
           {
-            to: this.getRecipientEmails(options.to),
-            subject: options.subject,
+            ...(sensitive ? {} : { to: this.getRecipientEmails(options.to), subject: options.subject }),
             attempt: attempt + 1,
             maxAttempts: this.maxRetries,
             messageStream: this.postmarkConfig.messageStream,
@@ -155,8 +162,7 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
           logger.info(
             {
               messageId,
-              to: this.getRecipientEmails(options.to),
-              subject: options.subject,
+              ...(sensitive ? {} : { to: this.getRecipientEmails(options.to), subject: options.subject }),
               attempt: attempt + 1,
             },
             "✅ Email sent successfully via Postmark",
@@ -165,6 +171,7 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
           return {
             messageId: String(messageId),
             response: `Email delivered successfully via Postmark (ID: ${messageId})`,
+            deliveryOutcome: typeof messageId === "string" && messageId.trim() ? "accepted" : "uncertain",
             accepted: this.getRecipientEmails(options.to),
             timestamp: new Date(),
             retries: attempt,
@@ -172,13 +179,12 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
           };
         }
 
-        // Handle API errors
-        if (response.status >= 400) {
-          const errorData = response.data;
-          throw new Error(
-            `Postmark API error (${response.status}): ${errorData?.Message || errorData?.message || "Unknown error"}`,
-          );
-        }
+        // Every non-200 response must consume an attempt, including redirects
+        // or unexpected 2xx responses. Otherwise the loop never advances.
+        const errorData = response.data;
+        throw new Error(
+          `Postmark API error (${response.status}): ${errorData?.Message || errorData?.message || "Unknown error"}`,
+        );
       }
       catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
@@ -186,7 +192,7 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
 
         logger.warn(
           {
-            error: lastError.message,
+            error: sensitive ? "Email delivery failed" : lastError.message,
             attempt,
             maxAttempts: this.maxRetries,
             willRetry: attempt < this.maxRetries,
@@ -204,9 +210,9 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
     // All retries exhausted
     logger.error(
       {
-        error: lastError?.message,
+        error: sensitive ? "Email delivery failed" : lastError?.message,
         attempts: attempt,
-        to: this.getRecipientEmails(options.to),
+        ...(sensitive ? {} : { to: this.getRecipientEmails(options.to) }),
       },
       "❌ Email send failed after all retries",
     );
@@ -216,8 +222,24 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
       response: "Email send failed after all retries",
       timestamp: new Date(),
       retries: attempt,
-      error: lastError,
+      error: sensitive && lastError ? new Error("Email delivery failed") : lastError,
     };
+  }
+
+  private async sendCrmOnce(options: IEmailOptions): Promise<IEmailResponse> {
+    const timestamp = new Date();
+    if (this.postmarkConfig.sandboxMode)
+      return { messageId: "", response: "suppressed", deliveryOutcome: "suppressed", timestamp, retries: 0 };
+    try {
+      const response = await this.client.post("/email", this.preparePostmarkPayload(options), { validateStatus: () => true });
+      if (response.status === 200 && typeof response.data?.MessageID === "string" && response.data.MessageID)
+        return { messageId: response.data.MessageID, response: "accepted", deliveryOutcome: "accepted", timestamp, retries: 0 };
+      const outcome = response.status === 422 ? "failed" : "uncertain";
+      return { messageId: "", response: outcome, deliveryOutcome: outcome, timestamp, retries: 0 };
+    }
+    catch {
+      return { messageId: "", response: "uncertain", deliveryOutcome: "uncertain", timestamp, retries: 0 };
+    }
   }
 
   async close(): Promise<void> {
@@ -242,8 +264,8 @@ export class PostmarkEmailTransporter implements IEmailTransporter {
       Cc: options.cc ? this.formatRecipients(options.cc) : undefined,
       Bcc: options.bcc ? this.formatRecipients(options.bcc) : undefined,
       Subject: options.subject,
-      HtmlBody: options.html,
-      TextBody: options.text || this.stripHtmlTags(options.html),
+      ...(options.html ? { HtmlBody: options.html } : {}),
+      TextBody: options.text || this.stripHtmlTags(options.html || ""),
       ReplyTo: options.replyTo || this.config.replyTo,
       MessageStream: this.postmarkConfig.messageStream,
       TrackOpens: true, // Enable open tracking

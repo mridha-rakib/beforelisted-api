@@ -197,6 +197,21 @@ export class AgentService {
     return this.toResponse(profile);
   }
 
+  async adminUpdateSecondaryEmail(userId: string, payload: { secondaryEmail: string; secondaryEmailIsCrm: boolean }): Promise<AgentProfileResponse> {
+    const profile = await this.repository.findByUserId(userId);
+    if (!profile || (profile.userId as any)?.role !== ROLES.AGENT)
+      throw new NotFoundException("Agent profile not found");
+    const secondaryEmail = payload.secondaryEmail.trim();
+    await this.repository.updateProfile(userId, { secondaryEmail, secondaryEmailIsCrm: Boolean(secondaryEmail && payload.secondaryEmailIsCrm) });
+    this.updateAgentConsolidatedExcel().catch((error) => {
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, "Failed to update agent export after secondary email change");
+    });
+    const updated = await this.repository.findByUserId(userId);
+    if (!updated)
+      throw new NotFoundException("Agent profile not found");
+    return this.toResponse(updated);
+  }
+
   /**
    * Updates the agent profile fields and mirrors shared identity fields onto the user record.
    * Expects an agent user ID plus editable profile/user fields from the profile form.
@@ -914,6 +929,8 @@ export class AgentService {
           : (agent.userId?.toString() ?? ""),
       licenseNumber: agent.licenseNumber,
       brokerageName: agent.brokerageName,
+      secondaryEmail: agent.secondaryEmail,
+      secondaryEmailIsCrm: Boolean(agent.secondaryEmail && agent.secondaryEmailIsCrm),
       title: agent.title,
       isActive: agent.isActive,
       activeAt: agent.activeAt,
@@ -1049,6 +1066,8 @@ export class AgentService {
           = await this.emailService.sendAgentAccountDeletedEmail({
             to: agentEmail,
             userName: agentName,
+            secondaryEmail: profile.secondaryEmail && !profile.secondaryEmailIsCrm ? profile.secondaryEmail : undefined,
+            deletedAgentId: userId,
           });
 
         if (!emailResult.success) {

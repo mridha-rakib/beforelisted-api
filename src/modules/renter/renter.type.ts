@@ -83,6 +83,7 @@ export type RenterRegistrationResponse = {
     expiresIn: string;
   };
   registrationType: "agent_referral" | "admin_referral";
+  verificationEmailConfirmed?: boolean;
   temporaryPassword?: string; // For admin referral only
   mustChangePassword?: boolean; // For admin referral only
   emailSent?: boolean;

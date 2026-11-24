@@ -1,5 +1,7 @@
 // file: src/modules/email-verification/email-verification.service.ts
 
+import type { ClientSession } from "mongoose";
+
 import { logger } from "@/middlewares/pino-logger";
 import { EmailService } from "@/services/email.service";
 import { OTPService } from "@/services/otp.service";
@@ -7,6 +9,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from "@/utils/app-error.utils";
+import { TransactionHelper } from "@/utils/transaction.utils";
 
 import type {
   ICreateOTPRequest,
@@ -20,6 +23,7 @@ import type {
   IVerifyOTPResponse,
 } from "./email-verification.types.js";
 
+import { EmailVerificationOTP } from "./email-verification.model.js";
 // import { ICreateOTPResponse } from "./email-verification.interface";
 import { EmailVerificationOTPRepository } from "./email-verification.repository.js";
 
@@ -51,6 +55,43 @@ export class EmailVerificationService {
     if (config) {
       Object.assign(this.config, config);
     }
+  }
+
+  /** Prepare once before a retriable registration transaction. */
+  prepareRegistrationOTP(): ICreateOTPResponse {
+    const otp = this.otpService.generate("EMAIL_VERIFICATION");
+    return {
+      otp: otp.code,
+      code: otp.code,
+      expiresAt: otp.expiresAt,
+      expiresInMinutes: this.config.OTP_EXPIRY_MINUTES,
+    };
+  }
+
+  /** Persist a new account's OTP without performing network I/O. */
+  async persistRegistrationOTP(request: ICreateOTPRequest, otp: ICreateOTPResponse, session: ClientSession): Promise<void> {
+    await this.repository.createOTP({
+      userId: request.userId,
+      email: request.email,
+      userType: request.userType,
+      code: otp.code,
+      expiresAt: otp.expiresAt,
+      verified: false,
+      attempts: 0,
+      maxAttempts: this.config.MAX_OTP_ATTEMPTS,
+    }, session);
+  }
+
+  /** Call only after the transaction containing the OTP has committed. */
+  async sendRegistrationOTP(request: ICreateOTPRequest, otp: ICreateOTPResponse): Promise<boolean> {
+    const result = await this.emailService.sendEmailVerification({
+      to: request.email,
+      userName: request.userName,
+      userType: request.userType,
+      verificationCode: otp.code,
+      expiresIn: otp.expiresInMinutes,
+    }, { singleAttempt: true });
+    return result.success && !result.skipped;
   }
 
   async createOTP(request: ICreateOTPRequest): Promise<ICreateOTPResponse> {
@@ -100,7 +141,7 @@ export class EmailVerificationService {
     };
   }
 
-  async verifyOTP(request: IVerifyOTPRequest): Promise<IVerifyOTPResponse> {
+  async verifyOTP(request: IVerifyOTPRequest, activate?: (record: IEmailVerificationOTP, session: ClientSession) => Promise<void>): Promise<IVerifyOTPResponse> {
     const record = await this.repository.findByEmail(request.email);
     if (!record) {
       throw new NotFoundException("Verification code not found or expired");
@@ -133,7 +174,21 @@ export class EmailVerificationService {
       throw new BadRequestException("Invalid verification code");
     }
 
-    await this.repository.markAsVerified(record._id!.toString());
+    if (activate && String(record.userType).toLowerCase() === "renter") {
+      await TransactionHelper.withRegistrationTransaction(async (session) => {
+        const verified = await EmailVerificationOTP.findOneAndUpdate(
+          { _id: record._id, verified: false, code: request.code, expiresAt: { $gt: new Date() }, attempts: { $lt: this.config.MAX_OTP_ATTEMPTS } },
+          { $set: { verified: true, verifiedAt: new Date() } },
+          { new: true, session },
+        );
+        if (!verified)
+          throw new BadRequestException("Verification code not found or expired");
+        await activate(verified, session);
+      });
+    }
+    else {
+      await this.repository.markAsVerified(record._id!.toString());
+    }
 
     logger.info(
       {

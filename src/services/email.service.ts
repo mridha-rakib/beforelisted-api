@@ -1,5 +1,6 @@
 // file: src/services/email.service.ts
 
+import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -18,6 +19,9 @@ import type {
 
 import { emailConfig } from "@/config/email.config";
 import { logger } from "@/middlewares/pino-logger";
+import { User } from "@/modules/user/user.model";
+import { crmRegistrationOptions, eligibleDetachedSecondary, findSecondarySystemTargets, structuredCrmRegistration } from "@/services/agent-secondary-email.service";
+import { CrmRegistrationOutbox, CrmRegistrationOutboxRepository } from "@/services/crm-registration-outbox.service";
 import {
   EMAIL_LOGO_CONTENT_ID,
   emailSiteUrl,
@@ -25,6 +29,7 @@ import {
   replaceLegacyEmailSiteUrls,
 } from "@/services/email-branding";
 import { createEmailTransporter } from "@/services/email.transporter";
+import { configuredSecondaryCopyOutbox } from "@/services/secondary-copy-outbox.service";
 
 import type {
   IActiveSearchConfirmationReminderPayload,
@@ -114,6 +119,48 @@ export class EmailService {
   private templateFactory: EmailTemplateFactory;
   private config = emailConfig;
   private readonly emailLogoAttachment = loadEmailLogoAttachment();
+
+  async dispatchCrmOutbox(renterUserId: string): Promise<void> {
+    const repository = new CrmRegistrationOutboxRepository();
+    try {
+      const event = await repository.findReady(renterUserId);
+      if (!event)
+        return;
+      const user = await User.findById(event.renterUserId).lean();
+      const data = user && structuredCrmRegistration(user.fullName, user.email, user.phoneNumber);
+      if (!data || !event.recipient) {
+        if (await repository.markInvalidData(renterUserId))
+          logger.warn({ renterUserId }, "CRM registration data requires operator review");
+        return;
+      }
+      let options: IEmailOptions;
+      try {
+        options = crmRegistrationOptions(event.recipient, data);
+      }
+      catch {
+        if (await repository.markInvalidData(renterUserId))
+          logger.warn({ renterUserId }, "CRM registration data requires operator review");
+        return;
+      }
+      const claim = await repository.claim(renterUserId, event.recipient);
+      if (!claim)
+        return;
+      const result = await this.transporter.send(options);
+      const outcome = result.deliveryOutcome ?? "uncertain";
+      const updated = await repository.recordOutcome(renterUserId, outcome, result.messageId);
+      if (!updated || outcome !== "accepted")
+        logger.warn({ renterUserId, outcome }, "CRM event requires operator review");
+    }
+    catch {
+      logger.error({ renterUserId }, "CRM event requires operator review");
+    }
+  }
+
+  async dispatchReadyCrmOutbox(): Promise<void> {
+    const ready = await CrmRegistrationOutbox.find({ state: "ready", attemptCount: 0 }).select("renterUserId").sort({ createdAt: 1 }).limit(50).lean();
+    for (const event of ready)
+      await this.dispatchCrmOutbox(event.renterUserId.toString());
+  }
 
   constructor() {
     this.initializeTransporter();
@@ -299,6 +346,7 @@ export class EmailService {
    */
   async sendEmailVerification(
     payload: IEmailVerificationPayload,
+    options?: { singleAttempt?: boolean },
   ): Promise<IEmailResult> {
     try {
       logger.debug(
@@ -325,6 +373,7 @@ export class EmailService {
         replyTo: "support@beforelisted.com",
         subject: `Verification Code | BeforeListed`,
         html,
+        deliveryPolicy: options?.singleAttempt ? "otp-single-attempt" : "sensitive-email",
       };
 
       // Send email
@@ -334,18 +383,12 @@ export class EmailService {
         payload.to,
       );
     }
-    catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : String(error),
-          email: payload.to,
-        },
-        "Failed to send email verification",
-      );
+    catch {
+      logger.error("Failed to send email verification");
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: "Email delivery failed",
         timestamp: new Date(),
         attempt: 1,
         maxAttempts: this.config.maxRetries,
@@ -760,7 +803,7 @@ export class EmailService {
   }
 
   async sendAgentAccountDeletedEmail(
-    payload: IAccountDeletedPayload,
+    payload: IAccountDeletedPayload & { secondaryEmail?: string; deletedAgentId?: string },
   ): Promise<IEmailResult> {
     try {
       logger.debug(
@@ -782,12 +825,14 @@ export class EmailService {
         replyTo: "support@beforelisted.com",
         subject: "Your BeforeListed Agent Account Has Been Deleted",
         html,
+        ...(payload.deletedAgentId ? { secondaryEventId: `agent-deleted:${payload.deletedAgentId}` } : {}),
       };
 
       return await this.sendEmail(
         emailOptions,
         "AGENT_ACCOUNT_DELETED",
         payload.to,
+        payload.secondaryEmail && payload.deletedAgentId ? { recipient: payload.secondaryEmail, agentUserId: payload.deletedAgentId } : undefined,
       );
     }
     catch (error) {
@@ -1358,6 +1403,7 @@ export class EmailService {
         replyTo: "support@beforelisted.com",
         subject: "New renter request submitted | BeforeListed\u2122",
         html,
+        ...(payload.requestId ? { secondaryEventId: `new-request:${payload.requestId}` } : {}),
       };
 
       return await this.sendEmail(
@@ -2212,6 +2258,7 @@ export class EmailService {
         replyTo: "support@beforelisted.com",
         subject: "New Renter Registration Completed | BeforeListed\u2122",
         html,
+        secondaryEventId: payload.secondaryEventId,
       };
 
       return await this.sendEmail(
@@ -2361,24 +2408,19 @@ export class EmailService {
         to: { email: payload.to, name: payload.userName },
         subject: `Welcome to BeforeListed - Your Account is Ready`,
         html,
+        deliveryPolicy: "sensitive-email",
         priority: "high",
       };
 
       // Send email
       return await this.sendEmail(emailOptions, "ADMIN_REFERRAL", payload.to);
     }
-    catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : String(error),
-          email: payload.to,
-        },
-        "Failed to send admin referral email",
-      );
+    catch {
+      logger.error("Failed to send admin referral email");
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: "Email delivery failed",
         timestamp: new Date(),
         attempt: 1,
         maxAttempts: this.config.maxRetries,
@@ -2521,21 +2563,51 @@ export class EmailService {
     options: IEmailOptions,
     templateType: string,
     recipientEmail: string,
+    detachedSecondary?: { recipient: string; agentUserId: string },
   ): Promise<IEmailResult> {
     const startTime = Date.now();
+    let hasSecondaryIntent = false;
 
     try {
+      const prepared: string[] = [];
+      let outbox: ReturnType<typeof configuredSecondaryCopyOutbox>["outbox"] | undefined;
+      try {
+        const targets = await findSecondarySystemTargets(options);
+        const detached = eligibleDetachedSecondary(options, detachedSecondary?.recipient);
+        if (detached && detachedSecondary && !targets.some(target => target.agentUserId === detachedSecondary.agentUserId))
+          targets.push({ agentUserId: detachedSecondary.agentUserId, recipient: detached });
+        hasSecondaryIntent = targets.length > 0;
+        if (targets.length) {
+          const configured = configuredSecondaryCopyOutbox(this.transporter);
+          outbox = configured.outbox;
+          // Every primary invocation is a separate dispatch, even for the same business event.
+          const eventId = `${options.secondaryEventId || "dispatch"}:${randomUUID()}`;
+          const preparedOptions = this.withDefaultEmailLogo(options);
+          for (const target of targets)
+            prepared.push(await outbox.prepare(eventId, target.agentUserId, templateType, target.recipient, preparedOptions, new Date(Date.now() + configured.retentionMs)));
+        }
+      }
+      catch {
+        throw new Error("Secondary copy preparation failed");
+      }
       const response = await this.transporter.send(
-        this.withDefaultEmailLogo(options),
+        this.withDefaultEmailLogo(hasSecondaryIntent && !options.deliveryPolicy ? { ...options, deliveryPolicy: "sensitive-email" } : options),
       );
 
       const duration = Date.now() - startTime;
 
-      if (response.error) {
+      if (response.error || (options.deliveryPolicy === "otp-single-attempt" && response.deliveryOutcome !== "accepted" && response.deliveryOutcome !== "suppressed")) {
+        if (outbox) {
+          try {
+            for (const id of prepared)
+              await outbox.markPrimaryUnconfirmed(id);
+          }
+          catch { logger.error({ templateType }, "Secondary copy primary outcome requires review"); }
+        }
         logger.error(
           {
             email: recipientEmail,
-            error: response.error.message,
+            error: hasSecondaryIntent || options.deliveryPolicy === "sensitive-email" || options.deliveryPolicy === "otp-single-attempt" ? "Email delivery failed" : response.error?.message || "Email delivery failed",
             duration: `${duration}ms`,
             attempts: response.retries + 1,
           },
@@ -2544,24 +2616,41 @@ export class EmailService {
 
         return {
           success: false,
-          error: response.error.message,
+          error: hasSecondaryIntent || options.deliveryPolicy === "sensitive-email" || options.deliveryPolicy === "otp-single-attempt" ? "Email delivery failed" : response.error?.message || "Email delivery failed",
           timestamp: response.timestamp,
           attempt: response.retries + 1,
           maxAttempts: this.config.maxRetries,
         };
       }
 
-      logger.info(
-        {
-          messageId: response.messageId,
-          email: recipientEmail,
-          duration: `${duration}ms`,
-        },
-        `✅ Email sent successfully: ${templateType}`,
-      );
+      if (response.deliveryOutcome === "suppressed") {
+        logger.info({ templateType }, "Email delivery suppressed");
+      }
+      else if (response.deliveryOutcome === "uncertain") {
+        logger.warn({ templateType }, "Email delivery could not be confirmed");
+      }
+      else {
+        logger.info(
+          { messageId: response.messageId, email: recipientEmail, duration: `${duration}ms` },
+          `✅ Email sent successfully: ${templateType}`,
+        );
+      }
+
+      if (outbox) {
+        try {
+          for (const id of prepared) {
+            if ((response.deliveryOutcome && response.deliveryOutcome !== "accepted") || !response.messageId || response.messageId === "undefined")
+              await outbox.markPrimaryUnconfirmed(id);
+            else
+              await outbox.markPrimaryAccepted(id);
+          }
+        }
+        catch { logger.error({ templateType }, "Secondary copy primary outcome requires review"); }
+      }
 
       return {
         success: true,
+        ...(response.deliveryOutcome === "suppressed" ? { skipped: true } : {}),
         messageId: response.messageId,
         timestamp: response.timestamp,
         attempt: response.retries + 1,
@@ -2571,7 +2660,7 @@ export class EmailService {
     catch (error) {
       logger.error(
         {
-          error: error instanceof Error ? error.message : String(error),
+          error: hasSecondaryIntent || options.deliveryPolicy === "sensitive-email" || options.deliveryPolicy === "otp-single-attempt" ? "Email delivery failed" : error instanceof Error ? error.message : String(error),
           email: recipientEmail,
         },
         `❌ Unexpected error sending email: ${templateType}`,
@@ -2579,7 +2668,7 @@ export class EmailService {
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: hasSecondaryIntent || options.deliveryPolicy === "sensitive-email" || options.deliveryPolicy === "otp-single-attempt" ? "Email delivery failed" : error instanceof Error ? error.message : String(error),
         timestamp: new Date(),
         attempt: 1,
         maxAttempts: this.config.maxRetries,
@@ -2587,13 +2676,19 @@ export class EmailService {
     }
   }
 
+  async recoverSecondaryCopies(): Promise<void> {
+    const { outbox } = configuredSecondaryCopyOutbox(this.transporter);
+    await outbox.recoverReady();
+    await outbox.eraseExpiredPayloads();
+  }
+
   private withDefaultEmailLogo(options: IEmailOptions): IEmailOptions {
     const sanitizedOptions = {
       ...options,
-      html: replaceLegacyEmailSiteUrls(options.html),
+      html: options.html ? replaceLegacyEmailSiteUrls(options.html) : options.html,
     };
 
-    if (!sanitizedOptions.html.includes(EMAIL_LOGO_CONTENT_ID)) {
+    if (!sanitizedOptions.html?.includes(EMAIL_LOGO_CONTENT_ID)) {
       return sanitizedOptions;
     }
 

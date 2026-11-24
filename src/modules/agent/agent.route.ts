@@ -145,6 +145,13 @@ router.get(
   controller.getSpecificAgent,
 );
 
+router.put(
+  "/admin/:userId/secondary-email",
+  authMiddleware.verifyToken,
+  authMiddleware.authorize(ROLES.ADMIN),
+  controller.adminUpdateSecondaryEmail,
+);
+
 /**
  * DELETE /agent/admin/:userId
  * Delete agent profile and account (admin only)

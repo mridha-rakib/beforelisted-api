@@ -1,6 +1,7 @@
 // file: src/config/bootstrap.ts
 
 import { env } from "@/env";
+import { startCrmOutboxRecoveryJob } from "@/jobs/crm-outbox-recovery.job";
 import { startPreMarketExpirationJob } from "@/jobs/pre-market-expiration.job";
 import { startPreMarketSearchConfirmationJob } from "@/jobs/pre-market-search-confirmation.job";
 import { startPreMarketUpcomingSearchExpansionReminderJob } from "@/jobs/pre-market-upcoming-search-expansion-reminder.job";
@@ -29,6 +30,7 @@ export async function bootstrapApplication(): Promise<void> {
       = env.NODE_ENV === "production" || env.ENABLE_SCHEDULED_JOBS === true;
 
     if (shouldStartScheduledJobs) {
+      startCrmOutboxRecoveryJob();
       startPreMarketExpirationJob();
       startPreMarketSearchConfirmationJob();
       startPreMarketUpcomingSearchExpansionReminderJob();
