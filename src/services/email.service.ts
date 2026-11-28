@@ -1,5 +1,6 @@
 // file: src/services/email.service.ts
 
+import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -24,7 +25,7 @@ import {
   renderEmailLogo,
   replaceLegacyEmailSiteUrls,
 } from "@/services/email-branding";
-import { createEmailTransporter } from "@/services/email.transporter";
+import { createEmailTransporter, htmlToPlainText } from "@/services/email.transporter";
 
 import type {
   IActiveSearchConfirmationReminderPayload,
@@ -81,6 +82,15 @@ import { EmailTemplateFactory } from "./email-templates/email-template.factory.j
 import { EmailTemplates } from "./email.templates.beforelisted.js";
 
 const EMAIL_LOGO_ATTACHMENT_FILENAME = "beforelisted-email-logo.png";
+
+function buyerInterestPlainText(render: (timeline: string) => string, timeline: string | undefined): string | undefined {
+  if (!timeline)
+    return undefined;
+
+  // Insert the original value after conversion so entities are not discarded.
+  const marker = `BUYERINTEREST${randomUUID().replace(/-/g, "")}END`;
+  return htmlToPlainText(render(marker)).replace(marker, () => timeline);
+}
 
 function loadEmailLogoAttachment(): Buffer | null {
   const candidatePaths = [
@@ -1330,7 +1340,7 @@ export class EmailService {
         "Sending renter request confirmation to agent",
       );
 
-      const html = agentRenterRequestConfirmationTemplate(
+      const render = (timeline: string | undefined) => agentRenterRequestConfirmationTemplate(
         payload.agentName,
         payload.renterName,
         payload.renterEmail,
@@ -1347,17 +1357,19 @@ export class EmailService {
         payload.features,
         payload.preferencesByOrder,
         payload.submittedAt,
-        payload.purchaseTimeline,
+        timeline,
         this.config.logoUrl,
         this.config.brandColor,
       );
 
+      const html = render(payload.purchaseTimeline);
       const emailOptions: IEmailOptions = {
         to: { email: payload.to, name: payload.agentName },
         cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
         replyTo: "support@beforelisted.com",
         subject: "New renter request submitted | BeforeListed\u2122",
         html,
+        text: buyerInterestPlainText(render, payload.purchaseTimeline),
       };
 
       return await this.sendEmail(
@@ -2186,18 +2198,19 @@ export class EmailService {
         "Sending renter registration verified notification to admin",
       );
 
-      const html = renterRegistrationVerifiedAdminTemplate(
+      const render = (timeline: string | undefined) => renterRegistrationVerifiedAdminTemplate(
         payload.renterName,
         payload.renterPhone,
         payload.renterEmail,
         payload.registrationDate,
         payload.registeredAgentName,
         payload.registeredAgentBrokerage,
-        payload.purchaseTimeline,
+        timeline,
         this.config.logoUrl,
         this.config.brandColor,
       );
 
+      const html = render(payload.purchaseTimeline);
       const registeredAgentEmail = payload.registeredAgentEmail?.trim();
       const adminEmail = payload.to.trim().toLowerCase();
       const cc
@@ -2212,6 +2225,7 @@ export class EmailService {
         replyTo: "support@beforelisted.com",
         subject: "New Renter Registration Completed | BeforeListed\u2122",
         html,
+        text: buyerInterestPlainText(render, payload.purchaseTimeline),
       };
 
       return await this.sendEmail(

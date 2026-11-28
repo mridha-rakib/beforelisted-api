@@ -813,8 +813,8 @@ export function agentRenterRequestConfirmationTemplate(
   );
   const safeSubmittedAt = escapeHtml(submittedAt || "N/A");
   const buyerInterestLine = purchaseTimeline
-    ? `<p><strong>Buyer interest:</strong><br>Renter indicated intent to buy and interest in upcoming sales in the next ${escapeHtml(purchaseTimeline)}.</p>`
-    : "";
+    ? `<p><strong>Buyer interest:</strong><br> Renter indicated intent to buy and interest in upcoming sales<br> <strong>Purchase Timeline:</strong> ${escapeHtml(purchaseTimeline)}</p>`
+    : `<p><strong>Buyer interest:</strong><br> None</p>`;
 
   return `
 <!DOCTYPE html>
@@ -2990,8 +2990,8 @@ export function renterRegistrationVerifiedAdminTemplate(
   const safeRegisteredAgentName = registeredAgentName || "N/A";
   const safeRegisteredAgentBrokerage = registeredAgentBrokerage || "N/A";
   const buyerInterestRow = purchaseTimeline
-    ? `<tr><td>Buyer Interest</td><td>Renter indicated intent to buy and interest in upcoming sales in the next ${escapeHtml(purchaseTimeline)}.</td></tr>`
-    : "";
+    ? `<tr><td>Buyer interest: </td><td> Renter indicated intent to buy and interest in upcoming sales</td></tr><tr><td> Purchase Timeline: </td><td> ${escapeHtml(purchaseTimeline)}</td></tr>`
+    : `<tr><td>Buyer interest: </td><td> None</td></tr>`;
 
   return `
 <!DOCTYPE html>
