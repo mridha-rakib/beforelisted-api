@@ -6,6 +6,8 @@
  * ✅ Type-safe with full TypeScript support
  * ✅ Clean separation of concerns
  */
+import type { ClientSession } from "mongoose";
+
 import { logger } from "@/middlewares/pino-logger";
 import { BaseRepository } from "@/modules/base/base.repository";
 
@@ -32,8 +34,9 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
    */
   async createOTP(
     data: Partial<IEmailVerificationOTP>,
+    session?: ClientSession,
   ): Promise<IEmailVerificationOTP> {
-    const record = await EmailVerificationOTP.create({
+    const values = {
       userId: data.userId,
       email: data.email,
       userType: data.userType,
@@ -43,7 +46,10 @@ export class EmailVerificationOTPRepository extends BaseRepository<IEmailVerific
       attempts: data.attempts ?? 0,
       maxAttempts: data.maxAttempts ?? 100,
       lastAttemptAt: data.lastAttemptAt,
-    });
+    };
+    const record = session
+      ? (await EmailVerificationOTP.create([values], { session }))[0]
+      : await EmailVerificationOTP.create(values);
 
     logger.debug(
       {

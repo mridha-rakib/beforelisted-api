@@ -4,6 +4,12 @@ import { z } from "zod";
 
 import { MESSAGES } from "@/constants/app.constants";
 import { logger } from "@/middlewares/pino-logger";
+import { ReferralParser } from "@/utils/referral-parser.utils";
+
+import { RenterUtil } from "./renter.utils.js";
+
+const registrationFullName = z.string().min(2).max(100).refine(value => value.trim().split(/\s+/).filter(Boolean).length >= 2, "Please enter your first and last name");
+const registrationPhone = z.string().trim().min(1, "Phone number is required").refine(value => !/[\r\n]/.test(value) && RenterUtil.validatePhoneNumber(value), "Enter a valid phone number");
 
 // ============================================
 // REGISTRATION SCHEMAS
@@ -17,8 +23,8 @@ export const agentReferralRenterRegisterSchema = z.object({
     .object({
       email: z.email(MESSAGES.VALIDATION.INVALID_EMAIL),
       password: z.string().min(8, MESSAGES.VALIDATION.PASSWORD_TOO_SHORT),
-      fullName: z.string().min(2).max(100),
-      phoneNumber: z.string().optional(),
+      fullName: registrationFullName,
+      phoneNumber: registrationPhone,
       referralCode: z
         .string()
         .regex(
@@ -44,8 +50,8 @@ export const adminReferralRenterRegisterSchema = z.object({
   body: z
     .object({
       email: z.email(MESSAGES.VALIDATION.INVALID_EMAIL),
-      fullName: z.string().min(2).max(100),
-      phoneNumber: z.string().optional(),
+      fullName: registrationFullName,
+      phoneNumber: registrationPhone,
       referralCode: z
         .string()
         .regex(
@@ -94,8 +100,8 @@ export const renterRegisterSchema = z.object({
         .string()
         .min(8, MESSAGES.VALIDATION.PASSWORD_TOO_SHORT)
         .optional(),
-      fullName: z.string().min(2).max(100),
-      phoneNumber: z.string().optional(),
+      fullName: registrationFullName,
+      phoneNumber: registrationPhone,
       referralCode: z
         .string()
         .min(1, "Referral code is required for renter registration"),
@@ -109,9 +115,6 @@ export const renterRegisterSchema = z.object({
         .optional(),
     })
     .superRefine((data, ctx) => {
-      const ReferralParser
-        = require("@/utils/referral-parser.utils").ReferralParser;
-
       const validation = ReferralParser.validate(data.referralCode);
 
       logger.warn(validation, "Validation debugging.");

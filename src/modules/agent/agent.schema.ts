@@ -29,12 +29,22 @@ export const createAgentProfileSchema = z.object({
 
 export const updateAgentProfileSchema = z.object({
   body: z.object({
+    secondaryEmail: z.never().optional(),
+    secondaryEmailIsCrm: z.never().optional(),
     fullName: z.string().min(2).max(100).optional(),
     phoneNumber: z.string().optional(),
     licenseNumber: z.string().min(1).max(100).optional(),
     brokerageName: z.string().min(1).max(100).optional(),
     title: z.enum(AGENT_TITLES).optional(),
     emailSubscriptionEnabled: z.boolean().optional(),
+  }),
+});
+
+export const adminSecondaryEmailSchema = z.object({
+  params: z.object({ userId: z.string().regex(/^[a-f\d]{24}$/i) }),
+  body: z.object({
+    secondaryEmail: z.union([z.literal(""), z.string().trim().email()]),
+    secondaryEmailIsCrm: z.boolean().default(false),
   }),
 });
 

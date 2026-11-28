@@ -1,0 +1,28 @@
+> Historical assessment: the registration and verification integration has since been implemented. See section5-crm-delivery-review.md for current operational behavior.
+
+# Section 5 registration-to-CRM durability assessment
+
+This documents an unimplemented design. CRM activation remains blocked. No automatic retry, migration or backfill is authorized.
+
+## Current boundaries
+
+All three renter registration routes call `RenterService.registerRenter`; generic routing dispatches by referral code, while explicit routes enforce its prefix. For agent referrals, the order is: existing-user check; referral validation; user save (pending, unverified); OTP invalidation/save and verification email; renter profile save with assigned agent; referral counter update; token generation and return. CRM lookup and claim happen later, during OTP verification, after the OTP and user have been marked verified. For admin referrals, the order is: existing-user check; referral validation and default-agent lookup; referral counter update; user save (active, verified); mark verified; renter profile save with assigned agent; welcome-detail lookup; CRM lookup/claim/send; other email calls; tokens and return. Controller success follows the service return. Writes are separate; user, OTP, profile, counter and CRM claim are not one atomic operation.
+
+Crashes or failures after a user save and before profile creation can leave a partial account; agent OTP email can already have been sent, and admin referral counting can already have occurred. A profile can exist before referral counting, welcome-detail lookup, or the later CRM call. An agent-referral registration returns successfully before OTP verification or any CRM record. A verified agent-referral user can be left without intent if the process stops between verification and lookup/claim. For admin referrals, failure or crash between profile creation and claim leaves no intent; CRM profile lookup or claim errors are caught and registration can still return success. Changes to CRM configuration before the later lookup can change whether or where a notification is sent. A successful provider response followed by a failed status update leaves a pending record with no message ID, and its outcome is uncertain.
+
+## Proposed design for approval
+
+A CRM outbox can be embedded in each renter profile, with a unique identity based on the unique renter `userId` and event type. Registration should snapshot the eligible agent and CRM address at an agreed decision point. A transaction covering user, renter profile plus embedded intent, and referral counter could atomically commit or roll back those records. Agent OTP persistence must also be transaction-aware if partial account creation is to be prevented; existing OTP invalidation, OTP creation and email sending are currently coupled. Generate and persist OTP inside the transaction, but perform its email call only after commit. Other Postmark calls also remain outside the transaction. Use an appropriate acknowledged durable write concern and handle unknown commit results without replaying external sends.
+
+The embedded outbox must distinguish an unsent intent from a claimed attempt: use a non-sendable verification-waiting state for agent referrals, then a ready state, then an atomic compare-and-set claim to pending; admin referrals are ready on commit. A recovery scanner may identify ready items but must not automatically send unless an operator-approved policy explicitly allows it. Claimed/pending items are unresolved after interruption and never automatically resent. Accepted, failed, uncertain and suppressed outcomes, timestamps and provider IDs remain recorded. Accepted means provider acceptance, not delivery. Recipient and user data must be protected; logs must not include CRM addresses, message content or provider error text.
+
+OTP verification itself currently writes OTP verified and user verified separately before the CRM call. To guarantee verified registrations do not lose the transition to ready, either atomically commit verification and readiness together, or define a safe reconciler based on persisted verification state and the original eligibility snapshot. The design must prevent late CRM settings changes from creating new outbox events for old registrations, including records with no outbox or legacy attempt marker.
+
+## Decisions and operational prerequisites
+
+- Approve the cross-document transaction scope, supported MongoDB topology and durability settings, including OTP/referral-counter behavior and failure handling for duplicate or partially created accounts.
+- Approve the exact configuration snapshot point and handling of configuration changes racing registration; an agent-referral signup precedes email verification, while the current code reads configuration at verification.
+- Approve how a pre-existing partial account is identified and repaired, and how legacy attempts lacking a state are reconciled. No retrospective notification is proposed.
+- Approve an operator workflow and any future dispatch/retry policy. A provider timeout, a process stop after a claim, or an unknown status write cannot be safely treated as a definitive non-delivery.
+
+An embedded-only profile write can ensure the profile and intent are created together, but cannot atomically protect the earlier user/OTP/referral writes or resolve the later verification transition. It would also change when agent settings are captured. Therefore the current work does not implement it as a complete fix. The mocked crash tests document behavior; they do not prove MongoDB transaction or unique-index guarantees.

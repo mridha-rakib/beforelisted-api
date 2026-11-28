@@ -8,6 +8,9 @@ import {
 } from "@/constants/app.constants";
 import { env } from "@/env";
 import { logger } from "@/middlewares/pino-logger";
+import { AgentProfile } from "@/modules/agent/agent.model";
+import { User } from "@/modules/user/user.model";
+import { crmRegistrationEventId, CrmRegistrationOutbox, CrmRegistrationOutboxRepository } from "@/services/crm-registration-outbox.service";
 import { emailSiteUrl } from "@/services/email-branding";
 import { EmailService } from "@/services/email.service";
 import {
@@ -355,6 +358,19 @@ export class AuthService {
     const result = await this.emailVerificationService.verifyOTP({
       email: payload.email,
       code: payload.code,
+    }, async (otp, session) => {
+      const user = await User.findByIdAndUpdate(otp.userId, { $set: { emailVerified: true, accountStatus: "active" }, $unset: { emailVerificationToken: "", emailVerificationExpiresAt: "" } }, { new: true, session });
+      if (!user)
+        throw new NotFoundException(MESSAGES.USER.USER_NOT_FOUND);
+      if (user.role !== ROLES.RENTER)
+        return;
+      const event = await CrmRegistrationOutbox.findById(crmRegistrationEventId(user._id.toString())).session(session).lean();
+      if (!event || event.state !== "waiting_verification")
+        return;
+      const profile = await AgentProfile.findOne({ userId: event.agentUserId }).session(session).lean();
+      const recipient = profile?.secondaryEmailIsCrm && profile.secondaryEmail?.trim() ? profile.secondaryEmail.trim() : null;
+      if (!await new CrmRegistrationOutboxRepository().resolveEligibility(user._id.toString(), recipient, session))
+        throw new Error("CRM eligibility transition failed");
     });
 
     const user = await this.userService.getUserByEmail(payload.email);
@@ -363,7 +379,9 @@ export class AuthService {
     }
 
     const updatedUser
-      = (await this.userService.markEmailAsVerified(result.userId)) || user;
+      = String(result.userType).toLowerCase() === "renter" && user.emailVerified
+        ? user
+        : (await this.userService.markEmailAsVerified(result.userId)) || user;
     const userResponse = this.userService.toUserResponse(updatedUser);
     let agentTitle: string | null = null;
     let agentActivationLink: string | null = null;
@@ -481,6 +499,7 @@ export class AuthService {
               : null);
 
         if (referredAgentId) {
+          await this.emailService.dispatchCrmOutbox(user._id.toString());
           const agentRepository = new AgentProfileRepository();
           const agentProfile
             = await agentRepository.findByUserId(referredAgentId);
@@ -522,6 +541,7 @@ export class AuthService {
           await this.emailService.sendRenterRegistrationVerifiedAdminNotification(
             {
               to: adminEmail,
+              secondaryEventId: `renter-registration-verified:${user._id.toString()}`,
               renterName:
                 user.fullName || `${renterFirstName} ${renterLastName}`.trim(),
               renterPhone: user.phoneNumber || "N/A",
@@ -1105,6 +1125,8 @@ export class AuthService {
           : (agent.userId?.toString() ?? ""),
       licenseNumber: agent.licenseNumber,
       brokerageName: agent.brokerageName,
+      secondaryEmail: agent.secondaryEmail,
+      secondaryEmailIsCrm: Boolean(agent.secondaryEmail && agent.secondaryEmailIsCrm),
       title: agent.title,
       isActive: agent.isActive,
       activeAt: agent.activeAt,

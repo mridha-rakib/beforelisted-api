@@ -294,6 +294,7 @@ export type IAgentRegistrationVerifiedAdminPayload = {
 };
 
 export type IRenterRegistrationVerifiedAdminPayload = {
+  secondaryEventId?: string;
   to: string;
   renterName: string;
   renterPhone: string;

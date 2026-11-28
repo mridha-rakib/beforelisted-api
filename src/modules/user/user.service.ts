@@ -1,5 +1,7 @@
 // file: src/modules/user/user.service.ts (ENHANCED VERSION)
 
+import type { ClientSession } from "mongoose";
+
 import {
   MESSAGES,
   ROLES,
@@ -103,9 +105,9 @@ export class UserService {
   /**
    * Create new user
    */
-  async create(payload: UserCreatePayload): Promise<IUser> {
+  async create(payload: UserCreatePayload, session?: ClientSession): Promise<IUser> {
     try {
-      const user = await this.userRepository.create(payload);
+      const user = await this.userRepository.create(payload, session);
       logger.info({ userId: user._id, email: user.email }, "User created");
       return user;
     }

@@ -23,6 +23,7 @@ export type IEmailOptions = {
   subject: string;
   html: string;
   text?: string;
+  deliveryPolicy?: "crm-single-attempt" | "otp-single-attempt" | "secondary-copy" | "secondary-copy-single-attempt" | "sensitive-email";
   priority?: IEmailPriority;
   attachments?: IEmailAttachment[];
   headers?: Record<string, string>;
@@ -30,11 +31,14 @@ export type IEmailOptions = {
   references?: string[];
   tags?: string[];
   metadata?: Record<string, string>;
+  /** Stable business event when available; never passed to Postmark. */
+  secondaryEventId?: string;
 };
 
 export type IEmailResponse = {
   messageId: string;
   response: string;
+  deliveryOutcome?: "accepted" | "failed" | "uncertain" | "suppressed";
   accepted?: string[];
   rejected?: string[];
   timestamp: Date;

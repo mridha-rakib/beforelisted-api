@@ -46,6 +46,8 @@ export type AgentProfileResponse = {
   userInfo: string | any;
   licenseNumber: string;
   brokerageName: string;
+  secondaryEmail?: string;
+  secondaryEmailIsCrm: boolean;
   title: AgentTitle;
   profileImageUrl: string | null;
 

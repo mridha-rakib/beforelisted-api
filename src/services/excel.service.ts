@@ -1197,6 +1197,8 @@ export class ExcelService {
         "Verification status",
         "Active Status",
         "Total Referrals",
+        "Secondary Email",
+        "CRM (Yes/No)",
       ];
 
       const headerRow = worksheet.addRow(headers);
@@ -1252,6 +1254,8 @@ export class ExcelService {
           userInfo?.emailVerified ? "Verified" : "Not Verified",
           agent.isActive ? "Active" : "Inactive",
           agent.totalRentersReferred || 0,
+          agent.secondaryEmail || "",
+          agent.secondaryEmail && agent.secondaryEmailIsCrm ? "Yes" : "No",
         ]);
 
         // Alternating row colors

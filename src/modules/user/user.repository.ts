@@ -1,6 +1,6 @@
 // file: src/modules/user/user.repository.ts
 
-import type { ObjectId } from "mongoose";
+import type { ClientSession, ObjectId } from "mongoose";
 
 import { logger } from "@/middlewares/pino-logger";
 import { BaseRepository } from "@/modules/base/base.repository";
@@ -115,7 +115,7 @@ export class UserRepository extends BaseRepository<IUser> {
     return referralCode;
   }
 
-  async incrementReferralCount(userId: string): Promise<IUser | null> {
+  async incrementReferralCount(userId: string, session?: ClientSession): Promise<IUser | null> {
     return this.model
       .findByIdAndUpdate(
         userId,
@@ -125,7 +125,7 @@ export class UserRepository extends BaseRepository<IUser> {
             firstReferralUsedAt: new Date(),
           },
         },
-        { new: true },
+        { new: true, ...(session ? { session } : {}) },
       )
       .exec();
   }

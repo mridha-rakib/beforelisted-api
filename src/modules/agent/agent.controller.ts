@@ -19,6 +19,7 @@ import { UserService } from "../user/user.service.js";
 import { AgentOpportunityMessageHistoryService } from "./agent-opportunity-message-history.service.js";
 import {
   activateAgentWithLinkSchema,
+  adminSecondaryEmailSchema,
   agentRegisterSchema,
   agentToggleActiveSchema,
   createAgentProfileSchema,
@@ -38,6 +39,12 @@ export class AgentController {
     this.opportunityMessageHistoryService
       = new AgentOpportunityMessageHistoryService();
   }
+
+  adminUpdateSecondaryEmail = asyncHandler(async (req: Request, res: Response) => {
+    const validated = await zParse(adminSecondaryEmailSchema, req);
+    const result = await this.service.adminUpdateSecondaryEmail(validated.params.userId, validated.body);
+    ApiResponse.success(res, result, "Secondary email updated successfully");
+  });
 
   createAgentProfile = asyncHandler(
     async (req: Request, res: Response, _next: NextFunction) => {
