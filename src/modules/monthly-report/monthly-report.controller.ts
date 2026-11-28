@@ -24,6 +24,12 @@ export class MonthlyReportController {
     this.reportService = new MonthlyReportService();
   }
 
+  getLatestReport = asyncHandler(async (_req: Request, res: Response) => {
+    const link = await this.reportService.getLatestReportLink();
+    res.set("Cache-Control", "no-store");
+    ApiResponse.success(res, { link }, "Latest report retrieved");
+  });
+
   /**
    * GET /monthly-report
    * Get all active reports (public)

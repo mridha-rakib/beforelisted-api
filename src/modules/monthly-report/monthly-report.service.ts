@@ -10,11 +10,37 @@ import type { IMonthlyReport } from "./monthly-report.model.js";
 
 import { MonthlyReportRepository } from "./monthly-report.repository.js";
 
+function isPublicReportUrl(link: string): boolean {
+  try {
+    const match = /^https:\/\/beforelisted\.com\/Market-Reports\/([^/?#]+)$/.exec(link);
+    if (!match)
+      return false;
+    const filename = decodeURIComponent(match[1]);
+    const url = new URL(link);
+    return url.hostname === "beforelisted.com" && !url.port && !url.username && !url.password
+      && url.pathname === `/Market-Reports/${match[1]}`
+      && /^[^/\\%?#]+\.pdf$/i.test(filename) && !filename.includes("..")
+      && ![...filename].some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127);
+  }
+  catch {
+    return false;
+  }
+}
+
 export class MonthlyReportService {
   private readonly reportRepository: MonthlyReportRepository;
 
   constructor() {
     this.reportRepository = new MonthlyReportRepository();
+  }
+
+  async getLatestReportLink(): Promise<string> {
+    const reports = await this.reportRepository.getActiveReportsByCreationDate();
+    for (const report of reports) {
+      if (isPublicReportUrl(report.link))
+        return new URL(report.link).href;
+    }
+    throw new NotFoundException("No report available");
   }
 
   /**
